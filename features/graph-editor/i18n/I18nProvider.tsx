@@ -112,15 +112,15 @@ function applyLocale(locale: Locale) {
       return;
     }
 
-    if (document.title !== messages.app.title) {
-      document.title = messages.app.title;
+    if (document.title !== messages.app.documentTitle) {
+      document.title = messages.app.documentTitle;
     }
 
     const description = document.querySelector<HTMLMetaElement>(
       'meta[name="description"]',
     );
     if (description) {
-      description.content = messages.app.description;
+      description.content = messages.app.documentDescription;
     }
   };
 

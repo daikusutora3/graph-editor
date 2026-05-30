@@ -4,6 +4,10 @@ import { createEmptyGraphModel } from "../features/graph-editor/core/graph/graph
 import { addNodeCommand } from "../features/graph-editor/core/graph/graph-intents";
 import type { GraphModel } from "../features/graph-editor/core/graph/model";
 import {
+  resolveEdgeSelection,
+  resolveNodeSelection,
+} from "../features/graph-editor/shell/state/editor-selection";
+import {
   applyManualLayoutAtom,
   clearGraphAtom,
   replaceGraphModelAtom,
@@ -124,6 +128,7 @@ expect(
 
 verifyShortcutResolver();
 verifyShortcutPreventDefaultContract();
+verifyCanvasSelectionActions();
 verifyShortcutActions();
 
 if (failures.length > 0) {
@@ -227,6 +232,39 @@ function verifyShortcutPreventDefaultContract() {
       true,
     ) === true,
     "handled nudge shortcut should prevent the browser default",
+  );
+}
+
+function verifyCanvasSelectionActions() {
+  expect(
+    JSON.stringify(
+      resolveNodeSelection({ nodeIds: ["a"], edgeIds: ["ab"] }, "b", false),
+    ) === JSON.stringify({ nodeIds: ["b"], edgeIds: [] }),
+    "plain node click should replace the current selection",
+  );
+  expect(
+    JSON.stringify(
+      resolveNodeSelection({ nodeIds: ["a"], edgeIds: ["ab"] }, "b", true),
+    ) === JSON.stringify({ nodeIds: ["a", "b"], edgeIds: ["ab"] }),
+    "Shift+node click should add the node and preserve edge selection",
+  );
+  expect(
+    JSON.stringify(
+      resolveNodeSelection({ nodeIds: ["a", "b"], edgeIds: ["ab"] }, "b", true),
+    ) === JSON.stringify({ nodeIds: ["a"], edgeIds: ["ab"] }),
+    "Shift+node click should toggle an already selected node off",
+  );
+  expect(
+    JSON.stringify(
+      resolveEdgeSelection({ nodeIds: ["a"], edgeIds: ["ab"] }, "bc", false),
+    ) === JSON.stringify({ nodeIds: [], edgeIds: ["bc"] }),
+    "plain edge click should replace the current selection",
+  );
+  expect(
+    JSON.stringify(
+      resolveEdgeSelection({ nodeIds: ["a"], edgeIds: ["ab"] }, "bc", true),
+    ) === JSON.stringify({ nodeIds: ["a"], edgeIds: ["ab", "bc"] }),
+    "Shift+edge click should add the edge and preserve node selection",
   );
 }
 

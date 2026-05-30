@@ -3,7 +3,12 @@ node_modules
 out
 dist
 coverage
+.env
+.env.*
+!.env.example
 .DS_Store
 bun-error.log
 .agents
+.vercel
+.wrangler
 tsconfig.tsbuildinfo
