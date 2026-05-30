@@ -40,16 +40,10 @@ bun run dev
 bun run typecheck
 bun run lint
 bun run format:check
-bun run verify
+bun run test
 bun run check
 bun run check:all
 bun run build
-```
-
-只运行指定验证套件:
-
-```bash
-bun run verify core samples layouts cytoscape editor io
 ```
 
 ## 技术栈
