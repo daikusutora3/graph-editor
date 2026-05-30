@@ -31,10 +31,11 @@
     "verify:core": "bun run scripts/verify-graph-core.ts",
     "verify:samples": "bun run scripts/verify-samples.ts",
     "verify:layouts": "bun run scripts/verify-layouts.ts",
+    "verify:cytoscape": "bun run scripts/verify-cytoscape-adapter.ts",
     "verify:editor": "bun run scripts/verify-editor-state.ts",
     "verify:io": "bun run scripts/verify-io-contracts.ts",
     "verify:release": "bun run scripts/verify-release.ts",
-    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify:core && bun run verify:samples && bun run verify:layouts && bun run verify:editor && bun run verify:io",
+    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify:core && bun run verify:samples && bun run verify:layouts && bun run verify:cytoscape && bun run verify:editor && bun run verify:io",
     "check:all": "bun run check && bun run build && bun run verify:release"
   },
   "dependencies": {
@@ -45,8 +46,7 @@
     "nanoid": "5.1.11",
     "next": "16.2.6",
     "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "tailwind-merge": "3.6.0"
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.0",

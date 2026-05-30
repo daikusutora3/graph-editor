@@ -14,7 +14,6 @@ import {
   type NodeHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import { readGraphOutOfView } from "../adapters/cytoscape/graph-canvas-viewport";
-import { recordTimedEvent } from "../diagnostics/graph-performance-events";
 
 type UseRenderedHitboxesOptions = {
   chrome: GraphCanvasChrome;
@@ -37,27 +36,10 @@ export function useRenderedHitboxes({
 
   const updateRenderedHitboxesNow = useCallback(
     (cy: Core) => {
-      const { nextEdgeLabelHitboxes, nextGraphOutOfView, nextNodeHitboxes } =
-        recordTimedEvent(
-          "hitbox-read",
-          () => {
-            const nextNodeHitboxes = readNodeHitboxes(cy, graph);
-            const nextEdgeLabelHitboxes =
-              mode === "select" ? readEdgeLabelHitboxes(cy, graph) : [];
-            const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
-
-            return {
-              nextEdgeLabelHitboxes,
-              nextGraphOutOfView,
-              nextNodeHitboxes,
-            };
-          },
-          {
-            edges: graph.edges.length,
-            edgeHitboxes: mode === "select" ? graph.edges.length : 0,
-            nodes: graph.nodes.length,
-          },
-        );
+      const nextNodeHitboxes = readNodeHitboxes(cy, graph);
+      const nextEdgeLabelHitboxes =
+        mode === "select" ? readEdgeLabelHitboxes(cy, graph) : [];
+      const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
 
       setNodeHitboxes((current) =>
         sameNodeHitboxes(current, nextNodeHitboxes)
@@ -89,7 +71,7 @@ export function useRenderedHitboxes({
         const pendingCy = pendingHitboxCyRef.current;
         pendingHitboxCyRef.current = null;
 
-        if (pendingCy) {
+        if (pendingCy && !pendingCy.destroyed()) {
           updateRenderedHitboxesNow(pendingCy);
         }
       });

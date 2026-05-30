@@ -59,7 +59,6 @@ import {
   ZoomControls,
 } from "./GraphCanvasOverlays";
 import { useGraphCanvasApi } from "./GraphCanvasProvider";
-import { recordTimedEvent } from "../diagnostics/graph-performance-events";
 
 type CanvasPointer = {
   clientX: number;
@@ -72,6 +71,7 @@ type GraphCanvasProps = {
 export function GraphCanvas({ chrome }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
+  const draggingNodeIdsRef = useRef<ReadonlySet<NodeId>>(new Set());
   const pendingFitAfterUpdateRef = useRef(false);
   const suppressSelectionSyncRef = useRef(false);
   const [edgeCursor, setEdgeCursor] = useState<RenderedPoint | null>(null);
@@ -113,22 +113,13 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   const { edgeRoutingMeta, edgeRoutingOptions } = useEdgeRoutingMeta(graph);
 
   const elements = useMemo(() => {
-    return recordTimedEvent(
-      "element-build-total",
-      () =>
-        graphModelToCytoscapeElements(graph, {
-          edgeRoutingMeta,
-          edgeRoutingOptions: {
-            avoidNodes: edgeRoutingOptions.avoidNodes,
-            variant: 0,
-          },
-        }),
-      {
+    return graphModelToCytoscapeElements(graph, {
+      edgeRoutingMeta,
+      edgeRoutingOptions: {
         avoidNodes: edgeRoutingOptions.avoidNodes,
-        edges: graph.edges.length,
-        nodes: graph.nodes.length,
+        variant: 0,
       },
-    );
+    });
   }, [edgeRoutingMeta, edgeRoutingOptions.avoidNodes, graph]);
   const graphHasElements = elements.length > 0;
 
@@ -275,6 +266,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
 
   const htmlNodeDrag = useHtmlNodeDrag({
     cyRef,
+    draggingNodeIdsRef,
     executeCommand,
     flushRenderedHitboxes,
     selectionRef,
@@ -316,6 +308,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     chrome,
     mode,
     pendingFitAfterUpdateRef,
+    draggingNodeIdsRef,
     selection,
     selectionRef,
     flushRenderedHitboxes,

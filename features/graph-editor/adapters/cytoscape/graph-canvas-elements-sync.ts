@@ -12,9 +12,20 @@ type SyncCytoscapeElementsResult = {
   updated: number;
 };
 
+type SyncCytoscapeElementsOptions = {
+  skipNodePositionIds?: ReadonlySet<string>;
+};
+
+const TRANSIENT_CLASSES = new Set([
+  "edge-source",
+  "label-editing",
+  "range-preview",
+]);
+
 export function syncCytoscapeElements(
   cy: Core,
   elements: ElementDefinition[],
+  options: SyncCytoscapeElementsOptions = {},
 ): SyncCytoscapeElementsResult {
   const result: SyncCytoscapeElementsResult = {
     added: 0,
@@ -58,12 +69,12 @@ export function syncCytoscapeElements(
       continue;
     }
 
-    if (!shouldUpdateElement(existing, definition)) {
+    if (!shouldUpdateElement(existing, definition, options)) {
       result.skipped += 1;
       continue;
     }
 
-    updateElement(existing, definition);
+    updateElement(existing, definition, options);
     result.updated += 1;
   }
 
@@ -95,6 +106,7 @@ function shouldRecreateElement(
 function updateElement(
   element: SingularElementReturnValue,
   definition: ElementDefinition,
+  options: SyncCytoscapeElementsOptions,
 ) {
   const nextData = definition.data ?? {};
 
@@ -105,9 +117,15 @@ function updateElement(
   }
 
   element.data(nextData);
-  element.classes(definition.classes ?? "");
+  element.classes(
+    mergeModelAndTransientClasses(element.classes(), definition.classes ?? ""),
+  );
 
-  if (element.isNode() && definition.position) {
+  if (
+    element.isNode() &&
+    definition.position &&
+    !options.skipNodePositionIds?.has(element.id())
+  ) {
     element.position(definition.position);
   }
 }
@@ -115,8 +133,9 @@ function updateElement(
 function shouldUpdateElement(
   element: SingularElementReturnValue,
   definition: ElementDefinition,
+  options: SyncCytoscapeElementsOptions,
 ) {
-  if (!sameClasses(element.classes(), definition.classes ?? "")) {
+  if (!sameModelClasses(element.classes(), definition.classes ?? "")) {
     return true;
   }
 
@@ -130,7 +149,7 @@ function shouldUpdateElement(
 
   const nextPosition = definition.position;
 
-  if (!nextPosition) {
+  if (!nextPosition || options.skipNodePositionIds?.has(element.id())) {
     return false;
   }
 
@@ -153,9 +172,42 @@ function sameElementData(
   );
 }
 
-function sameClasses(current: string | string[], next: string | string[]) {
-  const currentClasses = Array.isArray(current) ? current.join(" ") : current;
-  const nextClasses = Array.isArray(next) ? next.join(" ") : next;
+function sameModelClasses(current: string | string[], next: string | string[]) {
+  const currentClasses = classList(current).filter(
+    (className) => !TRANSIENT_CLASSES.has(className),
+  );
+  const nextClasses = classList(next);
 
-  return currentClasses.trim() === nextClasses.trim();
+  return sameClassSet(currentClasses, nextClasses);
+}
+
+function mergeModelAndTransientClasses(
+  current: string | string[],
+  nextModelClasses: string | string[],
+) {
+  const nextClasses = classList(nextModelClasses);
+  const merged = new Set(nextClasses);
+
+  for (const className of classList(current)) {
+    if (TRANSIENT_CLASSES.has(className)) {
+      merged.add(className);
+    }
+  }
+
+  return [...merged].join(" ");
+}
+
+function sameClassSet(a: string[], b: string[]) {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  const bSet = new Set(b);
+  return a.every((className) => bSet.has(className));
+}
+
+function classList(classes: string | string[]) {
+  const raw = Array.isArray(classes) ? classes.join(" ") : classes;
+
+  return raw.split(/\s+/).filter(Boolean);
 }
