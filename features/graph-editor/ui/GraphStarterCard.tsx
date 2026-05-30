@@ -99,7 +99,7 @@ export function GraphStarterCard({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-y-0 right-[var(--app-space-3)] z-50 grid place-items-center px-[var(--app-space-3)] py-[var(--app-space-6)] transition-[left,right] duration-[var(--app-duration-base)] ease-[var(--app-ease)] motion-reduce:transition-none",
+        "pointer-events-none absolute inset-y-0 right-[calc(var(--app-space-3)+3.5rem+var(--app-space-2))] z-50 grid place-items-center px-[var(--app-space-3)] py-[var(--app-space-6)] transition-[left,right] duration-[var(--app-duration-base)] ease-[var(--app-ease)] motion-reduce:transition-none",
         sidebarCollapsed
           ? "left-[calc(var(--app-space-3)+3.5rem+var(--app-space-2))]"
           : "left-[calc(var(--app-space-3)+var(--app-toolbar-width)+var(--app-space-2))]",
