@@ -283,7 +283,30 @@ function SidebarTitle() {
   const { messages } = useI18n();
 
   return (
-    <div className="flex min-w-0 items-center" aria-label={messages.app.title}>
+    <div
+      className="flex min-w-0 items-center gap-[var(--app-space-2)]"
+      aria-label={messages.app.title}
+    >
+      <span className="relative grid size-6 shrink-0 place-items-center">
+        <img
+          src="/brand/graph-editor-logo.webp"
+          alt=""
+          aria-hidden="true"
+          width={24}
+          height={24}
+          className="brand-logo-image-light size-6 object-contain select-none"
+          draggable={false}
+        />
+        <img
+          src="/brand/graph-editor-logo-dark.webp"
+          alt=""
+          aria-hidden="true"
+          width={24}
+          height={24}
+          className="brand-logo-image-dark size-6 object-contain select-none"
+          draggable={false}
+        />
+      </span>
       <span className="flex min-w-0 flex-col justify-center">
         <span
           translate="no"
