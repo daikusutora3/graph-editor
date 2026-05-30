@@ -263,6 +263,17 @@ export function createGraphCanvasStylesheet(
       }),
     },
     {
+      selector: "node.range-preview",
+      style: cytoscapeStyle({
+        "border-color": palette.active,
+        "border-width": 4,
+        "underlay-color": palette.active,
+        "underlay-opacity": palette.activeOpacity * 0.6,
+        "underlay-padding": 5,
+        "z-index": 18,
+      }),
+    },
+    {
       selector: "edge",
       style: cytoscapeStyle({
         width: EDGE_WIDTH,
@@ -329,6 +340,17 @@ export function createGraphCanvasStylesheet(
       style: cytoscapeStyle({
         "line-color": palette.edgePink,
         "target-arrow-color": palette.edgePink,
+      }),
+    },
+    {
+      selector: "edge.range-preview",
+      style: cytoscapeStyle({
+        width: SELECTED_EDGE_WIDTH,
+        "arrow-scale": SELECTED_EDGE_ARROW_SCALE,
+        "line-color": palette.active,
+        "line-opacity": 0.72,
+        "target-arrow-color": palette.active,
+        "z-index": 16,
       }),
     },
     {

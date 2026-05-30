@@ -5,7 +5,7 @@ import type {
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { createMoveNodesCommand } from "../core/graph/graph-intents";
 import type { GraphIntent, NodeId } from "../core/graph/model";
@@ -45,6 +45,33 @@ export function useHtmlNodeDrag({
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
 
+  const cancel = useCallback(() => {
+    const state = htmlNodeDragRef.current;
+    const cy = cyRef.current;
+
+    htmlNodeDragRef.current = null;
+
+    if (!state || !cy || cy.destroyed()) {
+      return;
+    }
+
+    cy.batch(() => {
+      state.nodeIds.forEach((id) => {
+        const startPosition = state.before[id];
+        const node = cy.getElementById(id);
+
+        if (!startPosition || node.empty() || !node.isNode()) {
+          return;
+        }
+
+        node.position(startPosition);
+      });
+    });
+    flushRenderedHitboxes(cy);
+  }, [cyRef, flushRenderedHitboxes]);
+
+  useEffect(() => cancel, [cancel]);
+
   const start = (
     event: ReactPointerEvent<HTMLButtonElement>,
     nodeId: NodeId,
@@ -64,11 +91,18 @@ export function useHtmlNodeDrag({
       : [nodeId];
     const before = Object.fromEntries(
       selectedNodeIds
-        .map(
-          (id) =>
-            [id, clonePosition(cy.getElementById(id).position())] as const,
-        )
-        .filter(([, position]) => position != null),
+        .map((id) => {
+          const node = cy.getElementById(id);
+
+          if (node.empty() || !node.isNode()) {
+            return null;
+          }
+
+          return [id, clonePosition(node.position())] as const;
+        })
+        .filter((entry): entry is readonly [NodeId, Position] =>
+          Boolean(entry),
+        ),
     );
 
     if (Object.keys(before).length === 0) {
@@ -116,7 +150,13 @@ export function useHtmlNodeDrag({
           return;
         }
 
-        cy.getElementById(id).position({
+        const node = cy.getElementById(id);
+
+        if (node.empty() || !node.isNode()) {
+          return;
+        }
+
+        node.position({
           x: startPosition.x + dx,
           y: startPosition.y + dy,
         });
@@ -144,14 +184,27 @@ export function useHtmlNodeDrag({
     lastMovedAtRef.current = Date.now();
     flushRenderedHitboxes(cy);
     const after = Object.fromEntries(
-      state.nodeIds.map((id) => [
-        id,
-        clonePosition(cy.getElementById(id).position()),
-      ]),
+      state.nodeIds
+        .map((id) => {
+          const node = cy.getElementById(id);
+
+          if (node.empty() || !node.isNode()) {
+            return null;
+          }
+
+          return [id, clonePosition(node.position())] as const;
+        })
+        .filter((entry): entry is readonly [NodeId, Position] =>
+          Boolean(entry),
+        ),
     );
 
+    if (Object.keys(after).length === 0) {
+      return;
+    }
+
     executeCommand(createMoveNodesCommand("Move node", after));
-    setSelection({ nodeIds: state.nodeIds, edgeIds: [] });
+    setSelection({ nodeIds: Object.keys(after) as NodeId[], edgeIds: [] });
   };
 
   const consumeSuppressedClick = () => {
@@ -168,6 +221,7 @@ export function useHtmlNodeDrag({
   return {
     canOpenInlineEdit,
     consumeSuppressedClick,
+    cancel,
     finish,
     start,
     update,

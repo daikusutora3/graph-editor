@@ -3,6 +3,7 @@
 import type { Core, Position } from "cytoscape";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { graphModelToCytoscapeElements } from "../adapters/cytoscape/cytoscape-adapter";
@@ -40,6 +41,7 @@ import { useGraphCanvasModeEffects } from "./graph-canvas-mode-effects";
 import { useRenderedHitboxes } from "./graph-canvas-rendered-hitboxes";
 import { useGraphCanvasSelectionActions } from "./graph-canvas-selection-actions";
 import { useRangeSelectionPointerForwarding } from "./graph-canvas-range-selection-forwarding";
+import { useRangeSelectionPreview } from "./graph-canvas-range-selection-preview";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/use-panel-presence";
@@ -91,7 +93,14 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   const deleteSelection = useSetAtom(deleteSelectionAtom);
   const { registerGraphCanvasApi } = useGraphCanvasApi();
 
-  const exportPng = useGraphImageExport({ cyRef, suppressSelectionSyncRef });
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+
+  const exportPng = useGraphImageExport({
+    cyRef,
+    selectionRef,
+    suppressSelectionSyncRef,
+  });
   const { editFeedback, showEditFeedback } = useEditFeedback();
   const {
     edgeLabelHitboxes,
@@ -122,9 +131,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     );
   }, [edgeRoutingMeta, edgeRoutingOptions.avoidNodes, graph]);
   const graphHasElements = elements.length > 0;
-
-  const selectionRef = useRef(selection);
-  selectionRef.current = selection;
 
   useEffect(() => {
     if (mode !== "edge") {
@@ -276,6 +282,12 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     updateRenderedHitboxes,
   });
 
+  useEffect(() => {
+    if (mode !== "select") {
+      htmlNodeDrag.cancel();
+    }
+  }, [htmlNodeDrag, mode]);
+
   const { fitView, maxZoom, minZoom, resetCanvasZoom, zoomCanvas, zoomStep } =
     useGraphCanvasViewportActions({
       canZoom: graphHasElements,
@@ -347,10 +359,22 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   });
   const rangeSelectionActive =
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
+  const previewRangeSelectionPointerDown = useRangeSelectionPreview({
+    containerRef,
+    cyRef,
+    enabled: mode === "select" && !inlineEdit,
+  });
   const forwardRangeSelectionPointerDown = useRangeSelectionPointerForwarding({
     containerRef,
     enabled: mode === "select" && !inlineEdit,
   });
+  const handleRangeSelectionPointerDown = useCallback(
+    (event: ReactPointerEvent<Element>) => {
+      previewRangeSelectionPointerDown(event);
+      return forwardRangeSelectionPointerDown(event);
+    },
+    [forwardRangeSelectionPointerDown, previewRangeSelectionPointerDown],
+  );
 
   return (
     <div
@@ -359,7 +383,11 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
       onContextMenu={(event) => event.preventDefault()}
     >
       <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle,var(--canvas-grid)_1px,transparent_1.4px)] [background-size:24px_24px] opacity-[0.75]" />
-      <div ref={containerRef} className="relative z-10 h-full w-full" />
+      <div
+        ref={containerRef}
+        className="relative z-10 h-full w-full"
+        onPointerDownCapture={previewRangeSelectionPointerDown}
+      />
       <FitGraphButton
         visible={isGraphOutOfView}
         chrome={chrome}
@@ -448,7 +476,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
             weighted={graph.settings.weighted}
             onSelect={selectEdge}
             onEdit={openEdgeInlineEdit}
-            onRangeSelectionPointerDown={forwardRangeSelectionPointerDown}
+            onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
             onContextMenu={openEdgeContextMenu}
           />
           <SelectNodeHitboxes
@@ -464,7 +492,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
             onPointerMove={htmlNodeDrag.update}
             onPointerUp={htmlNodeDrag.finish}
             onPointerCancel={htmlNodeDrag.finish}
-            onRangeSelectionPointerDown={forwardRangeSelectionPointerDown}
+            onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
             onClick={(node, event) => {
               if (htmlNodeDrag.consumeSuppressedClick()) {
                 return;

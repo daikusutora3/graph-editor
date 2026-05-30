@@ -5,19 +5,23 @@ import { useCallback } from "react";
 import type { Core } from "cytoscape";
 
 import type { GraphCanvasExportOptions } from "../../canvas/graph-canvas-types";
+import type { SelectionState } from "../../shell/state/editor-state";
 import {
   exportImageErrorMessage,
   nextAnimationFrame,
   readExportBackground,
+  syncCytoscapeSelection,
 } from "./graph-canvas-viewport";
 
 type GraphImageExportOptions = {
   cyRef: MutableRefObject<Core | null>;
+  selectionRef: MutableRefObject<SelectionState>;
   suppressSelectionSyncRef: MutableRefObject<boolean>;
 };
 
 export function useGraphImageExport({
   cyRef,
+  selectionRef,
   suppressSelectionSyncRef,
 }: GraphImageExportOptions) {
   return useCallback(
@@ -79,7 +83,11 @@ export function useGraphImageExport({
       } catch (error) {
         throw new Error(exportImageErrorMessage(error));
       } finally {
-        if (shouldRestoreSelectionState) {
+        if (
+          shouldRestoreSelectionState &&
+          cyRef.current === cy &&
+          !cy.destroyed()
+        ) {
           cy.batch(() => {
             selectedIds.forEach((id) => cy.getElementById(id).select());
             edgeSourceIds.forEach((id) =>
@@ -88,9 +96,16 @@ export function useGraphImageExport({
           });
         }
 
-        suppressSelectionSyncRef.current = false;
+        if (cyRef.current === cy && !cy.destroyed()) {
+          suppressSelectionSyncRef.current = false;
+          cy.batch(() => {
+            syncCytoscapeSelection(cy, selectionRef.current);
+          });
+        } else {
+          suppressSelectionSyncRef.current = false;
+        }
       }
     },
-    [cyRef, suppressSelectionSyncRef],
+    [cyRef, selectionRef, suppressSelectionSyncRef],
   );
 }
