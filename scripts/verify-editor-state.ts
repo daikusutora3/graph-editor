@@ -1,6 +1,12 @@
 import { createStore } from "jotai/vanilla";
 
 import { createEmptyGraphModel } from "../features/graph-editor/core/graph/graph-factory";
+import {
+  MAX_STORED_GRAPH_CHARS,
+  MAX_STORED_GRAPH_NODES,
+  parseStoredGraph,
+  serializeStoredGraphForWrite,
+} from "../features/graph-editor/adapters/browser/stored-graph";
 import { addNodeCommand } from "../features/graph-editor/core/graph/graph-intents";
 import type { GraphModel } from "../features/graph-editor/core/graph/model";
 import {
@@ -130,6 +136,7 @@ verifyShortcutResolver();
 verifyShortcutPreventDefaultContract();
 verifyCanvasSelectionActions();
 verifyShortcutActions();
+verifyStoredGraphSizeLimit();
 
 if (failures.length > 0) {
   console.error(`Editor state verification failed (${failures.length})`);
@@ -434,6 +441,51 @@ function verifyShortcutActions() {
   expect(
     emptyStore.get(historyAtom).length === historyBeforeStaleNudge,
     "stale nudge should not create history",
+  );
+}
+
+function verifyStoredGraphSizeLimit() {
+  expect(
+    serializeStoredGraphForWrite(graphFixture()) !== null,
+    "storage serializer should keep normal graphs",
+  );
+
+  const oversizedGraph = {
+    ...createEmptyGraphModel(),
+    nodes: [
+      {
+        id: "oversized",
+        label: "x".repeat(MAX_STORED_GRAPH_CHARS),
+        order: 0,
+        x: 0,
+        y: 0,
+      },
+    ],
+  };
+
+  expect(
+    serializeStoredGraphForWrite(oversizedGraph) === null,
+    "storage serializer should skip oversized graphs",
+  );
+  expect(
+    parseStoredGraph(JSON.stringify(oversizedGraph)) === null,
+    "storage parser should skip oversized raw values before JSON parsing",
+  );
+
+  const tooManyNodes = {
+    ...createEmptyGraphModel(),
+    nodes: Array.from({ length: MAX_STORED_GRAPH_NODES + 1 }, (_, index) => ({
+      id: `n${index}`,
+      label: String(index),
+      order: index,
+      x: 0,
+      y: 0,
+    })),
+  };
+
+  expect(
+    serializeStoredGraphForWrite(tooManyNodes) === null,
+    "storage serializer should skip graphs with too many nodes before stringify",
   );
 }
 

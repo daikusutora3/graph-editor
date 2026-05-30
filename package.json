@@ -33,8 +33,9 @@
     "verify:layouts": "bun run scripts/verify-layouts.ts",
     "verify:editor": "bun run scripts/verify-editor-state.ts",
     "verify:io": "bun run scripts/verify-io-contracts.ts",
+    "verify:release": "bun run scripts/verify-release.ts",
     "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify:core && bun run verify:samples && bun run verify:layouts && bun run verify:editor && bun run verify:io",
-    "check:all": "bun run check && bun run build"
+    "check:all": "bun run check && bun run build && bun run verify:release"
   },
   "dependencies": {
     "clsx": "2.1.1",
