@@ -16,11 +16,12 @@
     "verify:samples": "bun run scripts/verify-samples.ts",
     "verify:layouts": "bun run scripts/verify-layouts.ts",
     "verify:architecture": "bun run scripts/verify-architecture.ts",
+    "verify:deployment": "bun run scripts/verify-deployment-cost-guards.ts",
     "verify:editor": "bun run scripts/verify-editor-state.ts",
     "verify:io": "bun run scripts/verify-io-contracts.ts",
     "verify:bundle": "bun run scripts/verify-bundle-budget.ts",
     "verify:build": "next build",
-    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify:core && bun run verify:samples && bun run verify:layouts && bun run verify:architecture && bun run verify:editor && bun run verify:io",
+    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify:core && bun run verify:samples && bun run verify:layouts && bun run verify:architecture && bun run verify:deployment && bun run verify:editor && bun run verify:io",
     "check:all": "bun run check && bun run verify:build && bun run verify:bundle"
   },
   "dependencies": {
