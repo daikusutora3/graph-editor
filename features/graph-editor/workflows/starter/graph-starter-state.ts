@@ -68,9 +68,13 @@ export function useGraphStarterState({
   }, [open]);
 
   useEffect(() => {
-    if (open && tab === "paste") {
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    if (!open || tab !== "paste") {
+      return;
     }
+
+    const timeoutId = window.setTimeout(() => textareaRef.current?.focus(), 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [open, tab, textareaRef]);
 
   const applyModel = (model: GraphModel) => {
