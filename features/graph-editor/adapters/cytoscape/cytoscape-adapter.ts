@@ -16,7 +16,7 @@ import type {
   NodeId,
 } from "../../core/graph/model";
 
-export type CytoscapeNodeData = {
+type CytoscapeNodeData = {
   id: NodeId;
   label: string;
   order: number;
@@ -24,7 +24,7 @@ export type CytoscapeNodeData = {
   color: GraphColor;
 };
 
-export type CytoscapeEdgeData = {
+type CytoscapeEdgeData = {
   id: EdgeId;
   source: NodeId;
   target: NodeId;

@@ -45,13 +45,6 @@ export type GraphModel = {
   settings: GraphSettings;
 };
 
-export type ValidationIssue = {
-  id: string;
-  severity: "error" | "warning" | "info";
-  message: string;
-  detail?: string;
-};
-
 export type NodePositionMap = Record<NodeId, { x: number; y: number }>;
 
 export type GraphPatch = {
