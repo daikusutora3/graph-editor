@@ -57,6 +57,8 @@
   --ok-soft: #14251f;
   --canvas-grid: #27272a;
   --canvas-overlay-bg: rgb(24 24 27 / 0.92);
+  --canvas-left-sidebar-bg: rgb(24 24 27 / 0.95);
+  --canvas-right-rail-bg: rgb(24 24 27 / 0.92);
   --canvas-shadow: rgb(0 0 0 / 0.36);
   --canvas-paper-shadow: rgb(0 0 0 / 0.36);
   --canvas-selection-border: #3b82f6;
@@ -203,6 +205,8 @@
   --ok-soft: #dcede0;
   --canvas-grid: #d1d5db;
   --canvas-overlay-bg: rgb(255 255 255 / 0.96);
+  --canvas-left-sidebar-bg: rgb(255 255 255 / 0.95);
+  --canvas-right-rail-bg: rgb(255 255 255 / 0.92);
   --canvas-shadow: rgb(15 23 42 / 0.06);
   --canvas-paper-shadow: rgb(15 23 42 / 0.04);
   --canvas-selection-border: #2563eb;
@@ -437,6 +441,14 @@ button:disabled {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--app-shadow-popover);
+}
+
+.gv-left-sidebar {
+  background: var(--canvas-left-sidebar-bg);
+}
+
+.gv-right-rail {
+  background: var(--canvas-right-rail-bg);
 }
 
 .gv-popover,
