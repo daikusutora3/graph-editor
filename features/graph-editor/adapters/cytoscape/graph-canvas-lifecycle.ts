@@ -149,7 +149,7 @@ export function useGraphCanvasLifecycle({
         centerGraphOrigin(cy, chrome);
       }
 
-      flushRenderedHitboxes(cy);
+      updateRenderedHitboxes(cy);
       setZoomPercent(readZoomPercent(cy));
     };
 
@@ -189,7 +189,7 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
-    flushRenderedHitboxes(cy);
+    updateRenderedHitboxes(cy);
   }, [
     cyRef,
     elements,
@@ -201,6 +201,7 @@ export function useGraphCanvasLifecycle({
     setZoomPercent,
     chrome,
     suppressSelectionSyncRef,
+    updateRenderedHitboxes,
   ]);
 
   useEffect(() => {

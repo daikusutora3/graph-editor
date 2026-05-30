@@ -268,10 +268,10 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     draggingNodeIdsRef,
     edgeRoutingOptions,
     executeCommand,
-    flushRenderedHitboxes,
     graph,
     selectionRef,
     setSelection,
+    updateRenderedHitboxes,
   });
 
   useEffect(() => {
