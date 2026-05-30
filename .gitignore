@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+dist
+coverage
+.DS_Store
+bun-error.log
+.agents
+tsconfig.tsbuildinfo
