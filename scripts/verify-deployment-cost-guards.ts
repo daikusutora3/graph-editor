@@ -7,6 +7,7 @@ const SOURCE_DIRS = ["app", "features", "lib"];
 const failures: string[] = [];
 
 assertStaticNextExport();
+assertWorkersStaticAssetsConfig();
 assertMissingCloudflareWorkerEntrypoints();
 
 for (const file of SOURCE_DIRS.flatMap((dir) => readFiles(join(ROOT, dir)))) {
@@ -58,6 +59,7 @@ function assertMissingCloudflareWorkerEntrypoints() {
     "_worker.js",
     "public/_worker.js",
     "public/_routes.json",
+    "wrangler.json",
     "wrangler.toml",
   ];
 
@@ -67,6 +69,67 @@ function assertMissingCloudflareWorkerEntrypoints() {
         `${blockedPath}: Cloudflare Worker/Pages Functions entrypoints are not part of the static deployment contract`,
       );
     }
+  }
+}
+
+function assertWorkersStaticAssetsConfig() {
+  const configPath = join(ROOT, "wrangler.jsonc");
+
+  if (!existsSync(configPath)) {
+    failures.push(
+      "wrangler.jsonc: expected Workers Static Assets config for Cloudflare deploys",
+    );
+    return;
+  }
+
+  const parsed = ts.parseConfigFileTextToJson(
+    configPath,
+    readFileSync(configPath, "utf8"),
+  );
+
+  if (parsed.error) {
+    const message = ts.flattenDiagnosticMessageText(
+      parsed.error.messageText,
+      "\n",
+    );
+    failures.push(`wrangler.jsonc: invalid JSONC config: ${message}`);
+    return;
+  }
+
+  const config = parsed.config as {
+    name?: unknown;
+    main?: unknown;
+    assets?: {
+      directory?: unknown;
+      run_worker_first?: unknown;
+      not_found_handling?: unknown;
+    };
+  };
+
+  if (config.name !== "graph-editor") {
+    failures.push('wrangler.jsonc: expected name to be "graph-editor"');
+  }
+
+  if ("main" in config) {
+    failures.push(
+      "wrangler.jsonc: main must be omitted for static-assets-only deploys",
+    );
+  }
+
+  if (config.assets?.directory !== "./out") {
+    failures.push('wrangler.jsonc: expected assets.directory to be "./out"');
+  }
+
+  if ("run_worker_first" in (config.assets ?? {})) {
+    failures.push(
+      "wrangler.jsonc: run_worker_first would invoke Worker code before static assets",
+    );
+  }
+
+  if (config.assets?.not_found_handling !== "404-page") {
+    failures.push(
+      'wrangler.jsonc: expected assets.not_found_handling to be "404-page"',
+    );
   }
 }
 
