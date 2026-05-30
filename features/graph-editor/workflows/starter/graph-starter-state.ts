@@ -8,6 +8,7 @@ import { importGraphInput } from "../../io/import-graph";
 import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
 import { graphAtom } from "../../shell/state/graph-atoms";
+import { useAnimatedNullableState } from "../../ui/use-panel-presence";
 
 import { useApplyGraphModel } from "./use-apply-graph-model";
 
@@ -24,7 +25,12 @@ export function useGraphStarterState({
   const applyGraphModel = useApplyGraphModel();
   const [inputText, setInputText] = useState("");
   const [issues, setIssues] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
+  const {
+    openValue,
+    panelPresence,
+    setValue: setOpenValue,
+  } = useAnimatedNullableState<"starter">();
+  const open = openValue !== null;
   const [tab, setTab] = useState<StarterTab>("paste");
   const preview = useMemo(() => {
     if (!inputText.trim()) {
@@ -35,11 +41,11 @@ export function useGraphStarterState({
   }, [graph.settings, inputText]);
 
   const close = () => {
-    setOpen(false);
+    setOpenValue(null);
   };
 
   const openPaste = () => {
-    setOpen(true);
+    setOpenValue("starter");
     setTab("paste");
   };
 
@@ -119,6 +125,7 @@ export function useGraphStarterState({
     inputText,
     issues,
     open,
+    panelPresence,
     openPaste,
     preview,
     setInput,

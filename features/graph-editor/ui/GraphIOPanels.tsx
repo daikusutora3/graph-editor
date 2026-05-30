@@ -19,6 +19,7 @@ type DropdownShellProps = {
   contentClassName?: string;
   footer?: ReactNode;
   panelRef?: Ref<HTMLElement>;
+  panelState?: "open" | "closing";
   right?: string;
   onClose: () => void;
 };
@@ -29,6 +30,7 @@ export function DropdownShell({
   contentClassName,
   footer,
   panelRef,
+  panelState = "open",
   right,
   onClose,
 }: DropdownShellProps) {
@@ -37,6 +39,7 @@ export function DropdownShell({
   return (
     <section
       ref={panelRef}
+      data-panel-state={panelState}
       className="gv-popover fixed top-[var(--app-space-3)] right-[calc(3.5rem+var(--app-space-5))] z-[80] flex max-h-[calc(100dvh-var(--app-space-6))] max-h-[calc(100vh-var(--app-space-6))] w-[var(--app-io-panel-width)] max-w-[calc(100vw-var(--app-space-6))] flex-col overflow-hidden"
       style={right ? { right } : undefined}
     >

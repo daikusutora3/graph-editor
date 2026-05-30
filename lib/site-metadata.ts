@@ -3,7 +3,7 @@ export const SITE_URL = "https://graph-editor.daikusutora3.workers.dev";
 export const APP_NAME = "Graph Editor";
 
 export const APP_ICON = "/brand/graph-editor-logo.webp";
-export const SOCIAL_IMAGE = "/brand/graph-editor-og.png";
+export const SOCIAL_IMAGE = APP_ICON;
 export const APPLE_TOUCH_ICON = "/brand/graph-editor-logo-180.png";
 
 export const appLocaleMetadata = {

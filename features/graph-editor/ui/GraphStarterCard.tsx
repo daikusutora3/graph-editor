@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ import {
   SAMPLE_GALLERY_GRID_CLASS,
   SAMPLE_PREVIEW_FRAME_CLASS,
 } from "./sample-gallery-layout";
+import { useAnimatedNullableState } from "./use-panel-presence";
 
 const loadSampleGalleryPane = () =>
   import("./SampleGalleryPane").then((module) => ({
@@ -33,7 +34,12 @@ export function GraphStarterCard({
 }: GraphStarterCardProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const authorMenuRef = useRef<HTMLSpanElement | null>(null);
-  const [authorMenuOpen, setAuthorMenuOpen] = useState(false);
+  const {
+    openValue: authorMenuValue,
+    panelPresence: authorMenuPresence,
+    setValue: setAuthorMenuValue,
+  } = useAnimatedNullableState<"author-menu">();
+  const authorMenuOpen = authorMenuValue !== null;
   const { messages } = useI18n();
   const starter = useGraphStarterState({ textareaRef });
   const {
@@ -43,6 +49,7 @@ export function GraphStarterCard({
     inputText,
     issues,
     open,
+    panelPresence: starterDialogPresence,
     openPaste,
     preview,
     setInput,
@@ -69,11 +76,11 @@ export function GraphStarterCard({
         return;
       }
 
-      setAuthorMenuOpen(false);
+      setAuthorMenuValue(null);
     };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setAuthorMenuOpen(false);
+        setAuthorMenuValue(null);
       }
     };
 
@@ -84,7 +91,7 @@ export function GraphStarterCard({
       document.removeEventListener("mousedown", closeAuthorMenu);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [authorMenuOpen]);
+  }, [authorMenuOpen, setAuthorMenuValue]);
 
   if (!visible) {
     return null;
@@ -99,7 +106,7 @@ export function GraphStarterCard({
           : "left-[calc(var(--app-space-3)+var(--app-toolbar-width)+var(--app-space-5))]",
       )}
     >
-      {!open ? (
+      {!starterDialogPresence.mounted ? (
         <div className="gv-empty-start flex w-[min(24rem,calc(100vw-3rem))] -translate-y-[1vh] flex-col items-center gap-[var(--app-space-5)] text-center">
           <div className="flex min-w-0 flex-col items-center gap-3">
             <span className="relative grid size-26 shrink-0 place-items-center">
@@ -139,11 +146,15 @@ export function GraphStarterCard({
                   aria-expanded={authorMenuOpen}
                   aria-haspopup="menu"
                   className="pointer-events-auto rounded-[var(--app-radius-sm)] text-[var(--text-mute)] underline-offset-2 transition-colors hover:text-[var(--text)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
-                  onClick={() => setAuthorMenuOpen((current) => !current)}
+                  onClick={() =>
+                    setAuthorMenuValue(authorMenuOpen ? null : "author-menu")
+                  }
                 >
                   daikusutora
                 </button>
-                {authorMenuOpen ? <AuthorProfileMenu /> : null}
+                {authorMenuPresence.mounted ? (
+                  <AuthorProfileMenu panelState={authorMenuPresence.state} />
+                ) : null}
               </span>
             </span>
           </div>
@@ -168,6 +179,7 @@ export function GraphStarterCard({
           role="dialog"
           aria-modal="false"
           aria-label={messages.starter.dialogLabel}
+          data-panel-state={starterDialogPresence.state}
           className="gv-starter-dialog pointer-events-auto flex w-[min(560px,calc(100vw-2rem))] max-w-full flex-col overflow-hidden"
         >
           <div className="grid grid-cols-[1fr_auto] items-center gap-[var(--app-space-2)] px-[var(--app-space-3)] pt-[var(--app-space-2)] pb-[var(--app-space-2)]">

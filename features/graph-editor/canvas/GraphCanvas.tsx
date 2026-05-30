@@ -41,6 +41,7 @@ import { useRenderedHitboxes } from "./graph-canvas-rendered-hitboxes";
 import { useGraphCanvasSelectionActions } from "./graph-canvas-selection-actions";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
+import { useAnimatedNullableState } from "../ui/use-panel-presence";
 import {
   EdgeNodeHitboxes,
   SelectEdgeHitboxes,
@@ -73,8 +74,11 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   const [edgeCursor, setEdgeCursor] = useState<RenderedPoint | null>(null);
   const [edgeHoverNodeId, setEdgeHoverNodeId] = useState<NodeId | null>(null);
   const [zoomPercent, setZoomPercent] = useState(100);
-  const [contextMenuTarget, setContextMenuTarget] =
-    useState<GraphContextMenuTarget | null>(null);
+  const {
+    openValue: contextMenuTarget,
+    panelPresence: contextMenuPresence,
+    setValue: setContextMenuTarget,
+  } = useAnimatedNullableState<GraphContextMenuTarget>();
 
   const graph = useAtomValue(graphAtom);
   const mode = useAtomValue(editorModeAtom);
@@ -454,10 +458,11 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           />
         </>
       ) : null}
-      {contextMenuTarget ? (
+      {contextMenuPresence.value ? (
         <GraphContextMenu
-          target={contextMenuTarget}
+          target={contextMenuPresence.value}
           graph={graph}
+          panelState={contextMenuPresence.state}
           sidebarCollapsed={chrome.sidebarCollapsed}
           selection={selection}
           onClose={() => setContextMenuTarget(null)}
