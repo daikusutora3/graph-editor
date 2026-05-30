@@ -1,4 +1,4 @@
-import type { EdgeId, NodeId } from "../../core/graph/model";
+import type { EdgeId, GraphModel, NodeId } from "../../core/graph/model";
 
 import type { SelectionState } from "./editor-state";
 
@@ -30,6 +30,23 @@ export function resolveEdgeSelection(
     nodeIds: currentSelection.nodeIds,
     edgeIds: toggleId(currentSelection.edgeIds, edgeId),
   };
+}
+
+export function pruneSelectionForGraph(
+  selection: SelectionState,
+  graph: GraphModel,
+): SelectionState {
+  const nodeIds = new Set(graph.nodes.map((node) => node.id));
+  const edgeIds = new Set(graph.edges.map((edge) => edge.id));
+  const nextSelection = {
+    nodeIds: selection.nodeIds.filter((nodeId) => nodeIds.has(nodeId)),
+    edgeIds: selection.edgeIds.filter((edgeId) => edgeIds.has(edgeId)),
+  };
+
+  return nextSelection.nodeIds.length === selection.nodeIds.length &&
+    nextSelection.edgeIds.length === selection.edgeIds.length
+    ? selection
+    : nextSelection;
 }
 
 function toggleId<T extends string>(ids: T[], id: T) {

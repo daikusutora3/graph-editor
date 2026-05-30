@@ -74,9 +74,7 @@ export function GraphPerformanceProbe() {
   const undo = useSetAtom(undoAtom);
   const updateGraphSettings = useSetAtom(updateGraphSettingsAtom);
 
-  useEffect(() => {
-    graphRef.current = graph;
-  }, [graph]);
+  graphRef.current = graph;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
