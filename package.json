@@ -7,7 +7,7 @@
   "homepage": "https://graph-editor.daikusutora3.workers.dev",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/daikusutora3/graph-editor.git"
+    "url": "git+https://github.com/daikusutora3/graph-editor.git"
   },
   "bugs": {
     "url": "https://github.com/daikusutora3/graph-editor/issues"
@@ -23,7 +23,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "format": "prettier . --write",

@@ -80,12 +80,17 @@ export function useGraphCanvasLifecycle({
     });
 
     cyRef.current = cy;
-    requestAnimationFrame(() => {
+    const initialViewportFrame = requestAnimationFrame(() => {
+      if (cy.destroyed()) {
+        return;
+      }
+
       centerGraphOrigin(cy, chrome);
       setZoomPercent(readZoomPercent(cy));
     });
 
     return () => {
+      cancelAnimationFrame(initialViewportFrame);
       cy.destroy();
       cyRef.current = null;
     };
@@ -99,6 +104,10 @@ export function useGraphCanvasLifecycle({
     }
 
     const updateCanvasTheme = () => {
+      if (cy.destroyed()) {
+        return;
+      }
+
       cy.style(createGraphCanvasStylesheet(readCanvasPalette()));
       cy.resize();
     };
@@ -267,9 +276,17 @@ export function useGraphCanvasLifecycle({
     }
 
     const updateCanvasOverlay = () => {
+      if (cy.destroyed()) {
+        return;
+      }
+
       updateRenderedHitboxes(cy);
     };
     const updateZoomOverlay = () => {
+      if (cy.destroyed()) {
+        return;
+      }
+
       updateRenderedHitboxes(cy);
       setZoomPercent(readZoomPercent(cy));
     };
