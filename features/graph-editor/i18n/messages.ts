@@ -103,6 +103,9 @@ type Messages = {
     formatAuto: string;
     needsReview: string;
     detected: (format: string) => string;
+    preview: string;
+    previewEmpty: string;
+    previewStats: (nodeCount: number, edgeCount: number) => string;
   };
   exportPanel: {
     title: string;
@@ -436,6 +439,10 @@ const ja = {
     formatAuto: "自動判定",
     needsReview: "要確認",
     detected: (format: string) => `${format} として認識`,
+    preview: "プレビュー",
+    previewEmpty: "入力待ち",
+    previewStats: (nodeCount: number, edgeCount: number) =>
+      `${nodeCount} 頂点 / ${edgeCount} 辺`,
   },
   exportPanel: {
     title: "書き出し",
@@ -728,6 +735,10 @@ const en: Messages = {
     formatAuto: "Auto detect",
     needsReview: "Review needed",
     detected: (format: string) => `Read as ${format}`,
+    preview: "Preview",
+    previewEmpty: "Waiting for input",
+    previewStats: (nodeCount: number, edgeCount: number) =>
+      `${nodeCount} nodes / ${edgeCount} edges`,
   },
   exportPanel: {
     title: "Export",
@@ -1020,6 +1031,10 @@ const zhHans: Messages = {
     formatAuto: "自动识别",
     needsReview: "需要确认",
     detected: (format: string) => `按 ${format} 读取`,
+    preview: "预览",
+    previewEmpty: "等待输入",
+    previewStats: (nodeCount: number, edgeCount: number) =>
+      `${nodeCount} 个顶点 / ${edgeCount} 条边`,
   },
   exportPanel: {
     title: "导出",

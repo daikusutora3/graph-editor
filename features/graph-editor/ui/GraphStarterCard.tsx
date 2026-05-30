@@ -45,7 +45,6 @@ export function GraphStarterCard({
   const {
     applyText,
     close,
-    handlePaste,
     inputText,
     issues,
     open,
@@ -100,10 +99,10 @@ export function GraphStarterCard({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-y-0 right-[calc(var(--app-space-3)+3.5rem+var(--app-space-5))] z-50 grid place-items-center px-[var(--app-space-5)] py-[var(--app-space-6)] transition-[left,right] duration-[var(--app-duration-base)] ease-[var(--app-ease)] motion-reduce:transition-none",
+        "pointer-events-none absolute inset-y-0 right-[var(--app-space-3)] z-50 grid place-items-center px-[var(--app-space-3)] py-[var(--app-space-6)] transition-[left,right] duration-[var(--app-duration-base)] ease-[var(--app-ease)] motion-reduce:transition-none",
         sidebarCollapsed
-          ? "left-[calc(var(--app-space-3)+3.5rem+var(--app-space-5))]"
-          : "left-[calc(var(--app-space-3)+var(--app-toolbar-width)+var(--app-space-5))]",
+          ? "left-[calc(var(--app-space-3)+3.5rem+var(--app-space-2))]"
+          : "left-[calc(var(--app-space-3)+var(--app-toolbar-width)+var(--app-space-2))]",
       )}
     >
       {!starterDialogPresence.mounted ? (
@@ -180,7 +179,7 @@ export function GraphStarterCard({
           aria-modal="false"
           aria-label={messages.starter.dialogLabel}
           data-panel-state={starterDialogPresence.state}
-          className="gv-starter-dialog pointer-events-auto flex w-[min(560px,calc(100vw-2rem))] max-w-full flex-col overflow-hidden"
+          className="gv-starter-dialog pointer-events-auto flex w-full max-w-[680px] min-w-0 flex-col overflow-hidden"
         >
           <div className="grid grid-cols-[1fr_auto] items-center gap-[var(--app-space-2)] px-[var(--app-space-3)] pt-[var(--app-space-2)] pb-[var(--app-space-2)]">
             <div
@@ -225,9 +224,9 @@ export function GraphStarterCard({
                 inputText={inputText}
                 issues={issues}
                 previewFormat={preview?.format}
+                previewModel={preview?.model}
                 textareaRef={textareaRef}
                 onInputTextChange={setInput}
-                onPaste={handlePaste}
                 onApply={() => applyText()}
               />
             ) : null}

@@ -10,6 +10,7 @@ type SampleGraphPreviewProps = {
   width?: number;
   height?: number;
   focus?: boolean;
+  variant?: "sample" | "editor";
   className?: string;
 };
 
@@ -19,6 +20,7 @@ export function SampleGraphPreview({
   width = 132,
   height = 88,
   focus = false,
+  variant = "sample",
   className,
 }: SampleGraphPreviewProps) {
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
@@ -46,15 +48,23 @@ export function SampleGraphPreview({
     y: offsetY + (y - bounds.minY) * scale,
   });
   const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
-  const baseRadius = veryDense
-    ? 2.2
-    : dense
-      ? 2.8
-      : Math.min(width, height) / 28;
+  const editorLike = variant === "editor";
+  const baseRadius = editorLike
+    ? Math.min(width, height) / (dense ? 21 : 16)
+    : veryDense
+      ? 2.2
+      : dense
+        ? 2.8
+        : Math.min(width, height) / 28;
   const radius = focus ? baseRadius * 1.1 : baseRadius;
-  const nodeStrokeWidth = Math.max(1, radius * 0.55);
-  const edgeStrokeWidth = Math.max(0.9, radius * 0.42);
+  const nodeStrokeWidth = editorLike
+    ? Math.max(1.5, radius * 0.2)
+    : Math.max(1, radius * 0.55);
+  const edgeStrokeWidth = editorLike
+    ? Math.max(2, radius * 0.26)
+    : Math.max(0.9, radius * 0.42);
   const lastIndex = Math.max(0, model.nodes.length - 1);
+  const showLabels = editorLike && nodeCount <= 12;
 
   return (
     <svg
@@ -117,23 +127,39 @@ export function SampleGraphPreview({
       })}
       {model.nodes.map((node, index) => {
         const point = toPoint(node.x, node.y);
-        const fill =
-          index === 0
+        const fill = editorLike
+          ? "var(--canvas-node)"
+          : index === 0
             ? "var(--canvas-node-yellow)"
             : index === lastIndex && model.nodes.length > 2
               ? "var(--canvas-node-blue)"
               : "var(--canvas-node)";
 
         return (
-          <circle
-            key={node.id}
-            cx={point.x}
-            cy={point.y}
-            r={radius}
-            fill={fill}
-            stroke="var(--canvas-node-border)"
-            strokeWidth={nodeStrokeWidth}
-          />
+          <g key={node.id}>
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r={radius}
+              fill={fill}
+              stroke="var(--canvas-node-border)"
+              strokeWidth={nodeStrokeWidth}
+            />
+            {showLabels ? (
+              <text
+                x={point.x}
+                y={point.y}
+                fill="var(--canvas-node-text)"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontFamily="var(--app-font-ui)"
+                fontSize={Math.max(8, radius * 0.92)}
+                fontWeight={800}
+              >
+                {node.label}
+              </text>
+            ) : null}
+          </g>
         );
       })}
     </svg>

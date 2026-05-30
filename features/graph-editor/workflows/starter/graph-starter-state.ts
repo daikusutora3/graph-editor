@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import type { ClipboardEvent, RefObject } from "react";
+import type { RefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { importGraphInput } from "../../io/import-graph";
@@ -45,6 +45,8 @@ export function useGraphStarterState({
   };
 
   const openPaste = () => {
+    setInputText("");
+    setIssues([]);
     setOpenValue("starter");
     setTab("paste");
   };
@@ -98,25 +100,6 @@ export function useGraphStarterState({
     close();
   };
 
-  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    const pastedText = event.clipboardData.getData("text");
-
-    if (!pastedText.trim()) {
-      return;
-    }
-
-    event.preventDefault();
-    setInputText(pastedText);
-
-    const result = importGraphInput(pastedText, graph.settings);
-    setIssues(result.warnings);
-
-    if (result.warnings.length === 0 && result.model.nodes.length > 0) {
-      applyModel(result.model);
-      close();
-    }
-  };
-
   const setInput = (value: string) => {
     setInputText(value);
     setIssues([]);
@@ -125,7 +108,6 @@ export function useGraphStarterState({
   return {
     applyText,
     close,
-    handlePaste,
     inputText,
     issues,
     open,
