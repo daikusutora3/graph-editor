@@ -43,16 +43,10 @@ Next.js が表示するローカルURLを開きます。通常は `http://localh
 bun run typecheck
 bun run lint
 bun run format:check
-bun run verify
+bun run test
 bun run check
 bun run check:all
 bun run build
-```
-
-個別の検証だけを実行する場合:
-
-```bash
-bun run verify core samples layouts cytoscape editor io
 ```
 
 ## 技術スタック
