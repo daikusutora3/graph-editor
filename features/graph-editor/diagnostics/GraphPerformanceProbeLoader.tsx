@@ -6,6 +6,13 @@ export function GraphPerformanceProbeLoader() {
   const [Probe, setProbe] = useState<ComponentType | null>(null);
 
   useEffect(() => {
+    if (
+      process.env.NODE_ENV === "production" &&
+      process.env.NEXT_PUBLIC_ENABLE_PERF_PROBE !== "1"
+    ) {
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
 
     if (params.get("perf") !== "1") {
