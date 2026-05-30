@@ -6,6 +6,7 @@ const suites = [
   { name: "layouts", path: "tests/verification/layouts.ts" },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
+  { name: "storage", path: "tests/verification/storage.ts" },
   { name: "io", path: "tests/verification/io-contracts.ts" },
 ] as const;
 

@@ -14,6 +14,7 @@ import {
   isBipartite,
   isDirectedAcyclic,
 } from "../../features/graph-editor/core/graph/graph-analysis";
+import { createVerification } from "./harness";
 
 type IndexedGraph = {
   nodeCount: number;
@@ -21,34 +22,32 @@ type IndexedGraph = {
   adjacency: boolean[][];
 };
 
-const failures: string[] = [];
+const { fail, finish } = createVerification("Sample");
 const definitionKinds = sampleGraphDefinitions.map(
   (definition) => definition.kind,
 );
 const definitionKindSet = new Set(definitionKinds);
 
 if (definitionKindSet.size !== definitionKinds.length) {
-  failures.push("sample definitions contain duplicate kinds");
+  fail("sample definitions contain duplicate kinds");
 }
 
 for (const kind of sampleGraphKinds) {
   if (kind === "empty") continue;
   if (!definitionKindSet.has(kind)) {
-    failures.push(`definition registry is missing sample kind: ${kind}`);
+    fail(`definition registry is missing sample kind: ${kind}`);
   }
 }
 
 for (const kind of definitionKinds) {
   if (!sampleGraphKinds.includes(kind)) {
-    failures.push(`definition registry contains unknown sample kind: ${kind}`);
+    fail(`definition registry contains unknown sample kind: ${kind}`);
   }
 }
 
 for (const definition of sampleGraphDefinitions) {
   if (!sampleGraphKinds.includes(definition.kind)) {
-    failures.push(
-      `definition contains unknown sample kind: ${definition.kind}`,
-    );
+    fail(`definition contains unknown sample kind: ${definition.kind}`);
   }
 }
 
@@ -70,7 +69,7 @@ for (const kind of sampleGraphKinds) {
     expectation.nodeCount != null &&
     model.nodes.length !== expectation.nodeCount
   ) {
-    failures.push(
+    fail(
       `${kind}: expected ${expectation.nodeCount} nodes, got ${model.nodes.length}`,
     );
   }
@@ -79,7 +78,7 @@ for (const kind of sampleGraphKinds) {
     expectation.edgeCount != null &&
     model.edges.length !== expectation.edgeCount
   ) {
-    failures.push(
+    fail(
       `${kind}: expected ${expectation.edgeCount} edges, got ${model.edges.length}`,
     );
   }
@@ -88,28 +87,28 @@ for (const kind of sampleGraphKinds) {
     expectation.connected != null &&
     connectedComponents(model).length <= 1 !== expectation.connected
   ) {
-    failures.push(`${kind}: connected expectation failed`);
+    fail(`${kind}: connected expectation failed`);
   }
 
   if (
     expectation.bipartite != null &&
     isBipartite(model) !== expectation.bipartite
   ) {
-    failures.push(`${kind}: bipartite expectation failed`);
+    fail(`${kind}: bipartite expectation failed`);
   }
 
   if (
     expectation.directed != null &&
     model.settings.directed !== expectation.directed
   ) {
-    failures.push(`${kind}: directed expectation failed`);
+    fail(`${kind}: directed expectation failed`);
   }
 
   if (
     expectation.weighted != null &&
     model.settings.weighted !== expectation.weighted
   ) {
-    failures.push(`${kind}: weighted expectation failed`);
+    fail(`${kind}: weighted expectation failed`);
   }
 
   if (
@@ -121,28 +120,28 @@ for (const kind of sampleGraphKinds) {
         Number.isFinite(Number(edge.weight)),
     )
   ) {
-    failures.push(`${kind}: numeric weight expectation failed`);
+    fail(`${kind}: numeric weight expectation failed`);
   }
 
   if (
     expectation.acyclic != null &&
     isDirectedAcyclic(model) !== expectation.acyclic
   ) {
-    failures.push(`${kind}: acyclic expectation failed`);
+    fail(`${kind}: acyclic expectation failed`);
   }
 
   if (
     expectation.regularDegree != null &&
     !isRegular(model, expectation.regularDegree)
   ) {
-    failures.push(`${kind}: regular degree expectation failed`);
+    fail(`${kind}: regular degree expectation failed`);
   }
 
   if (
     expectation.bridgeCount != null &&
     countBridges(model) !== expectation.bridgeCount
   ) {
-    failures.push(
+    fail(
       `${kind}: expected ${expectation.bridgeCount} bridges, got ${countBridges(model)}`,
     );
   }
@@ -150,7 +149,7 @@ for (const kind of sampleGraphKinds) {
   if (expectation.noCrossings) {
     const crossings = countStrictEdgeCrossings(model);
     if (crossings !== 0) {
-      failures.push(
+      fail(
         `${kind}: expected a crossing-free straight-line layout, got ${crossings} crossings`,
       );
     }
@@ -160,25 +159,25 @@ for (const kind of sampleGraphKinds) {
     expectation.noEdgeNodeOverlaps &&
     countEdgeNodeOverlaps(model, 1.5) !== 0
   ) {
-    failures.push(`${kind}: expected no edge to pass through another node`);
+    fail(`${kind}: expected no edge to pass through another node`);
   }
 
   if (expectation.unitEdgeLength && !hasNearlyEqualEdgeLengths(model, 2)) {
-    failures.push(`${kind}: expected nearly equal edge lengths`);
+    fail(`${kind}: expected nearly equal edge lengths`);
   }
 
   if (
     expectation.triangleFree != null &&
     isTriangleFree(model) !== expectation.triangleFree
   ) {
-    failures.push(`${kind}: triangle-free expectation failed`);
+    fail(`${kind}: triangle-free expectation failed`);
   }
 
   if (
     expectation.chromaticNumber != null &&
     chromaticNumber(model) !== expectation.chromaticNumber
   ) {
-    failures.push(
+    fail(
       `${kind}: chromatic number expectation failed; expected ${expectation.chromaticNumber}`,
     );
   }
@@ -186,7 +185,7 @@ for (const kind of sampleGraphKinds) {
   if (expectation.fixedLabels) {
     const labels = orderedLabels(model);
     if (labels.join("\u0000") !== expectation.fixedLabels.join("\u0000")) {
-      failures.push(
+      fail(
         `${kind}: fixed labels expectation failed; got ${labels.join(", ")}`,
       );
     }
@@ -198,7 +197,7 @@ for (const kind of sampleGraphKinds) {
       expectation.labelPattern?.test(label),
     )
   ) {
-    failures.push(`${kind}: label pattern expectation failed`);
+    fail(`${kind}: label pattern expectation failed`);
   }
 
   if (expectation.sameLabelsForIndexBase) {
@@ -212,20 +211,12 @@ for (const kind of sampleGraphKinds) {
     );
 
     if (zeroBaseLabels.join("\u0000") !== oneBaseLabels.join("\u0000")) {
-      failures.push(`${kind}: labels should not depend on indexBase`);
+      fail(`${kind}: labels should not depend on indexBase`);
     }
   }
 }
 
-if (failures.length > 0) {
-  console.error(`Sample verification failed (${failures.length})`);
-  for (const failure of failures) {
-    console.error(`- ${failure}`);
-  }
-  process.exit(1);
-}
-
-console.log(`Sample verification passed (${sampleGraphKinds.length} kinds)`);
+finish(`Sample verification passed (${sampleGraphKinds.length} kinds)`);
 
 function orderedLabels(model: GraphModel): string[] {
   return [...model.nodes]
@@ -241,29 +232,29 @@ function verifyModelIntegrity(kind: SampleGraphKind, model: GraphModel): void {
 
   for (const node of model.nodes) {
     if (nodeIds.has(node.id)) {
-      failures.push(`${kind}: duplicate node id ${node.id}`);
+      fail(`${kind}: duplicate node id ${node.id}`);
     }
     nodeIds.add(node.id);
 
     if (nodeOrders.has(node.order)) {
-      failures.push(`${kind}: duplicate node order ${node.order}`);
+      fail(`${kind}: duplicate node order ${node.order}`);
     }
     nodeOrders.add(node.order);
   }
 
   for (const edge of model.edges) {
     if (edgeIds.has(edge.id)) {
-      failures.push(`${kind}: duplicate edge id ${edge.id}`);
+      fail(`${kind}: duplicate edge id ${edge.id}`);
     }
     edgeIds.add(edge.id);
 
     if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
-      failures.push(`${kind}: edge ${edge.id} references a missing endpoint`);
+      fail(`${kind}: edge ${edge.id} references a missing endpoint`);
       continue;
     }
 
     if (edge.source === edge.target) {
-      failures.push(`${kind}: unexpected self loop on ${edge.source}`);
+      fail(`${kind}: unexpected self loop on ${edge.source}`);
       continue;
     }
 
@@ -271,7 +262,7 @@ function verifyModelIntegrity(kind: SampleGraphKind, model: GraphModel): void {
       ? `${edge.source}\u0000${edge.target}`
       : [edge.source, edge.target].sort().join("\u0000");
     if (seenEdges.has(edgeKey)) {
-      failures.push(`${kind}: duplicate edge ${edge.source}-${edge.target}`);
+      fail(`${kind}: duplicate edge ${edge.source}-${edge.target}`);
     }
     seenEdges.add(edgeKey);
   }

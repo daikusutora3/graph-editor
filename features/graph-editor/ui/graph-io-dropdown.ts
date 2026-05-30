@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 import { useAnimatedNullableState } from "./use-panel-presence";
 
-export type GraphIOOpenPanel = "export" | "screenshot";
+type GraphIOOpenPanel = "export" | "screenshot";
 
 type GraphIODropdownOptions = {
   panelRef: RefObject<HTMLElement | null>;

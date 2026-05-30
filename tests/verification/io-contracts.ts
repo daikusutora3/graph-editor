@@ -10,14 +10,9 @@ import {
   MAX_IMPORT_INPUT_CHARS,
   MAX_IMPORT_NODES,
 } from "../../features/graph-editor/io/import-utils";
+import { createVerification } from "./harness";
 
-const failures: string[] = [];
-
-function expect(condition: boolean, message: string) {
-  if (!condition) {
-    failures.push(message);
-  }
-}
+const { expect, finish } = createVerification("IO contract");
 
 const weightedDirectedModel: GraphModel = {
   version: 1,
@@ -171,12 +166,7 @@ expect(
   "import should reject oversized raw input before parsing lines",
 );
 
-if (failures.length > 0) {
-  console.error(failures.join("\n"));
-  process.exit(1);
-}
-
-console.log("IO contract verification passed");
+finish();
 
 function assertRoundTrip(model: GraphModel, format: GraphExportFormat) {
   const text = exportGraph(model, format);

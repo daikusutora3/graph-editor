@@ -16,14 +16,9 @@ import type {
   GraphEdge,
   GraphModel,
 } from "../../features/graph-editor/core/graph/model";
+import { createVerification } from "./harness";
 
-const failures: string[] = [];
-
-function expect(condition: boolean, message: string) {
-  if (!condition) {
-    failures.push(message);
-  }
-}
+const { expect, finish } = createVerification("Graph core");
 
 const invalidJson = importGraphInput("{ invalid json", {
   directed: false,
@@ -287,12 +282,7 @@ expect(
   "multi-edge routing should keep parallel edges visually separated",
 );
 
-if (failures.length > 0) {
-  console.error(failures.join("\n"));
-  process.exit(1);
-}
-
-console.log("Graph core verification passed");
+finish();
 
 function applyInlineEditIntent(
   model: GraphModel,

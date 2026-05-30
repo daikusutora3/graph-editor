@@ -23,7 +23,7 @@ export type GraphClipboardPayload = {
   indexBase: GraphModel["settings"]["indexBase"];
 };
 
-export type PasteGraphResult = {
+type PasteGraphResult = {
   command: GraphIntent;
   selection: GraphSelection;
 };
