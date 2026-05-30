@@ -121,9 +121,7 @@ export function readRenderedEdgeLabelPosition(cy: Core | null, edgeId: EdgeId) {
   return readEdgeRenderedLabelPosition(edge as EdgeSingular);
 }
 
-export function readEdgeRenderedLabelPosition(
-  edge: EdgeSingular,
-): RenderedPoint {
+function readEdgeRenderedLabelPosition(edge: EdgeSingular): RenderedPoint {
   const midpointProvider = edge as EdgeSingular & {
     renderedMidpoint?: () => Position;
   };

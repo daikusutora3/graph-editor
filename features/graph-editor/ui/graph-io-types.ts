@@ -17,7 +17,7 @@ export type ScreenshotCopyState =
   | "saved"
   | "blocked";
 export type ScreenshotDownloadState = "idle" | "saving" | "saved" | "failed";
-export type ScreenshotPreviewState = "empty" | "loading" | "ready" | "failed";
+type ScreenshotPreviewState = "empty" | "loading" | "ready" | "failed";
 export type ScreenshotPreview = {
   height: number | null;
   inputKey: string | null;

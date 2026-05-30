@@ -6,7 +6,6 @@ import type {
   GraphCanvasChrome,
   GraphCanvasExportOptions,
 } from "../../canvas/graph-canvas-types";
-import type { NodeId } from "../../core/graph/model";
 
 export const MIN_CANVAS_ZOOM = 0.04;
 export const MAX_CANVAS_ZOOM = 1.5;
@@ -190,17 +189,6 @@ export function exportImageErrorMessage(error: unknown) {
   }
 
   return "画像の書き出しに失敗しました";
-}
-
-export function hasPositionChanges(
-  before: Record<NodeId, Position>,
-  after: Record<NodeId, Position>,
-) {
-  return Object.entries(after).some(([nodeId, position]) => {
-    const previous = before[nodeId];
-
-    return !previous || previous.x !== position.x || previous.y !== position.y;
-  });
 }
 
 export function readCanvasPalette(): GraphCanvasPalette {

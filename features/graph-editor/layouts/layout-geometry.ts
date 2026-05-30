@@ -213,7 +213,7 @@ export function packPositionColumns(
   return normalizePositions(packed);
 }
 
-export function scalePositions(
+function scalePositions(
   positions: Record<NodeId, { x: number; y: number }>,
   scale: number,
 ) {

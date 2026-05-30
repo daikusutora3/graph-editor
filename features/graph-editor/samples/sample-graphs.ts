@@ -2717,7 +2717,7 @@ function createDodecahedralGraph(
   );
 }
 
-export const sampleGraphFactories = {
+const sampleGraphFactories = {
   empty: (settings) => createEmptySampleGraph(settings),
   path: (settings) => createPathGraph(6, settings),
   cycle: (settings) => createCycleGraph(6, settings),
