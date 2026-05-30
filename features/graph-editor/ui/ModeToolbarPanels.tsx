@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode, type Ref } from "react";
+import { useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -17,6 +17,7 @@ import { useI18n } from "../i18n/I18nProvider";
 import type { EditorMode } from "../shell/state/editor-state";
 import { cn } from "@/lib/utils";
 
+import { AppMenu } from "./AppMenu";
 import { GraphSettingsControl } from "./GraphSettingsControl";
 import { toolbarLayouts, toolbarModes } from "./mode-toolbar-options";
 
@@ -86,13 +87,13 @@ export function ExpandedToolbarLayer({
   );
 
   return (
-    <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
+    <div className="absolute inset-0 overflow-visible rounded-[inherit]">
       <div
         ref={expandedLayerRef}
         aria-hidden={sidebarCollapsed ? true : undefined}
         inert={sidebarCollapsed ? true : undefined}
         className={cn(
-          "absolute top-0 left-0 flex max-h-[calc(100vh-var(--app-space-6))] min-h-0 w-[var(--app-toolbar-width)] flex-col overflow-hidden rounded-[inherit] transition-opacity duration-[var(--app-duration-fast)] ease-[var(--app-ease)] motion-reduce:transition-none",
+          "absolute top-0 left-0 flex max-h-[calc(100vh-var(--app-space-6))] min-h-0 w-[var(--app-toolbar-width)] flex-col overflow-visible rounded-[inherit] transition-opacity duration-[var(--app-duration-fast)] ease-[var(--app-ease)] motion-reduce:transition-none",
           sidebarCollapsed
             ? "pointer-events-none opacity-0"
             : "pointer-events-auto opacity-100",
@@ -281,40 +282,60 @@ export function ExpandedToolbarLayer({
 
 function SidebarTitle() {
   const { messages } = useI18n();
+  const appMenuBoundaryRef = useRef<HTMLDivElement | null>(null);
+  const [appMenuOpen, setAppMenuOpen] = useState(false);
 
   return (
-    <div
-      className="flex min-w-0 items-center gap-[var(--app-space-2)]"
-      aria-label={messages.app.title}
-    >
-      <span className="relative grid size-6 shrink-0 place-items-center">
-        <img
-          src="/brand/graph-editor-logo.webp"
-          alt=""
-          aria-hidden="true"
-          width={24}
-          height={24}
-          className="brand-logo-image-light size-6 object-contain select-none"
-          draggable={false}
-        />
-        <img
-          src="/brand/graph-editor-logo-dark.webp"
-          alt=""
-          aria-hidden="true"
-          width={24}
-          height={24}
-          className="brand-logo-image-dark size-6 object-contain select-none"
-          draggable={false}
-        />
-      </span>
-      <span className="flex min-w-0 flex-col justify-center">
-        <span
-          translate="no"
-          className="truncate [font-family:var(--app-font-display)] text-[0.9375rem] leading-5 font-bold text-[var(--text)]"
-        >
-          {messages.app.title}
+    <div ref={appMenuBoundaryRef} className="relative min-w-0">
+      <button
+        type="button"
+        aria-label={messages.appMenu.open}
+        aria-expanded={appMenuOpen}
+        aria-haspopup="menu"
+        onClick={() => setAppMenuOpen((open) => !open)}
+        className="flex max-w-full min-w-0 items-center gap-[var(--app-space-2)] rounded-[var(--app-radius-md)] py-1 pr-2 pl-1 text-left transition-colors hover:bg-[var(--state-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
+      >
+        <span className="relative grid size-6 shrink-0 place-items-center">
+          <img
+            src="/brand/graph-editor-logo.webp"
+            alt=""
+            aria-hidden="true"
+            width={24}
+            height={24}
+            className="brand-logo-image-light size-6 object-contain select-none"
+            draggable={false}
+          />
+          <img
+            src="/brand/graph-editor-logo-dark.webp"
+            alt=""
+            aria-hidden="true"
+            width={24}
+            height={24}
+            className="brand-logo-image-dark size-6 object-contain select-none"
+            draggable={false}
+          />
         </span>
-      </span>
+        <span className="flex min-w-0 flex-col justify-center">
+          <span
+            translate="no"
+            className="truncate [font-family:var(--app-font-display)] text-[0.9375rem] leading-5 font-bold text-[var(--text)]"
+          >
+            {messages.app.title}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-3.5 shrink-0 text-[var(--text-mute)] transition-transform duration-[var(--app-duration-fast)] ease-[var(--app-ease)]",
+            appMenuOpen && "rotate-180",
+          )}
+          aria-hidden="true"
+        />
+      </button>
+      <AppMenu
+        boundaryRef={appMenuBoundaryRef}
+        open={appMenuOpen}
+        onClose={() => setAppMenuOpen(false)}
+      />
     </div>
   );
 }
@@ -460,14 +481,16 @@ function SwitchRailButton({
         <span
           aria-hidden="true"
           className={cn(
-            "relative h-5 w-9 shrink-0 rounded-full bg-[var(--surface-2)] transition-colors",
-            checked && "bg-[var(--state-selected-hover-bg)]",
+            "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+            checked ? "bg-[var(--accent)]" : "bg-[var(--surface-2)]",
           )}
         >
           <span
             className={cn(
-              "absolute top-1/2 left-0.5 size-4 -translate-y-1/2 rounded-full bg-[var(--text-mute)] transition-[background-color,left] duration-[var(--app-duration-base)] ease-[var(--app-ease)]",
-              checked && "left-[1.125rem] bg-[var(--state-selected-text)]",
+              "absolute top-1/2 size-4 -translate-y-1/2 rounded-full transition-[background-color,left] duration-[var(--app-duration-base)] ease-[var(--app-ease)]",
+              checked
+                ? "left-[1.125rem] bg-[var(--accent-contrast)]"
+                : "left-0.5 bg-[var(--text-mute)]",
             )}
           />
         </span>
@@ -478,17 +501,17 @@ function SwitchRailButton({
 
 function ShortcutHint({ value, active }: { value: string; active?: boolean }) {
   return (
-    <kbd
+    <span
       aria-hidden="true"
       className={cn(
         "ml-auto shrink-0 [font-family:var(--app-font-ui)] text-[13px] leading-none font-semibold tracking-normal whitespace-nowrap",
         active
           ? "text-[var(--state-selected-text)]"
-          : "text-[var(--text-mute)] opacity-85",
+          : "text-[var(--text-dim)] opacity-90",
       )}
     >
       {formatShortcutHint(value)}
-    </kbd>
+    </span>
   );
 }
 
