@@ -142,17 +142,11 @@ export function ZoomControls({
 type InteractionLayersProps = {
   mode: "select" | "node" | "edge";
   onAddNode: (event: CanvasPointer) => void;
-  onClearEdgeDraft: () => void;
-  onEdgePointerLeave: () => void;
-  onEdgePointerMove: (event: CanvasPointer) => void;
 };
 
 export function InteractionLayers({
   mode,
   onAddNode,
-  onClearEdgeDraft,
-  onEdgePointerLeave,
-  onEdgePointerMove,
 }: InteractionLayersProps) {
   const { messages } = useI18n();
 
@@ -163,15 +157,6 @@ export function InteractionLayers({
           aria-label={messages.canvas.nodePlacementLayer}
           className="absolute inset-0 z-10 cursor-crosshair"
           onClick={onAddNode}
-        />
-      ) : null}
-      {mode === "edge" ? (
-        <div
-          aria-label={messages.canvas.edgeDrawingLayer}
-          className="absolute inset-0 z-10 cursor-crosshair"
-          onPointerMove={onEdgePointerMove}
-          onPointerLeave={onEdgePointerLeave}
-          onClick={onClearEdgeDraft}
         />
       ) : null}
     </>

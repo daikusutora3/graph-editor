@@ -275,7 +275,7 @@ export function createGraphCanvasStylesheet(
         "target-arrow-shape": "none",
         "arrow-scale": 1,
         "box-selection": "contain",
-        label: "data(label)",
+        label: "",
         "font-family": palette.fontFamily,
         "font-size": palette.edgeFontSize,
         "font-weight": 700,

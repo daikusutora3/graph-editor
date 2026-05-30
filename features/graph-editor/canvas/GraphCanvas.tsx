@@ -10,7 +10,6 @@ import { graphModelToCytoscapeElements } from "../adapters/cytoscape/cytoscape-a
 import { addEdgeCommand, addNodeCommand } from "../core/graph/graph-intents";
 import { resolveEdgeCreation } from "./graph-canvas-edge-creation";
 import type { NodeId } from "../core/graph/model";
-import { createEmptyEdgeDraft } from "../shell/state/editor-state";
 import {
   edgeDraftAtom,
   editorModeAtom,
@@ -46,6 +45,7 @@ import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/use-panel-presence";
 import {
+  EdgeLabelOverlays,
   EdgeNodeHitboxes,
   SelectEdgeHitboxes,
   SelectNodeHitboxes,
@@ -108,7 +108,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     isGraphOutOfView,
     nodeHitboxes,
     updateRenderedHitboxes,
-  } = useRenderedHitboxes({ chrome, graph, mode });
+  } = useRenderedHitboxes({ chrome, graph });
 
   const { edgeRoutingMeta, edgeRoutingOptions } = useEdgeRoutingMeta(graph);
 
@@ -352,6 +352,33 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   });
   const rangeSelectionActive =
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
+  const editingEdgeId =
+    inlineEdit && inlineEdit.kind !== "node-label" ? inlineEdit.edgeId : null;
+  const handleCanvasClick = useCallback(() => {
+    setContextMenuTarget(null);
+  }, [setContextMenuTarget]);
+  const handleCanvasPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (mode !== "edge") {
+        return;
+      }
+
+      if (
+        event.target instanceof Element &&
+        event.target.closest("[data-edge-node-hitbox='true']")
+      ) {
+        return;
+      }
+
+      setEdgeCursor(renderedPointFromPointer(event));
+    },
+    [mode, renderedPointFromPointer],
+  );
+  const handleCanvasPointerLeave = useCallback(() => {
+    if (mode === "edge") {
+      setEdgeCursor(null);
+    }
+  }, [mode]);
   const previewRangeSelectionPointerDown = useRangeSelectionPreview({
     containerRef,
     cyRef,
@@ -371,9 +398,14 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
 
   return (
     <div
-      className="relative h-full min-h-[420px] w-full overflow-hidden bg-[var(--bg-deep)]"
-      onClick={() => setContextMenuTarget(null)}
+      className={[
+        "relative h-full min-h-[420px] w-full overflow-hidden bg-[var(--bg-deep)]",
+        mode === "edge" ? "cursor-crosshair" : "",
+      ].join(" ")}
+      onClick={handleCanvasClick}
       onContextMenu={(event) => event.preventDefault()}
+      onPointerLeave={handleCanvasPointerLeave}
+      onPointerMove={handleCanvasPointerMove}
     >
       <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle,var(--canvas-grid)_1px,transparent_1.4px)] [background-size:24px_24px] opacity-[0.75]" />
       <div
@@ -398,14 +430,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
       <InteractionLayers
         mode={mode}
         onAddNode={addNodeAtPointer}
-        onEdgePointerMove={(event) =>
-          setEdgeCursor(renderedPointFromPointer(event))
-        }
-        onEdgePointerLeave={() => setEdgeCursor(null)}
-        onClearEdgeDraft={() => {
-          setContextMenuTarget(null);
-          setEdgeDraft(createEmptyEdgeDraft());
-        }}
       />
       {mode === "edge" ? (
         <>
@@ -416,6 +440,10 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           />
         </>
       ) : null}
+      <EdgeLabelOverlays
+        edges={edgeLabelHitboxes}
+        editingEdgeId={editingEdgeId}
+      />
       <EditFeedbackNodes
         feedbackId={editFeedback?.id ?? null}
         nodes={viewState.feedbackNodeHitboxes}
