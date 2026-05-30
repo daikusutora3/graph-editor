@@ -62,7 +62,6 @@ For deeper project checks:
 bun run verify:core
 bun run verify:samples
 bun run verify:layouts
-bun run verify:architecture
 bun run verify:editor
 bun run verify:io
 ```

@@ -978,6 +978,11 @@ button:disabled {
   line-height: 1;
 }
 
+.gv-author-menu {
+  animation: gv-author-menu-in var(--app-duration-base) var(--app-ease) both;
+  transform-origin: top center;
+}
+
 @keyframes gv-edit-feedback-node {
   0% {
     opacity: 0.75;
@@ -987,6 +992,18 @@ button:disabled {
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+@keyframes gv-author-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-0.25rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 
@@ -1046,6 +1063,7 @@ button:disabled {
   .gv-sample-gallery,
   .gv-sample-group,
   .gv-sample-loading,
+  .gv-author-menu,
   .gv-empty-start,
   .gv-skeleton {
     animation: none;
