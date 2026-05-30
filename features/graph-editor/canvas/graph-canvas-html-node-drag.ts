@@ -18,6 +18,7 @@ import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
 type DragSnapshot = Record<NodeId, Position>;
 type HtmlNodeDragState = {
+  captureElement: HTMLButtonElement;
   pointerId: number;
   before: DragSnapshot;
   nodeIds: NodeId[];
@@ -53,6 +54,7 @@ export function useHtmlNodeDrag({
   const postRoutingHitboxFrameRef = useRef<number | null>(null);
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
 
   const cancelScheduledDragFrame = useCallback(() => {
     if (dragFrameRef.current === null) {
@@ -70,6 +72,11 @@ export function useHtmlNodeDrag({
 
     window.cancelAnimationFrame(postRoutingHitboxFrameRef.current);
     postRoutingHitboxFrameRef.current = null;
+  }, []);
+
+  const cleanupDragListeners = useCallback(() => {
+    dragCleanupRef.current?.();
+    dragCleanupRef.current = null;
   }, []);
 
   const schedulePostRoutingHitboxes = useCallback(
@@ -136,6 +143,7 @@ export function useHtmlNodeDrag({
 
     htmlNodeDragRef.current = null;
     draggingNodeIdsRef.current = new Set();
+    cleanupDragListeners();
     cancelScheduledDragFrame();
     cancelScheduledPostRoutingHitboxes();
 
@@ -143,6 +151,7 @@ export function useHtmlNodeDrag({
       return;
     }
 
+    releasePointerCapture(state);
     withCytoscapeBatch(cy, () => {
       restoreDragSnapshot(cy, state);
     });
@@ -150,6 +159,7 @@ export function useHtmlNodeDrag({
   }, [
     cancelScheduledDragFrame,
     cancelScheduledPostRoutingHitboxes,
+    cleanupDragListeners,
     cyRef,
     draggingNodeIdsRef,
     flushDragPreview,
@@ -170,6 +180,8 @@ export function useHtmlNodeDrag({
     if (!cy) {
       return;
     }
+
+    cancel();
 
     const selectedNodeIds = selectionRef.current.nodeIds.includes(nodeId)
       ? selectionRef.current.nodeIds
@@ -197,6 +209,7 @@ export function useHtmlNodeDrag({
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
     htmlNodeDragRef.current = {
+      captureElement: event.currentTarget,
       pointerId: event.pointerId,
       before,
       nodeIds: selectedNodeIds,
@@ -205,6 +218,10 @@ export function useHtmlNodeDrag({
       moved: false,
     };
     draggingNodeIdsRef.current = new Set(selectedNodeIds);
+    dragCleanupRef.current = listenForDragEnd(event.pointerId, {
+      onCancel: cancel,
+      onFinish: finishDrag,
+    });
 
     setSelection({ nodeIds: selectedNodeIds, edgeIds: [] });
   };
@@ -251,52 +268,68 @@ export function useHtmlNodeDrag({
     scheduleDragPreview(cy);
   };
 
-  const finish = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const state = htmlNodeDragRef.current;
-    const cy = cyRef.current;
+  const finishDrag = useCallback(
+    (pointerId: number) => {
+      const state = htmlNodeDragRef.current;
+      const cy = cyRef.current;
 
-    if (!state || !cy || state.pointerId !== event.pointerId) {
-      return;
-    }
+      if (!state || !cy || state.pointerId !== pointerId) {
+        return;
+      }
 
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    htmlNodeDragRef.current = null;
-    draggingNodeIdsRef.current = new Set();
+      htmlNodeDragRef.current = null;
+      draggingNodeIdsRef.current = new Set();
+      cleanupDragListeners();
+      releasePointerCapture(state);
 
-    if (!state.moved) {
-      cancelScheduledDragFrame();
-      withCytoscapeBatch(cy, () => {
-        restoreDragSnapshot(cy, state);
-      });
+      if (!state.moved) {
+        cancelScheduledDragFrame();
+        withCytoscapeBatch(cy, () => {
+          restoreDragSnapshot(cy, state);
+        });
+        flushDragPreview(cy);
+        return;
+      }
+
+      suppressClickRef.current = true;
+      lastMovedAtRef.current = Date.now();
       flushDragPreview(cy);
-      return;
-    }
+      const after = Object.fromEntries(
+        state.nodeIds
+          .map((id) => {
+            const node = cy.getElementById(id);
 
-    suppressClickRef.current = true;
-    lastMovedAtRef.current = Date.now();
-    flushDragPreview(cy);
-    const after = Object.fromEntries(
-      state.nodeIds
-        .map((id) => {
-          const node = cy.getElementById(id);
+            if (node.empty() || !node.isNode()) {
+              return null;
+            }
 
-          if (node.empty() || !node.isNode()) {
-            return null;
-          }
+            return [id, clonePosition(node.position())] as const;
+          })
+          .filter((entry): entry is readonly [NodeId, Position] =>
+            Boolean(entry),
+          ),
+      );
 
-          return [id, clonePosition(node.position())] as const;
-        })
-        .filter((entry): entry is readonly [NodeId, Position] =>
-          Boolean(entry),
-        ),
-    );
+      if (Object.keys(after).length === 0) {
+        return;
+      }
 
-    if (Object.keys(after).length === 0) {
-      return;
-    }
+      executeCommand(createMoveNodesCommand("Move node", after));
+      setSelection({ nodeIds: Object.keys(after) as NodeId[], edgeIds: [] });
+    },
+    [
+      cancelScheduledDragFrame,
+      cleanupDragListeners,
+      cyRef,
+      draggingNodeIdsRef,
+      executeCommand,
+      flushDragPreview,
+      setSelection,
+    ],
+  );
 
-    executeCommand(createMoveNodesCommand("Move node", after));
-    setSelection({ nodeIds: Object.keys(after) as NodeId[], edgeIds: [] });
+  const finish = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    finishDrag(event.pointerId);
   };
 
   const consumeSuppressedClick = () => {
@@ -318,6 +351,42 @@ export function useHtmlNodeDrag({
     start,
     update,
   };
+}
+
+function listenForDragEnd(
+  pointerId: number,
+  handlers: {
+    onCancel: () => void;
+    onFinish: (pointerId: number) => void;
+  },
+) {
+  const finishIfCurrentPointer = (event: PointerEvent) => {
+    if (event.pointerId === pointerId) {
+      handlers.onFinish(pointerId);
+    }
+  };
+
+  const cancel = () => handlers.onCancel();
+
+  window.addEventListener("pointerup", finishIfCurrentPointer, true);
+  window.addEventListener("pointercancel", cancel, true);
+  window.addEventListener("blur", cancel);
+
+  return () => {
+    window.removeEventListener("pointerup", finishIfCurrentPointer, true);
+    window.removeEventListener("pointercancel", cancel, true);
+    window.removeEventListener("blur", cancel);
+  };
+}
+
+function releasePointerCapture(state: HtmlNodeDragState) {
+  try {
+    if (state.captureElement.hasPointerCapture(state.pointerId)) {
+      state.captureElement.releasePointerCapture(state.pointerId);
+    }
+  } catch {
+    // The browser may already have released capture after cancellation.
+  }
 }
 
 function restoreDragSnapshot(cy: Core, state: HtmlNodeDragState) {
