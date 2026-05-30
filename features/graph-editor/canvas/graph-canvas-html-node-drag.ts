@@ -32,10 +32,10 @@ type UseHtmlNodeDragOptions = {
   draggingNodeIdsRef: MutableRefObject<ReadonlySet<NodeId>>;
   edgeRoutingOptions: EdgeRoutingOptions;
   executeCommand: (command: GraphIntent) => void;
-  flushRenderedHitboxes: (cy: Core) => void;
   graph: GraphModel;
   selectionRef: MutableRefObject<SelectionState>;
   setSelection: AtomSetter<SelectionState>;
+  updateRenderedHitboxes: (cy: Core) => void;
 };
 
 export function useHtmlNodeDrag({
@@ -43,13 +43,14 @@ export function useHtmlNodeDrag({
   draggingNodeIdsRef,
   edgeRoutingOptions,
   executeCommand,
-  flushRenderedHitboxes,
   graph,
   selectionRef,
   setSelection,
+  updateRenderedHitboxes,
 }: UseHtmlNodeDragOptions) {
   const htmlNodeDragRef = useRef<HtmlNodeDragState | null>(null);
   const dragFrameRef = useRef<number | null>(null);
+  const postRoutingHitboxFrameRef = useRef<number | null>(null);
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
 
@@ -61,6 +62,34 @@ export function useHtmlNodeDrag({
     window.cancelAnimationFrame(dragFrameRef.current);
     dragFrameRef.current = null;
   }, []);
+
+  const cancelScheduledPostRoutingHitboxes = useCallback(() => {
+    if (postRoutingHitboxFrameRef.current === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(postRoutingHitboxFrameRef.current);
+    postRoutingHitboxFrameRef.current = null;
+  }, []);
+
+  const schedulePostRoutingHitboxes = useCallback(
+    (cy: Core) => {
+      if (postRoutingHitboxFrameRef.current !== null) {
+        return;
+      }
+
+      // Edge label hitboxes depend on Cytoscape's rendered edge geometry.
+      // Read them after routing data has had a frame to settle.
+      postRoutingHitboxFrameRef.current = window.requestAnimationFrame(() => {
+        postRoutingHitboxFrameRef.current = null;
+
+        if (!cy.destroyed()) {
+          updateRenderedHitboxes(cy);
+        }
+      });
+    },
+    [updateRenderedHitboxes],
+  );
 
   const syncDragPreview = useCallback(
     (cy: Core) => {
@@ -74,9 +103,9 @@ export function useHtmlNodeDrag({
         });
       }
 
-      flushRenderedHitboxes(cy);
+      schedulePostRoutingHitboxes(cy);
     },
-    [edgeRoutingOptions, flushRenderedHitboxes, graph],
+    [edgeRoutingOptions, graph, schedulePostRoutingHitboxes],
   );
 
   const flushDragPreview = useCallback(
@@ -108,6 +137,7 @@ export function useHtmlNodeDrag({
     htmlNodeDragRef.current = null;
     draggingNodeIdsRef.current = new Set();
     cancelScheduledDragFrame();
+    cancelScheduledPostRoutingHitboxes();
 
     if (!state || !cy || cy.destroyed()) {
       return;
@@ -117,7 +147,13 @@ export function useHtmlNodeDrag({
       restoreDragSnapshot(cy, state);
     });
     flushDragPreview(cy);
-  }, [cancelScheduledDragFrame, cyRef, draggingNodeIdsRef, flushDragPreview]);
+  }, [
+    cancelScheduledDragFrame,
+    cancelScheduledPostRoutingHitboxes,
+    cyRef,
+    draggingNodeIdsRef,
+    flushDragPreview,
+  ]);
 
   useEffect(() => cancel, [cancel]);
 
