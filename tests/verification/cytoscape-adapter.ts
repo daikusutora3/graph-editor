@@ -2,9 +2,11 @@ import cytoscape, { type Core } from "cytoscape";
 
 import {
   graphModelToCytoscapeElements,
+  syncCytoscapeEdgeRoutingData,
   type CytoscapeElementOptions,
 } from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
+import { renderedPointInsideViewport } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-viewport";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createVerification } from "./harness";
@@ -15,6 +17,10 @@ verifyElementMapping();
 verifyDiffSyncPreservesTransientClasses();
 verifyDiffSyncCanSkipDraggedNodePositions();
 verifyEdgeTopologyChangesAreRecreated();
+verifyEdgeRoutingCanFollowDraggedNodePositions();
+verifyEdgeRoutingSyncPreservesModelData();
+verifyEdgeRoutingSyncCanRestorePreviewData();
+verifyViewportRescuePointDetection();
 
 finish();
 
@@ -150,6 +156,89 @@ function verifyEdgeTopologyChangesAreRecreated() {
   }
 }
 
+function verifyEdgeRoutingCanFollowDraggedNodePositions() {
+  const graph = edgeRoutingFixture();
+  const cy = createCy(graph);
+
+  try {
+    const edge = cy.getElementById("ab");
+    const initialBow = edge.data("bow");
+
+    cy.getElementById("c").position({ x: 60, y: 140 });
+    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+
+    expect(
+      initialBow !== edge.data("bow") && edge.data("bow") === 0,
+      "edge routing preview should use current Cytoscape node positions during drag",
+    );
+  } finally {
+    cy.destroy();
+  }
+}
+
+function verifyEdgeRoutingSyncPreservesModelData() {
+  const graph = edgeRoutingFixture();
+  const cy = createCy(graph);
+
+  try {
+    const edge = cy.getElementById("ab");
+
+    cy.getElementById("c").position({ x: 60, y: 140 });
+    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+
+    expect(edge.data("source") === "a", "routing sync should keep source");
+    expect(edge.data("target") === "b", "routing sync should keep target");
+    expect(edge.data("label") === "1", "routing sync should keep label");
+    expect(edge.data("weight") === "1", "routing sync should keep weight");
+    expect(edge.data("color") === "blue", "routing sync should keep color");
+  } finally {
+    cy.destroy();
+  }
+}
+
+function verifyEdgeRoutingSyncCanRestorePreviewData() {
+  const graph = edgeRoutingFixture();
+  const cy = createCy(graph);
+
+  try {
+    const edge = cy.getElementById("ab");
+    const initialBow = edge.data("bow");
+
+    cy.getElementById("c").position({ x: 60, y: 140 });
+    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+    cy.getElementById("c").position({ x: 60, y: 5 });
+    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+
+    expect(
+      edge.data("bow") === initialBow,
+      "routing sync should be reversible when preview positions are restored",
+    );
+  } finally {
+    cy.destroy();
+  }
+}
+
+function verifyViewportRescuePointDetection() {
+  const viewport = { x1: 280, y1: 0, x2: 1200, y2: 800 };
+
+  expect(
+    renderedPointInsideViewport({ x: 300, y: 40 }, viewport),
+    "node centers inside the usable viewport should be treated as visible",
+  );
+  expect(
+    renderedPointInsideViewport({ x: 275, y: 40 }, viewport),
+    "node centers just outside the usable viewport should use a small tolerance",
+  );
+  expect(
+    !renderedPointInsideViewport({ x: 260, y: 40 }, viewport),
+    "node centers hidden well under the sidebar should not be treated as visible",
+  );
+  expect(
+    !renderedPointInsideViewport({ x: 1220, y: 40 }, viewport),
+    "node centers hidden well beyond the right rail should not be treated as visible",
+  );
+}
+
 function createCy(
   graph: GraphModel,
   options: CytoscapeElementOptions = {},
@@ -177,6 +266,28 @@ function graphFixture(): GraphModel {
         source: "a",
         target: "b",
         weight: "7",
+        color: "blue",
+      },
+    ],
+  };
+}
+
+function edgeRoutingFixture(): GraphModel {
+  return {
+    ...createEmptyGraphModel({
+      weighted: true,
+    }),
+    nodes: [
+      { id: "a", label: "A", order: 0, x: 0, y: 0 },
+      { id: "b", label: "B", order: 1, x: 120, y: 0 },
+      { id: "c", label: "C", order: 2, x: 60, y: 5 },
+    ],
+    edges: [
+      {
+        id: "ab",
+        source: "a",
+        target: "b",
+        weight: "1",
         color: "blue",
       },
     ],

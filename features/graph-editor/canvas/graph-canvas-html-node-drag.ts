@@ -8,9 +8,11 @@ import type {
 import { useCallback, useEffect, useRef } from "react";
 
 import { createMoveNodesCommand } from "../core/graph/graph-intents";
-import type { GraphIntent, NodeId } from "../core/graph/model";
+import type { GraphIntent, GraphModel, NodeId } from "../core/graph/model";
+import type { EdgeRoutingOptions } from "../core/layout/edge-routing";
 import type { SelectionState } from "../shell/state/editor-state";
 
+import { syncCytoscapeEdgeRoutingData } from "../adapters/cytoscape/cytoscape-adapter";
 import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
@@ -28,25 +30,76 @@ type AtomSetter<T> = (value: T | ((current: T) => T)) => void;
 type UseHtmlNodeDragOptions = {
   cyRef: MutableRefObject<Core | null>;
   draggingNodeIdsRef: MutableRefObject<ReadonlySet<NodeId>>;
+  edgeRoutingOptions: EdgeRoutingOptions;
   executeCommand: (command: GraphIntent) => void;
   flushRenderedHitboxes: (cy: Core) => void;
+  graph: GraphModel;
   selectionRef: MutableRefObject<SelectionState>;
   setSelection: AtomSetter<SelectionState>;
-  updateRenderedHitboxes: (cy: Core) => void;
 };
 
 export function useHtmlNodeDrag({
   cyRef,
   draggingNodeIdsRef,
+  edgeRoutingOptions,
   executeCommand,
   flushRenderedHitboxes,
+  graph,
   selectionRef,
   setSelection,
-  updateRenderedHitboxes,
 }: UseHtmlNodeDragOptions) {
   const htmlNodeDragRef = useRef<HtmlNodeDragState | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
+
+  const cancelScheduledDragFrame = useCallback(() => {
+    if (dragFrameRef.current === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(dragFrameRef.current);
+    dragFrameRef.current = null;
+  }, []);
+
+  const syncDragPreview = useCallback(
+    (cy: Core) => {
+      if (cy.destroyed()) {
+        return;
+      }
+
+      if (edgeRoutingOptions.avoidNodes) {
+        withCytoscapeBatch(cy, () => {
+          syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions);
+        });
+      }
+
+      flushRenderedHitboxes(cy);
+    },
+    [edgeRoutingOptions, flushRenderedHitboxes, graph],
+  );
+
+  const flushDragPreview = useCallback(
+    (cy: Core) => {
+      cancelScheduledDragFrame();
+      syncDragPreview(cy);
+    },
+    [cancelScheduledDragFrame, syncDragPreview],
+  );
+
+  const scheduleDragPreview = useCallback(
+    (cy: Core) => {
+      if (dragFrameRef.current !== null) {
+        return;
+      }
+
+      dragFrameRef.current = window.requestAnimationFrame(() => {
+        dragFrameRef.current = null;
+        syncDragPreview(cy);
+      });
+    },
+    [syncDragPreview],
+  );
 
   const cancel = useCallback(() => {
     const state = htmlNodeDragRef.current;
@@ -54,25 +107,17 @@ export function useHtmlNodeDrag({
 
     htmlNodeDragRef.current = null;
     draggingNodeIdsRef.current = new Set();
+    cancelScheduledDragFrame();
 
     if (!state || !cy || cy.destroyed()) {
       return;
     }
 
     withCytoscapeBatch(cy, () => {
-      state.nodeIds.forEach((id) => {
-        const startPosition = state.before[id];
-        const node = cy.getElementById(id);
-
-        if (!startPosition || node.empty() || !node.isNode()) {
-          return;
-        }
-
-        node.position(startPosition);
-      });
+      restoreDragSnapshot(cy, state);
     });
-    flushRenderedHitboxes(cy);
-  }, [cyRef, draggingNodeIdsRef, flushRenderedHitboxes]);
+    flushDragPreview(cy);
+  }, [cancelScheduledDragFrame, cyRef, draggingNodeIdsRef, flushDragPreview]);
 
   useEffect(() => cancel, [cancel]);
 
@@ -167,7 +212,7 @@ export function useHtmlNodeDrag({
         });
       });
     });
-    updateRenderedHitboxes(cy);
+    scheduleDragPreview(cy);
   };
 
   const finish = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -183,12 +228,17 @@ export function useHtmlNodeDrag({
     draggingNodeIdsRef.current = new Set();
 
     if (!state.moved) {
+      cancelScheduledDragFrame();
+      withCytoscapeBatch(cy, () => {
+        restoreDragSnapshot(cy, state);
+      });
+      flushDragPreview(cy);
       return;
     }
 
     suppressClickRef.current = true;
     lastMovedAtRef.current = Date.now();
-    flushRenderedHitboxes(cy);
+    flushDragPreview(cy);
     const after = Object.fromEntries(
       state.nodeIds
         .map((id) => {
@@ -232,4 +282,17 @@ export function useHtmlNodeDrag({
     start,
     update,
   };
+}
+
+function restoreDragSnapshot(cy: Core, state: HtmlNodeDragState) {
+  state.nodeIds.forEach((id) => {
+    const startPosition = state.before[id];
+    const node = cy.getElementById(id);
+
+    if (!startPosition || node.empty() || !node.isNode()) {
+      return;
+    }
+
+    node.position(startPosition);
+  });
 }
