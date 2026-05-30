@@ -69,6 +69,7 @@ type GraphCanvasProps = {
 };
 
 export function GraphCanvas({ chrome }: GraphCanvasProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const pendingFitAfterUpdateRef = useRef(false);
@@ -332,11 +333,13 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     edgeLabelHitboxes,
     mode,
     nodeHitboxes,
+    rootRef,
     setSelection,
   });
 
   return (
     <div
+      ref={rootRef}
       className="relative h-full min-h-[420px] w-full overflow-hidden bg-[var(--bg-deep)]"
       onClick={() => setContextMenuTarget(null)}
       onContextMenu={(event) => event.preventDefault()}
@@ -371,7 +374,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
       />
       <ShiftRangeSelectionLayer
         active={shiftRangeSelection.active}
-        handlers={shiftRangeSelection.handlers}
         rect={shiftRangeSelection.rect}
       />
       {mode === "edge" ? (

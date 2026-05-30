@@ -1,6 +1,6 @@
 "use client";
 
-import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import type {
@@ -27,11 +27,29 @@ type ShiftRangeSelectionState = {
   pointerId: number;
 };
 
+type PointerPosition = {
+  clientX: number;
+  clientY: number;
+};
+
+type ConsumableEvent = {
+  preventDefault: () => void;
+  stopPropagation: () => void;
+};
+
+type NativeRangeStartEvent = ConsumableEvent &
+  PointerPosition & {
+    button: number;
+    shiftKey: boolean;
+    target: EventTarget | null;
+  };
+
 type UseShiftRangeSelectionOptions = {
   containerRef: RefObject<HTMLDivElement | null>;
   edgeLabelHitboxes: EdgeLabelHitbox[];
   mode: EditorMode;
   nodeHitboxes: NodeHitbox[];
+  rootRef: RefObject<HTMLDivElement | null>;
   setSelection: AtomSetter<SelectionState>;
 };
 
@@ -42,96 +60,44 @@ export function useShiftRangeSelection({
   edgeLabelHitboxes,
   mode,
   nodeHitboxes,
+  rootRef,
   setSelection,
 }: UseShiftRangeSelectionOptions) {
-  const [shiftPressed, setShiftPressed] = useState(false);
   const [selectionBox, setSelectionBox] =
     useState<ShiftRangeSelectionState | null>(null);
   const dragRef = useRef<ShiftRangeSelectionState | null>(null);
 
-  useEffect(() => {
-    if (mode !== "select") {
-      setShiftPressed(false);
-      return;
-    }
+  const beginRangeSelection = (
+    event: PointerPosition,
+    container: HTMLDivElement,
+    pointerId: number,
+  ) => {
+    const nextSelectionBox = createSelectionBox(event, container, pointerId);
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Shift") {
-        setShiftPressed(true);
-      }
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (event.key === "Shift") {
-        setShiftPressed(false);
-      }
-    };
-    const onBlur = () => setShiftPressed(false);
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", onBlur);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", onBlur);
-    };
-  }, [mode]);
-
-  const startRangeSelection = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const container = containerRef.current;
-
-    if (!container || event.button !== 0) {
-      return;
-    }
-
-    const origin = renderedPointFromPointer(event, container);
-    const nextSelectionBox = {
-      current: origin,
-      origin,
-      pointerId: event.pointerId,
-    };
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = nextSelectionBox;
     setSelectionBox(nextSelectionBox);
   };
 
-  const updateRangeSelection = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const container = containerRef.current;
-    const drag = dragRef.current;
-
-    if (!container || !drag || drag.pointerId !== event.pointerId) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-
+  const updateRangeSelectionPoint = (
+    event: PointerPosition,
+    container: HTMLDivElement,
+    drag: ShiftRangeSelectionState,
+  ) => {
     const nextSelectionBox = {
       ...drag,
       current: renderedPointFromPointer(event, container),
     };
+
     dragRef.current = nextSelectionBox;
     setSelectionBox(nextSelectionBox);
   };
 
-  const finishRangeSelection = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
+  const clearRangeSelection = () => {
+    dragRef.current = null;
+    setSelectionBox(null);
+  };
 
-    if (!drag || drag.pointerId !== event.pointerId) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.releasePointerCapture(event.pointerId);
-
-    const rect = selectionRect(drag);
-    clearRangeSelection();
-
+  const commitRangeSelection = (rect: SelectionBoxRect) => {
     if (
       rect.width < MIN_SELECTION_BOX_PX &&
       rect.height < MIN_SELECTION_BOX_PX
@@ -156,33 +122,122 @@ export function useShiftRangeSelection({
     }));
   };
 
-  const cancelRangeSelection = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
+  useEffect(() => {
+    const container = containerRef.current;
+    const root = rootRef.current;
 
-    if (drag?.pointerId === event.pointerId) {
-      clearRangeSelection();
+    if (!container || !root || mode !== "select") {
+      return;
     }
-  };
 
-  const clearRangeSelection = () => {
-    dragRef.current = null;
-    setSelectionBox(null);
-  };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!canStartNativeRangeSelection(event, root, dragRef.current)) {
+        return;
+      }
+
+      consumeRangeSelectionEvent(event);
+      beginRangeSelection(event, container, event.pointerId);
+      window.addEventListener("pointermove", onPointerMove, true);
+      window.addEventListener("pointerup", onPointerUp, true);
+      window.addEventListener("pointercancel", onPointerCancel, true);
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      const drag = dragRef.current;
+
+      if (!drag || drag.pointerId !== event.pointerId) {
+        return;
+      }
+
+      consumeRangeSelectionEvent(event);
+      updateRangeSelectionPoint(event, container, drag);
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      const drag = dragRef.current;
+
+      if (!drag || drag.pointerId !== event.pointerId) {
+        return;
+      }
+
+      consumeRangeSelectionEvent(event);
+      commitRangeSelection(selectionRect(drag));
+      clearRangeSelection();
+      removeWindowListeners();
+    };
+
+    const onPointerCancel = (event: PointerEvent) => {
+      const drag = dragRef.current;
+
+      if (drag?.pointerId === event.pointerId) {
+        clearRangeSelection();
+        removeWindowListeners();
+      }
+    };
+
+    const removeWindowListeners = () => {
+      window.removeEventListener("pointermove", onPointerMove, true);
+      window.removeEventListener("pointerup", onPointerUp, true);
+      window.removeEventListener("pointercancel", onPointerCancel, true);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      removeWindowListeners();
+      clearRangeSelection();
+    };
+  }, [
+    containerRef,
+    edgeLabelHitboxes,
+    mode,
+    nodeHitboxes,
+    rootRef,
+    setSelection,
+  ]);
 
   return {
-    active: mode === "select" && (shiftPressed || selectionBox !== null),
+    active: mode === "select",
     rect: selectionBox ? selectionRect(selectionBox) : null,
-    handlers: {
-      onPointerCancel: cancelRangeSelection,
-      onPointerDown: startRangeSelection,
-      onPointerMove: updateRangeSelection,
-      onPointerUp: finishRangeSelection,
-    },
+  };
+}
+
+function canStartNativeRangeSelection(
+  event: NativeRangeStartEvent,
+  root: HTMLDivElement,
+  currentDrag: ShiftRangeSelectionState | null,
+) {
+  return (
+    !currentDrag &&
+    event.button === 0 &&
+    event.shiftKey &&
+    event.target instanceof Node &&
+    root.contains(event.target)
+  );
+}
+
+function consumeRangeSelectionEvent(event: ConsumableEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function createSelectionBox(
+  event: PointerPosition,
+  container: HTMLDivElement,
+  pointerId: number,
+): ShiftRangeSelectionState {
+  const origin = renderedPointFromPointer(event, container);
+
+  return {
+    current: origin,
+    origin,
+    pointerId,
   };
 }
 
 function renderedPointFromPointer(
-  event: { clientX: number; clientY: number },
+  event: PointerPosition,
   container: HTMLDivElement,
 ): RenderedPoint {
   const rect = container.getBoundingClientRect();
