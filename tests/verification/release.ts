@@ -10,9 +10,9 @@ import {
   appLanguageAlternates,
   appLocaleMetadata,
   appLocalePaths,
+  createAppStructuredData,
   getAppLocaleUrl,
   getAppPathUrl,
-  structuredData,
   type AppLocale,
 } from "../../lib/site-metadata";
 import { createVerification } from "./harness";
@@ -93,7 +93,7 @@ expect(
   "out/index.html should include the social image",
 );
 expect(
-  indexHtml.includes(structuredData.description),
+  indexHtml.includes(createAppStructuredData("ja").description),
   "out/index.html should align JSON-LD description with public metadata",
 );
 
@@ -113,6 +113,7 @@ for (const locale of Object.keys(localeHtmlPaths) as AppLocale[]) {
   const html = readText(localeHtmlPaths[locale]);
   const metadata = appLocaleMetadata[locale];
   const canonicalUrl = getAppLocaleUrl(locale);
+  const structuredData = createAppStructuredData(locale);
 
   expect(
     html.includes(`<title>${metadata.title}</title>`),
@@ -137,6 +138,26 @@ for (const locale of Object.keys(localeHtmlPaths) as AppLocale[]) {
       `name="twitter:description" content="${metadata.description}"`,
     ),
     `${localeHtmlPaths[locale]} should include the localized Twitter description`,
+  );
+  expect(
+    html.includes(`<html lang="${locale}" data-locale="${locale}"`),
+    `${localeHtmlPaths[locale]} should include the localized html lang`,
+  );
+  expect(
+    html.includes(`"description":"${structuredData.description}"`),
+    `${localeHtmlPaths[locale]} should include the localized JSON-LD description`,
+  );
+  expect(
+    html.includes(`"url":"${structuredData.url}"`),
+    `${localeHtmlPaths[locale]} should include the localized JSON-LD URL`,
+  );
+  expect(
+    html.includes(`"inLanguage":"${locale}"`),
+    `${localeHtmlPaths[locale]} should include the localized JSON-LD language`,
+  );
+  expect(
+    !html.includes("featureList"),
+    `${localeHtmlPaths[locale]} should keep JSON-LD lean and avoid featureList drift`,
   );
 
   for (const [language, path] of Object.entries(appLanguageAlternates)) {
