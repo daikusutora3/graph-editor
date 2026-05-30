@@ -6,13 +6,14 @@ import {
   layoutDefinitions,
   manualLayoutDisabledReasonCode,
 } from "../../features/graph-editor/layouts";
+import { createVerification } from "./harness";
 
-const failures: string[] = [];
+const { expect, fail, finish } = createVerification("Layout");
 const kinds = layoutDefinitions.map((definition) => definition.kind);
 const kindSet = new Set(kinds);
 
 if (kindSet.size !== kinds.length) {
-  failures.push("layout registry contains duplicate kinds");
+  fail("layout registry contains duplicate kinds");
 }
 
 for (const definition of layoutDefinitions) {
@@ -119,21 +120,7 @@ expect(
   "routing cache key should include edge routing overrides",
 );
 
-if (failures.length > 0) {
-  console.error(`Layout verification failed (${failures.length})`);
-  for (const failure of failures) {
-    console.error(`- ${failure}`);
-  }
-  process.exit(1);
-}
-
-console.log(`Layout verification passed (${layoutDefinitions.length} kinds)`);
-
-function expect(condition: boolean, message: string) {
-  if (!condition) {
-    failures.push(message);
-  }
-}
+finish(`Layout verification passed (${layoutDefinitions.length} kinds)`);
 
 function graphFixture({
   directed,

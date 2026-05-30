@@ -14,7 +14,7 @@ import {
 } from "./import-utils";
 import type { ImportResult } from "./import-types";
 
-export type EdgeListImportOptions = ImportOptions;
+type EdgeListImportOptions = ImportOptions;
 
 export function importStructuredEdgeList(
   input: string,

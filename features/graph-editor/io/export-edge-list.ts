@@ -1,7 +1,7 @@
 import { getNodeByOrder } from "../core/graph/selectors";
 import type { GraphModel } from "../core/graph/model";
 
-export type EdgeListExportOptions = {
+type EdgeListExportOptions = {
   indexBase?: 0 | 1;
   weighted?: boolean;
 };

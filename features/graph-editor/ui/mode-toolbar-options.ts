@@ -8,14 +8,14 @@ import {
 import { layoutDefinitions, type LayoutDefinition } from "../layouts";
 import type { EditorMode } from "../shell/state/editor-state";
 
-export type ToolbarModeOption = {
+type ToolbarModeOption = {
   mode: EditorMode;
   keyHint: string;
   accent?: "create" | "connect";
   icon: LucideIcon;
 };
 
-export type ToolbarLayoutOption = LayoutDefinition;
+type ToolbarLayoutOption = LayoutDefinition;
 
 export const toolbarModes: ToolbarModeOption[] = [
   {

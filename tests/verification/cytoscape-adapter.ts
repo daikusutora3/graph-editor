@@ -7,29 +7,16 @@ import {
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
+import { createVerification } from "./harness";
 
-const failures: string[] = [];
-
-function expect(condition: boolean, message: string) {
-  if (!condition) {
-    failures.push(message);
-  }
-}
+const { expect, finish } = createVerification("Cytoscape adapter");
 
 verifyElementMapping();
 verifyDiffSyncPreservesTransientClasses();
 verifyDiffSyncCanSkipDraggedNodePositions();
 verifyEdgeTopologyChangesAreRecreated();
 
-if (failures.length > 0) {
-  console.error(`Cytoscape adapter verification failed (${failures.length})`);
-  for (const failure of failures) {
-    console.error(`- ${failure}`);
-  }
-  process.exit(1);
-}
-
-console.log("Cytoscape adapter verification passed");
+finish();
 
 function verifyElementMapping() {
   const elements = graphModelToCytoscapeElements(graphFixture());
