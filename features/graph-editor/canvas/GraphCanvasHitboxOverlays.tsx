@@ -20,6 +20,32 @@ type CanvasPointer = {
   clientY: number;
 };
 
+export function EdgeLabelOverlays({
+  edges,
+  editingEdgeId = null,
+}: {
+  edges: EdgeLabelHitbox[];
+  editingEdgeId?: EdgeId | null;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[19]">
+      {edges.map((edge) =>
+        edge.label && edge.id !== editingEdgeId ? (
+          <span
+            key={edge.id}
+            data-edge-label-overlay="true"
+            data-edge-id={edge.id}
+            className="absolute -translate-x-1/2 -translate-y-1/2 rounded-[var(--app-radius-sm)] border border-[var(--canvas-label-border)] bg-[color-mix(in_srgb,var(--canvas-label-bg)_92%,transparent)] px-1 py-0.5 font-mono text-[length:var(--app-canvas-edge-font)] leading-none font-bold text-[var(--canvas-node-text)]"
+            style={{ left: edge.x, top: edge.y }}
+          >
+            {edge.label}
+          </span>
+        ) : null,
+      )}
+    </div>
+  );
+}
+
 type EdgeNodeHitboxesProps = {
   nodes: NodeHitbox[];
   sourceNodeId: NodeId | null;
@@ -48,6 +74,7 @@ export function EdgeNodeHitboxes({
           <button
             key={node.id}
             type="button"
+            data-edge-node-hitbox="true"
             aria-label={
               isSource
                 ? locale === "ja"
@@ -61,7 +88,7 @@ export function EdgeNodeHitboxes({
                     ? `连接到 ${node.label}`
                     : `Connect edge to ${node.label}`
             }
-            className="group absolute z-20 size-14 -translate-x-1/2 -translate-y-1/2 rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+            className="group absolute z-20 size-14 -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
             style={{ left: node.x, top: node.y }}
             onPointerEnter={() => onPointerEnter(node)}
             onPointerLeave={() => onPointerLeave(node.id)}
