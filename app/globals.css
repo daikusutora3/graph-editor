@@ -435,6 +435,7 @@ button:disabled {
   border-radius: var(--app-radius-lg);
   background: var(--canvas-overlay-bg);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--app-shadow-popover);
 }
 
