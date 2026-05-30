@@ -100,7 +100,7 @@ export function ExpandedToolbarLayer({
       >
         <div
           className={cn(
-            "flex h-[3.25rem] shrink-0 items-center justify-between gap-[var(--app-space-2)] border-b px-[var(--app-space-4)] transition-colors duration-[var(--app-duration-fast)] ease-[var(--app-ease)]",
+            "flex h-[3.25rem] shrink-0 items-center justify-between gap-[var(--app-space-2)] border-b pr-[var(--app-space-2)] pl-[var(--app-space-4)] transition-colors duration-[var(--app-duration-fast)] ease-[var(--app-ease)]",
             contentScrolled ? "border-[var(--divider)]" : "border-transparent",
           )}
         >
