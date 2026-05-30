@@ -31,26 +31,35 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+export function I18nProvider({
+  children,
+  initialLocale,
+}: {
+  children: ReactNode;
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(
+    initialLocale ?? DEFAULT_LOCALE,
+  );
 
   useEffect(() => {
-    const initialLocale = readPreferredLocale();
-    setLocaleState(initialLocale);
+    const preferredLocale = readPreferredLocale(initialLocale);
+    setLocaleState(preferredLocale);
 
     const onStorage = (event: StorageEvent) => {
       if (event.key !== LOCALE_STORAGE_KEY) {
         return;
       }
 
-      const nextLocale = toLocale(event.newValue) ?? readPreferredLocale();
+      const nextLocale =
+        toLocale(event.newValue) ?? readPreferredLocale(initialLocale);
       setLocaleState(nextLocale);
     };
 
     window.addEventListener("storage", onStorage);
 
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [initialLocale]);
 
   useLayoutEffect(() => applyLocale(locale), [locale]);
 
@@ -85,7 +94,11 @@ export function useI18n() {
   return context;
 }
 
-function readPreferredLocale(): Locale {
+function readPreferredLocale(initialLocale: Locale | undefined): Locale {
+  if (initialLocale) {
+    return initialLocale;
+  }
+
   const storedLocale = readStoredLocale();
   if (storedLocale) {
     return storedLocale;

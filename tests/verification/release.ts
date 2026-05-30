@@ -7,7 +7,13 @@ import {
   APP_TITLE,
   SITE_URL,
   SOCIAL_IMAGE,
+  appLanguageAlternates,
+  appLocaleMetadata,
+  appLocalePaths,
+  getAppLocaleUrl,
+  getAppPathUrl,
   structuredData,
+  type AppLocale,
 } from "../../lib/site-metadata";
 import { createVerification } from "./harness";
 
@@ -24,6 +30,8 @@ function expectFile(path: string) {
 
 for (const path of [
   "out/index.html",
+  "out/en.html",
+  "out/zh-hans.html",
   "out/404.html",
   "out/manifest.webmanifest",
   "out/robots.txt",
@@ -61,8 +69,8 @@ expect(
   "out/index.html should set the root Open Graph locale",
 );
 expect(
-  !indexHtml.includes("og:locale:alternate"),
-  "out/index.html should not advertise locale alternates without locale URLs",
+  indexHtml.includes("og:locale:alternate"),
+  "out/index.html should advertise alternate Open Graph locales",
 );
 expect(
   indexHtml.includes(`property="og:title" content="${APP_TITLE}"`),
@@ -88,6 +96,57 @@ expect(
   indexHtml.includes(structuredData.description),
   "out/index.html should align JSON-LD description with public metadata",
 );
+
+const localeHtmlPaths: Record<AppLocale, string> = {
+  ja: "out/index.html",
+  en: "out/en.html",
+  "zh-Hans": "out/zh-hans.html",
+};
+
+const localeOpenGraphLocales: Record<AppLocale, string> = {
+  ja: "ja_JP",
+  en: "en_US",
+  "zh-Hans": "zh_CN",
+};
+
+for (const locale of Object.keys(localeHtmlPaths) as AppLocale[]) {
+  const html = readText(localeHtmlPaths[locale]);
+  const metadata = appLocaleMetadata[locale];
+  const canonicalUrl = getAppLocaleUrl(locale);
+
+  expect(
+    html.includes(`<title>${metadata.title}</title>`),
+    `${localeHtmlPaths[locale]} should include the localized title`,
+  );
+  expect(
+    html.includes(`name="description" content="${metadata.description}"`),
+    `${localeHtmlPaths[locale]} should include the localized description`,
+  );
+  expect(
+    html.includes(`rel="canonical" href="${canonicalUrl}"`),
+    `${localeHtmlPaths[locale]} should include the localized canonical URL`,
+  );
+  expect(
+    html.includes(
+      `property="og:locale" content="${localeOpenGraphLocales[locale]}"`,
+    ),
+    `${localeHtmlPaths[locale]} should include the localized Open Graph locale`,
+  );
+  expect(
+    html.includes(
+      `name="twitter:description" content="${metadata.description}"`,
+    ),
+    `${localeHtmlPaths[locale]} should include the localized Twitter description`,
+  );
+
+  for (const [language, path] of Object.entries(appLanguageAlternates)) {
+    const url = getAppPathUrl(path);
+    expect(
+      html.includes(`rel="alternate" hrefLang="${language}" href="${url}"`),
+      `${localeHtmlPaths[locale]} should link the ${language} alternate URL`,
+    );
+  }
+}
 
 const manifest = JSON.parse(readText("out/manifest.webmanifest")) as {
   description?: string;
@@ -118,10 +177,19 @@ expect(
 
 const sitemap = readText("out/sitemap.xml");
 expect(sitemap.includes(SITE_URL), "sitemap.xml should include SITE_URL");
-expect(
-  !sitemap.includes(`${SITE_URL}/en`) && !sitemap.includes(`${SITE_URL}/zh-cn`),
-  "sitemap.xml should not list locale URLs while the app uses a single public URL",
-);
+for (const locale of Object.keys(appLocalePaths) as AppLocale[]) {
+  expect(
+    sitemap.includes(`<loc>${getAppLocaleUrl(locale)}</loc>`),
+    `sitemap.xml should include the ${locale} URL`,
+  );
+}
+for (const [language, path] of Object.entries(appLanguageAlternates)) {
+  const url = getAppPathUrl(path);
+  expect(
+    sitemap.includes(`hreflang="${language}" href="${url}"`),
+    `sitemap.xml should include the ${language} alternate URL`,
+  );
+}
 
 const headers = readText("out/_headers");
 expect(
