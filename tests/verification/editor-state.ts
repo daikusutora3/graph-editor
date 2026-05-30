@@ -1,25 +1,25 @@
 import { createStore } from "jotai/vanilla";
 
-import { createEmptyGraphModel } from "../features/graph-editor/core/graph/graph-factory";
+import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import {
   MAX_STORED_GRAPH_CHARS,
   MAX_STORED_GRAPH_NODES,
   parseStoredGraph,
   serializeStoredGraphForWrite,
-} from "../features/graph-editor/adapters/browser/stored-graph";
-import { addNodeCommand } from "../features/graph-editor/core/graph/graph-intents";
-import type { GraphModel } from "../features/graph-editor/core/graph/model";
+} from "../../features/graph-editor/adapters/browser/stored-graph";
+import { addNodeCommand } from "../../features/graph-editor/core/graph/graph-intents";
+import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   resolveEdgeSelection,
   resolveNodeSelection,
-} from "../features/graph-editor/shell/state/editor-selection";
+} from "../../features/graph-editor/shell/state/editor-selection";
 import {
   applyManualLayoutAtom,
   clearGraphAtom,
   replaceGraphModelAtom,
   resetEditorSessionAtom,
   setEditorModeAtom,
-} from "../features/graph-editor/shell/state/editor-actions";
+} from "../../features/graph-editor/shell/state/editor-actions";
 import {
   copyGraphSelectionAtom,
   cutGraphSelectionAtom,
@@ -27,28 +27,28 @@ import {
   nudgeSelectedNodesAtom,
   pasteGraphClipboardAtom,
   selectAllGraphAtom,
-} from "../features/graph-editor/shell/state/editor-shortcut-actions";
+} from "../../features/graph-editor/shell/state/editor-shortcut-actions";
 import {
   resolveGraphEditorShortcut,
   shouldPreventDefaultForGraphEditorShortcut,
-} from "../features/graph-editor/shell/state/editor-shortcuts";
+} from "../../features/graph-editor/shell/state/editor-shortcuts";
 import {
   edgeDraftAtom,
   editorModeAtom,
   graphClipboardAtom,
   graphPasteCountAtom,
   selectionAtom,
-} from "../features/graph-editor/shell/state/editor-atoms";
-import { createEmptyEdgeDraft } from "../features/graph-editor/shell/state/editor-state";
+} from "../../features/graph-editor/shell/state/editor-atoms";
+import { createEmptyEdgeDraft } from "../../features/graph-editor/shell/state/editor-state";
 import {
   graphAtom,
   syncExternalGraphAtom,
-} from "../features/graph-editor/shell/state/graph-atoms";
+} from "../../features/graph-editor/shell/state/graph-atoms";
 import {
   executeCommandAtom,
   futureAtom,
   historyAtom,
-} from "../features/graph-editor/shell/state/history-atoms";
+} from "../../features/graph-editor/shell/state/history-atoms";
 
 const failures: string[] = [];
 

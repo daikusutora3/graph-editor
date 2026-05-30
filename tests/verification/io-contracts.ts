@@ -1,15 +1,15 @@
-import { defaultGraphSettings } from "../features/graph-editor/core/graph/graph-factory";
-import type { GraphModel } from "../features/graph-editor/core/graph/model";
+import { defaultGraphSettings } from "../../features/graph-editor/core/graph/graph-factory";
+import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   exportGraph,
   type GraphExportFormat,
-} from "../features/graph-editor/io/export-graph";
-import { importGraphInput } from "../features/graph-editor/io/import-graph";
+} from "../../features/graph-editor/io/export-graph";
+import { importGraphInput } from "../../features/graph-editor/io/import-graph";
 import {
   MAX_IMPORT_EDGES,
   MAX_IMPORT_INPUT_CHARS,
   MAX_IMPORT_NODES,
-} from "../features/graph-editor/io/import-utils";
+} from "../../features/graph-editor/io/import-utils";
 
 const failures: string[] = [];
 

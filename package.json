@@ -28,15 +28,10 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "typecheck": "tsc --noEmit",
-    "verify:core": "bun run scripts/verify-graph-core.ts",
-    "verify:samples": "bun run scripts/verify-samples.ts",
-    "verify:layouts": "bun run scripts/verify-layouts.ts",
-    "verify:cytoscape": "bun run scripts/verify-cytoscape-adapter.ts",
-    "verify:editor": "bun run scripts/verify-editor-state.ts",
-    "verify:io": "bun run scripts/verify-io-contracts.ts",
-    "verify:release": "bun run scripts/verify-release.ts",
-    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify:core && bun run verify:samples && bun run verify:layouts && bun run verify:cytoscape && bun run verify:editor && bun run verify:io",
-    "check:all": "bun run check && bun run build && bun run verify:release"
+    "verify": "bun run tests/verification/run-all.ts",
+    "test": "bun run verify",
+    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify",
+    "check:all": "bun run check && bun run build && bun run verify release"
   },
   "dependencies": {
     "clsx": "2.1.1",

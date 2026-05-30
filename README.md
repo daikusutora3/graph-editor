@@ -51,19 +51,16 @@ Open the local URL printed by Next.js, usually `http://localhost:3000`.
 bun run typecheck
 bun run lint
 bun run format:check
+bun run verify
 bun run check
 bun run check:all
 bun run build
 ```
 
-For deeper project checks:
+To run specific verification suites:
 
 ```bash
-bun run verify:core
-bun run verify:samples
-bun run verify:layouts
-bun run verify:editor
-bun run verify:io
+bun run verify core samples layouts cytoscape editor io
 ```
 
 ## Tech Stack
@@ -88,7 +85,7 @@ features/graph-editor/  Graph editor feature modules
   samples/              Curated sample graph catalog
   shell/                Editor state and top-level UI shell
   ui/                   Panels, toolbar, starter dialog, screenshot controls
-scripts/                Verification scripts
+tests/verification/     Graph, IO, layout, adapter, and release checks
 public/brand/           App icons and logo assets
 ```
 

@@ -4,16 +4,16 @@ import {
   sampleExpectations,
   sampleGraphKinds,
   type SampleGraphKind,
-} from "../features/graph-editor/samples";
+} from "../../features/graph-editor/samples";
 import type {
   GraphModel,
   NodeId,
-} from "../features/graph-editor/core/graph/model";
+} from "../../features/graph-editor/core/graph/model";
 import {
   connectedComponents,
   isBipartite,
   isDirectedAcyclic,
-} from "../features/graph-editor/core/graph/graph-analysis";
+} from "../../features/graph-editor/core/graph/graph-analysis";
 
 type IndexedGraph = {
   nodeCount: number;
