@@ -1,13 +1,19 @@
 import type { MetadataRoute } from "next";
 
+import {
+  APP_DESCRIPTION,
+  APP_NAME,
+  APPLE_TOUCH_ICON,
+  SOCIAL_IMAGE,
+} from "@/lib/site-metadata";
+
 export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Graph Editor",
-    short_name: "Graph Editor",
-    description:
-      "Create, edit, arrange, and export graph theory diagrams directly in the browser.",
+    name: APP_NAME,
+    short_name: APP_NAME,
+    description: APP_DESCRIPTION,
     start_url: "/",
     scope: "/",
     display: "standalone",
@@ -15,12 +21,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#0f172a",
     icons: [
       {
-        src: "/brand/graph-editor-logo-180.png",
+        src: APPLE_TOUCH_ICON,
         sizes: "180x180",
         type: "image/png",
       },
       {
-        src: "/brand/graph-editor-logo.webp",
+        src: SOCIAL_IMAGE,
         sizes: "512x512",
         type: "image/webp",
       },
