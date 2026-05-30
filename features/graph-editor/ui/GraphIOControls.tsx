@@ -33,7 +33,7 @@ export function GraphIOControls() {
     <>
       <div
         ref={controller.railRef}
-        className="fixed top-[var(--app-space-3)] right-[var(--app-space-3)] z-[90] flex flex-col items-center gap-1.5 rounded-[calc(var(--app-radius-md)+2px)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] p-1.5 shadow-[var(--app-shadow-card)] backdrop-blur-xl"
+        className="fixed top-[var(--app-space-3)] right-[var(--app-space-3)] z-[90] flex flex-col items-center gap-1 rounded-[calc(var(--app-radius-md)+2px)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] p-1 shadow-[var(--app-shadow-card)] backdrop-blur-xl"
       >
         <RailActionButton
           label={
@@ -228,7 +228,7 @@ function RailActionButton({
         disabled={disabled}
         data-active={active || expanded}
         onClick={onClick}
-        className="gv-icon-button size-11 rounded-[var(--app-radius-md)] bg-transparent"
+        className="gv-icon-button size-10 rounded-[var(--app-radius-md)] bg-transparent"
       >
         <Icon className="size-4" />
       </button>
