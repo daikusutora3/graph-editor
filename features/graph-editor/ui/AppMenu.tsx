@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleDot, ExternalLink, Upload } from "lucide-react";
+import { CircleDot, ExternalLink, Share2 } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { useEffect, useRef } from "react";
 
@@ -68,25 +68,16 @@ export function AppMenu({ boundaryRef, open, onClose }: AppMenuProps) {
       aria-label={messages.appMenu.label}
       className="gv-app-menu gv-popover absolute top-[calc(100%+0.5rem)] left-0 z-[100] flex w-72 flex-col gap-1 p-1.5"
     >
-      <AppMenuLink
-        href={APP_REPOSITORY_URL}
-        label={messages.appMenu.github}
-        meta="daikusutora3/graph-editor"
-      >
+      <AppMenuLink href={APP_REPOSITORY_URL} label={messages.appMenu.github}>
         <GitHubLogo className="size-4" />
       </AppMenuLink>
-      <AppMenuLink
-        href={APP_ISSUES_URL}
-        label={messages.appMenu.reportIssue}
-        meta={messages.appMenu.reportIssueHelp}
-      >
+      <AppMenuLink href={APP_ISSUES_URL} label={messages.appMenu.reportIssue}>
         <CircleDot className="size-4" />
       </AppMenuLink>
       <AppMenuLink
         href={shareUrl}
         label={messages.appMenu.shareOnX}
-        meta={messages.appMenu.shareOnXHelp}
-        trailingIcon={<Upload className="size-3.5 text-[var(--text-mute)]" />}
+        trailingIcon={<Share2 className="size-3.5 text-[var(--text-mute)]" />}
       >
         <XLogo className="size-4" />
       </AppMenuLink>
@@ -98,13 +89,11 @@ function AppMenuLink({
   children,
   href,
   label,
-  meta,
   trailingIcon,
 }: {
   children: ReactNode;
   href: string;
   label: string;
-  meta: string;
   trailingIcon?: ReactNode;
 }) {
   return (
@@ -118,13 +107,8 @@ function AppMenuLink({
       <span className="grid size-7 place-items-center rounded-[var(--app-radius-sm)] bg-[var(--state-control-bg)]">
         {children}
       </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-[length:var(--app-text-xs)] leading-none font-bold">
-          {label}
-        </span>
-        <span className="truncate text-[0.6875rem] leading-none font-medium text-[var(--text-mute)]">
-          {meta}
-        </span>
+      <span className="block min-w-0 truncate text-[length:var(--app-text-xs)] leading-none font-bold">
+        {label}
       </span>
       {trailingIcon ?? (
         <ExternalLink className="size-3.5 text-[var(--text-mute)]" />
