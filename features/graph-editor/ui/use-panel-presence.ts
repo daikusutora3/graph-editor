@@ -1,7 +1,7 @@
 "use client";
 
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PANEL_EXIT_DURATION_MS = 180;
 
@@ -42,6 +42,11 @@ export function useAnimatedNullableState<T>(initialValue: T | null = null) {
   const [openValue, setOpenValue] = useState<T | null>(initialValue);
   const [presentValue, setPresentValue] = useState<T | null>(initialValue);
   const [closing, setClosing] = useState(false);
+  const openValueRef = useRef(openValue);
+  const presentValueRef = useRef(presentValue);
+
+  openValueRef.current = openValue;
+  presentValueRef.current = presentValue;
 
   useEffect(() => {
     if (!closing) {
@@ -56,31 +61,31 @@ export function useAnimatedNullableState<T>(initialValue: T | null = null) {
     return () => window.clearTimeout(timeout);
   }, [closing]);
 
-  const setValue = useCallback(
-    (nextAction: SetStateAction<T | null>) => {
-      const nextValue =
-        typeof nextAction === "function"
-          ? (nextAction as (current: T | null) => T | null)(openValue)
-          : nextAction;
+  const setValue = useCallback((nextAction: SetStateAction<T | null>) => {
+    const nextValue =
+      typeof nextAction === "function"
+        ? (nextAction as (current: T | null) => T | null)(openValueRef.current)
+        : nextAction;
 
-      if (nextValue === null) {
-        setOpenValue(null);
-        setClosing((currentClosing) => {
-          if (presentValue === null) {
-            return false;
-          }
+    if (nextValue === null) {
+      openValueRef.current = null;
+      setOpenValue(null);
+      setClosing((currentClosing) => {
+        if (presentValueRef.current === null) {
+          return false;
+        }
 
-          return currentClosing || true;
-        });
-        return;
-      }
+        return currentClosing || true;
+      });
+      return;
+    }
 
-      setOpenValue(nextValue);
-      setPresentValue(nextValue);
-      setClosing(false);
-    },
-    [openValue, presentValue],
-  );
+    openValueRef.current = nextValue;
+    presentValueRef.current = nextValue;
+    setOpenValue(nextValue);
+    setPresentValue(nextValue);
+    setClosing(false);
+  }, []);
 
   return {
     openValue,

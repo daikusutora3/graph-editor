@@ -48,13 +48,17 @@ export function useGraphCanvasModeEffects({
       return;
     }
 
-    cy.autoungrabify(mode !== "select");
-    cy.autounselectify(mode !== "select");
+    cy.selectionType("single");
+    cy.autoungrabify(true);
     cy.boxSelectionEnabled(mode === "select");
 
     if (mode !== "select") {
+      cy.autounselectify(false);
       cy.elements().unselect();
+      cy.autounselectify(true);
       setSelection(createEmptySelection());
+    } else {
+      cy.autounselectify(false);
     }
 
     if (mode !== "edge") {

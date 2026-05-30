@@ -24,7 +24,7 @@ type EdgeNodeHitboxesProps = {
   nodes: NodeHitbox[];
   sourceNodeId: NodeId | null;
   onConnect: (nodeId: NodeId, continueFromTarget: boolean) => void;
-  onContextMenu: (nodeId: NodeId, event: CanvasPointer) => void;
+  onContextMenu: (node: NodeHitbox, event: CanvasPointer) => void;
   onPointerEnter: (node: NodeHitbox) => void;
   onPointerLeave: (nodeId: NodeId) => void;
 };
@@ -72,7 +72,7 @@ export function EdgeNodeHitboxes({
             onContextMenu={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              onContextMenu(node.id, event);
+              onContextMenu(node, event);
             }}
           />
         );
@@ -83,6 +83,7 @@ export function EdgeNodeHitboxes({
 
 type SelectEdgeHitboxesProps = {
   edges: EdgeLabelHitbox[];
+  rangeSelectionActive: boolean;
   weighted: boolean;
   onContextMenu: (edge: EdgeLabelHitbox, event: CanvasPointer) => void;
   onEdit: (edgeId: EdgeId, position: RenderedPoint) => void;
@@ -91,6 +92,7 @@ type SelectEdgeHitboxesProps = {
 
 export function SelectEdgeHitboxes({
   edges,
+  rangeSelectionActive,
   weighted,
   onContextMenu,
   onEdit,
@@ -111,7 +113,7 @@ export function SelectEdgeHitboxes({
             y1={edge.sourceY}
             x2={edge.targetX}
             y2={edge.targetY}
-            pointerEvents="stroke"
+            pointerEvents={rangeSelectionActive ? "none" : "stroke"}
             className="cursor-pointer stroke-transparent"
             strokeWidth="18"
             strokeLinecap="round"
@@ -158,8 +160,10 @@ export function SelectEdgeHitboxes({
                 : messages.canvas.editEdgeLabel
           }
           className="absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-text rounded-[var(--app-radius-sm)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+          inert={rangeSelectionActive}
           style={{
             left: edge.x,
+            pointerEvents: rangeSelectionActive ? "none" : undefined,
             top: edge.y,
             width: edgeLabelHitboxWidth(edge.label),
           }}
@@ -190,11 +194,12 @@ export function SelectEdgeHitboxes({
 
 type SelectNodeHitboxesProps = {
   nodes: NodeHitbox[];
+  rangeSelectionActive: boolean;
   onClick: (
     node: NodeHitbox,
     event: ReactMouseEvent<HTMLButtonElement>,
   ) => void;
-  onContextMenu: (nodeId: NodeId, event: CanvasPointer) => void;
+  onContextMenu: (node: NodeHitbox, event: CanvasPointer) => void;
   onDoubleClick: (
     node: NodeHitbox,
     event: ReactMouseEvent<HTMLButtonElement>,
@@ -210,6 +215,7 @@ type SelectNodeHitboxesProps = {
 
 export function SelectNodeHitboxes({
   nodes,
+  rangeSelectionActive,
   onClick,
   onContextMenu,
   onDoubleClick,
@@ -235,7 +241,12 @@ export function SelectNodeHitboxes({
                 : `Select node ${node.label}`
           }
           className="absolute z-20 size-12 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none active:cursor-grabbing"
-          style={{ left: node.x, top: node.y }}
+          inert={rangeSelectionActive}
+          style={{
+            left: node.x,
+            pointerEvents: rangeSelectionActive ? "none" : undefined,
+            top: node.y,
+          }}
           onPointerDown={(event) => {
             event.stopPropagation();
             onPointerDown(node.id, event);
@@ -255,7 +266,7 @@ export function SelectNodeHitboxes({
           onContextMenu={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onContextMenu(node.id, event);
+            onContextMenu(node, event);
           }}
         />
       ))}

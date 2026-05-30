@@ -39,7 +39,6 @@ import { useGraphCanvasLifecycle } from "../adapters/cytoscape/graph-canvas-life
 import { useGraphCanvasModeEffects } from "./graph-canvas-mode-effects";
 import { useRenderedHitboxes } from "./graph-canvas-rendered-hitboxes";
 import { useGraphCanvasSelectionActions } from "./graph-canvas-selection-actions";
-import { useShiftRangeSelection } from "./graph-canvas-shift-range-selection";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/use-panel-presence";
@@ -54,7 +53,6 @@ import {
   FitGraphButton,
   InlineEditForm,
   InteractionLayers,
-  ShiftRangeSelectionLayer,
   ZoomControls,
 } from "./GraphCanvasOverlays";
 import { useGraphCanvasApi } from "./GraphCanvasProvider";
@@ -69,13 +67,13 @@ type GraphCanvasProps = {
 };
 
 export function GraphCanvas({ chrome }: GraphCanvasProps) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const pendingFitAfterUpdateRef = useRef(false);
   const suppressSelectionSyncRef = useRef(false);
   const [edgeCursor, setEdgeCursor] = useState<RenderedPoint | null>(null);
   const [edgeHoverNodeId, setEdgeHoverNodeId] = useState<NodeId | null>(null);
+  const [rangeSelectionKeyActive, setRangeSelectionKeyActive] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(100);
   const {
     openValue: contextMenuTarget,
@@ -133,6 +131,25 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
       setEdgeHoverNodeId(null);
     }
   }, [mode]);
+
+  useEffect(() => {
+    const syncRangeSelectionKey = (event: KeyboardEvent) => {
+      setRangeSelectionKeyActive(
+        event.shiftKey || event.metaKey || event.ctrlKey,
+      );
+    };
+    const resetRangeSelectionKey = () => setRangeSelectionKeyActive(false);
+
+    window.addEventListener("keydown", syncRangeSelectionKey);
+    window.addEventListener("keyup", syncRangeSelectionKey);
+    window.addEventListener("blur", resetRangeSelectionKey);
+
+    return () => {
+      window.removeEventListener("keydown", syncRangeSelectionKey);
+      window.removeEventListener("keyup", syncRangeSelectionKey);
+      window.removeEventListener("blur", resetRangeSelectionKey);
+    };
+  }, []);
 
   const addNodeAtGraphPosition = useCallback(
     (position: Position) => {
@@ -305,7 +322,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     cancelInlineEdit,
     deleteSelection,
     executeCommand,
-    renderedPointFromPointer,
     setContextMenuTarget,
     syncContextSelection,
   });
@@ -313,6 +329,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   useCytoscapeInteractionEvents({
     cyRef,
     mode,
+    selectionRef,
     setContextMenuTarget,
     setEdgeDraft,
     setSelection,
@@ -328,18 +345,11 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     nodeHitboxes,
     selection,
   });
-  const shiftRangeSelection = useShiftRangeSelection({
-    containerRef,
-    edgeLabelHitboxes,
-    mode,
-    nodeHitboxes,
-    rootRef,
-    setSelection,
-  });
+  const rangeSelectionActive =
+    mode === "select" && rangeSelectionKeyActive && !inlineEdit;
 
   return (
     <div
-      ref={rootRef}
       className="relative h-full min-h-[420px] w-full overflow-hidden bg-[var(--bg-deep)]"
       onClick={() => setContextMenuTarget(null)}
       onContextMenu={(event) => event.preventDefault()}
@@ -371,10 +381,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           setContextMenuTarget(null);
           setEdgeDraft(createEmptyEdgeDraft());
         }}
-      />
-      <ShiftRangeSelectionLayer
-        active={shiftRangeSelection.active}
-        rect={shiftRangeSelection.rect}
       />
       {mode === "edge" ? (
         <>
@@ -425,13 +431,16 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
             );
           }}
           onConnect={drawEdgeFromNode}
-          onContextMenu={openNodeContextMenu}
+          onContextMenu={(node) =>
+            openNodeContextMenu(node.id, { x: node.x, y: node.y })
+          }
         />
       ) : null}
       {mode === "select" ? (
         <>
           <SelectEdgeHitboxes
             edges={edgeLabelHitboxes}
+            rangeSelectionActive={rangeSelectionActive}
             weighted={graph.settings.weighted}
             onSelect={selectEdge}
             onEdit={openEdgeInlineEdit}
@@ -439,6 +448,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           />
           <SelectNodeHitboxes
             nodes={nodeHitboxes}
+            rangeSelectionActive={rangeSelectionActive}
             onPointerDown={(nodeId, event) => {
               if (event.shiftKey) {
                 return;
@@ -468,7 +478,9 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
 
               openNodeLabelEdit(node.id, { x: node.x, y: node.y });
             }}
-            onContextMenu={openNodeContextMenu}
+            onContextMenu={(node) =>
+              openNodeContextMenu(node.id, { x: node.x, y: node.y })
+            }
           />
         </>
       ) : null}

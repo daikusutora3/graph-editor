@@ -25,6 +25,9 @@ export type EdgeLabelHitbox = {
   y: number;
 };
 
+export const NODE_HITBOX_SIZE = 48;
+export const EDGE_LABEL_HITBOX_HEIGHT = 32;
+
 export function readNodeHitboxes(cy: Core, graph: GraphModel): NodeHitbox[] {
   const labels = new Map(graph.nodes.map((node) => [node.id, node.label]));
 

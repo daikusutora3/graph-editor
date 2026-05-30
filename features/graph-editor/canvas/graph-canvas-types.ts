@@ -1,8 +1,22 @@
 import type { EdgeId, NodeId } from "../core/graph/model";
 
+export type ContextMenuAnchorRect = {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+};
+
 export type GraphContextMenuTarget =
-  | { kind: "node"; nodeId: NodeId; x: number; y: number }
   | {
+      anchorRect?: ContextMenuAnchorRect;
+      kind: "node";
+      nodeId: NodeId;
+      x: number;
+      y: number;
+    }
+  | {
+      anchorRect?: ContextMenuAnchorRect;
       kind: "edge";
       edgeId: EdgeId;
       sourceX: number;
