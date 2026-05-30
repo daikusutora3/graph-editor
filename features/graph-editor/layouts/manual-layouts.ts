@@ -171,14 +171,6 @@ const manualLayoutDefinitions = [
     priority: "primary",
     positions: (model) => layoutSpread(model),
   },
-  {
-    kind: "spiral",
-    label: "螺旋",
-    subtitle: "渦巻き状",
-    tooltip: "頂点を番号順に渦巻き状へ並べます",
-    priority: "advanced",
-    positions: (model) => layoutSpiral(orderedNodeIds(model)),
-  },
 ] as const satisfies readonly LayoutRuntimeDefinition[];
 
 export type LayoutKind = (typeof manualLayoutDefinitions)[number]["kind"];
@@ -870,23 +862,6 @@ function layoutPathIds(nodeIds: NodeId[]) {
         y: 0,
       },
     ]),
-  ) as Record<NodeId, { x: number; y: number }>;
-}
-
-function layoutSpiral(nodeIds: NodeId[]) {
-  return Object.fromEntries(
-    nodeIds.map((nodeId, index) => {
-      const angle = index * 0.72;
-      const radius = 44 + index * 23;
-
-      return [
-        nodeId,
-        {
-          x: Math.round(Math.cos(angle) * radius),
-          y: Math.round(Math.sin(angle) * radius),
-        },
-      ];
-    }),
   ) as Record<NodeId, { x: number; y: number }>;
 }
 

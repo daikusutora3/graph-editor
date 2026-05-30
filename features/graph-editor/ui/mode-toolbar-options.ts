@@ -46,6 +46,4 @@ export const toolbarModes: ToolbarModeOption[] = [
 ];
 
 export const toolbarLayouts: readonly ToolbarLayoutOption[] =
-  layoutDefinitions.filter(
-    (layout) => layout.kind !== "components" && layout.kind !== "spiral",
-  );
+  layoutDefinitions.filter((layout) => layout.kind !== "components");
