@@ -117,12 +117,13 @@ export function CompactToolbarLayer({
               }
               armed={clearArmed}
               disabled={isGraphEmpty}
+              showTooltip={!clearArmed}
               onClick={onClearEditor}
             >
               <Trash2 className="size-4" />
             </CompactToolbarButton>
             {clearArmed ? (
-              <span className="pointer-events-none absolute top-1/2 left-[calc(100%+0.5rem)] max-w-[min(18rem,calc(100vw-4rem))] -translate-y-1/2 rounded-[var(--app-radius-pill)] border border-[var(--divider)] bg-[var(--surface)] px-2.5 py-1 text-[length:var(--app-text-xs)] leading-tight font-semibold text-[var(--text)] shadow-[var(--app-shadow-menu)]">
+              <span className="pointer-events-none absolute top-1/2 left-[calc(100%+0.5rem)] w-max max-w-[min(18rem,calc(100vw-4rem))] -translate-y-1/2 rounded-[var(--app-radius-pill)] border border-[var(--divider)] bg-[var(--surface)] px-2.5 py-1 text-[length:var(--app-text-xs)] leading-tight font-semibold whitespace-nowrap text-[var(--text)] shadow-[var(--app-shadow-menu)]">
                 {messages.toolbar.clear.armedLabel}
               </span>
             ) : null}
@@ -143,6 +144,7 @@ function CompactToolbarButton({
   active,
   armed,
   disabled,
+  showTooltip = true,
   onClick,
   children,
 }: {
@@ -151,11 +153,17 @@ function CompactToolbarButton({
   active?: boolean;
   armed?: boolean;
   disabled?: boolean;
+  showTooltip?: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
   return (
     <span className="group relative block">
+      {!disabled && showTooltip ? (
+        <span role="tooltip" className="gv-tooltip">
+          {title}
+        </span>
+      ) : null}
       <button
         type="button"
         aria-label={label}
@@ -163,7 +171,6 @@ function CompactToolbarButton({
         data-active={active}
         disabled={disabled}
         onClick={onClick}
-        title={title}
         className={cn(
           "gv-icon-button size-10 rounded-[var(--app-radius-md)]",
           active && "is-active",
@@ -190,11 +197,13 @@ function CollapsedLogoToggle({
 }) {
   return (
     <span className="group relative block">
+      <span role="tooltip" className="gv-tooltip">
+        {title}
+      </span>
       <button
         ref={buttonRef}
         type="button"
         aria-label={label}
-        title={title}
         onClick={onClick}
         className="gv-icon-button group size-10 rounded-[var(--app-radius-md)]"
       >
