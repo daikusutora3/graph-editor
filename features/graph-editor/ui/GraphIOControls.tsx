@@ -33,7 +33,7 @@ export function GraphIOControls() {
     <>
       <div
         ref={controller.railRef}
-        className="fixed top-[var(--app-space-3)] right-[var(--app-space-3)] z-[90] flex flex-col items-center gap-1 rounded-[calc(var(--app-radius-md)+2px)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] p-1 shadow-[var(--app-shadow-card)] backdrop-blur-xl"
+        className="gv-right-rail fixed top-[var(--app-space-3)] right-[var(--app-space-3)] z-[90] flex flex-col items-center gap-1 rounded-[calc(var(--app-radius-md)+2px)] border border-[var(--divider)] p-1 shadow-[var(--app-shadow-card)] backdrop-blur-xl"
       >
         <RailActionButton
           label={
