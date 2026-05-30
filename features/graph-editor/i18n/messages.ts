@@ -565,11 +565,6 @@ const ja = {
       subtitle: "頂点を少し離す",
       tooltip: "現在位置を起点に、近すぎる頂点を少し離して見やすくします",
     },
-    spiral: {
-      label: "螺旋",
-      subtitle: "渦巻き状",
-      tooltip: "頂点を番号順に渦巻き状へ並べます",
-    },
     disabled: {
       emptyGraph: "頂点がありません",
       notForest: "木・森ではありません",
@@ -858,11 +853,6 @@ const en: Messages = {
       subtitle: "Move nodes apart",
       tooltip: "Move nearby nodes apart from their current positions",
     },
-    spiral: {
-      label: "Spiral",
-      subtitle: "By index",
-      tooltip: "Place nodes in index order along a spiral",
-    },
     disabled: {
       emptyGraph: "There are no nodes.",
       notForest: "This is not a tree or forest.",
@@ -1145,11 +1135,6 @@ const zhHans: Messages = {
       label: "消除重叠",
       subtitle: "稍微拉开顶点",
       tooltip: "从当前位置拉开过近的顶点",
-    },
-    spiral: {
-      label: "螺旋",
-      subtitle: "按编号",
-      tooltip: "按编号顺序沿螺旋排列",
     },
     disabled: {
       emptyGraph: "没有顶点。",
