@@ -1,21 +1,21 @@
-import { resolveInlineEditCommit } from "../features/graph-editor/core/graph/inline-edit-commit";
-import { defaultGraphSettings } from "../features/graph-editor/core/graph/graph-factory";
+import { resolveInlineEditCommit } from "../../features/graph-editor/core/graph/inline-edit-commit";
+import { defaultGraphSettings } from "../../features/graph-editor/core/graph/graph-factory";
 import {
   deleteSelectionCommand,
   updateSettingsCommand,
-} from "../features/graph-editor/core/graph/graph-intents";
-import { applyGraphPatch } from "../features/graph-editor/core/graph/graph-patch";
-import { prepareGraphTransaction } from "../features/graph-editor/core/graph/graph-transaction";
+} from "../../features/graph-editor/core/graph/graph-intents";
+import { applyGraphPatch } from "../../features/graph-editor/core/graph/graph-patch";
+import { prepareGraphTransaction } from "../../features/graph-editor/core/graph/graph-transaction";
 import {
   computeEdgeRouting,
   shouldAvoidNodesForEdgeRouting,
-} from "../features/graph-editor/core/layout/edge-routing";
-import { importGraphInput } from "../features/graph-editor/io/import-graph";
-import { hasGraphContent } from "../features/graph-editor/core/graph/selectors";
+} from "../../features/graph-editor/core/layout/edge-routing";
+import { importGraphInput } from "../../features/graph-editor/io/import-graph";
+import { hasGraphContent } from "../../features/graph-editor/core/graph/selectors";
 import type {
   GraphEdge,
   GraphModel,
-} from "../features/graph-editor/core/graph/model";
+} from "../../features/graph-editor/core/graph/model";
 
 const failures: string[] = [];
 

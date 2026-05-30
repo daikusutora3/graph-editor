@@ -43,19 +43,16 @@ Next.js が表示するローカルURLを開きます。通常は `http://localh
 bun run typecheck
 bun run lint
 bun run format:check
+bun run verify
 bun run check
 bun run check:all
 bun run build
 ```
 
-より細かい検証:
+個別の検証だけを実行する場合:
 
 ```bash
-bun run verify:core
-bun run verify:samples
-bun run verify:layouts
-bun run verify:editor
-bun run verify:io
+bun run verify core samples layouts cytoscape editor io
 ```
 
 ## 技術スタック
@@ -80,7 +77,7 @@ features/graph-editor/  Graph editor feature modules
   samples/              Curated sample graph catalog
   shell/                Editor state and top-level UI shell
   ui/                   Panels, toolbar, starter dialog, screenshot controls
-scripts/                Verification scripts
+tests/verification/     Graph, IO, layout, adapter, and release checks
 public/brand/           App icons and logo assets
 ```
 

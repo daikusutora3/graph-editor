@@ -1,11 +1,11 @@
-import { createEmptyGraphModel } from "../features/graph-editor/core/graph/graph-factory";
-import type { GraphModel } from "../features/graph-editor/core/graph/model";
-import { createEdgeRoutingCacheKey } from "../features/graph-editor/core/layout/edge-routing";
+import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
+import type { GraphModel } from "../../features/graph-editor/core/graph/model";
+import { createEdgeRoutingCacheKey } from "../../features/graph-editor/core/layout/edge-routing";
 import {
   createManualLayoutCommand,
   layoutDefinitions,
   manualLayoutDisabledReason,
-} from "../features/graph-editor/layouts";
+} from "../../features/graph-editor/layouts";
 
 const failures: string[] = [];
 const kinds = layoutDefinitions.map((definition) => definition.kind);

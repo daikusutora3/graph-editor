@@ -3,10 +3,10 @@ import cytoscape, { type Core } from "cytoscape";
 import {
   graphModelToCytoscapeElements,
   type CytoscapeElementOptions,
-} from "../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
-import { syncCytoscapeElements } from "../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
-import { createEmptyGraphModel } from "../features/graph-editor/core/graph/graph-factory";
-import type { GraphModel } from "../features/graph-editor/core/graph/model";
+} from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
+import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
+import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
+import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
 const failures: string[] = [];
 
