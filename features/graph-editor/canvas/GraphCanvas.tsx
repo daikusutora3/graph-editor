@@ -3,7 +3,6 @@
 import type { Core, Position } from "cytoscape";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { graphModelToCytoscapeElements } from "../adapters/cytoscape/cytoscape-adapter";
@@ -40,6 +39,7 @@ import { useGraphCanvasLifecycle } from "../adapters/cytoscape/graph-canvas-life
 import { useGraphCanvasModeEffects } from "./graph-canvas-mode-effects";
 import { useRenderedHitboxes } from "./graph-canvas-rendered-hitboxes";
 import { useGraphCanvasSelectionActions } from "./graph-canvas-selection-actions";
+import { useRangeSelectionPointerForwarding } from "./graph-canvas-range-selection-forwarding";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/use-panel-presence";
@@ -184,52 +184,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
       y: (event.clientY - rect.top - pan.y) / zoom,
     });
   };
-
-  const forwardRangeSelectionPointerDown = useCallback(
-    (event: ReactPointerEvent<Element>) => {
-      if (
-        event.button !== 0 ||
-        (!event.shiftKey && !event.metaKey && !event.ctrlKey)
-      ) {
-        return false;
-      }
-
-      const canvas = containerRef.current?.querySelector("canvas");
-
-      if (!canvas) {
-        return false;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      dispatchCanvasMouseEvent(canvas, "mousedown", event.nativeEvent);
-
-      const forwardPointerMove = (moveEvent: PointerEvent) => {
-        moveEvent.preventDefault();
-        moveEvent.stopPropagation();
-        dispatchCanvasMouseEvent(canvas, "mousemove", moveEvent);
-      };
-      const stopForwarding = () => {
-        window.removeEventListener("pointermove", forwardPointerMove, true);
-        window.removeEventListener("pointerup", forwardPointerUp, true);
-        window.removeEventListener("pointercancel", forwardPointerCancel, true);
-      };
-      const forwardPointerUp = (upEvent: PointerEvent) => {
-        upEvent.preventDefault();
-        upEvent.stopPropagation();
-        dispatchCanvasMouseEvent(canvas, "mouseup", upEvent);
-        stopForwarding();
-      };
-      const forwardPointerCancel = () => stopForwarding();
-
-      window.addEventListener("pointermove", forwardPointerMove, true);
-      window.addEventListener("pointerup", forwardPointerUp, true);
-      window.addEventListener("pointercancel", forwardPointerCancel, true);
-
-      return true;
-    },
-    [],
-  );
 
   const drawEdgeFromNode = useCallback(
     (targetNodeId: NodeId, continueFromTarget = false) => {
@@ -376,7 +330,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   useCytoscapeInteractionEvents({
     cyRef,
     mode,
-    selectionRef,
     setContextMenuTarget,
     setEdgeDraft,
     setSelection,
@@ -394,6 +347,10 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   });
   const rangeSelectionActive =
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
+  const forwardRangeSelectionPointerDown = useRangeSelectionPointerForwarding({
+    containerRef,
+    enabled: mode === "select" && !inlineEdit,
+  });
 
   return (
     <div
@@ -547,27 +504,5 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
         />
       ) : null}
     </div>
-  );
-}
-
-function dispatchCanvasMouseEvent(
-  canvas: HTMLCanvasElement,
-  type: "mousedown" | "mousemove" | "mouseup",
-  event: MouseEvent,
-) {
-  canvas.dispatchEvent(
-    new MouseEvent(type, {
-      bubbles: true,
-      button: event.button,
-      buttons: event.buttons,
-      cancelable: true,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      ctrlKey: event.ctrlKey,
-      metaKey: event.metaKey,
-      shiftKey: event.shiftKey,
-      screenX: event.screenX,
-      screenY: event.screenY,
-    }),
   );
 }
