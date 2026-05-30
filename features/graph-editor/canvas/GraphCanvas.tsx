@@ -421,7 +421,13 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           />
           <SelectNodeHitboxes
             nodes={nodeHitboxes}
-            onPointerDown={(nodeId, event) => htmlNodeDrag.start(event, nodeId)}
+            onPointerDown={(nodeId, event) => {
+              if (event.shiftKey) {
+                return;
+              }
+
+              htmlNodeDrag.start(event, nodeId);
+            }}
             onPointerMove={htmlNodeDrag.update}
             onPointerUp={htmlNodeDrag.finish}
             onPointerCancel={htmlNodeDrag.finish}
@@ -435,7 +441,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
                 return;
               }
 
-              selectNode(node.id);
+              selectNode(node.id, event.shiftKey);
             }}
             onDoubleClick={(node) => {
               if (!htmlNodeDrag.canOpenInlineEdit()) {

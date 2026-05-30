@@ -14,6 +14,8 @@
 
 Graph Editor 是一个 local-first 的浏览器应用，用来把图论想法快速变成清晰、可编辑的图形。你可以粘贴题面中的边列表，从内置样例开始，调整布局，然后导出为文本数据或 PNG 图片。
 
+公开地址: <https://graph-editor.daikusutora3.workers.dev>
+
 ## 亮点
 
 - **快速输入**: 支持粘贴边列表、邻接表、邻接矩阵和应用的 JSON 格式，并会自动识别常见格式。
@@ -50,7 +52,6 @@ bun run verify:core
 bun run verify:samples
 bun run verify:layouts
 bun run verify:architecture
-bun run verify:deployment
 bun run verify:editor
 bun run verify:io
 ```
@@ -89,8 +90,8 @@ bun run build
 
 应用已配置 Next.js `output: "export"`，可以进行静态导出。
 公开发布前请运行 `bun run check:all`。它会覆盖类型检查、lint、格式检查、
-图模型/样例/布局/静态部署验证、生产构建和 bundle budget。Cloudflare 静态
-资源部署由 `wrangler.jsonc` 和 `public/_headers` 保护。
+图模型/样例/布局/编辑器状态/IO 验证、生产构建和 bundle budget。Cloudflare 静态
+资源部署使用 `wrangler.jsonc` 和 `public/_headers`。
 
 ## 许可证
 

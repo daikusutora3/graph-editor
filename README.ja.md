@@ -17,6 +17,8 @@
 Graph Editor は、グラフのアイデアをすばやく見える形にするための
 local-first なブラウザアプリです。問題文の辺リストを貼り付ける、サンプルから始める、レイアウトを整える、テキスト形式や PNG として書き出す、という流れを一つの画面で扱えます。
 
+公開URL: <https://graph-editor.daikusutora3.workers.dev>
+
 ## 特徴
 
 - **すばやい入力**: 辺リスト、隣接リスト、隣接行列、アプリ用 JSON を貼り付けられます。よくある形式は自動検出します。
@@ -53,7 +55,6 @@ bun run verify:core
 bun run verify:samples
 bun run verify:layouts
 bun run verify:architecture
-bun run verify:deployment
 bun run verify:editor
 bun run verify:io
 ```
@@ -92,9 +93,9 @@ bun run build
 
 Next.js の `output: "export"` を使った静的書き出しに対応しています。
 公開前は `bun run check:all` を実行してください。型チェック、lint、
-フォーマット確認、グラフモデル・サンプル・レイアウト・静的デプロイの検証、
+フォーマット確認、グラフモデル・サンプル・レイアウト・エディタ状態・IO の検証、
 本番ビルド、bundle budget の確認までまとめて実行します。Cloudflare の静的
-アセット配信は `wrangler.jsonc` と `public/_headers` で守っています。
+アセット配信には `wrangler.jsonc` と `public/_headers` を使います。
 
 ## ライセンス
 

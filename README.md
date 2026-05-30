@@ -18,6 +18,8 @@ Graph Editor is a local-first browser app for turning graph ideas into clean,
 editable diagrams. Paste an edge list from a problem statement, start from a
 curated sample, adjust the layout, and export the graph as text data or a PNG.
 
+Public app: <https://graph-editor.daikusutora3.workers.dev>
+
 ## Highlights
 
 - **Fast graph input**: paste edge lists, adjacency lists, adjacency matrices,
@@ -61,7 +63,6 @@ bun run verify:core
 bun run verify:samples
 bun run verify:layouts
 bun run verify:architecture
-bun run verify:deployment
 bun run verify:editor
 bun run verify:io
 ```
@@ -101,9 +102,8 @@ bun run build
 The app is configured for static export with Next.js `output: "export"`.
 Before publishing a public build, run `bun run check:all`. This covers
 type-checking, linting, formatting, graph model verification, sample/layout
-guards, static deployment guards, a production build, and the bundle budget.
-Cloudflare static asset deploys are guarded by `wrangler.jsonc` and
-`public/_headers`.
+guards, editor-state and IO checks, a production build, and the bundle budget.
+Cloudflare static asset deploys use `wrangler.jsonc` and `public/_headers`.
 
 ## License
 

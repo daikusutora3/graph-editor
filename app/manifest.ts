@@ -14,6 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: APP_NAME,
     short_name: APP_NAME,
     description: APP_DESCRIPTION,
+    id: "/",
     start_url: "/",
     scope: "/",
     display: "standalone",

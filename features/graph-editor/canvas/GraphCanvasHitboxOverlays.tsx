@@ -86,7 +86,7 @@ type SelectEdgeHitboxesProps = {
   weighted: boolean;
   onContextMenu: (edge: EdgeLabelHitbox, event: CanvasPointer) => void;
   onEdit: (edgeId: EdgeId, position: RenderedPoint) => void;
-  onSelect: (edgeId: EdgeId) => void;
+  onSelect: (edgeId: EdgeId, additive: boolean) => void;
 };
 
 export function SelectEdgeHitboxes({
@@ -122,7 +122,7 @@ export function SelectEdgeHitboxes({
                 return;
               }
 
-              onSelect(edge.id);
+              onSelect(edge.id, event.shiftKey);
             }}
             onDoubleClick={(event) => {
               event.preventDefault();
@@ -170,7 +170,7 @@ export function SelectEdgeHitboxes({
               return;
             }
 
-            onSelect(edge.id);
+            onSelect(edge.id, event.shiftKey);
           }}
           onDoubleClick={(event) => {
             event.preventDefault();

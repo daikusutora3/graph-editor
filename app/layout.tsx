@@ -14,11 +14,14 @@ import {
 } from "@/lib/site-metadata";
 import {
   DEFAULT_THEME,
+  SUPPORTED_THEME_MODES,
   THEME_STORAGE_KEY,
 } from "@/features/graph-editor/ui/theme-constants";
 import {
   DEFAULT_LOCALE,
+  LOCALE_ALIASES,
   LOCALE_STORAGE_KEY,
+  SUPPORTED_LOCALES,
 } from "@/features/graph-editor/i18n/locale";
 
 import "./globals.css";
@@ -27,8 +30,9 @@ const appInitScript = `
 (() => {
   try {
     const stored = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    const supportedThemes = new Set(${JSON.stringify(SUPPORTED_THEME_MODES)});
     const theme =
-      stored === "light" || stored === "dark"
+      supportedThemes.has(stored)
         ? stored
         : ${JSON.stringify(DEFAULT_THEME)};
     document.documentElement.dataset.theme = theme;
@@ -40,19 +44,9 @@ const appInitScript = `
 })();
 
 (() => {
-  const supported = new Set(["ja", "en", "zh-Hans"]);
+  const supported = new Set(${JSON.stringify(SUPPORTED_LOCALES)});
   const appMetadata = ${JSON.stringify(appLocaleMetadata)};
-  const aliases = new Map([
-    ["ja", "ja"],
-    ["ja-jp", "ja"],
-    ["en", "en"],
-    ["en-us", "en"],
-    ["en-gb", "en"],
-    ["zh", "zh-Hans"],
-    ["zh-cn", "zh-Hans"],
-    ["zh-hans", "zh-Hans"],
-    ["zh-sg", "zh-Hans"],
-  ]);
+  const aliases = new Map(Object.entries(${JSON.stringify(LOCALE_ALIASES)}));
   const toLocale = (value) =>
     value ? aliases.get(String(value).toLowerCase()) ?? null : null;
   const detectLocale = () => {

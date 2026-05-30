@@ -12,8 +12,10 @@ type GraphExportFormatLabel =
 type Messages = {
   app: {
     title: string;
-    byline: string;
+    authorPrefix: string;
     description: string;
+    documentTitle: string;
+    documentDescription: string;
     logoAlt: string;
   };
   common: {
@@ -338,8 +340,11 @@ const zhHansSampleItems = {
 const ja = {
   app: {
     title: "Graph Editor",
-    byline: "by daikusutora",
+    authorPrefix: "by",
     description: "グラフを作成・編集・書き出しできるブラウザアプリ",
+    documentTitle: "Graph Editor | グラフ理論の図をブラウザで作成",
+    documentDescription:
+      "ブラウザ上でグラフ理論の図を作成・編集・配置・書き出しできるアプリです。",
     logoAlt: "Graph Editor by daikusutora",
   },
   common: {
@@ -623,8 +628,11 @@ const en: Messages = {
   ...ja,
   app: {
     title: "Graph Editor",
-    byline: "by daikusutora",
+    authorPrefix: "by",
     description: "Create, edit, and export graphs in the browser.",
+    documentTitle: "Graph Editor | Graph theory diagrams in the browser",
+    documentDescription:
+      "Create, edit, arrange, and export graph theory diagrams directly in the browser.",
     logoAlt: "Graph Editor by daikusutora",
   },
   common: {
@@ -911,8 +919,10 @@ const zhHans: Messages = {
   ...ja,
   app: {
     title: "Graph Editor",
-    byline: "by daikusutora",
+    authorPrefix: "作者",
     description: "在浏览器中创建、编辑并导出图。",
+    documentTitle: "Graph Editor | 在浏览器中绘制图论图形",
+    documentDescription: "直接在浏览器中创建、编辑、排布并导出图论图形。",
     logoAlt: "Graph Editor by daikusutora",
   },
   common: {

@@ -1,0 +1,4 @@
+[install]
+# Avoid newly published package versions during dependency resolution.
+# 604800 seconds = 7 days.
+minimumReleaseAge = 604800

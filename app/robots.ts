@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+import { SITE_URL } from "@/lib/site-metadata";
+
 const AI_CRAWLERS = [
   "Amazonbot",
   "Applebot-Extended",
@@ -34,5 +36,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
       },
     ],
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }
