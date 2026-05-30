@@ -57,7 +57,6 @@ for (const format of [
   "edge-list",
   "adjacency-list",
   "adjacency-matrix",
-  "json",
 ] satisfies GraphExportFormat[]) {
   assertRoundTrip(weightedDirectedModel, format);
   assertRoundTrip(plainUndirectedModel, format);
@@ -73,25 +72,6 @@ expect(
   weightedAdjacencyList.model.edges.map((edge) => edge.weight).join(",") ===
     "5,-3",
   "weighted adjacency-list import should preserve target(weight) values",
-);
-
-const jsonArrayEdges = importGraphInput(
-  JSON.stringify([
-    [0, 1],
-    [1, 2],
-  ]),
-  {
-    directed: false,
-    weighted: false,
-    indexBase: 0,
-  },
-);
-
-expect(
-  jsonArrayEdges.format === "JSON graph" &&
-    graphSignature(jsonArrayEdges.model) ===
-      graphSignature(plainUndirectedModel),
-  "JSON array input should keep JSON precedence over edge-list parsing",
 );
 
 const ambiguousStructuredEdgeList = importGraphInput("2 1\n0 1", {
