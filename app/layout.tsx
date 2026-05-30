@@ -9,19 +9,34 @@ import {
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
 } from "@/features/graph-editor/i18n/locale";
-import { messagesByLocale } from "@/features/graph-editor/i18n/messages";
 
 import "./globals.css";
 
-const appLocaleMetadata = Object.fromEntries(
-  Object.entries(messagesByLocale).map(([locale, messages]) => [
-    locale,
-    {
-      description: messages.app.description,
-      title: messages.app.title,
-    },
-  ]),
-);
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://graph-editor.pages.dev"
+).replace(/\/$/, "");
+const APP_NAME = "Graph Editor";
+const APP_TITLE = `${APP_NAME} | グラフ理論の図をブラウザで作成`;
+const APP_DESCRIPTION =
+  "Create, edit, arrange, and export graph theory diagrams directly in the browser.";
+const APP_DESCRIPTION_JA =
+  "ブラウザ上でグラフ理論の図を作成・編集・配置・書き出しできるアプリです。";
+const SOCIAL_IMAGE = "/brand/graph-editor-logo.webp";
+
+const appLocaleMetadata = {
+  ja: {
+    description: APP_DESCRIPTION_JA,
+    title: APP_TITLE,
+  },
+  en: {
+    description: APP_DESCRIPTION,
+    title: `${APP_NAME} | Graph theory diagrams in the browser`,
+  },
+  "zh-Hans": {
+    description: "直接在浏览器中创建、编辑、排布并导出图论图形。",
+    title: `${APP_NAME} | 在浏览器中绘制图论图形`,
+  },
+};
 
 const appInitScript = `
 (() => {
@@ -86,19 +101,71 @@ const appInitScript = `
 })();
 `;
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: APP_NAME,
+  alternateName: "Graph Editor by daikusutora",
+  applicationCategory: "DesignApplication",
+  operatingSystem: "Any",
+  url: SITE_URL,
+  image: `${SITE_URL}${SOCIAL_IMAGE}`,
+  description: APP_DESCRIPTION,
+  inLanguage: ["ja", "en", "zh-Hans"],
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  featureList: [
+    "Import edge lists, adjacency lists, adjacency matrices, and JSON",
+    "Edit directed, undirected, weighted, and unweighted graphs",
+    "Explore curated graph theory samples",
+    "Apply graph layouts and export PNG images",
+  ],
+};
+
 export const metadata: Metadata = {
-  title: messagesByLocale[DEFAULT_LOCALE].app.title,
-  description: messagesByLocale[DEFAULT_LOCALE].app.description,
+  metadataBase: new URL(SITE_URL),
+  applicationName: APP_NAME,
+  title: {
+    default: APP_TITLE,
+    template: `%s | ${APP_NAME}`,
+  },
+  description: APP_DESCRIPTION_JA,
+  keywords: [
+    "Graph Editor",
+    "graph theory",
+    "graph drawing",
+    "graph visualization",
+    "edge list",
+    "adjacency matrix",
+    "network diagram",
+    "グラフ理論",
+    "グラフ描画",
+  ],
+  authors: [{ name: "daikusutora" }],
+  creator: "daikusutora",
+  publisher: "daikusutora",
+  category: "graph theory",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       {
-        url: "/brand/graph-editor-logo.webp",
+        url: SOCIAL_IMAGE,
         type: "image/webp",
       },
     ],
     shortcut: [
       {
-        url: "/brand/graph-editor-logo.webp",
+        url: SOCIAL_IMAGE,
         type: "image/webp",
       },
     ],
@@ -109,6 +176,29 @@ export const metadata: Metadata = {
         type: "image/png",
       },
     ],
+  },
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    alternateLocale: ["en_US", "zh_CN"],
+    url: "/",
+    siteName: APP_NAME,
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    images: [
+      {
+        url: SOCIAL_IMAGE,
+        width: 512,
+        height: 512,
+        alt: "Graph Editor logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    images: [SOCIAL_IMAGE],
   },
 };
 
@@ -124,6 +214,10 @@ export default function RootLayout({
           id="app-init"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: appInitScript }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
         {children}
       </body>
