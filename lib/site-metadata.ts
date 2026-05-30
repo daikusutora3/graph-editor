@@ -23,9 +23,10 @@ export const appLocaleMetadata = {
   },
 } as const;
 
-export const APP_TITLE = appLocaleMetadata.ja.title;
-export const APP_DESCRIPTION = appLocaleMetadata.en.description;
-export const APP_DESCRIPTION_JA = appLocaleMetadata.ja.description;
+export const APP_PUBLIC_TITLE = appLocaleMetadata.ja.title;
+export const APP_PUBLIC_DESCRIPTION = appLocaleMetadata.ja.description;
+export const APP_TITLE = APP_PUBLIC_TITLE;
+export const APP_DESCRIPTION = APP_PUBLIC_DESCRIPTION;
 export const APP_DESCRIPTION_ZH_HANS = appLocaleMetadata["zh-Hans"].description;
 
 export const structuredData = {
@@ -37,7 +38,7 @@ export const structuredData = {
   operatingSystem: "Any",
   url: SITE_URL,
   image: `${SITE_URL}${SOCIAL_IMAGE}`,
-  description: APP_DESCRIPTION,
+  description: APP_PUBLIC_DESCRIPTION,
   inLanguage: ["ja", "en", "zh-Hans"],
   offers: {
     "@type": "Offer",
@@ -45,9 +46,9 @@ export const structuredData = {
     priceCurrency: "USD",
   },
   featureList: [
-    "Import edge lists, adjacency lists, adjacency matrices, and JSON",
-    "Edit directed, undirected, weighted, and unweighted graphs",
-    "Explore curated graph theory samples",
-    "Apply graph layouts and export PNG images",
+    "辺リスト、隣接リスト、隣接行列、JSONを読み込み",
+    "有向・無向、重み付き・重みなしグラフを編集",
+    "グラフ理論のサンプルから開始",
+    "レイアウトを適用してPNG画像を書き出し",
   ],
 } as const;
