@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, MessagesSquare, Upload } from "lucide-react";
+import { CircleDot, ExternalLink, Upload } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { useEffect, useRef } from "react";
 
@@ -80,7 +80,7 @@ export function AppMenu({ boundaryRef, open, onClose }: AppMenuProps) {
         label={messages.appMenu.reportIssue}
         meta={messages.appMenu.reportIssueHelp}
       >
-        <MessagesSquare className="size-4" />
+        <CircleDot className="size-4" />
       </AppMenuLink>
       <AppMenuLink
         href={shareUrl}
