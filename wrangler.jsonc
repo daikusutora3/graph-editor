@@ -1,0 +1,8 @@
+{
+  "name": "graph-editor",
+  "compatibility_date": "2026-05-30",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page",
+  },
+}
