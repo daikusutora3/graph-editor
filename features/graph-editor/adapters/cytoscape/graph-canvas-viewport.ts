@@ -12,9 +12,17 @@ export const MAX_CANVAS_ZOOM = 1.5;
 export const ZOOM_STEP = 0.1;
 const CANVAS_FIT_PADDING = 80;
 const COMPACT_OVERLAY_RAIL_WIDTH = 56;
+const VIEWPORT_RESCUE_TOLERANCE_PX = 8;
 export const APP_ANIMATION_DURATION_MS = 180;
 export const APP_ANIMATION_EASING =
   "cubic-bezier(0.2, 0, 0, 1)" as cytoscape.Css.TransitionTimingFunction;
+
+type RenderedViewport = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
 
 export function readZoomPercent(cy: Core) {
   return Math.round(cy.zoom() * 100);
@@ -35,16 +43,24 @@ export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
     x2: rect.width - insets.right,
     y2: rect.height,
   };
-  const graphBounds = cy.elements().renderedBoundingBox({
-    includeLabels: false,
-    includeOverlays: false,
-  });
+  return !cy
+    .nodes()
+    .toArray()
+    .some((node) =>
+      renderedPointInsideViewport(node.renderedPosition(), visibleBounds),
+    );
+}
 
+export function renderedPointInsideViewport(
+  point: Position,
+  viewport: RenderedViewport,
+  tolerance = VIEWPORT_RESCUE_TOLERANCE_PX,
+) {
   return (
-    graphBounds.x2 < visibleBounds.x1 ||
-    graphBounds.x1 > visibleBounds.x2 ||
-    graphBounds.y2 < visibleBounds.y1 ||
-    graphBounds.y1 > visibleBounds.y2
+    point.x >= viewport.x1 - tolerance &&
+    point.x <= viewport.x2 + tolerance &&
+    point.y >= viewport.y1 - tolerance &&
+    point.y <= viewport.y2 + tolerance
   );
 }
 

@@ -1,4 +1,4 @@
-import type { Css, ElementDefinition, StylesheetJson } from "cytoscape";
+import type { Core, Css, ElementDefinition, StylesheetJson } from "cytoscape";
 
 import {
   computeEdgeRouting,
@@ -108,6 +108,68 @@ export function computeCytoscapeEdgeRoutingMeta(
   edgeRoutingOptions?: EdgeRoutingOptions,
 ) {
   return computeEdgeRouting(model, edgeRoutingOptions);
+}
+
+export function syncCytoscapeEdgeRoutingData(
+  cy: Core,
+  model: GraphModel,
+  edgeRoutingOptions?: EdgeRoutingOptions,
+) {
+  const edgeRoutingMeta = computeCytoscapeEdgeRoutingMeta(
+    graphModelWithCytoscapeNodePositions(cy, model),
+    edgeRoutingOptions,
+  );
+
+  cy.edges().forEach((edge) => {
+    const meta = edgeRoutingMeta.get(edge.id());
+
+    if (!meta || !edgeRoutingDataChanged(edge.data(), meta)) {
+      return;
+    }
+
+    edge.data({
+      bow: meta.bowPx,
+      duplicate: meta.duplicate,
+      loopDirection: `${meta.loopDirectionDeg}deg`,
+      loopSweep: `${meta.loopSweepDeg}deg`,
+    });
+  });
+}
+
+function graphModelWithCytoscapeNodePositions(
+  cy: Core,
+  model: GraphModel,
+): GraphModel {
+  return {
+    ...model,
+    nodes: model.nodes.map((node) => {
+      const cyNode = cy.getElementById(node.id);
+
+      if (cyNode.empty() || !cyNode.isNode()) {
+        return node;
+      }
+
+      const position = cyNode.position();
+
+      return {
+        ...node,
+        x: position.x,
+        y: position.y,
+      };
+    }),
+  };
+}
+
+function edgeRoutingDataChanged(
+  data: Record<string, unknown>,
+  meta: EdgeRoutingMeta,
+) {
+  return (
+    data.bow !== meta.bowPx ||
+    data.duplicate !== meta.duplicate ||
+    data.loopDirection !== `${meta.loopDirectionDeg}deg` ||
+    data.loopSweep !== `${meta.loopSweepDeg}deg`
+  );
 }
 
 function nodeToCytoscapeElement(

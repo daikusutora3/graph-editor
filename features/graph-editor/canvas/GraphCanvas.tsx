@@ -266,11 +266,12 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   const htmlNodeDrag = useHtmlNodeDrag({
     cyRef,
     draggingNodeIdsRef,
+    edgeRoutingOptions,
     executeCommand,
     flushRenderedHitboxes,
+    graph,
     selectionRef,
     setSelection,
-    updateRenderedHitboxes,
   });
 
   useEffect(() => {
@@ -305,6 +306,8 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     cyRef,
     elements,
     chrome,
+    edgeRoutingOptions,
+    graph,
     mode,
     pendingFitAfterUpdateRef,
     draggingNodeIdsRef,

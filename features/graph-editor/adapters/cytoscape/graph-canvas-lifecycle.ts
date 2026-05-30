@@ -6,10 +6,13 @@ import { useEffect, useRef } from "react";
 
 import {
   createGraphCanvasStylesheet,
+  syncCytoscapeEdgeRoutingData,
   type graphModelToCytoscapeElements,
 } from "./cytoscape-adapter";
 import { withCytoscapeBatch } from "./cytoscape-batch";
 import type { GraphCanvasChrome } from "../../canvas/graph-canvas-types";
+import type { GraphModel } from "../../core/graph/model";
+import type { EdgeRoutingOptions } from "../../core/layout/edge-routing";
 import type {
   EditorMode,
   SelectionState,
@@ -35,6 +38,8 @@ type UseGraphCanvasLifecycleOptions = {
   cyRef: MutableRefObject<Core | null>;
   elements: ReturnType<typeof graphModelToCytoscapeElements>;
   chrome: GraphCanvasChrome;
+  edgeRoutingOptions: EdgeRoutingOptions;
+  graph: GraphModel;
   mode: EditorMode;
   selection: SelectionState;
   selectionRef: MutableRefObject<SelectionState>;
@@ -51,6 +56,8 @@ export function useGraphCanvasLifecycle({
   cyRef,
   elements,
   chrome,
+  edgeRoutingOptions,
+  graph,
   mode,
   selection,
   selectionRef,
@@ -153,6 +160,12 @@ export function useGraphCanvasLifecycle({
         syncCytoscapeElements(cy, elements, {
           skipNodePositionIds: draggingNodeIdsRef.current,
         });
+        syncDraggedEdgeRoutingPreview(
+          cy,
+          graph,
+          edgeRoutingOptions,
+          draggingNodeIdsRef.current,
+        );
         syncCytoscapeSelection(cy, selectionRef.current);
       });
     } finally {
@@ -180,8 +193,10 @@ export function useGraphCanvasLifecycle({
   }, [
     cyRef,
     elements,
+    edgeRoutingOptions,
     flushRenderedHitboxes,
     draggingNodeIdsRef,
+    graph,
     selectionRef,
     setZoomPercent,
     chrome,
@@ -289,4 +304,17 @@ export function useGraphCanvasLifecycle({
       }
     };
   }, [cyRef, setZoomPercent, updateRenderedHitboxes]);
+}
+
+function syncDraggedEdgeRoutingPreview(
+  cy: Core,
+  graph: GraphModel,
+  edgeRoutingOptions: EdgeRoutingOptions,
+  draggingNodeIds: ReadonlySet<string>,
+) {
+  if (draggingNodeIds.size === 0 || !edgeRoutingOptions.avoidNodes) {
+    return;
+  }
+
+  syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions);
 }
