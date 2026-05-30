@@ -28,9 +28,8 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "typecheck": "tsc --noEmit",
-    "verify": "bun run tests/verification/run-all.ts",
-    "test": "bun run verify",
-    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run verify",
+    "test": "bun run tests/verification/run-all.ts",
+    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run test",
     "check:all": "bun run check && bun run build && bun run tests/verification/release.ts"
   },
   "dependencies": {
