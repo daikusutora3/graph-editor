@@ -52,9 +52,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  useLayoutEffect(() => {
-    applyLocale(locale);
-  }, [locale]);
+  useLayoutEffect(() => applyLocale(locale), [locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
@@ -125,10 +123,17 @@ function applyLocale(locale: Locale) {
   };
 
   applyMetadata();
-  window.requestAnimationFrame(applyMetadata);
-  window.setTimeout(applyMetadata, 0);
-  window.setTimeout(applyMetadata, 100);
-  window.setTimeout(applyMetadata, 500);
+  const animationFrameId = window.requestAnimationFrame(applyMetadata);
+  const timeoutIds = [
+    window.setTimeout(applyMetadata, 0),
+    window.setTimeout(applyMetadata, 100),
+    window.setTimeout(applyMetadata, 500),
+  ];
+
+  return () => {
+    window.cancelAnimationFrame(animationFrameId);
+    timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+  };
 }
 
 function readStoredLocale(): Locale | null {

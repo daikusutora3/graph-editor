@@ -94,6 +94,7 @@ function useModeToolbarState({
   const undoShortcut = isMacShortcutPlatform ? "⌘Z" : "Ctrl+Z";
   const redoShortcut = isMacShortcutPlatform ? "⇧⌘Z" : "Ctrl+Shift+Z";
   const toolbarHeight = sidebarCollapsed ? compactHeight : expandedHeight;
+  const clearArmedVisible = clearArmed && !isGraphEmpty;
 
   const setSidebarCollapsed = (
     nextCollapsed: boolean,
@@ -120,10 +121,11 @@ function useModeToolbarState({
 
   const clearEditor = () => {
     if (isGraphEmpty) {
+      setClearArmed(false);
       return;
     }
 
-    if (!clearArmed) {
+    if (!clearArmedVisible) {
       setClearArmed(true);
       return;
     }
@@ -144,13 +146,7 @@ function useModeToolbarState({
   };
 
   useEffect(() => {
-    if (isGraphEmpty) {
-      setClearArmed(false);
-    }
-  }, [isGraphEmpty]);
-
-  useEffect(() => {
-    if (!clearArmed) {
+    if (!clearArmedVisible) {
       return;
     }
 
@@ -159,7 +155,7 @@ function useModeToolbarState({
     }, 3000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [clearArmed]);
+  }, [clearArmedVisible]);
 
   useEffect(() => {
     if (!restoreFocusAfterToggle) {
@@ -183,7 +179,7 @@ function useModeToolbarState({
     toolbarHeight,
     toolbarRef,
     compactLayerProps: {
-      clearArmed,
+      clearArmed: clearArmedVisible,
       compactLayerRef,
       compactToggleRef,
       futureDisabled: future.length === 0,
@@ -200,7 +196,7 @@ function useModeToolbarState({
       onUndo: undo,
     },
     expandedLayerProps: {
-      clearArmed,
+      clearArmed: clearArmedVisible,
       expandedLayerRef,
       expandedToggleRef,
       futureDisabled: future.length === 0,

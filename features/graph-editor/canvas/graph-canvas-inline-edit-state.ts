@@ -86,7 +86,7 @@ export function useGraphInlineEdit({
 
     const shouldSelect = focusKeyRef.current !== focusKey;
     focusKeyRef.current = focusKey;
-    window.requestAnimationFrame(() => {
+    const animationFrameId = window.requestAnimationFrame(() => {
       const input = inputRef.current;
 
       input?.focus();
@@ -94,6 +94,8 @@ export function useGraphInlineEdit({
         input?.select();
       }
     });
+
+    return () => window.cancelAnimationFrame(animationFrameId);
   }, [focusKey]);
 
   const openNodeLabelEdit = useCallback(
