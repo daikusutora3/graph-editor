@@ -29,6 +29,15 @@ export type AppLocale = keyof typeof appLocaleMetadata;
 
 export const DEFAULT_APP_LOCALE: AppLocale = "ja";
 
+export const appRouteLocaleParams = ["en", "zh-hans"] as const;
+
+export type AppRouteLocaleParam = (typeof appRouteLocaleParams)[number];
+
+export const appRouteParamLocales: Record<AppRouteLocaleParam, AppLocale> = {
+  en: "en",
+  "zh-hans": "zh-Hans",
+};
+
 export const appLocalePaths: Record<AppLocale, string> = {
   ja: "/",
   en: "/en",
@@ -52,31 +61,57 @@ export const APP_PUBLIC_TITLE = appLocaleMetadata.ja.title;
 export const APP_PUBLIC_DESCRIPTION = appLocaleMetadata.ja.description;
 export const APP_TITLE = APP_PUBLIC_TITLE;
 export const APP_DESCRIPTION = APP_PUBLIC_DESCRIPTION;
-export const APP_DESCRIPTION_ZH_HANS = appLocaleMetadata["zh-Hans"].description;
 
-export const structuredData = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: APP_NAME,
-  alternateName: "Graph Editor by daikusutora",
-  applicationCategory: "DesignApplication",
-  operatingSystem: "Any",
-  url: SITE_URL,
-  image: `${SITE_URL}${SOCIAL_IMAGE}`,
-  description: APP_PUBLIC_DESCRIPTION,
-  inLanguage: ["ja", "en", "zh-Hans"],
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
+export const appRootMetadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  applicationName: APP_NAME,
+  title: {
+    default: APP_TITLE,
+    template: `%s | ${APP_NAME}`,
   },
-  featureList: [
-    "辺リスト、隣接リスト、隣接行列、JSONを読み込み",
-    "有向・無向、重み付き・重みなしグラフを編集",
-    "グラフ理論のサンプルから開始",
-    "レイアウトを適用してPNG画像を書き出し",
+  description: APP_DESCRIPTION,
+  keywords: [
+    "Graph Editor",
+    "graph theory",
+    "graph drawing",
+    "graph visualization",
+    "edge list",
+    "adjacency matrix",
+    "network diagram",
+    "グラフ理論",
+    "グラフ描画",
   ],
-} as const;
+  authors: [{ name: "daikusutora" }],
+  creator: "daikusutora",
+  publisher: "daikusutora",
+  category: "graph theory",
+  robots: {
+    index: true,
+    follow: true,
+  },
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      {
+        url: APP_ICON,
+        type: "image/webp",
+      },
+    ],
+    shortcut: [
+      {
+        url: APP_ICON,
+        type: "image/webp",
+      },
+    ],
+    apple: [
+      {
+        url: APPLE_TOUCH_ICON,
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
+};
 
 export function getAppLocaleUrl(locale: AppLocale) {
   return getAppPathUrl(appLocalePaths[locale]);
@@ -84,6 +119,34 @@ export function getAppLocaleUrl(locale: AppLocale) {
 
 export function getAppPathUrl(path: string) {
   return path === "/" ? SITE_URL : new URL(path, SITE_URL).toString();
+}
+
+export function getAppLocaleFromParam(param: string): AppLocale {
+  return (
+    appRouteParamLocales[param as AppRouteLocaleParam] ?? DEFAULT_APP_LOCALE
+  );
+}
+
+export function createAppStructuredData(locale: AppLocale) {
+  const localeMetadata = appLocaleMetadata[locale];
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: APP_NAME,
+    alternateName: "Graph Editor by daikusutora",
+    applicationCategory: "DesignApplication",
+    operatingSystem: "Any",
+    url: getAppLocaleUrl(locale),
+    image: `${SITE_URL}${SOCIAL_IMAGE}`,
+    description: localeMetadata.description,
+    inLanguage: locale,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+  } as const;
 }
 
 export function createAppPageMetadata(locale: AppLocale): Metadata {
