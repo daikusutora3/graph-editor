@@ -7,6 +7,8 @@ import { tryImportJson } from "./import-json";
 import { tryImportLooseEdgeList } from "./import-loose-edge-list";
 import {
   importFailure,
+  importLimitFailure,
+  MAX_IMPORT_INPUT_CHARS,
   type ImportOptions,
   type ParsedLine,
   readLines,
@@ -22,6 +24,15 @@ export function importGraphInput(
   input: string,
   options: ImportOptions = {},
 ): ImportResult {
+  if (input.length > MAX_IMPORT_INPUT_CHARS) {
+    return importLimitFailure(
+      "input",
+      input.length,
+      MAX_IMPORT_INPUT_CHARS,
+      options,
+    );
+  }
+
   const lines = readLines(input);
 
   if (lines.length === 0) {
@@ -41,6 +52,9 @@ export function importGraphInput(
     detectStructuredEdgeListOptions(lines, options),
   );
   if (
+    structuredEdgeListResult.warnings.some((warning) =>
+      warning.startsWith("Import is too large"),
+    ) ||
     structuredEdgeListResult.model.nodes.length > 0 ||
     structuredEdgeListResult.model.edges.length > 0 ||
     structuredEdgeListResult.warnings.length === 0

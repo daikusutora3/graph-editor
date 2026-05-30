@@ -1,12 +1,14 @@
 "use client";
 
-import type { Core } from "cytoscape";
+import type { Core, EdgeSingular } from "cytoscape";
 import type {
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
   RefObject,
 } from "react";
 import { useCallback, useEffect, useRef } from "react";
+
+import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 
 type RenderedPoint = {
   x: number;
@@ -92,20 +94,12 @@ export function useRangeSelectionPreview({
     });
 
     cy.edges().forEach((edge) => {
-      const edgeBox = edge.renderedBoundingBox({
-        includeNodes: false,
-        includeEdges: true,
-        includeLabels: false,
-        includeOverlays: false,
-        includeUnderlays: false,
-      });
-
-      if (boxContains(box, edgeBox)) {
+      if (edgeControlPathInBox(box, edge)) {
         nextEdgeIds.add(edge.id());
       }
     });
 
-    cy.batch(() => {
+    withCytoscapeBatch(cy, () => {
       applyPreviewClassDiff(cy, session.nodeIds, nextNodeIds);
       applyPreviewClassDiff(cy, session.edgeIds, nextEdgeIds);
     });
@@ -232,6 +226,26 @@ function boxContains(
   b: { x1: number; y1: number; x2: number; y2: number },
 ) {
   return a.x1 <= b.x1 && a.y1 <= b.y1 && a.x2 >= b.x2 && a.y2 >= b.y2;
+}
+
+function edgeControlPathInBox(box: RenderedBox, edge: EdgeSingular) {
+  const points = [
+    edge.renderedSourceEndpoint(),
+    edge.renderedTargetEndpoint(),
+    ...edge.renderedControlPoints(),
+    ...edge.renderedSegmentPoints(),
+  ];
+
+  return points.every((point) => pointInBox(box, point));
+}
+
+function pointInBox(box: RenderedBox, point: RenderedPoint) {
+  return (
+    point.x >= box.x1 &&
+    point.x <= box.x2 &&
+    point.y >= box.y1 &&
+    point.y <= box.y2
+  );
 }
 
 function applyPreviewClassDiff(

@@ -3,6 +3,9 @@ import {
   arrangeNodes,
   detectIndexBase,
   ensureNodeByLabel,
+  importLimitFailure,
+  MAX_IMPORT_EDGES,
+  MAX_IMPORT_NODES,
   type ImportOptions,
   type ParsedLine,
   readImportSettings,
@@ -24,8 +27,30 @@ export function tryImportLooseEdgeList(
     return null;
   }
 
+  if (rows.length > MAX_IMPORT_EDGES) {
+    return importLimitFailure(
+      "edges",
+      rows.length,
+      MAX_IMPORT_EDGES,
+      options,
+      "Edge list",
+    );
+  }
+
   const hasWeights = rows.some((row) => row.length === 3);
   const labels = rows.flatMap((row) => row.slice(0, 2));
+  const nodeCount = new Set(labels).size;
+
+  if (nodeCount > MAX_IMPORT_NODES) {
+    return importLimitFailure(
+      "nodes",
+      nodeCount,
+      MAX_IMPORT_NODES,
+      options,
+      "Edge list",
+    );
+  }
+
   const settings = readImportSettings(
     { ...options, indexBase: detectIndexBase(labels, options.indexBase) },
     { weighted: hasWeights },

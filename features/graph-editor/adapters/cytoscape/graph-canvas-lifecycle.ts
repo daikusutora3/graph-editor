@@ -8,6 +8,7 @@ import {
   createGraphCanvasStylesheet,
   type graphModelToCytoscapeElements,
 } from "./cytoscape-adapter";
+import { withCytoscapeBatch } from "./cytoscape-batch";
 import type { GraphCanvasChrome } from "../../canvas/graph-canvas-types";
 import type {
   EditorMode,
@@ -155,7 +156,7 @@ export function useGraphCanvasLifecycle({
         updated: 0,
       };
 
-      cy.batch(() => {
+      withCytoscapeBatch(cy, () => {
         syncResult = syncCytoscapeElements(cy, elements);
         syncCytoscapeSelection(cy, selectionRef.current);
       });
@@ -260,7 +261,7 @@ export function useGraphCanvasLifecycle({
 
     try {
       suppressSelectionSyncRef.current = true;
-      cy.batch(() => {
+      withCytoscapeBatch(cy, () => {
         syncCytoscapeSelection(cy, selection);
       });
     } finally {
