@@ -1,0 +1,284 @@
+"use client";
+
+import cytoscape, { type Core } from "cytoscape";
+import type { MutableRefObject, RefObject } from "react";
+import { useEffect, useRef } from "react";
+
+import {
+  createGraphCanvasStylesheet,
+  type graphModelToCytoscapeElements,
+} from "./cytoscape-adapter";
+import type { GraphCanvasChrome } from "../../canvas/graph-canvas-types";
+import type {
+  EditorMode,
+  SelectionState,
+} from "../../shell/state/editor-state";
+
+import {
+  APP_ANIMATION_DURATION_MS,
+  APP_ANIMATION_EASING,
+  centerGraphOrigin,
+  fitGraphToAvailableViewport,
+  MAX_CANVAS_ZOOM,
+  MIN_CANVAS_ZOOM,
+  prefersReducedMotion,
+  readCanvasPalette,
+  readGraphViewportCenterX,
+  readZoomPercent,
+  syncCytoscapeSelection,
+} from "./graph-canvas-viewport";
+import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
+import { recordGraphPerformanceEvent } from "../../diagnostics/graph-performance-events";
+
+type UseGraphCanvasLifecycleOptions = {
+  containerRef: RefObject<HTMLDivElement | null>;
+  cyRef: MutableRefObject<Core | null>;
+  elements: ReturnType<typeof graphModelToCytoscapeElements>;
+  chrome: GraphCanvasChrome;
+  mode: EditorMode;
+  selection: SelectionState;
+  selectionRef: MutableRefObject<SelectionState>;
+  pendingFitAfterUpdateRef: MutableRefObject<boolean>;
+  flushRenderedHitboxes: (cy: Core) => void;
+  setZoomPercent: (value: number) => void;
+  suppressSelectionSyncRef: MutableRefObject<boolean>;
+  updateRenderedHitboxes: (cy: Core) => void;
+};
+
+export function useGraphCanvasLifecycle({
+  containerRef,
+  cyRef,
+  elements,
+  chrome,
+  mode,
+  selection,
+  selectionRef,
+  pendingFitAfterUpdateRef,
+  flushRenderedHitboxes,
+  setZoomPercent,
+  suppressSelectionSyncRef,
+  updateRenderedHitboxes,
+}: UseGraphCanvasLifecycleOptions) {
+  const previousSidebarCollapsedRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    const cy = cytoscape({
+      container: containerRef.current,
+      elements,
+      style: createGraphCanvasStylesheet(readCanvasPalette()),
+      layout: { name: "preset", fit: false },
+      boxSelectionEnabled: mode === "select",
+      autoungrabify: mode !== "select",
+      autounselectify: mode !== "select",
+      minZoom: MIN_CANVAS_ZOOM,
+      maxZoom: MAX_CANVAS_ZOOM,
+    });
+
+    cyRef.current = cy;
+    requestAnimationFrame(() => {
+      centerGraphOrigin(cy, chrome);
+      setZoomPercent(readZoomPercent(cy));
+    });
+
+    return () => {
+      cy.destroy();
+      cyRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+
+    if (!cy) {
+      return;
+    }
+
+    const updateCanvasTheme = () => {
+      cy.style(createGraphCanvasStylesheet(readCanvasPalette()));
+      cy.resize();
+    };
+
+    const observer = new MutationObserver(updateCanvasTheme);
+    observer.observe(document.documentElement, {
+      attributeFilter: ["data-theme"],
+      attributes: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [cyRef]);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+
+    if (!cy) {
+      return;
+    }
+
+    const fitToGraph = () => {
+      cy.resize();
+
+      if (cy.elements().length > 0) {
+        fitGraphToAvailableViewport(cy, chrome);
+      } else {
+        centerGraphOrigin(cy, chrome);
+      }
+
+      flushRenderedHitboxes(cy);
+      setZoomPercent(readZoomPercent(cy));
+    };
+
+    const syncStart = performance.now();
+
+    try {
+      suppressSelectionSyncRef.current = true;
+      let syncResult = {
+        added: 0,
+        recreated: 0,
+        removed: 0,
+        skipped: 0,
+        updated: 0,
+      };
+
+      cy.batch(() => {
+        syncResult = syncCytoscapeElements(cy, elements);
+        syncCytoscapeSelection(cy, selectionRef.current);
+      });
+
+      recordGraphPerformanceEvent(
+        "cytoscape-diff-sync",
+        performance.now() - syncStart,
+        {
+          ...syncResult,
+          elements: elements.length,
+        },
+      );
+    } finally {
+      suppressSelectionSyncRef.current = false;
+    }
+
+    cy.resize();
+    cy.userZoomingEnabled(elements.length > 0);
+
+    if (elements.length === 0) {
+      pendingFitAfterUpdateRef.current = false;
+      centerGraphOrigin(cy, chrome);
+      flushRenderedHitboxes(cy);
+      setZoomPercent(readZoomPercent(cy));
+      return;
+    }
+
+    if (pendingFitAfterUpdateRef.current) {
+      pendingFitAfterUpdateRef.current = false;
+      fitToGraph();
+      return;
+    }
+
+    flushRenderedHitboxes(cy);
+  }, [
+    cyRef,
+    elements,
+    flushRenderedHitboxes,
+    selectionRef,
+    setZoomPercent,
+    chrome,
+    suppressSelectionSyncRef,
+  ]);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+
+    if (!cy) {
+      return;
+    }
+
+    cy.resize();
+
+    const previousSidebarCollapsed = previousSidebarCollapsedRef.current;
+    previousSidebarCollapsedRef.current = chrome.sidebarCollapsed;
+
+    if (
+      previousSidebarCollapsed !== null &&
+      previousSidebarCollapsed !== chrome.sidebarCollapsed
+    ) {
+      const previousCenter = readGraphViewportCenterX(cy, {
+        sidebarCollapsed: previousSidebarCollapsed,
+      });
+      const nextCenter = readGraphViewportCenterX(cy, chrome);
+
+      if (previousCenter !== null && nextCenter !== null) {
+        const pan = cy.pan();
+        const nextPan = { x: pan.x + nextCenter - previousCenter, y: pan.y };
+
+        if (!prefersReducedMotion()) {
+          cy.stop(true, false);
+          cy.animate(
+            { pan: nextPan },
+            {
+              duration: APP_ANIMATION_DURATION_MS,
+              easing: APP_ANIMATION_EASING,
+            },
+          );
+
+          const timeoutId = window.setTimeout(() => {
+            flushRenderedHitboxes(cy);
+            setZoomPercent(readZoomPercent(cy));
+          }, APP_ANIMATION_DURATION_MS + 40);
+
+          return () => window.clearTimeout(timeoutId);
+        }
+
+        cy.pan(nextPan);
+      }
+    }
+
+    flushRenderedHitboxes(cy);
+    setZoomPercent(readZoomPercent(cy));
+  }, [chrome, cyRef, flushRenderedHitboxes, setZoomPercent]);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+
+    if (!cy || suppressSelectionSyncRef.current) {
+      return;
+    }
+
+    try {
+      suppressSelectionSyncRef.current = true;
+      cy.batch(() => {
+        syncCytoscapeSelection(cy, selection);
+      });
+    } finally {
+      suppressSelectionSyncRef.current = false;
+    }
+  }, [cyRef, selection, suppressSelectionSyncRef]);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+
+    if (!cy) {
+      return;
+    }
+
+    const updateCanvasOverlay = () => {
+      updateRenderedHitboxes(cy);
+    };
+    const updateZoomOverlay = () => {
+      updateRenderedHitboxes(cy);
+      setZoomPercent(readZoomPercent(cy));
+    };
+
+    cy.on("pan", updateCanvasOverlay);
+    cy.on("zoom resize", updateZoomOverlay);
+
+    return () => {
+      cy.off("pan", updateCanvasOverlay);
+      cy.off("zoom resize", updateZoomOverlay);
+    };
+  }, [cyRef, setZoomPercent, updateRenderedHitboxes]);
+}

@@ -1,0 +1,553 @@
+"use client";
+
+import type { MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import { useGraphCanvasApi } from "../canvas/GraphCanvasProvider";
+import type { GraphModel } from "../core/graph/model";
+import {
+  downloadBlob,
+  ensurePngBlob,
+  formatTimestamp,
+} from "../adapters/browser/file-actions";
+import { useI18n } from "../i18n/I18nProvider";
+import type {
+  PngExportBackground,
+  PngExportLongEdgePreset,
+  PngExportPaddingPreset,
+  ScreenshotCopyState,
+  ScreenshotDownloadState,
+  ScreenshotPreview,
+} from "./graph-io-types";
+import {
+  DEFAULT_PADDING_PX,
+  DEFAULT_LONG_EDGE_PX,
+  MAX_LONG_EDGE_PX,
+  MAX_PADDING_PX,
+  MIN_LONG_EDGE_PX,
+  MIN_PADDING_PX,
+} from "./graph-io-types";
+import type { ThemeMode } from "./theme";
+
+type GraphIOScreenshotOptions = {
+  graph: GraphModel;
+  isGraphEmpty: boolean;
+  theme: ThemeMode;
+};
+
+export function useGraphIOScreenshot({
+  graph,
+  isGraphEmpty,
+  theme,
+}: GraphIOScreenshotOptions) {
+  const { messages } = useI18n();
+  const [copyState, setCopyState] = useState<ScreenshotCopyState>("idle");
+  const [copyMessage, setCopyMessage] = useState("");
+  const [downloadState, setDownloadState] =
+    useState<ScreenshotDownloadState>("idle");
+  const [downloadMessage, setDownloadMessage] = useState("");
+  const [background, setBackgroundState] =
+    useState<PngExportBackground>("white");
+  const [longEdgePreset, setLongEdgePresetState] =
+    useState<PngExportLongEdgePreset>(DEFAULT_LONG_EDGE_PX);
+  const [customLongEdgePx, setCustomLongEdgePxState] =
+    useState(DEFAULT_LONG_EDGE_PX);
+  const [paddingPreset, setPaddingPresetState] =
+    useState<PngExportPaddingPreset>(DEFAULT_PADDING_PX);
+  const [customPaddingPx, setCustomPaddingPxState] =
+    useState(DEFAULT_PADDING_PX);
+  const [preview, setPreview] = useState<ScreenshotPreview>({
+    height: null,
+    inputKey: null,
+    state: "empty",
+    url: "",
+    width: null,
+  });
+  const previewUrlRef = useRef("");
+  const previewRequestRef = useRef(0);
+  const copyResetTimeoutRef = useRef<number | null>(null);
+  const downloadResetTimeoutRef = useRef<number | null>(null);
+  const { exportPng } = useGraphCanvasApi();
+  const solidBackground: "white" | "black" =
+    theme === "dark" ? "black" : "white";
+  const effectiveBackground: PngExportBackground =
+    background === "transparent" ? background : solidBackground;
+  const currentPreviewInput = useMemo(
+    () => ({
+      background: effectiveBackground,
+      graph,
+      longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
+      paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
+    }),
+    [
+      customLongEdgePx,
+      customPaddingPx,
+      effectiveBackground,
+      graph,
+      longEdgePreset,
+      paddingPreset,
+    ],
+  );
+  const currentPreviewInputKey = useMemo(
+    () => makeScreenshotInputKey(currentPreviewInput),
+    [currentPreviewInput],
+  );
+  const visiblePreview = isGraphEmpty
+    ? {
+        height: null,
+        inputKey: null,
+        state: "empty" as const,
+        url: "",
+        width: null,
+      }
+    : preview;
+  const previewStale =
+    visiblePreview.state === "ready" &&
+    visiblePreview.inputKey !== currentPreviewInputKey;
+
+  const resetFeedback = () => {
+    clearTimeoutRef(copyResetTimeoutRef);
+    clearTimeoutRef(downloadResetTimeoutRef);
+    setCopyState("idle");
+    setCopyMessage("");
+    setDownloadState("idle");
+    setDownloadMessage("");
+  };
+
+  const scheduleCopyReset = () => {
+    clearTimeoutRef(copyResetTimeoutRef);
+    copyResetTimeoutRef.current = window.setTimeout(
+      () => setCopyState("idle"),
+      2400,
+    );
+  };
+
+  const scheduleDownloadReset = () => {
+    clearTimeoutRef(downloadResetTimeoutRef);
+    downloadResetTimeoutRef.current = window.setTimeout(
+      () => setDownloadState("idle"),
+      2400,
+    );
+  };
+
+  const createBlob = ({
+    background,
+    longEdgePx,
+    paddingPx,
+  }: {
+    background: PngExportBackground;
+    longEdgePx: number;
+    paddingPx: number;
+  }) => {
+    if (isGraphEmpty) {
+      return Promise.reject(new Error("グラフが空です"));
+    }
+
+    const safePaddingPx = clampPaddingPxForLongEdge(paddingPx, longEdgePx);
+    const contentLongEdgePx = Math.max(1, longEdgePx - safePaddingPx * 2);
+
+    return exportPng({
+      scope: "full",
+      background,
+      maxWidth: contentLongEdgePx,
+      maxHeight: contentLongEdgePx,
+      includeSelection: false,
+    })
+      .then(ensurePngBlob)
+      .then((blob) =>
+        addPngPadding(blob, { background, paddingPx: safePaddingPx }),
+      );
+  };
+
+  function clearPreview() {
+    previewRequestRef.current += 1;
+    revokePreviewUrl();
+    setPreview({
+      height: null,
+      inputKey: null,
+      state: "empty",
+      url: "",
+      width: null,
+    });
+  }
+
+  function revokePreviewUrl() {
+    if (!previewUrlRef.current) {
+      return;
+    }
+
+    URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = "";
+  }
+
+  async function refreshPreview(
+    input: {
+      background?: PngExportBackground;
+      longEdgePx?: number;
+      paddingPx?: number;
+    } = {},
+  ) {
+    const nextInput = {
+      background: input.background ?? effectiveBackground,
+      graph,
+      longEdgePx:
+        input.longEdgePx ?? resolveLongEdgePx(longEdgePreset, customLongEdgePx),
+      paddingPx:
+        input.paddingPx ?? resolvePaddingPx(paddingPreset, customPaddingPx),
+    };
+    const inputKey = makeScreenshotInputKey(nextInput);
+    const requestId = previewRequestRef.current + 1;
+    previewRequestRef.current = requestId;
+
+    if (isGraphEmpty) {
+      clearPreview();
+      return;
+    }
+
+    setPreview({
+      height: null,
+      inputKey,
+      state: "loading",
+      url: "",
+      width: null,
+    });
+
+    try {
+      const blob = await createBlob(nextInput);
+      const objectUrl = URL.createObjectURL(blob);
+      const { height, width } = await readImageDimensions(objectUrl);
+
+      if (previewRequestRef.current !== requestId) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+
+      revokePreviewUrl();
+      previewUrlRef.current = objectUrl;
+      setPreview({
+        height,
+        inputKey,
+        state: "ready",
+        url: objectUrl,
+        width,
+      });
+    } catch (error) {
+      console.warn("Screenshot preview failed", error);
+      if (previewRequestRef.current === requestId) {
+        setPreview({
+          height: null,
+          inputKey,
+          state: "failed",
+          url: "",
+          width: null,
+        });
+      }
+    }
+  }
+
+  const createBlobForAction = () =>
+    createBlob({
+      background: effectiveBackground,
+      longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
+      paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
+    });
+
+  const copy = () => {
+    if (isGraphEmpty || copyState === "copying") {
+      return;
+    }
+
+    setCopyState("copying");
+    setCopyMessage("");
+    const pngBlobPromise = createBlobForAction();
+
+    const markFailed = (message: string) => {
+      console.warn("Screenshot copy failed", message);
+      setCopyMessage(message);
+      setCopyState("blocked");
+      scheduleCopyReset();
+    };
+
+    const copyBlob = async () => {
+      try {
+        if (
+          !navigator.clipboard?.write ||
+          typeof ClipboardItem === "undefined"
+        ) {
+          throw new DOMException(
+            "Clipboard image write is unavailable",
+            "NotAllowedError",
+          );
+        }
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": pngBlobPromise }),
+        ]);
+        setCopyState("copied");
+        scheduleCopyReset();
+      } catch (error) {
+        console.warn("Clipboard image write failed", error);
+        try {
+          const pngBlob = await pngBlobPromise;
+          downloadBlob(
+            pngBlob,
+            `graph-editor-${formatTimestamp(new Date())}.png`,
+          );
+          setCopyMessage(messages.screenshot.copyFallbackSaved);
+          setCopyState("saved");
+          scheduleCopyReset();
+        } catch (downloadError) {
+          console.warn("Fallback screenshot download failed", downloadError);
+          markFailed(messages.screenshot.copyFailed);
+        }
+      }
+    };
+
+    void copyBlob();
+  };
+
+  const download = () => {
+    if (isGraphEmpty || downloadState === "saving") {
+      return;
+    }
+
+    setDownloadState("saving");
+    setDownloadMessage("");
+
+    const markFailed = (message: string) => {
+      console.warn("Screenshot download failed", message);
+      setDownloadMessage(message);
+      setDownloadState("failed");
+      scheduleDownloadReset();
+    };
+
+    const saveBlob = (pngBlob: Blob) => {
+      try {
+        downloadBlob(
+          pngBlob,
+          `graph-editor-${formatTimestamp(new Date())}.png`,
+        );
+        setDownloadState("saved");
+        scheduleDownloadReset();
+      } catch (error) {
+        console.warn("PNG download failed", error);
+        markFailed(messages.screenshot.downloadFailed);
+      }
+    };
+
+    void createBlobForAction()
+      .then(saveBlob)
+      .catch((error) =>
+        markFailed(
+          error instanceof Error
+            ? error.message
+            : messages.screenshot.downloadFailed,
+        ),
+      );
+  };
+
+  const setBackground = (nextBackground: PngExportBackground) => {
+    setBackgroundState(nextBackground);
+    resetFeedback();
+    const nextEffectiveBackground =
+      nextBackground === "transparent" ? nextBackground : solidBackground;
+    void refreshPreview({ background: nextEffectiveBackground });
+  };
+
+  const setPaddingPreset = (nextPreset: PngExportPaddingPreset) => {
+    setPaddingPresetState(nextPreset);
+    resetFeedback();
+    void refreshPreview({
+      paddingPx: resolvePaddingPx(nextPreset, customPaddingPx),
+    });
+  };
+
+  const setCustomPaddingPx = (nextPaddingPx: number) => {
+    const paddingPx = clampPaddingPx(nextPaddingPx);
+    setPaddingPresetState("custom");
+    setCustomPaddingPxState(paddingPx);
+    resetFeedback();
+    void refreshPreview({ paddingPx });
+  };
+
+  const setLongEdgePreset = (nextPreset: PngExportLongEdgePreset) => {
+    setLongEdgePresetState(nextPreset);
+    resetFeedback();
+    void refreshPreview({
+      longEdgePx: resolveLongEdgePx(nextPreset, customLongEdgePx),
+    });
+  };
+
+  const setCustomLongEdgePx = (nextLongEdgePx: number) => {
+    const longEdgePx = clampLongEdgePx(nextLongEdgePx);
+    setLongEdgePresetState("custom");
+    setCustomLongEdgePxState(longEdgePx);
+    resetFeedback();
+    void refreshPreview({ longEdgePx });
+  };
+
+  useEffect(
+    () => () => {
+      clearTimeoutRef(copyResetTimeoutRef);
+      clearTimeoutRef(downloadResetTimeoutRef);
+      revokePreviewUrl();
+    },
+    [],
+  );
+
+  return {
+    background,
+    copy,
+    copyMessage,
+    copyState,
+    download,
+    downloadMessage,
+    downloadState,
+    effectiveBackground,
+    customPaddingPx,
+    customLongEdgePx,
+    longEdgePreset,
+    paddingPreset,
+    preview: visiblePreview,
+    previewStale,
+    refreshPreview,
+    setBackground,
+    setCustomLongEdgePx,
+    setCustomPaddingPx,
+    setLongEdgePreset,
+    setPaddingPreset,
+    solidBackground,
+  };
+}
+
+function makeScreenshotInputKey({
+  background,
+  graph,
+  longEdgePx,
+  paddingPx,
+}: {
+  background: PngExportBackground;
+  graph: GraphModel;
+  longEdgePx: number;
+  paddingPx: number;
+}) {
+  return JSON.stringify({
+    background,
+    edges: graph.edges,
+    longEdgePx,
+    nodes: graph.nodes,
+    paddingPx,
+    settings: graph.settings,
+  });
+}
+
+function resolveLongEdgePx(
+  preset: PngExportLongEdgePreset,
+  customLongEdgePx: number,
+) {
+  return preset === "custom" ? customLongEdgePx : preset;
+}
+
+function resolvePaddingPx(
+  preset: PngExportPaddingPreset,
+  customPaddingPx: number,
+) {
+  return preset === "custom" ? customPaddingPx : preset;
+}
+
+function clampLongEdgePx(value: number) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_LONG_EDGE_PX;
+  }
+
+  return Math.min(
+    MAX_LONG_EDGE_PX,
+    Math.max(MIN_LONG_EDGE_PX, Math.round(value)),
+  );
+}
+
+function clampPaddingPx(value: number) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_PADDING_PX;
+  }
+
+  return Math.min(MAX_PADDING_PX, Math.max(MIN_PADDING_PX, Math.round(value)));
+}
+
+function clampPaddingPxForLongEdge(paddingPx: number, longEdgePx: number) {
+  return Math.min(paddingPx, Math.max(0, Math.floor((longEdgePx - 1) / 2)));
+}
+
+function clearTimeoutRef(ref: MutableRefObject<number | null>) {
+  if (ref.current === null) {
+    return;
+  }
+
+  window.clearTimeout(ref.current);
+  ref.current = null;
+}
+
+function readImageDimensions(url: string) {
+  return new Promise<{ height: number; width: number }>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      resolve({
+        height: image.naturalHeight,
+        width: image.naturalWidth,
+      });
+    };
+    image.onerror = () => reject(new Error("Could not read PNG dimensions"));
+    image.src = url;
+  });
+}
+
+async function addPngPadding(
+  blob: Blob,
+  {
+    background,
+    paddingPx,
+  }: {
+    background: PngExportBackground;
+    paddingPx: number;
+  },
+) {
+  if (paddingPx === 0) {
+    return blob;
+  }
+
+  const image = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width + paddingPx * 2;
+  canvas.height = image.height + paddingPx * 2;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    image.close();
+    throw new Error("Could not prepare padded PNG");
+  }
+
+  if (background !== "transparent") {
+    context.fillStyle = readPaddedPngBackground(background);
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  context.drawImage(image, paddingPx, paddingPx);
+  image.close();
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((paddedBlob) => {
+      if (paddedBlob) {
+        resolve(paddedBlob);
+        return;
+      }
+
+      reject(new Error("Could not create padded PNG"));
+    }, "image/png");
+  });
+}
+
+function readPaddedPngBackground(
+  background: Exclude<PngExportBackground, "transparent">,
+) {
+  return background === "black" ? "#020617" : "#ffffff";
+}
