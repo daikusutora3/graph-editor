@@ -89,7 +89,7 @@ bun run build
 
 应用已配置 Next.js `output: "export"`，可以进行静态导出。
 公开发布前请运行 `bun run check:all`。它会覆盖类型检查、lint、格式检查、
-图模型/样例/布局/编辑器状态/IO 验证、生产构建和 bundle budget。Cloudflare 静态
+图模型/样例/布局/编辑器状态/IO 验证和生产构建。Cloudflare 静态
 资源部署使用 `wrangler.jsonc` 和 `public/_headers`。
 
 ## 许可证
