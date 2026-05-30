@@ -4,18 +4,10 @@ import { useAtomValue } from "jotai";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  exportGraph,
-  getGraphExportFormat,
-  type GraphExportFormat,
-} from "../io/export-graph";
+import { exportGraph, type GraphExportFormat } from "../io/export-graph";
 import { graphAtom } from "../shell/state/graph-atoms";
 
-import {
-  copyTextToClipboard,
-  downloadBlob,
-  formatTimestamp,
-} from "../adapters/browser/file-actions";
+import { copyTextToClipboard } from "../adapters/browser/file-actions";
 import { useGraphIODropdown } from "./graph-io-dropdown";
 import { useGraphIOScreenshot } from "./graph-io-screenshot";
 import type { CopyState } from "./graph-io-types";
@@ -44,7 +36,6 @@ export function useGraphIOController() {
     isGraphEmpty,
     theme,
   });
-  const exportDefinition = getGraphExportFormat(exportFormat);
   const exportText = useMemo(
     () =>
       exportOpen || panelPresence.value === "export"
@@ -77,19 +68,6 @@ export function useGraphIOController() {
 
     setCopyState(copied ? "copied" : "blocked");
     scheduleCopyReset(copyResetTimeoutRef, setCopyState);
-  };
-
-  const downloadExportText = () => {
-    const blob = new Blob([exportGraph(graph, exportFormat)], {
-      type:
-        exportDefinition.extension === "json"
-          ? "application/json;charset=utf-8"
-          : "text/plain;charset=utf-8",
-    });
-    downloadBlob(
-      blob,
-      `graph-editor-${formatTimestamp(new Date())}.${exportDefinition.extension}`,
-    );
   };
 
   useEffect(() => {
@@ -134,7 +112,6 @@ export function useGraphIOController() {
     theme,
     actions: {
       copyExport,
-      downloadExportText,
       openExportPanel,
       openScreenshotPanel,
     },

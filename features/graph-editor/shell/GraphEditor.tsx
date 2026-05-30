@@ -7,7 +7,6 @@ import { graphAtom } from "./state/graph-atoms";
 
 import { GraphCanvas } from "../canvas/GraphCanvas";
 import { GraphCanvasProvider } from "../canvas/GraphCanvasProvider";
-import { GraphPerformanceProbeLoader } from "../diagnostics/GraphPerformanceProbeLoader";
 import {
   useGraphEditorShortcuts,
   useGraphExternalStorageSync,
@@ -49,7 +48,6 @@ function GraphEditorContent() {
           </section>
         </div>
         <GraphIOControls />
-        <GraphPerformanceProbeLoader />
       </main>
     </GraphCanvasProvider>
   );

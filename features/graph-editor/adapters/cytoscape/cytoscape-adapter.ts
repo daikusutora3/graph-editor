@@ -6,7 +6,6 @@ import {
   type EdgeRoutingMeta,
   type EdgeRoutingOptions,
 } from "../../core/layout/edge-routing";
-import { recordTimedEvent } from "../../diagnostics/graph-performance-events";
 import type {
   EdgeId,
   GraphColor,
@@ -43,7 +42,6 @@ export type GraphCanvasPalette = {
   node: string;
   nodeBorder: string;
   nodeText: string;
-  nodeIsolated: string;
   nodeYellow: string;
   nodeBlue: string;
   nodeGreen: string;
@@ -55,10 +53,7 @@ export type GraphCanvasPalette = {
   edgePink: string;
   labelBg: string;
   labelBorder: string;
-  warn: string;
-  warnBg: string;
   active: string;
-  activeBg: string;
   activeOpacity: number;
   fontFamily: string;
   nodeSize: number;
@@ -112,15 +107,7 @@ export function computeCytoscapeEdgeRoutingMeta(
   model: GraphModel,
   edgeRoutingOptions?: EdgeRoutingOptions,
 ) {
-  return recordTimedEvent(
-    "routing",
-    () => computeEdgeRouting(model, edgeRoutingOptions),
-    {
-      avoidNodes: Boolean(edgeRoutingOptions?.avoidNodes),
-      edges: model.edges.length,
-      nodes: model.nodes.length,
-    },
-  );
+  return computeEdgeRouting(model, edgeRoutingOptions);
 }
 
 function nodeToCytoscapeElement(

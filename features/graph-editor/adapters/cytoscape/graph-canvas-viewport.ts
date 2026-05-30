@@ -198,7 +198,6 @@ export function readCanvasPalette(): GraphCanvasPalette {
     node: cssVar("--canvas-node", "#ffffff"),
     nodeBorder: cssVar("--canvas-node-border", "#a1a1aa"),
     nodeText: cssVar("--canvas-node-text", "#171717"),
-    nodeIsolated: cssVar("--canvas-node-isolated", "#fafafa"),
     nodeYellow: cssVar("--canvas-node-yellow", "#fef3c7"),
     nodeBlue: cssVar("--canvas-node-blue", "#dbeafe"),
     nodeGreen: cssVar("--canvas-node-green", "#dcfce7"),
@@ -210,10 +209,7 @@ export function readCanvasPalette(): GraphCanvasPalette {
     edgePink: cssVar("--canvas-edge-pink", "#e11d48"),
     labelBg: cssVar("--canvas-label-bg", "#ffffff"),
     labelBorder: cssVar("--canvas-label-border", "#d4d4d8"),
-    warn: cssVar("--canvas-warn", "#a16207"),
-    warnBg: cssVar("--canvas-warn-bg", "#fef3c7"),
     active: cssVar("--canvas-active", "#2563eb"),
-    activeBg: cssVar("--canvas-active-bg", "#2563eb"),
     activeOpacity: cssNumber("--canvas-active-opacity", 0.24),
     fontFamily: cssVar(
       "--app-font-code",

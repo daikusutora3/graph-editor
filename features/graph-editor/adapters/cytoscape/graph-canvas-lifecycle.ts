@@ -29,7 +29,6 @@ import {
   syncCytoscapeSelection,
 } from "./graph-canvas-viewport";
 import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
-import { recordGraphPerformanceEvent } from "../../diagnostics/graph-performance-events";
 
 type UseGraphCanvasLifecycleOptions = {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -39,6 +38,7 @@ type UseGraphCanvasLifecycleOptions = {
   mode: EditorMode;
   selection: SelectionState;
   selectionRef: MutableRefObject<SelectionState>;
+  draggingNodeIdsRef: MutableRefObject<ReadonlySet<string>>;
   pendingFitAfterUpdateRef: MutableRefObject<boolean>;
   flushRenderedHitboxes: (cy: Core) => void;
   setZoomPercent: (value: number) => void;
@@ -54,6 +54,7 @@ export function useGraphCanvasLifecycle({
   mode,
   selection,
   selectionRef,
+  draggingNodeIdsRef,
   pendingFitAfterUpdateRef,
   flushRenderedHitboxes,
   setZoomPercent,
@@ -92,6 +93,7 @@ export function useGraphCanvasLifecycle({
 
     return () => {
       cancelAnimationFrame(initialViewportFrame);
+      cy.removeAllListeners();
       cy.destroy();
       cyRef.current = null;
     };
@@ -144,31 +146,15 @@ export function useGraphCanvasLifecycle({
       setZoomPercent(readZoomPercent(cy));
     };
 
-    const syncStart = performance.now();
-
     try {
       suppressSelectionSyncRef.current = true;
-      let syncResult = {
-        added: 0,
-        recreated: 0,
-        removed: 0,
-        skipped: 0,
-        updated: 0,
-      };
 
       withCytoscapeBatch(cy, () => {
-        syncResult = syncCytoscapeElements(cy, elements);
+        syncCytoscapeElements(cy, elements, {
+          skipNodePositionIds: draggingNodeIdsRef.current,
+        });
         syncCytoscapeSelection(cy, selectionRef.current);
       });
-
-      recordGraphPerformanceEvent(
-        "cytoscape-diff-sync",
-        performance.now() - syncStart,
-        {
-          ...syncResult,
-          elements: elements.length,
-        },
-      );
     } finally {
       suppressSelectionSyncRef.current = false;
     }
@@ -195,6 +181,7 @@ export function useGraphCanvasLifecycle({
     cyRef,
     elements,
     flushRenderedHitboxes,
+    draggingNodeIdsRef,
     selectionRef,
     setZoomPercent,
     chrome,
@@ -296,8 +283,10 @@ export function useGraphCanvasLifecycle({
     cy.on("zoom resize", updateZoomOverlay);
 
     return () => {
-      cy.off("pan", updateCanvasOverlay);
-      cy.off("zoom resize", updateZoomOverlay);
+      if (!cy.destroyed()) {
+        cy.off("pan", updateCanvasOverlay);
+        cy.off("zoom resize", updateZoomOverlay);
+      }
     };
   }, [cyRef, setZoomPercent, updateRenderedHitboxes]);
 }

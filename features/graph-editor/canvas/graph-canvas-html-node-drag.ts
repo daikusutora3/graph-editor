@@ -27,6 +27,7 @@ type AtomSetter<T> = (value: T | ((current: T) => T)) => void;
 
 type UseHtmlNodeDragOptions = {
   cyRef: MutableRefObject<Core | null>;
+  draggingNodeIdsRef: MutableRefObject<ReadonlySet<NodeId>>;
   executeCommand: (command: GraphIntent) => void;
   flushRenderedHitboxes: (cy: Core) => void;
   selectionRef: MutableRefObject<SelectionState>;
@@ -36,6 +37,7 @@ type UseHtmlNodeDragOptions = {
 
 export function useHtmlNodeDrag({
   cyRef,
+  draggingNodeIdsRef,
   executeCommand,
   flushRenderedHitboxes,
   selectionRef,
@@ -51,6 +53,7 @@ export function useHtmlNodeDrag({
     const cy = cyRef.current;
 
     htmlNodeDragRef.current = null;
+    draggingNodeIdsRef.current = new Set();
 
     if (!state || !cy || cy.destroyed()) {
       return;
@@ -69,7 +72,7 @@ export function useHtmlNodeDrag({
       });
     });
     flushRenderedHitboxes(cy);
-  }, [cyRef, flushRenderedHitboxes]);
+  }, [cyRef, draggingNodeIdsRef, flushRenderedHitboxes]);
 
   useEffect(() => cancel, [cancel]);
 
@@ -120,6 +123,7 @@ export function useHtmlNodeDrag({
       startClientY: event.clientY,
       moved: false,
     };
+    draggingNodeIdsRef.current = new Set(selectedNodeIds);
 
     setSelection({ nodeIds: selectedNodeIds, edgeIds: [] });
   };
@@ -176,6 +180,7 @@ export function useHtmlNodeDrag({
 
     event.currentTarget.releasePointerCapture(event.pointerId);
     htmlNodeDragRef.current = null;
+    draggingNodeIdsRef.current = new Set();
 
     if (!state.moved) {
       return;

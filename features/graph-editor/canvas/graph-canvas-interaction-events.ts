@@ -110,10 +110,12 @@ export function useCytoscapeInteractionEvents({
     cy.on("boxend", onBoxEnd);
 
     return () => {
-      cy.off("tap", onBackgroundTap);
-      cy.off("cxttap", onContextTap);
-      cy.off("boxstart", onBoxStart);
-      cy.off("boxend", onBoxEnd);
+      if (!cy.destroyed()) {
+        cy.off("tap", onBackgroundTap);
+        cy.off("cxttap", onContextTap);
+        cy.off("boxstart", onBoxStart);
+        cy.off("boxend", onBoxEnd);
+      }
       if (boxSelectionFrame) {
         window.cancelAnimationFrame(boxSelectionFrame);
       }

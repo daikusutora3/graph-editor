@@ -9,10 +9,6 @@ import type {
   GraphNode,
   GraphSettings,
 } from "../../core/graph/model";
-import {
-  recordGraphPerformanceEvent,
-  recordTimedEvent,
-} from "../../diagnostics/graph-performance-events";
 
 export const GRAPH_STORAGE_KEY = "graph-editor-graph";
 export const MAX_STORED_GRAPH_CHARS = 2_000_000;
@@ -84,7 +80,7 @@ export function flushStoredGraphWrite() {
   const graph = pendingGraph;
   pendingGraph = null;
 
-  recordTimedEvent("storage-write-deferred", () => writeStoredGraphNow(graph));
+  writeStoredGraphNow(graph);
 }
 
 function writeStoredGraphNow(graph: GraphModel) {
@@ -94,23 +90,7 @@ function writeStoredGraphNow(graph: GraphModel) {
       return;
     }
 
-    const events = window.__graphPerfEvents;
-    let rawGraph: string;
-
-    if (events && typeof performance !== "undefined") {
-      const stringifyStart = performance.now();
-      rawGraph = JSON.stringify(graph);
-
-      recordGraphPerformanceEvent(
-        "storage-stringify",
-        performance.now() - stringifyStart,
-        {
-          bytes: rawGraph.length,
-        },
-      );
-    } else {
-      rawGraph = JSON.stringify(graph);
-    }
+    const rawGraph = JSON.stringify(graph);
 
     if (!shouldStoreRawGraph(rawGraph)) {
       window.localStorage.removeItem(GRAPH_STORAGE_KEY);
