@@ -16,6 +16,10 @@ export type ParsedLine = {
   text: string;
 };
 
+export const MAX_IMPORT_INPUT_CHARS = 1_000_000;
+export const MAX_IMPORT_NODES = 1_000;
+export const MAX_IMPORT_EDGES = 5_000;
+
 export function readLines(input: string): ParsedLine[] {
   return input
     .split(/\r?\n/)
@@ -78,6 +82,27 @@ export function importFailure(
     warnings: [message],
     format,
   };
+}
+
+export function importLimitFailure(
+  kind: "input" | "nodes" | "edges",
+  count: number,
+  limit: number,
+  options: ImportOptions,
+  format?: string,
+) {
+  const label =
+    kind === "input"
+      ? "input characters"
+      : kind === "nodes"
+        ? "nodes"
+        : "edges";
+
+  return importFailure(
+    `Import is too large: ${count.toLocaleString()} ${label}, maximum is ${limit.toLocaleString()}.`,
+    options,
+    format,
+  );
 }
 
 export function detectIndexBase(labels: string[], fallback: 0 | 1 | undefined) {

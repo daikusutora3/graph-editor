@@ -5,6 +5,11 @@ import {
   type GraphExportFormat,
 } from "../features/graph-editor/io/export-graph";
 import { importGraphInput } from "../features/graph-editor/io/import-graph";
+import {
+  MAX_IMPORT_EDGES,
+  MAX_IMPORT_INPUT_CHARS,
+  MAX_IMPORT_NODES,
+} from "../features/graph-editor/io/import-utils";
 
 const failures: string[] = [];
 
@@ -131,6 +136,39 @@ const looseFallback = importGraphInput("0 1\n1 2", {
 expect(
   looseFallback.format === "Edge list",
   "invalid structured edge-list candidates should still fall back to loose edge-list",
+);
+
+const oversizedStructuredEdgeList = importGraphInput(
+  `${MAX_IMPORT_NODES + 1} 0`,
+);
+
+expect(
+  oversizedStructuredEdgeList.model.nodes.length === 0 &&
+    oversizedStructuredEdgeList.warnings[0]?.includes("Import is too large"),
+  "structured edge-list import should reject oversized node counts before allocation",
+);
+
+const oversizedLooseEdgeList = importGraphInput(
+  Array.from(
+    { length: MAX_IMPORT_EDGES + 1 },
+    (_, index) => `${index} ${index + 1}`,
+  ).join("\n"),
+);
+
+expect(
+  oversizedLooseEdgeList.model.edges.length === 0 &&
+    oversizedLooseEdgeList.warnings[0]?.includes("Import is too large"),
+  "loose edge-list import should reject oversized edge counts before building the graph",
+);
+
+const oversizedRawInput = importGraphInput(
+  "0 1\n".repeat(Math.ceil(MAX_IMPORT_INPUT_CHARS / 4) + 1),
+);
+
+expect(
+  oversizedRawInput.model.nodes.length === 0 &&
+    oversizedRawInput.warnings[0]?.includes("Import is too large"),
+  "import should reject oversized raw input before parsing lines",
 );
 
 if (failures.length > 0) {

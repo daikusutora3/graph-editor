@@ -11,6 +11,7 @@ import { createMoveNodesCommand } from "../core/graph/graph-intents";
 import type { GraphIntent, NodeId } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
 
+import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
 type DragSnapshot = Record<NodeId, Position>;
@@ -55,7 +56,7 @@ export function useHtmlNodeDrag({
       return;
     }
 
-    cy.batch(() => {
+    withCytoscapeBatch(cy, () => {
       state.nodeIds.forEach((id) => {
         const startPosition = state.before[id];
         const node = cy.getElementById(id);
@@ -142,7 +143,7 @@ export function useHtmlNodeDrag({
       state.moved = true;
     }
 
-    cy.batch(() => {
+    withCytoscapeBatch(cy, () => {
       state.nodeIds.forEach((id) => {
         const startPosition = state.before[id];
 

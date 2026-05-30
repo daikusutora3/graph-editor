@@ -4,6 +4,9 @@ import {
   createNode,
 } from "../core/graph/graph-factory";
 import {
+  importLimitFailure,
+  MAX_IMPORT_EDGES,
+  MAX_IMPORT_NODES,
   readImportSettings,
   readLines,
   splitTokens,
@@ -43,6 +46,24 @@ export function importStructuredEdgeList(
       model: createEmptyGraphModel(settings),
       warnings: [`line ${lines[0]?.number ?? 1}: invalid edge count.`],
     };
+  }
+  if (nodeCount > MAX_IMPORT_NODES) {
+    return importLimitFailure(
+      "nodes",
+      nodeCount,
+      MAX_IMPORT_NODES,
+      options,
+      "辺リスト",
+    );
+  }
+  if (edgeCount > MAX_IMPORT_EDGES) {
+    return importLimitFailure(
+      "edges",
+      edgeCount,
+      MAX_IMPORT_EDGES,
+      options,
+      "辺リスト",
+    );
   }
 
   const inputIndexBase = inferStructuredEdgeListIndexBase(

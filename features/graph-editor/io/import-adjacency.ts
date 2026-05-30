@@ -7,6 +7,9 @@ import {
   arrangeNodes,
   detectIndexBase,
   ensureNodeByLabel,
+  importLimitFailure,
+  MAX_IMPORT_EDGES,
+  MAX_IMPORT_NODES,
   type ImportOptions,
   type ParsedLine,
   readImportSettings,
@@ -19,6 +22,16 @@ export function tryImportAdjacencyMatrix(
   lines: ParsedLine[],
   options: ImportOptions,
 ): ImportResult | null {
+  if (lines.length > MAX_IMPORT_NODES) {
+    return importLimitFailure(
+      "nodes",
+      lines.length,
+      MAX_IMPORT_NODES,
+      options,
+      "Adjacency matrix",
+    );
+  }
+
   const rows = lines.map((line) => splitTokens(line.text));
 
   if (rows.length < 2 || rows.some((row) => row.length !== rows.length)) {
@@ -37,6 +50,26 @@ export function tryImportAdjacencyMatrix(
   const hasWeightedValue = values.some((row) =>
     row.some((value) => value !== 0 && value !== 1),
   );
+  const edgeCount = values.reduce(
+    (count, row, sourceIndex) =>
+      count +
+      row.filter(
+        (value, targetIndex) =>
+          value !== 0 && (options.directed || targetIndex >= sourceIndex),
+      ).length,
+    0,
+  );
+
+  if (edgeCount > MAX_IMPORT_EDGES) {
+    return importLimitFailure(
+      "edges",
+      edgeCount,
+      MAX_IMPORT_EDGES,
+      options,
+      "Adjacency matrix",
+    );
+  }
+
   const settings = readImportSettings(options, { weighted: hasWeightedValue });
   const model = createEmptyGraphModel(settings);
 
@@ -91,6 +124,28 @@ export function tryImportAdjacencyList(
       ),
     ];
   });
+  const edgeCount = labels.length - lines.length;
+  const nodeCount = new Set(labels).size;
+
+  if (nodeCount > MAX_IMPORT_NODES) {
+    return importLimitFailure(
+      "nodes",
+      nodeCount,
+      MAX_IMPORT_NODES,
+      options,
+      "Adjacency list",
+    );
+  }
+  if (edgeCount > MAX_IMPORT_EDGES) {
+    return importLimitFailure(
+      "edges",
+      edgeCount,
+      MAX_IMPORT_EDGES,
+      options,
+      "Adjacency list",
+    );
+  }
+
   const hasWeightedTargets = lines.some((line) => {
     const separator = line.text.includes("->") ? "->" : ":";
     const [, targetText = ""] = line.text.split(separator);

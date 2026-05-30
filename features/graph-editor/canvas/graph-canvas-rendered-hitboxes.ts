@@ -60,10 +60,12 @@ export function useRenderedHitboxes({
         );
 
       setNodeHitboxes((current) =>
-        sameHitboxes(current, nextNodeHitboxes) ? current : nextNodeHitboxes,
+        sameNodeHitboxes(current, nextNodeHitboxes)
+          ? current
+          : nextNodeHitboxes,
       );
       setEdgeLabelHitboxes((current) =>
-        sameHitboxes(current, nextEdgeLabelHitboxes)
+        sameEdgeLabelHitboxes(current, nextEdgeLabelHitboxes)
           ? current
           : nextEdgeLabelHitboxes,
       );
@@ -129,9 +131,7 @@ export function useRenderedHitboxes({
   };
 }
 
-function sameHitboxes<
-  T extends { id: string; label: string; x: number; y: number },
->(a: T[], b: T[]) {
+function sameNodeHitboxes(a: NodeHitbox[], b: NodeHitbox[]) {
   return (
     a.length === b.length &&
     a.every((item, index) => {
@@ -141,6 +141,27 @@ function sameHitboxes<
         next &&
         item.id === next.id &&
         item.label === next.label &&
+        item.x === next.x &&
+        item.y === next.y
+      );
+    })
+  );
+}
+
+function sameEdgeLabelHitboxes(a: EdgeLabelHitbox[], b: EdgeLabelHitbox[]) {
+  return (
+    a.length === b.length &&
+    a.every((item, index) => {
+      const next = b[index];
+
+      return (
+        next &&
+        item.id === next.id &&
+        item.label === next.label &&
+        item.sourceX === next.sourceX &&
+        item.sourceY === next.sourceY &&
+        item.targetX === next.targetX &&
+        item.targetY === next.targetY &&
         item.x === next.x &&
         item.y === next.y
       );

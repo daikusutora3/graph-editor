@@ -12,6 +12,7 @@ import {
   readExportBackground,
   syncCytoscapeSelection,
 } from "./graph-canvas-viewport";
+import { withCytoscapeBatch } from "./cytoscape-batch";
 
 type GraphImageExportOptions = {
   cyRef: MutableRefObject<Core | null>;
@@ -55,27 +56,9 @@ export function useGraphImageExport({
         await document.fonts?.ready;
         await nextAnimationFrame();
 
-        const maxLongEdge = Math.min(
-          detail.maxWidth ?? Number.POSITIVE_INFINITY,
-          detail.maxHeight ?? Number.POSITIVE_INFINITY,
-        );
-        const renderedBox = cy.elements().renderedBoundingBox({
-          includeLabels: true,
-          includeOverlays: true,
-        });
-        const renderedLongEdge = Math.max(
-          renderedBox.w || 0,
-          renderedBox.h || 0,
-        );
-        const scale =
-          Number.isFinite(maxLongEdge) && renderedLongEdge > 0
-            ? maxLongEdge / renderedLongEdge
-            : 1;
-
         return await cy.png({
           output: "blob-promise",
           full: detail.scope === "full",
-          scale,
           maxWidth: detail.maxWidth,
           maxHeight: detail.maxHeight,
           bg: readExportBackground(detail.background),
@@ -88,7 +71,7 @@ export function useGraphImageExport({
           cyRef.current === cy &&
           !cy.destroyed()
         ) {
-          cy.batch(() => {
+          withCytoscapeBatch(cy, () => {
             selectedIds.forEach((id) => cy.getElementById(id).select());
             edgeSourceIds.forEach((id) =>
               cy.getElementById(id).addClass("edge-source"),
@@ -98,7 +81,7 @@ export function useGraphImageExport({
 
         if (cyRef.current === cy && !cy.destroyed()) {
           suppressSelectionSyncRef.current = false;
-          cy.batch(() => {
+          withCytoscapeBatch(cy, () => {
             syncCytoscapeSelection(cy, selectionRef.current);
           });
         } else {

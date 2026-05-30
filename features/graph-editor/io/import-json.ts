@@ -10,6 +10,9 @@ import {
   ensureNodeByLabel,
   finiteNumberOrUndefined,
   importFailure,
+  importLimitFailure,
+  MAX_IMPORT_EDGES,
+  MAX_IMPORT_NODES,
   type ImportOptions,
   readImportSettings,
 } from "./import-utils";
@@ -46,6 +49,24 @@ export function tryImportJson(
     if (!Array.isArray(graph.edges) && !Array.isArray(graph.nodes)) {
       return importFailure(
         'JSON must contain "nodes" or "edges" arrays.',
+        options,
+        "JSON graph",
+      );
+    }
+    if ((graph.nodes?.length ?? 0) > MAX_IMPORT_NODES) {
+      return importLimitFailure(
+        "nodes",
+        graph.nodes?.length ?? 0,
+        MAX_IMPORT_NODES,
+        options,
+        "JSON graph",
+      );
+    }
+    if ((graph.edges?.length ?? 0) > MAX_IMPORT_EDGES) {
+      return importLimitFailure(
+        "edges",
+        graph.edges?.length ?? 0,
+        MAX_IMPORT_EDGES,
         options,
         "JSON graph",
       );
@@ -115,6 +136,24 @@ function buildJsonGraph(
 
     if (sourceValue == null || targetValue == null) {
       warnings.push(`edge ${index + 1}: source and target are required.`);
+      return;
+    }
+    if (
+      !idByLabel.has(String(sourceValue)) &&
+      model.nodes.length >= MAX_IMPORT_NODES
+    ) {
+      warnings.push(
+        `edge ${index + 1}: ignored because the import reached ${MAX_IMPORT_NODES.toLocaleString()} nodes.`,
+      );
+      return;
+    }
+    if (
+      !idByLabel.has(String(targetValue)) &&
+      model.nodes.length >= MAX_IMPORT_NODES
+    ) {
+      warnings.push(
+        `edge ${index + 1}: ignored because the import reached ${MAX_IMPORT_NODES.toLocaleString()} nodes.`,
+      );
       return;
     }
 
