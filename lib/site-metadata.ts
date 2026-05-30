@@ -1,7 +1,4 @@
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  "https://graph-editor.daikusutora3.workers.dev"
-).replace(/\/$/, "");
+export const SITE_URL = "https://graph-editor.daikusutora3.workers.dev";
 
 export const APP_NAME = "Graph Editor";
 export const APP_TITLE = `${APP_NAME} | グラフ理論の図をブラウザで作成`;

@@ -5,8 +5,10 @@ import ts from "typescript";
 const ROOT = process.cwd();
 const SOURCE_DIRS = ["app", "features", "lib"];
 const failures: string[] = [];
+const PUBLIC_SITE_URL = "https://graph-editor.daikusutora3.workers.dev";
 
 assertStaticNextExport();
+assertPublicSiteUrl();
 assertWorkersStaticAssetsConfig();
 assertStaticHeaders();
 assertMissingCloudflareWorkerEntrypoints();
@@ -51,6 +53,21 @@ function assertStaticNextExport() {
     failures.push(
       'next.config.ts: expected output: "export" for static deploys',
     );
+  }
+}
+
+function assertPublicSiteUrl() {
+  const siteMetadataPath = join(ROOT, "lib/site-metadata.ts");
+  const siteMetadata = readFileSync(siteMetadataPath, "utf8");
+
+  if (!siteMetadata.includes(`SITE_URL = "${PUBLIC_SITE_URL}"`)) {
+    failures.push(
+      `lib/site-metadata.ts: expected SITE_URL to be ${PUBLIC_SITE_URL}`,
+    );
+  }
+
+  if (siteMetadata.includes("graph-editor.pages.dev")) {
+    failures.push("lib/site-metadata.ts: old pages.dev URL should not be used");
   }
 }
 
