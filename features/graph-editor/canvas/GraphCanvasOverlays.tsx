@@ -83,7 +83,7 @@ export function ZoomControls({
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="flex h-8 items-center overflow-hidden rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] backdrop-blur-md">
+      <div className="flex h-9 items-center overflow-hidden rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] backdrop-blur-md">
         <button
           type="button"
           aria-label={messages.canvas.zoomOut}

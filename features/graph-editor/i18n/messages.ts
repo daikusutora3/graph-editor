@@ -35,6 +35,15 @@ type Messages = {
     switchLightMode: string;
     switchDarkMode: string;
   };
+  appMenu: {
+    label: string;
+    open: string;
+    github: string;
+    reportIssue: string;
+    reportIssueHelp: string;
+    shareOnX: string;
+    shareOnXHelp: string;
+  };
   toolbar: {
     quickActions: string;
     openSidebar: string;
@@ -363,6 +372,15 @@ const ja = {
     switchLightMode: "ライトモードに切り替え",
     switchDarkMode: "ダークモードに切り替え",
   },
+  appMenu: {
+    label: "アプリメニュー",
+    open: "アプリメニューを開く",
+    github: "GitHub",
+    reportIssue: "Issueを報告",
+    reportIssueHelp: "不具合や改善案を送る",
+    shareOnX: "Xで共有",
+    shareOnXHelp: "このアプリを紹介する",
+  },
   toolbar: {
     quickActions: "クイック操作",
     openSidebar: "サイドバーを開く",
@@ -644,6 +662,15 @@ const en: Messages = {
     darkMode: "Dark",
     switchLightMode: "Switch to light mode",
     switchDarkMode: "Switch to dark mode",
+  },
+  appMenu: {
+    label: "App menu",
+    open: "Open app menu",
+    github: "GitHub",
+    reportIssue: "Report issue",
+    reportIssueHelp: "Send a bug or idea",
+    shareOnX: "Share on X",
+    shareOnXHelp: "Share this app",
   },
   toolbar: {
     ...ja.toolbar,
@@ -929,6 +956,15 @@ const zhHans: Messages = {
     darkMode: "深色",
     switchLightMode: "切换到浅色模式",
     switchDarkMode: "切换到深色模式",
+  },
+  appMenu: {
+    label: "应用菜单",
+    open: "打开应用菜单",
+    github: "GitHub",
+    reportIssue: "报告 Issue",
+    reportIssueHelp: "发送问题或建议",
+    shareOnX: "分享到 X",
+    shareOnXHelp: "分享这个应用",
   },
   toolbar: {
     ...en.toolbar,
