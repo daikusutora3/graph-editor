@@ -438,10 +438,12 @@ button:disabled {
   box-shadow: var(--app-shadow-popover);
 }
 
-.gv-popover:not(.gv-author-menu),
+.gv-popover,
 .gv-starter-dialog,
 .gv-context-menu {
+  --gv-panel-enter-x: 0;
   animation: gv-panel-in var(--app-duration-base) var(--app-ease) both;
+  transform: translateX(var(--gv-panel-enter-x));
   transform-origin: top center;
 }
 
@@ -986,9 +988,20 @@ button:disabled {
 }
 
 .gv-author-menu {
-  animation: gv-author-menu-in var(--app-duration-base) var(--app-ease) both;
-  transform: translateX(-50%);
-  transform-origin: top center;
+  --gv-panel-enter-x: -50%;
+}
+
+@keyframes gv-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--gv-panel-enter-x, 0)) translateY(-0.25rem)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(var(--gv-panel-enter-x, 0)) translateY(0) scale(1);
+  }
 }
 
 @keyframes gv-edit-feedback-node {
@@ -1000,30 +1013,6 @@ button:disabled {
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(1.5);
-  }
-}
-
-@keyframes gv-author-menu-in {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-0.25rem) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
-  }
-}
-
-@keyframes gv-panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(-0.25rem) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 

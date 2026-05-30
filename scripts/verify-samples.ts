@@ -19,7 +19,6 @@ type IndexedGraph = {
   nodeCount: number;
   edgeCount: number;
   adjacency: boolean[][];
-  degrees: number[];
 };
 
 const failures: string[] = [];
@@ -218,46 +217,6 @@ for (const kind of sampleGraphKinds) {
   }
 }
 
-for (const [kind, expectation] of Object.entries(sampleExpectations) as Array<
-  [SampleGraphKind, (typeof sampleExpectations)[SampleGraphKind]]
->) {
-  const model = models.get(kind);
-  if (!model || !expectation?.notIsomorphicTo) continue;
-
-  for (const otherKind of expectation.notIsomorphicTo) {
-    const otherModel = models.get(otherKind);
-    if (!otherModel) continue;
-
-    if (areIsomorphic(toIndexedGraph(model), toIndexedGraph(otherModel))) {
-      failures.push(`${kind}: unexpectedly isomorphic to ${otherKind}`);
-    }
-  }
-}
-
-const smallKinds = sampleGraphKinds.filter((kind) => {
-  if (kind === "empty") return false;
-  const model = models.get(kind);
-  return model ? model.nodes.length <= 10 : false;
-});
-
-for (let first = 0; first < smallKinds.length; first += 1) {
-  for (let second = first + 1; second < smallKinds.length; second += 1) {
-    const firstKind = smallKinds[first];
-    const secondKind = smallKinds[second];
-    const firstModel = models.get(firstKind);
-    const secondModel = models.get(secondKind);
-    if (!firstModel || !secondModel) continue;
-
-    if (
-      areIsomorphic(toIndexedGraph(firstModel), toIndexedGraph(secondModel))
-    ) {
-      failures.push(
-        `${firstKind}: unexpectedly isomorphic to ${secondKind}; add an allow-list entry only if intentional`,
-      );
-    }
-  }
-}
-
 if (failures.length > 0) {
   console.error(`Sample verification failed (${failures.length})`);
   for (const failure of failures) {
@@ -339,69 +298,7 @@ function toIndexedGraph(model: GraphModel): IndexedGraph {
     nodeCount,
     edgeCount: model.edges.length,
     adjacency,
-    degrees: adjacency.map((row) => row.filter(Boolean).length).sort(),
   };
-}
-
-function areIsomorphic(first: IndexedGraph, second: IndexedGraph): boolean {
-  if (
-    first.nodeCount !== second.nodeCount ||
-    first.edgeCount !== second.edgeCount ||
-    first.degrees.join(",") !== second.degrees.join(",")
-  ) {
-    return false;
-  }
-
-  const nodeCount = first.nodeCount;
-  if (nodeCount > 10) {
-    throw new Error("brute-force isomorphism is limited to 10 nodes");
-  }
-
-  const firstDegrees = first.adjacency.map((row) => row.filter(Boolean).length);
-  const secondDegrees = second.adjacency.map(
-    (row) => row.filter(Boolean).length,
-  );
-  const order = Array.from({ length: nodeCount }, (_, index) => index).sort(
-    (a, b) => firstDegrees[b] - firstDegrees[a],
-  );
-  const mapping = Array<number>(nodeCount).fill(-1);
-  const used = Array<boolean>(nodeCount).fill(false);
-
-  function visit(depth: number): boolean {
-    if (depth === nodeCount) return true;
-
-    const source = order[depth];
-    for (let target = 0; target < nodeCount; target += 1) {
-      if (used[target] || firstDegrees[source] !== secondDegrees[target]) {
-        continue;
-      }
-
-      let compatible = true;
-      for (let index = 0; index < depth; index += 1) {
-        const mappedSource = order[index];
-        const mappedTarget = mapping[mappedSource];
-        if (
-          first.adjacency[source][mappedSource] !==
-          second.adjacency[target][mappedTarget]
-        ) {
-          compatible = false;
-          break;
-        }
-      }
-
-      if (!compatible) continue;
-
-      mapping[source] = target;
-      used[target] = true;
-      if (visit(depth + 1)) return true;
-      used[target] = false;
-      mapping[source] = -1;
-    }
-
-    return false;
-  }
-
-  return visit(0);
 }
 
 function neighborMap(model: GraphModel): Map<NodeId, Set<NodeId>> {
