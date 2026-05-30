@@ -46,7 +46,7 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
         samples: group.samples.filter((sample) => {
           const groupCopy = messages.samples.group[group.key];
           const sampleCopy = messages.samples.item[sample.kind];
-          const sampleTitle = sampleCopy?.title ?? sample.title;
+          const sampleTitle = sampleCopy?.title ?? sample.label;
           const sampleSubtitle =
             sampleCopy?.subtitle ??
             (locale === "ja"
@@ -193,7 +193,7 @@ function SampleCard({
   onClick: () => void;
 }) {
   const { locale, messages } = useI18n();
-  const title = messages.samples.item[sample.kind]?.title ?? sample.title;
+  const title = messages.samples.item[sample.kind]?.title ?? sample.label;
   const subtitle =
     messages.samples.item[sample.kind]?.subtitle ??
     (locale === "ja" ? sample.subtitle : humanizeSampleKind(sample.kind));

@@ -1,4 +1,4 @@
-import type { SampleGraphKind } from "./sample-graphs";
+import type { SampleGraphKind } from "../../features/graph-editor/samples/sample-graphs";
 
 export type SampleExpectation = {
   nodeCount?: number;

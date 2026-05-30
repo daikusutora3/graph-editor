@@ -12,21 +12,34 @@ export { GRAPH_STORAGE_KEY } from "../../adapters/browser/stored-graph";
 
 export const initialGraph: GraphModel = createEmptyGraphModel();
 
-const storedGraphAtom = atom<GraphModel>(initialGraph);
+type GraphStorageState = {
+  graph: GraphModel;
+  status: "pending" | "ready";
+};
+
+const storedGraphAtom = atom<GraphStorageState>({
+  graph: initialGraph,
+  status: "pending",
+});
 export const graphRevisionAtom = atom(0);
 
 storedGraphAtom.onMount = (setGraph) => {
   const storedGraph = readStoredGraph();
 
-  if (storedGraph) {
-    setGraph(storedGraph);
-  }
+  setGraph({
+    graph: storedGraph ?? initialGraph,
+    status: "ready",
+  });
 };
 
+export const graphStorageReadyAtom = atom(
+  (get) => get(storedGraphAtom).status === "ready",
+);
+
 export const graphAtom = atom(
-  (get) => get(storedGraphAtom),
+  (get) => get(storedGraphAtom).graph,
   (_get, set, graph: GraphModel) => {
-    set(storedGraphAtom, graph);
+    set(storedGraphAtom, { graph, status: "ready" });
     scheduleStoredGraphWrite(graph);
   },
 );
@@ -35,7 +48,7 @@ export const syncExternalGraphAtom = atom(
   null,
   (get, set, graph: GraphModel) => {
     cancelScheduledStoredGraphWrite();
-    set(storedGraphAtom, graph);
+    set(storedGraphAtom, { graph, status: "ready" });
     set(graphRevisionAtom, get(graphRevisionAtom) + 1);
   },
 );

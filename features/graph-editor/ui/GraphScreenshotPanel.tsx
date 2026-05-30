@@ -207,64 +207,19 @@ function LongEdgeControl({
   const { messages } = useI18n();
 
   return (
-    <fieldset className="grid min-w-0 gap-[var(--app-space-2)]">
-      <legend className="gv-microcopy">{messages.screenshot.imageSize}</legend>
-      <div
-        className="gv-segment"
-        role="radiogroup"
-        aria-label={messages.screenshot.imageSize}
-      >
-        {PNG_EXPORT_LONG_EDGE_PRESETS.map((longEdgePx) => (
-          <label key={longEdgePx} className="gv-segment-button">
-            <input
-              className="sr-only"
-              type="radio"
-              name="screenshot-long-edge"
-              value={longEdgePx}
-              checked={preset === longEdgePx}
-              aria-label={`${messages.screenshot.imageSize}: ${longEdgePx}px`}
-              onChange={() => onPresetChange(longEdgePx)}
-            />
-            <span className="block truncate">{longEdgePx}px</span>
-          </label>
-        ))}
-        <label className="gv-segment-button">
-          <input
-            className="sr-only"
-            type="radio"
-            name="screenshot-long-edge"
-            value="custom"
-            checked={preset === "custom"}
-            aria-label={`${messages.screenshot.imageSize}: ${messages.screenshot.longEdgeCustom}`}
-            onChange={() => onPresetChange("custom")}
-          />
-          <span className="block truncate">
-            {messages.screenshot.longEdgeCustom}
-          </span>
-        </label>
-      </div>
-      {preset === "custom" ? (
-        <label className="flex min-w-0 items-center gap-[var(--app-space-2)]">
-          <span className="gv-microcopy shrink-0">
-            {messages.screenshot.imageSize}
-          </span>
-          <input
-            type="number"
-            min={MIN_LONG_EDGE_PX}
-            max={MAX_LONG_EDGE_PX}
-            step={64}
-            value={customLongEdgePx}
-            onChange={(event) =>
-              onCustomLongEdgeChange(event.currentTarget.valueAsNumber)
-            }
-            className="h-8 min-w-0 flex-1 rounded-[var(--app-radius-sm)] border border-transparent bg-[var(--state-control-bg)] px-[var(--app-space-3)] font-mono text-[length:var(--app-text-xs)] leading-none font-bold text-[var(--text-dim)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
-          />
-          <span className="shrink-0 text-[length:var(--app-text-xs)] font-bold text-[var(--text-mute)]">
-            px
-          </span>
-        </label>
-      ) : null}
-    </fieldset>
+    <NumberPresetControl
+      customLabel={messages.screenshot.longEdgeCustom}
+      customValue={customLongEdgePx}
+      label={messages.screenshot.imageSize}
+      max={MAX_LONG_EDGE_PX}
+      min={MIN_LONG_EDGE_PX}
+      name="screenshot-long-edge"
+      preset={preset}
+      presets={PNG_EXPORT_LONG_EDGE_PRESETS}
+      step={64}
+      onCustomChange={onCustomLongEdgeChange}
+      onPresetChange={onPresetChange}
+    />
   );
 }
 
@@ -282,55 +237,89 @@ function PaddingControl({
   const { messages } = useI18n();
 
   return (
+    <NumberPresetControl
+      customLabel={messages.screenshot.longEdgeCustom}
+      customValue={customPaddingPx}
+      label={messages.screenshot.padding}
+      max={MAX_PADDING_PX}
+      min={MIN_PADDING_PX}
+      name="screenshot-padding"
+      preset={preset}
+      presets={PNG_EXPORT_PADDING_PRESETS}
+      step={8}
+      onCustomChange={onCustomPaddingChange}
+      onPresetChange={onPresetChange}
+    />
+  );
+}
+
+function NumberPresetControl<T extends number>({
+  customLabel,
+  customValue,
+  label,
+  max,
+  min,
+  name,
+  preset,
+  presets,
+  step,
+  onCustomChange,
+  onPresetChange,
+}: {
+  customLabel: string;
+  customValue: number;
+  label: string;
+  max: number;
+  min: number;
+  name: string;
+  preset: T | "custom";
+  presets: readonly T[];
+  step: number;
+  onCustomChange: (value: number) => void;
+  onPresetChange: (preset: T | "custom") => void;
+}) {
+  return (
     <fieldset className="grid min-w-0 gap-[var(--app-space-2)]">
-      <legend className="gv-microcopy">{messages.screenshot.padding}</legend>
-      <div
-        className="gv-segment"
-        role="radiogroup"
-        aria-label={messages.screenshot.padding}
-      >
-        {PNG_EXPORT_PADDING_PRESETS.map((paddingPx) => (
-          <label key={paddingPx} className="gv-segment-button">
+      <legend className="gv-microcopy">{label}</legend>
+      <div className="gv-segment" role="radiogroup" aria-label={label}>
+        {presets.map((value) => (
+          <label key={value} className="gv-segment-button">
             <input
               className="sr-only"
               type="radio"
-              name="screenshot-padding"
-              value={paddingPx}
-              checked={preset === paddingPx}
-              aria-label={`${messages.screenshot.padding}: ${paddingPx}px`}
-              onChange={() => onPresetChange(paddingPx)}
+              name={name}
+              value={value}
+              checked={preset === value}
+              aria-label={`${label}: ${value}px`}
+              onChange={() => onPresetChange(value)}
             />
-            <span className="block truncate">{paddingPx}px</span>
+            <span className="block truncate">{value}px</span>
           </label>
         ))}
         <label className="gv-segment-button">
           <input
             className="sr-only"
             type="radio"
-            name="screenshot-padding"
+            name={name}
             value="custom"
             checked={preset === "custom"}
-            aria-label={`${messages.screenshot.padding}: ${messages.screenshot.longEdgeCustom}`}
+            aria-label={`${label}: ${customLabel}`}
             onChange={() => onPresetChange("custom")}
           />
-          <span className="block truncate">
-            {messages.screenshot.longEdgeCustom}
-          </span>
+          <span className="block truncate">{customLabel}</span>
         </label>
       </div>
       {preset === "custom" ? (
         <label className="flex min-w-0 items-center gap-[var(--app-space-2)]">
-          <span className="gv-microcopy shrink-0">
-            {messages.screenshot.padding}
-          </span>
+          <span className="gv-microcopy shrink-0">{label}</span>
           <input
             type="number"
-            min={MIN_PADDING_PX}
-            max={MAX_PADDING_PX}
-            step={8}
-            value={customPaddingPx}
+            min={min}
+            max={max}
+            step={step}
+            value={customValue}
             onChange={(event) =>
-              onCustomPaddingChange(event.currentTarget.valueAsNumber)
+              onCustomChange(event.currentTarget.valueAsNumber)
             }
             className="h-8 min-w-0 flex-1 rounded-[var(--app-radius-sm)] border border-transparent bg-[var(--state-control-bg)] px-[var(--app-space-3)] font-mono text-[length:var(--app-text-xs)] leading-none font-bold text-[var(--text-dim)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
           />

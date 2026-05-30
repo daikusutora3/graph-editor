@@ -520,11 +520,6 @@ const ja = {
       subtitle: "行と列に整列",
       tooltip: "頂点を行列状に並べます",
     },
-    components: {
-      label: "連結成分",
-      subtitle: "成分ごと",
-      tooltip: "連結成分ごとに離して並べます",
-    },
     bfs: {
       label: "BFS層",
       subtitle: "距離で層分け",
@@ -809,11 +804,6 @@ const en: Messages = {
       subtitle: "Rows and columns",
       tooltip: "Align nodes into rows and columns",
     },
-    components: {
-      label: "Components",
-      subtitle: "By component",
-      tooltip: "Separate connected components",
-    },
     bfs: {
       label: "BFS layers",
       subtitle: "By distance",
@@ -1095,11 +1085,6 @@ const zhHans: Messages = {
       tooltip: "将顶点等距排列在圆周上",
     },
     grid: { label: "网格", subtitle: "行和列", tooltip: "将顶点对齐到行列中" },
-    components: {
-      label: "连通分量",
-      subtitle: "按分量",
-      tooltip: "分开排列各连通分量",
-    },
     bfs: {
       label: "BFS 分层",
       subtitle: "按距离",

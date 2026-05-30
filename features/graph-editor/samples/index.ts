@@ -4,4 +4,3 @@ export {
   sampleGraphKinds,
   type SampleGraphKind,
 } from "./sample-graphs";
-export { sampleExpectations } from "./sample-expectations";

@@ -35,9 +35,6 @@ const LAYOUT_TARGET_EDGE_LENGTH = 124;
 
 type LayoutRuntimeDefinition = {
   kind: string;
-  label: string;
-  subtitle: string;
-  tooltip: string;
   priority: "primary" | "advanced";
   positions: (
     model: GraphModel,
@@ -57,67 +54,38 @@ export type LayoutDisabledReason =
 const manualLayoutDefinitions = [
   {
     kind: "force",
-    label: "自動配置",
-    subtitle: "力学モデル",
-    tooltip: "辺のつながりを見ながら全体を自然に広げます",
     priority: "primary",
     positions: (model) => layoutForce(model),
   },
   {
     kind: "circle",
-    label: "円形",
-    subtitle: "円周上に配置",
-    tooltip: "頂点を円周上に等間隔で並べます",
     priority: "advanced",
     positions: (model) =>
       layoutCircle(orderedNodeIds(model), LAYOUT_CIRCLE_MIN_RADIUS),
   },
   {
     kind: "grid",
-    label: "格子",
-    subtitle: "行と列に整列",
-    tooltip: "頂点を行列状に並べます",
     priority: "advanced",
     positions: (model) => layoutGrid(orderedNodeIds(model)),
   },
   {
-    kind: "components",
-    label: "連結成分",
-    subtitle: "成分ごと",
-    tooltip: "連結成分ごとに離して並べます",
-    priority: "primary",
-    positions: (model) => layoutComponents(model),
-  },
-  {
     kind: "bfs",
-    label: "BFS層",
-    subtitle: "距離で層分け",
-    tooltip: "選択頂点からの距離で層に並べます。有向では辺の向きに沿います",
     priority: "primary",
     positions: (model, rootNodeId) => layoutBfs(model, rootNodeId),
   },
   {
     kind: "tree",
-    label: "木",
-    subtitle: "根から下へ",
-    tooltip: "木・森を根から下へ配置します。1頂点選択時はそこを根にします",
     priority: "advanced",
     positions: (model, rootNodeId) => layoutTree(model, rootNodeId),
     disabledReason: (model) => (isForest(model) ? null : "notForest"),
   },
   {
     kind: "concentric",
-    label: "同心円",
-    subtitle: "高次数を内側へ",
-    tooltip: "次数の高い頂点を内側に置き、外側へ広げます",
     priority: "advanced",
     positions: (model) => layoutConcentric(model),
   },
   {
     kind: "dagLayer",
-    label: "DAG層",
-    subtitle: "有向辺の流れ",
-    tooltip: "有向辺の向きに沿って層状に並べます",
     priority: "advanced",
     positions: (model) => layoutDag(model),
     disabledReason: (model) => {
@@ -130,18 +98,12 @@ const manualLayoutDefinitions = [
   },
   {
     kind: "bipartite",
-    label: "二部",
-    subtitle: "2部を左右へ",
-    tooltip: "2色分けした頂点集合を左右に並べます",
     priority: "advanced",
     positions: (model) => layoutBipartite(model),
     disabledReason: (model) => (isBipartite(model) ? null : "notBipartite"),
   },
   {
     kind: "scc",
-    label: "SCC",
-    subtitle: "強連結成分",
-    tooltip: "強連結成分ごとにまとめ、成分間の流れを左から右へ並べます",
     priority: "advanced",
     positions: (model) => layoutScc(model),
     disabledReason: (model) =>
@@ -149,25 +111,16 @@ const manualLayoutDefinitions = [
   },
   {
     kind: "radial",
-    label: "放射",
-    subtitle: "中心から外へ",
-    tooltip: "1頂点選択時はそこを中心に、距離層を円状に広げます",
     priority: "advanced",
     positions: (model, rootNodeId) => layoutRadial(model, rootNodeId),
   },
   {
     kind: "line",
-    label: "直線",
-    subtitle: "順序を見る",
-    tooltip: "道や入力順を一直線に並べます",
     priority: "advanced",
     positions: (model) => layoutLine(model),
   },
   {
     kind: "spread",
-    label: "重なり解消",
-    subtitle: "頂点を少し離す",
-    tooltip: "現在位置を起点に、近すぎる頂点を少し離して見やすくします",
     priority: "primary",
     positions: (model) => layoutSpread(model),
   },
@@ -177,22 +130,14 @@ export type LayoutKind = (typeof manualLayoutDefinitions)[number]["kind"];
 
 export type LayoutDefinition = {
   kind: LayoutKind;
-  label: string;
-  subtitle: string;
-  tooltip: string;
   priority: "primary" | "advanced";
 };
 
 export const layoutDefinitions: readonly LayoutDefinition[] =
-  manualLayoutDefinitions.map(
-    ({ kind, label, subtitle, tooltip, priority }) => ({
-      kind,
-      label,
-      subtitle,
-      tooltip,
-      priority,
-    }),
-  );
+  manualLayoutDefinitions.map(({ kind, priority }) => ({
+    kind,
+    priority,
+  }));
 
 const layoutRuntimeByKind = new Map<LayoutKind, LayoutRuntimeDefinition>(
   manualLayoutDefinitions.map((definition) => [definition.kind, definition]),
@@ -218,15 +163,6 @@ function createLayoutPositions(
   return ensureMinimumNodeDistance(positions);
 }
 
-export function manualLayoutDisabledReason(
-  kind: LayoutKind,
-  model: GraphModel,
-) {
-  const reason = manualLayoutDisabledReasonCode(kind, model);
-
-  return reason ? layoutDisabledReasonLabels[reason] : null;
-}
-
 export function manualLayoutDisabledReasonCode(
   kind: LayoutKind,
   model: GraphModel,
@@ -237,15 +173,6 @@ export function manualLayoutDisabledReasonCode(
 
   return getLayoutRuntime(kind).disabledReason?.(model) ?? null;
 }
-
-const layoutDisabledReasonLabels: Record<LayoutDisabledReason, string> = {
-  emptyGraph: "頂点がありません",
-  notForest: "木・森ではありません",
-  dagRequiresDirected: "DAG層は有向グラフで使います",
-  notDag: "DAGではないためSCCを先に確認してください",
-  notBipartite: "二部グラフではありません",
-  sccRequiresDirected: "有向グラフで強連結成分を確認します",
-};
 
 function getLayoutRuntime(kind: LayoutKind) {
   const runtime = layoutRuntimeByKind.get(kind);

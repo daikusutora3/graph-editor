@@ -1,10 +1,10 @@
 import {
   createSampleGraph,
   sampleGraphDefinitions,
-  sampleExpectations,
   sampleGraphKinds,
   type SampleGraphKind,
 } from "../../features/graph-editor/samples";
+import { sampleExpectations } from "./sample-expectations";
 import type {
   GraphModel,
   NodeId,
