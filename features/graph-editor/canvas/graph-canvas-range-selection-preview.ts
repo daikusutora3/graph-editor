@@ -86,7 +86,7 @@ export function useRangeSelectionPreview({
         includeUnderlays: false,
       });
 
-      if (boxesOverlap(box, nodeBox)) {
+      if (boxContains(box, nodeBox)) {
         nextNodeIds.add(node.id());
       }
     });
@@ -100,7 +100,7 @@ export function useRangeSelectionPreview({
         includeUnderlays: false,
       });
 
-      if (boxesOverlap(box, edgeBox)) {
+      if (boxContains(box, edgeBox)) {
         nextEdgeIds.add(edge.id());
       }
     });
@@ -227,11 +227,11 @@ function renderedBoxFromPoints(
   };
 }
 
-function boxesOverlap(
+function boxContains(
   a: RenderedBox,
   b: { x1: number; y1: number; x2: number; y2: number },
 ) {
-  return a.x1 <= b.x2 && a.x2 >= b.x1 && a.y1 <= b.y2 && a.y2 >= b.y1;
+  return a.x1 <= b.x1 && a.y1 <= b.y1 && a.x2 >= b.x2 && a.y2 >= b.y2;
 }
 
 function applyPreviewClassDiff(
