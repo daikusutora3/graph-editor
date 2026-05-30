@@ -1,12 +1,18 @@
 "use client";
 
 import { Maximize2, Minus, Plus } from "lucide-react";
-import type { CSSProperties, MutableRefObject, RefObject } from "react";
+import type {
+  CSSProperties,
+  HTMLAttributes,
+  MutableRefObject,
+  RefObject,
+} from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { InlineEditTarget, RenderedPoint } from "./graph-canvas-types";
+import type { SelectionBoxRect } from "./graph-canvas-shift-range-selection";
 
 type FitGraphButtonProps = {
   visible: boolean;
@@ -239,6 +245,40 @@ export function EditFeedbackNodes({
         />
       ))}
     </>
+  );
+}
+
+export function ShiftRangeSelectionLayer({
+  active,
+  handlers,
+  rect,
+}: {
+  active: boolean;
+  handlers: HTMLAttributes<HTMLDivElement>;
+  rect: SelectionBoxRect | null;
+}) {
+  if (!active) {
+    return null;
+  }
+
+  return (
+    <div
+      className="absolute inset-0 z-[19] cursor-crosshair"
+      aria-hidden="true"
+      {...handlers}
+    >
+      {rect ? (
+        <div
+          className="pointer-events-none absolute border border-[var(--canvas-selection-border)] bg-[var(--canvas-selection-fill)]"
+          style={{
+            height: rect.height,
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+          }}
+        />
+      ) : null}
+    </div>
   );
 }
 

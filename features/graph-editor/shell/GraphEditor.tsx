@@ -11,7 +11,6 @@ import { GraphPerformanceProbeLoader } from "../diagnostics/GraphPerformanceProb
 import {
   useGraphEditorShortcuts,
   useGraphExternalStorageSync,
-  useGraphSelectionPruning,
 } from "../workflows/editing/graph-editor-hooks";
 import { GraphIOControls } from "../ui/GraphIOControls";
 import { GraphStarterCard } from "../ui/GraphStarterCard";
@@ -30,7 +29,6 @@ function GraphEditorContent() {
   const graph = useAtomValue(graphAtom);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  useGraphSelectionPruning();
   useGraphEditorShortcuts();
   useGraphExternalStorageSync();
 

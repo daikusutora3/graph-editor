@@ -11,6 +11,7 @@ import {
   type SelectionState,
 } from "./editor-state";
 import { graphAtom, graphRevisionAtom } from "./graph-atoms";
+import { pruneSelectionForGraph } from "./editor-selection";
 
 export const historyAtom = atom<GraphTransaction[]>([]);
 export const futureAtom = atom<GraphTransaction[]>([]);
@@ -31,9 +32,11 @@ export const executeCommandAtom = atom(
       return;
     }
 
-    set(graphAtom, applyGraphPatch(graph, transaction.forward));
+    const nextGraph = applyGraphPatch(graph, transaction.forward);
+    set(graphAtom, nextGraph);
     set(graphRevisionAtom, transaction.afterRevision);
     set(edgeDraftAtom, createEmptyEdgeDraft());
+    set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
     set(historyAtom, appendHistory(get(historyAtom), transaction));
     set(futureAtom, []);
   },
@@ -55,9 +58,11 @@ export const undoAtom = atom(null, (get, set) => {
     return;
   }
 
-  set(graphAtom, applyGraphPatch(graph, transaction.backward));
+  const nextGraph = applyGraphPatch(graph, transaction.backward);
+  set(graphAtom, nextGraph);
   set(graphRevisionAtom, transaction.beforeRevision);
   set(edgeDraftAtom, createEmptyEdgeDraft());
+  set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
   set(historyAtom, history.slice(0, -1));
   set(futureAtom, [transaction, ...get(futureAtom)]);
 });
@@ -78,9 +83,11 @@ export const redoAtom = atom(null, (get, set) => {
     return;
   }
 
-  set(graphAtom, applyGraphPatch(graph, transaction.forward));
+  const nextGraph = applyGraphPatch(graph, transaction.forward);
+  set(graphAtom, nextGraph);
   set(graphRevisionAtom, transaction.afterRevision);
   set(edgeDraftAtom, createEmptyEdgeDraft());
+  set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
   set(historyAtom, appendHistory(get(historyAtom), transaction));
   set(futureAtom, restFuture);
 });

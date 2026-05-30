@@ -39,6 +39,7 @@ import { useGraphCanvasLifecycle } from "../adapters/cytoscape/graph-canvas-life
 import { useGraphCanvasModeEffects } from "./graph-canvas-mode-effects";
 import { useRenderedHitboxes } from "./graph-canvas-rendered-hitboxes";
 import { useGraphCanvasSelectionActions } from "./graph-canvas-selection-actions";
+import { useShiftRangeSelection } from "./graph-canvas-shift-range-selection";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/use-panel-presence";
@@ -53,6 +54,7 @@ import {
   FitGraphButton,
   InlineEditForm,
   InteractionLayers,
+  ShiftRangeSelectionLayer,
   ZoomControls,
 } from "./GraphCanvasOverlays";
 import { useGraphCanvasApi } from "./GraphCanvasProvider";
@@ -122,10 +124,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   const graphHasElements = elements.length > 0;
 
   const selectionRef = useRef(selection);
-
-  useEffect(() => {
-    selectionRef.current = selection;
-  }, [selection]);
+  selectionRef.current = selection;
 
   useEffect(() => {
     if (mode !== "edge") {
@@ -328,6 +327,14 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     nodeHitboxes,
     selection,
   });
+  const shiftRangeSelection = useShiftRangeSelection({
+    containerRef,
+    edgeLabelHitboxes,
+    mode,
+    nodeHitboxes,
+    setSelection,
+  });
+
   return (
     <div
       className="relative h-full min-h-[420px] w-full overflow-hidden bg-[var(--bg-deep)]"
@@ -361,6 +368,11 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           setContextMenuTarget(null);
           setEdgeDraft(createEmptyEdgeDraft());
         }}
+      />
+      <ShiftRangeSelectionLayer
+        active={shiftRangeSelection.active}
+        handlers={shiftRangeSelection.handlers}
+        rect={shiftRangeSelection.rect}
       />
       {mode === "edge" ? (
         <>

@@ -1,10 +1,9 @@
 "use client";
 
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 
 import { isEditorShortcutBlockedTarget } from "../../adapters/browser/shortcut-targets";
-import { selectionAtom } from "../../shell/state/editor-atoms";
 import {
   clearInteractionStateAtom,
   resetEditorSessionAtom,
@@ -25,7 +24,6 @@ import {
 } from "../../shell/state/editor-shortcuts";
 import {
   GRAPH_STORAGE_KEY,
-  graphAtom,
   initialGraph,
   syncExternalGraphAtom,
 } from "../../shell/state/graph-atoms";
@@ -35,28 +33,6 @@ import {
   undoAtom,
 } from "../../shell/state/history-atoms";
 import { parseStoredGraph } from "../../adapters/browser/stored-graph";
-
-export function useGraphSelectionPruning() {
-  const graph = useAtomValue(graphAtom);
-  const selection = useAtomValue(selectionAtom);
-  const setSelection = useSetAtom(selectionAtom);
-
-  useEffect(() => {
-    const nodeIds = new Set(graph.nodes.map((node) => node.id));
-    const edgeIds = new Set(graph.edges.map((edge) => edge.id));
-    const nextSelection = {
-      nodeIds: selection.nodeIds.filter((nodeId) => nodeIds.has(nodeId)),
-      edgeIds: selection.edgeIds.filter((edgeId) => edgeIds.has(edgeId)),
-    };
-
-    if (
-      nextSelection.nodeIds.length !== selection.nodeIds.length ||
-      nextSelection.edgeIds.length !== selection.edgeIds.length
-    ) {
-      setSelection(nextSelection);
-    }
-  }, [graph.edges, graph.nodes, selection, setSelection]);
-}
 
 export function useGraphEditorShortcuts() {
   const setMode = useSetAtom(setEditorModeAtom);
