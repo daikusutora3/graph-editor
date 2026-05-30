@@ -8,6 +8,7 @@ const failures: string[] = [];
 
 assertStaticNextExport();
 assertWorkersStaticAssetsConfig();
+assertStaticHeaders();
 assertMissingCloudflareWorkerEntrypoints();
 
 for (const file of SOURCE_DIRS.flatMap((dir) => readFiles(join(ROOT, dir)))) {
@@ -130,6 +131,33 @@ function assertWorkersStaticAssetsConfig() {
     failures.push(
       'wrangler.jsonc: expected assets.not_found_handling to be "404-page"',
     );
+  }
+}
+
+function assertStaticHeaders() {
+  const headersPath = join(ROOT, "public/_headers");
+
+  if (!existsSync(headersPath)) {
+    failures.push(
+      "public/_headers: expected static security and cache headers for public deploys",
+    );
+    return;
+  }
+
+  const headers = readFileSync(headersPath, "utf8");
+  const requiredSnippets = [
+    "X-Content-Type-Options: nosniff",
+    "Referrer-Policy: strict-origin-when-cross-origin",
+    "Permissions-Policy: camera=(), microphone=(), geolocation=()",
+    "/_next/static/*",
+    "Cache-Control: public, max-age=31536000, immutable",
+    "/brand/*",
+  ];
+
+  for (const snippet of requiredSnippets) {
+    if (!headers.includes(snippet)) {
+      failures.push(`public/_headers: missing ${snippet}`);
+    }
   }
 }
 

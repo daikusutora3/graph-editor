@@ -39,6 +39,7 @@ bun run typecheck
 bun run lint
 bun run format:check
 bun run check
+bun run check:all
 bun run build
 ```
 
@@ -87,6 +88,9 @@ bun run build
 ```
 
 应用已配置 Next.js `output: "export"`，可以进行静态导出。
+公开发布前请运行 `bun run check:all`。它会覆盖类型检查、lint、格式检查、
+图模型/样例/布局/静态部署验证、生产构建和 bundle budget。Cloudflare 静态
+资源部署由 `wrangler.jsonc` 和 `public/_headers` 保护。
 
 ## 许可证
 

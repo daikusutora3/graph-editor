@@ -50,6 +50,7 @@ bun run typecheck
 bun run lint
 bun run format:check
 bun run check
+bun run check:all
 bun run build
 ```
 
@@ -98,6 +99,11 @@ bun run build
 ```
 
 The app is configured for static export with Next.js `output: "export"`.
+Before publishing a public build, run `bun run check:all`. This covers
+type-checking, linting, formatting, graph model verification, sample/layout
+guards, static deployment guards, a production build, and the bundle budget.
+Cloudflare static asset deploys are guarded by `wrangler.jsonc` and
+`public/_headers`.
 
 ## License
 

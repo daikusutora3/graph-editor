@@ -42,6 +42,7 @@ bun run typecheck
 bun run lint
 bun run format:check
 bun run check
+bun run check:all
 bun run build
 ```
 
@@ -90,6 +91,10 @@ bun run build
 ```
 
 Next.js の `output: "export"` を使った静的書き出しに対応しています。
+公開前は `bun run check:all` を実行してください。型チェック、lint、
+フォーマット確認、グラフモデル・サンプル・レイアウト・静的デプロイの検証、
+本番ビルド、bundle budget の確認までまとめて実行します。Cloudflare の静的
+アセット配信は `wrangler.jsonc` と `public/_headers` で守っています。
 
 ## ライセンス
 

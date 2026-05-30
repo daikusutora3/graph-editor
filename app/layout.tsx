@@ -2,6 +2,17 @@ import type { Metadata } from "next";
 import Script from "next/script";
 
 import {
+  APP_DESCRIPTION,
+  APP_DESCRIPTION_JA,
+  APP_NAME,
+  APP_TITLE,
+  APPLE_TOUCH_ICON,
+  SITE_URL,
+  SOCIAL_IMAGE,
+  appLocaleMetadata,
+  structuredData,
+} from "@/lib/site-metadata";
+import {
   DEFAULT_THEME,
   THEME_STORAGE_KEY,
 } from "@/features/graph-editor/ui/theme-constants";
@@ -11,32 +22,6 @@ import {
 } from "@/features/graph-editor/i18n/locale";
 
 import "./globals.css";
-
-const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://graph-editor.pages.dev"
-).replace(/\/$/, "");
-const APP_NAME = "Graph Editor";
-const APP_TITLE = `${APP_NAME} | グラフ理論の図をブラウザで作成`;
-const APP_DESCRIPTION =
-  "Create, edit, arrange, and export graph theory diagrams directly in the browser.";
-const APP_DESCRIPTION_JA =
-  "ブラウザ上でグラフ理論の図を作成・編集・配置・書き出しできるアプリです。";
-const SOCIAL_IMAGE = "/brand/graph-editor-logo.webp";
-
-const appLocaleMetadata = {
-  ja: {
-    description: APP_DESCRIPTION_JA,
-    title: APP_TITLE,
-  },
-  en: {
-    description: APP_DESCRIPTION,
-    title: `${APP_NAME} | Graph theory diagrams in the browser`,
-  },
-  "zh-Hans": {
-    description: "直接在浏览器中创建、编辑、排布并导出图论图形。",
-    title: `${APP_NAME} | 在浏览器中绘制图论图形`,
-  },
-};
 
 const appInitScript = `
 (() => {
@@ -101,30 +86,6 @@ const appInitScript = `
 })();
 `;
 
-const structuredData = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: APP_NAME,
-  alternateName: "Graph Editor by daikusutora",
-  applicationCategory: "DesignApplication",
-  operatingSystem: "Any",
-  url: SITE_URL,
-  image: `${SITE_URL}${SOCIAL_IMAGE}`,
-  description: APP_DESCRIPTION,
-  inLanguage: ["ja", "en", "zh-Hans"],
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-  },
-  featureList: [
-    "Import edge lists, adjacency lists, adjacency matrices, and JSON",
-    "Edit directed, undirected, weighted, and unweighted graphs",
-    "Explore curated graph theory samples",
-    "Apply graph layouts and export PNG images",
-  ],
-};
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: APP_NAME,
@@ -171,7 +132,7 @@ export const metadata: Metadata = {
     ],
     apple: [
       {
-        url: "/brand/graph-editor-logo-180.png",
+        url: APPLE_TOUCH_ICON,
         sizes: "180x180",
         type: "image/png",
       },
