@@ -8,7 +8,7 @@ import {
   APP_TITLE,
   APPLE_TOUCH_ICON,
   SITE_URL,
-  SOCIAL_IMAGE,
+  appLocalePaths,
   appLocaleMetadata,
   structuredData,
 } from "@/lib/site-metadata";
@@ -46,10 +46,20 @@ const appInitScript = `
 (() => {
   const supported = new Set(${JSON.stringify(SUPPORTED_LOCALES)});
   const appMetadata = ${JSON.stringify(appLocaleMetadata)};
+  const localePaths = ${JSON.stringify(appLocalePaths)};
   const aliases = new Map(Object.entries(${JSON.stringify(LOCALE_ALIASES)}));
   const toLocale = (value) =>
     value ? aliases.get(String(value).toLowerCase()) ?? null : null;
+  const normalizePath = (path) => path.replace(/\\/+$/, "") || "/";
+  const pathLocale = (() => {
+    const currentPath = normalizePath(window.location.pathname);
+    for (const [locale, path] of Object.entries(localePaths)) {
+      if (currentPath === normalizePath(path)) return locale;
+    }
+    return null;
+  })();
   const detectLocale = () => {
+    if (pathLocale && supported.has(pathLocale)) return pathLocale;
     const stored = toLocale(window.localStorage.getItem(${JSON.stringify(LOCALE_STORAGE_KEY)}));
     if (stored && supported.has(stored)) return stored;
     for (const language of navigator.languages || []) {
@@ -131,28 +141,6 @@ export const metadata: Metadata = {
         type: "image/png",
       },
     ],
-  },
-  openGraph: {
-    type: "website",
-    locale: "ja_JP",
-    url: "/",
-    siteName: APP_NAME,
-    title: APP_TITLE,
-    description: APP_DESCRIPTION,
-    images: [
-      {
-        url: SOCIAL_IMAGE,
-        width: 512,
-        height: 512,
-        alt: "Graph Editor icon",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary",
-    title: APP_TITLE,
-    description: APP_DESCRIPTION,
-    images: [SOCIAL_IMAGE],
   },
 };
 

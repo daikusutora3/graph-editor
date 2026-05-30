@@ -1,16 +1,12 @@
 "use client";
 
-import {
-  ExternalLink,
-  GitFork,
-  MessageCircleWarning,
-  Share2,
-} from "lucide-react";
+import { ExternalLink, MessagesSquare, Upload } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { useEffect, useRef } from "react";
 
-import { SITE_URL } from "@/lib/site-metadata";
+import { getAppLocaleUrl } from "@/lib/site-metadata";
 
+import { GitHubLogo, XLogo } from "./AuthorProfileMenu";
 import { useI18n } from "../i18n/I18nProvider";
 
 const APP_REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
@@ -23,11 +19,11 @@ type AppMenuProps = {
 };
 
 export function AppMenu({ boundaryRef, open, onClose }: AppMenuProps) {
-  const { messages } = useI18n();
+  const { locale, messages } = useI18n();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const shareUrl = createXShareUrl({
     text: `${messages.app.title} - ${messages.app.description}`,
-    url: SITE_URL,
+    url: getAppLocaleUrl(locale),
   });
 
   useEffect(() => {
@@ -77,21 +73,22 @@ export function AppMenu({ boundaryRef, open, onClose }: AppMenuProps) {
         label={messages.appMenu.github}
         meta="daikusutora3/graph-editor"
       >
-        <GitFork className="size-4" />
+        <GitHubLogo className="size-4" />
       </AppMenuLink>
       <AppMenuLink
         href={APP_ISSUES_URL}
         label={messages.appMenu.reportIssue}
         meta={messages.appMenu.reportIssueHelp}
       >
-        <MessageCircleWarning className="size-4" />
+        <MessagesSquare className="size-4" />
       </AppMenuLink>
       <AppMenuLink
         href={shareUrl}
         label={messages.appMenu.shareOnX}
         meta={messages.appMenu.shareOnXHelp}
+        trailingIcon={<Upload className="size-3.5 text-[var(--text-mute)]" />}
       >
-        <Share2 className="size-4" />
+        <XLogo className="size-4" />
       </AppMenuLink>
     </div>
   );
@@ -102,11 +99,13 @@ function AppMenuLink({
   href,
   label,
   meta,
+  trailingIcon,
 }: {
   children: ReactNode;
   href: string;
   label: string;
   meta: string;
+  trailingIcon?: ReactNode;
 }) {
   return (
     <a
@@ -127,7 +126,9 @@ function AppMenuLink({
           {meta}
         </span>
       </span>
-      <ExternalLink className="size-3.5 text-[var(--text-mute)]" />
+      {trailingIcon ?? (
+        <ExternalLink className="size-3.5 text-[var(--text-mute)]" />
+      )}
     </a>
   );
 }

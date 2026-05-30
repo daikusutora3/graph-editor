@@ -15,10 +15,11 @@ import { GraphIOControls } from "../ui/GraphIOControls";
 import { GraphStarterCard } from "../ui/GraphStarterCard";
 import { ModeToolbar } from "../ui/ModeToolbar";
 import { I18nProvider } from "../i18n/I18nProvider";
+import type { Locale } from "../i18n/locale";
 
-export function GraphEditor() {
+export function GraphEditor({ initialLocale }: { initialLocale?: Locale }) {
   return (
-    <I18nProvider>
+    <I18nProvider initialLocale={initialLocale}>
       <GraphEditorContent />
     </I18nProvider>
   );
