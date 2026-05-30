@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 import {
   APP_DESCRIPTION,
+  APP_ICON,
   APP_NAME,
   APPLE_TOUCH_ICON,
-  SOCIAL_IMAGE,
 } from "@/lib/site-metadata";
 
 export const dynamic = "force-static";
@@ -27,7 +27,7 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
       },
       {
-        src: SOCIAL_IMAGE,
+        src: APP_ICON,
         sizes: "512x512",
         type: "image/webp",
       },

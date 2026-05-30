@@ -2,6 +2,7 @@ import type { LayoutDisabledReason, LayoutKind } from "../layouts";
 import type { SampleGraphKind } from "../samples/sample-graphs";
 import type { SampleGraphGroupKey } from "../samples/registry";
 import type { Locale } from "./locale";
+import { appLocaleMetadata } from "@/lib/site-metadata";
 
 type GraphExportFormatLabel =
   | "edge-list"
@@ -342,9 +343,8 @@ const ja = {
     title: "Graph Editor",
     authorPrefix: "by",
     description: "グラフを作成・編集・書き出しできるブラウザアプリ",
-    documentTitle: "Graph Editor | グラフ理論の図をブラウザで作成",
-    documentDescription:
-      "ブラウザ上でグラフ理論の図を作成・編集・配置・書き出しできるアプリです。",
+    documentTitle: appLocaleMetadata.ja.title,
+    documentDescription: appLocaleMetadata.ja.description,
     logoAlt: "Graph Editor by daikusutora",
   },
   common: {
@@ -630,9 +630,8 @@ const en: Messages = {
     title: "Graph Editor",
     authorPrefix: "by",
     description: "Create, edit, and export graphs in the browser.",
-    documentTitle: "Graph Editor | Graph theory diagrams in the browser",
-    documentDescription:
-      "Create, edit, arrange, and export graph theory diagrams directly in the browser.",
+    documentTitle: appLocaleMetadata.en.title,
+    documentDescription: appLocaleMetadata.en.description,
     logoAlt: "Graph Editor by daikusutora",
   },
   common: {
@@ -921,8 +920,8 @@ const zhHans: Messages = {
     title: "Graph Editor",
     authorPrefix: "作者",
     description: "在浏览器中创建、编辑并导出图。",
-    documentTitle: "Graph Editor | 在浏览器中绘制图论图形",
-    documentDescription: "直接在浏览器中创建、编辑、排布并导出图论图形。",
+    documentTitle: appLocaleMetadata["zh-Hans"].title,
+    documentDescription: appLocaleMetadata["zh-Hans"].description,
     logoAlt: "Graph Editor by daikusutora",
   },
   common: {

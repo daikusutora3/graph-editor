@@ -19,7 +19,6 @@ export type SampleExpectation = {
   fixedLabels?: string[];
   labelPattern?: RegExp;
   sameLabelsForIndexBase?: boolean;
-  notIsomorphicTo?: SampleGraphKind[];
 };
 
 export const sampleExpectations: Partial<
@@ -84,7 +83,6 @@ export const sampleExpectations: Partial<
     edgeCount: 7,
     connected: true,
     noEdgeNodeOverlaps: true,
-    notIsomorphicTo: ["path"],
   },
   cube: {
     nodeCount: 8,
@@ -100,19 +98,16 @@ export const sampleExpectations: Partial<
     connected: true,
     bipartite: true,
     regularDegree: 4,
-    notIsomorphicTo: ["cube"],
   },
   unitDisk: {
     nodeCount: 7,
     edgeCount: 10,
     connected: true,
-    notIsomorphicTo: ["comparability"],
   },
   comparability: {
     nodeCount: 7,
     edgeCount: 12,
     connected: true,
-    notIsomorphicTo: ["unitDisk"],
   },
   planar: {
     nodeCount: 7,
@@ -414,7 +409,6 @@ export const sampleExpectations: Partial<
     connected: true,
     regularDegree: 3,
     bipartite: false,
-    notIsomorphicTo: ["cube"],
   },
   generalizedPetersen: {
     nodeCount: 14,

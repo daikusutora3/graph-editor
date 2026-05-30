@@ -4,6 +4,7 @@ import Script from "next/script";
 import {
   APP_DESCRIPTION,
   APP_DESCRIPTION_JA,
+  APP_ICON,
   APP_NAME,
   APP_TITLE,
   APPLE_TOUCH_ICON,
@@ -114,13 +115,13 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: SOCIAL_IMAGE,
+        url: APP_ICON,
         type: "image/webp",
       },
     ],
     shortcut: [
       {
-        url: SOCIAL_IMAGE,
+        url: APP_ICON,
         type: "image/webp",
       },
     ],
@@ -143,9 +144,9 @@ export const metadata: Metadata = {
     images: [
       {
         url: SOCIAL_IMAGE,
-        width: 512,
-        height: 512,
-        alt: "Graph Editor logo",
+        width: 1200,
+        height: 630,
+        alt: "Graph Editor social preview",
       },
     ],
   },
