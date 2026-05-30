@@ -280,9 +280,7 @@ export function useGraphIOScreenshot({
           );
         }
 
-        await navigator.clipboard.write([
-          new ClipboardItem({ "image/png": pngBlobPromise }),
-        ]);
+        await writePngBlobToClipboard(pngBlobPromise);
         setCopyState("copied");
         scheduleCopyReset();
       } catch (error) {
@@ -544,6 +542,77 @@ async function addPngPadding(
       reject(new Error("Could not create padded PNG"));
     }, "image/png");
   });
+}
+
+async function writePngBlobToClipboard(pngBlobPromise: Promise<Blob>) {
+  if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+    throw new DOMException(
+      "Clipboard image write is unavailable",
+      "NotAllowedError",
+    );
+  }
+
+  const itemData: Record<string, Blob | Promise<Blob | string> | string> = {
+    "image/png": pngBlobPromise,
+  };
+  const ClipboardItemClass = ClipboardItem as typeof ClipboardItem & {
+    supports?: (type: string) => boolean;
+  };
+
+  if (ClipboardItemClass.supports?.("text/html")) {
+    itemData["text/html"] = pngBlobPromise.then(createClipboardImageHtml);
+  }
+
+  await navigator.clipboard.write([
+    new ClipboardItemClass(itemData, { presentationStyle: "inline" }),
+  ]);
+}
+
+async function createClipboardImageHtml(blob: Blob) {
+  const [dataUrl, dimensions] = await Promise.all([
+    readBlobAsDataUrl(blob),
+    readBlobDimensions(blob),
+  ]);
+
+  return [
+    `<img src="${escapeHtmlAttribute(dataUrl)}"`,
+    `width="${dimensions.width}"`,
+    `height="${dimensions.height}"`,
+    `style="width:${dimensions.width}px;height:${dimensions.height}px"`,
+    `alt="">`,
+  ].join(" ");
+}
+
+function readBlobAsDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("Could not prepare clipboard image HTML"));
+    };
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Could not read PNG for clipboard"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function readBlobDimensions(blob: Blob) {
+  const image = await createImageBitmap(blob);
+  const dimensions = {
+    height: image.height,
+    width: image.width,
+  };
+  image.close();
+
+  return dimensions;
+}
+
+function escapeHtmlAttribute(value: string) {
+  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
 }
 
 function readPaddedPngBackground(
