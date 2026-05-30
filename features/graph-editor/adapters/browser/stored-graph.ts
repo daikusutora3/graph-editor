@@ -15,6 +15,9 @@ import {
 } from "../../diagnostics/graph-performance-events";
 
 export const GRAPH_STORAGE_KEY = "graph-editor-graph";
+export const MAX_STORED_GRAPH_CHARS = 2_000_000;
+export const MAX_STORED_GRAPH_NODES = 1_000;
+export const MAX_STORED_GRAPH_EDGES = 5_000;
 
 const fallbackGraph = createEmptyGraphModel();
 const GRAPH_STORAGE_WRITE_DELAY_MS = 250;
@@ -86,6 +89,11 @@ export function flushStoredGraphWrite() {
 
 function writeStoredGraphNow(graph: GraphModel) {
   try {
+    if (!shouldStoreGraphShape(graph)) {
+      window.localStorage.removeItem(GRAPH_STORAGE_KEY);
+      return;
+    }
+
     const events = window.__graphPerfEvents;
     let rawGraph: string;
 
@@ -104,10 +112,36 @@ function writeStoredGraphNow(graph: GraphModel) {
       rawGraph = JSON.stringify(graph);
     }
 
+    if (!shouldStoreRawGraph(rawGraph)) {
+      window.localStorage.removeItem(GRAPH_STORAGE_KEY);
+      return;
+    }
+
     window.localStorage.setItem(GRAPH_STORAGE_KEY, rawGraph);
   } catch {
     // Ignore storage failures so editing still works in restricted browsers.
   }
+}
+
+export function serializeStoredGraphForWrite(graph: GraphModel) {
+  if (!shouldStoreGraphShape(graph)) {
+    return null;
+  }
+
+  const rawGraph = JSON.stringify(graph);
+
+  return shouldStoreRawGraph(rawGraph) ? rawGraph : null;
+}
+
+function shouldStoreRawGraph(rawGraph: string) {
+  return rawGraph.length <= MAX_STORED_GRAPH_CHARS;
+}
+
+function shouldStoreGraphShape(graph: GraphModel) {
+  return (
+    graph.nodes.length <= MAX_STORED_GRAPH_NODES &&
+    graph.edges.length <= MAX_STORED_GRAPH_EDGES
+  );
 }
 
 function installStorageFlushListeners() {
@@ -127,6 +161,10 @@ function installStorageFlushListeners() {
 
 export function parseStoredGraph(rawValue: string | null): GraphModel | null {
   if (!rawValue) {
+    return null;
+  }
+
+  if (!shouldStoreRawGraph(rawValue)) {
     return null;
   }
 
