@@ -19,6 +19,7 @@ export type { GraphContextMenuTarget } from "./graph-canvas-types";
 export type GraphContextMenuProps = {
   target: GraphContextMenuTarget;
   graph: GraphModel;
+  panelState?: "open" | "closing";
   sidebarCollapsed: boolean;
   selection: SelectionState;
   onClose: () => void;
@@ -30,6 +31,7 @@ export type GraphContextMenuProps = {
 export function GraphContextMenu({
   target,
   graph,
+  panelState = "open",
   sidebarCollapsed,
   selection,
   onClose,
@@ -90,6 +92,7 @@ export function GraphContextMenu({
   return (
     <div
       ref={menuRef}
+      data-panel-state={panelState}
       className="gv-context-menu pointer-events-auto absolute z-40 max-h-[calc(100%-1rem)] w-[min(15rem,calc(100%-1rem))] overflow-y-auto rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] p-[var(--app-space-2)] text-[length:var(--app-text-xs)] text-[var(--text)] backdrop-blur-md"
       style={{
         left: menuPosition.left,

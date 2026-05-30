@@ -33,11 +33,18 @@ const AUTHOR_LINKS: {
   },
 ];
 
-export function AuthorProfileMenu() {
+type AuthorProfileMenuProps = {
+  panelState?: "open" | "closing";
+};
+
+export function AuthorProfileMenu({
+  panelState = "open",
+}: AuthorProfileMenuProps) {
   return (
     <div
       role="menu"
       aria-label="Profile links"
+      data-panel-state={panelState}
       className="gv-author-menu gv-popover pointer-events-auto absolute top-[calc(100%+0.5rem)] left-1/2 z-[100] flex w-56 flex-col gap-1 p-1.5 text-left"
     >
       {AUTHOR_LINKS.map(({ href, icon: Icon, iconClassName, label, meta }) => (

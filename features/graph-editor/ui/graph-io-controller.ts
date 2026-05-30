@@ -32,10 +32,11 @@ export function useGraphIOController() {
   const railRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const copyResetTimeoutRef = useRef<number | null>(null);
-  const { exportOpen, screenshotOpen, setOpenPanel } = useGraphIODropdown({
-    panelRef,
-    railRef,
-  });
+  const { exportOpen, panelPresence, screenshotOpen, setOpenPanel } =
+    useGraphIODropdown({
+      panelRef,
+      railRef,
+    });
 
   const isGraphEmpty = graph.nodes.length === 0;
   const screenshot = useGraphIOScreenshot({
@@ -45,8 +46,11 @@ export function useGraphIOController() {
   });
   const exportDefinition = getGraphExportFormat(exportFormat);
   const exportText = useMemo(
-    () => (exportOpen ? exportGraph(graph, exportFormat) : ""),
-    [exportFormat, exportOpen, graph],
+    () =>
+      exportOpen || panelPresence.value === "export"
+        ? exportGraph(graph, exportFormat)
+        : "",
+    [exportFormat, exportOpen, graph, panelPresence.value],
   );
   const panelRight =
     railWidth > 0
@@ -119,6 +123,7 @@ export function useGraphIOController() {
     isGraphEmpty,
     nextTheme,
     panelRef,
+    panelPresence,
     panelRight,
     railRef,
     screenshot,

@@ -1,7 +1,9 @@
 "use client";
 
 import type { RefObject } from "react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+
+import { useAnimatedNullableState } from "./use-panel-presence";
 
 export type GraphIOOpenPanel = "export" | "screenshot";
 
@@ -14,7 +16,11 @@ export function useGraphIODropdown({
   panelRef,
   railRef,
 }: GraphIODropdownOptions) {
-  const [openPanel, setOpenPanel] = useState<GraphIOOpenPanel | null>(null);
+  const {
+    openValue: openPanel,
+    panelPresence,
+    setValue: setOpenPanel,
+  } = useAnimatedNullableState<GraphIOOpenPanel>();
   const exportOpen = openPanel === "export";
   const screenshotOpen = openPanel === "screenshot";
   const panelOpen = openPanel !== null;
@@ -55,6 +61,7 @@ export function useGraphIODropdown({
   return {
     exportOpen,
     openPanel,
+    panelPresence,
     screenshotOpen,
     setOpenPanel,
   };

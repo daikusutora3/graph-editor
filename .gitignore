@@ -9,6 +9,7 @@ coverage
 .DS_Store
 bun-error.log
 .agents
+skills-lock.json
 .vercel
 .wrangler
 tsconfig.tsbuildinfo

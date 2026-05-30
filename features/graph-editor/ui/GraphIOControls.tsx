@@ -74,9 +74,10 @@ export function GraphIOControls() {
         />
       </div>
 
-      {controller.exportOpen ? (
+      {controller.panelPresence.value === "export" ? (
         <DropdownShell
           panelRef={controller.panelRef}
+          panelState={controller.panelPresence.state}
           right={controller.panelRight}
           title={messages.exportPanel.title}
           onClose={() => controller.setOpenPanel(null)}
@@ -93,9 +94,10 @@ export function GraphIOControls() {
         </DropdownShell>
       ) : null}
 
-      {controller.screenshotOpen ? (
+      {controller.panelPresence.value === "screenshot" ? (
         <DropdownShell
           panelRef={controller.panelRef}
+          panelState={controller.panelPresence.state}
           right={controller.panelRight}
           title={<ScreenshotTitle />}
           footer={
