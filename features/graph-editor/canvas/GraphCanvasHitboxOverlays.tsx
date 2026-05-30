@@ -87,6 +87,7 @@ type SelectEdgeHitboxesProps = {
   weighted: boolean;
   onContextMenu: (edge: EdgeLabelHitbox, event: CanvasPointer) => void;
   onEdit: (edgeId: EdgeId, position: RenderedPoint) => void;
+  onRangeSelectionPointerDown: (event: ReactPointerEvent<Element>) => boolean;
   onSelect: (edgeId: EdgeId, additive: boolean) => void;
 };
 
@@ -96,6 +97,7 @@ export function SelectEdgeHitboxes({
   weighted,
   onContextMenu,
   onEdit,
+  onRangeSelectionPointerDown,
   onSelect,
 }: SelectEdgeHitboxesProps) {
   const { messages, locale } = useI18n();
@@ -117,6 +119,9 @@ export function SelectEdgeHitboxes({
             className="cursor-pointer stroke-transparent"
             strokeWidth="18"
             strokeLinecap="round"
+            onPointerDownCapture={(event) => {
+              onRangeSelectionPointerDown(event);
+            }}
             onClick={(event) => {
               event.stopPropagation();
               if (event.detail >= 2) {
@@ -176,6 +181,9 @@ export function SelectEdgeHitboxes({
 
             onSelect(edge.id, event.shiftKey);
           }}
+          onPointerDownCapture={(event) => {
+            onRangeSelectionPointerDown(event);
+          }}
           onDoubleClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -210,6 +218,7 @@ type SelectNodeHitboxesProps = {
     event: ReactPointerEvent<HTMLButtonElement>,
   ) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onRangeSelectionPointerDown: (event: ReactPointerEvent<Element>) => boolean;
   onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void;
 };
 
@@ -222,6 +231,7 @@ export function SelectNodeHitboxes({
   onPointerCancel,
   onPointerDown,
   onPointerMove,
+  onRangeSelectionPointerDown,
   onPointerUp,
 }: SelectNodeHitboxesProps) {
   const { locale } = useI18n();
@@ -248,6 +258,10 @@ export function SelectNodeHitboxes({
             top: node.y,
           }}
           onPointerDown={(event) => {
+            if (onRangeSelectionPointerDown(event)) {
+              return;
+            }
+
             event.stopPropagation();
             onPointerDown(node.id, event);
           }}
