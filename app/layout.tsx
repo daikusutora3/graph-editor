@@ -3,7 +3,6 @@ import Script from "next/script";
 
 import {
   APP_DESCRIPTION,
-  APP_DESCRIPTION_JA,
   APP_ICON,
   APP_NAME,
   APP_TITLE,
@@ -88,7 +87,7 @@ export const metadata: Metadata = {
     default: APP_TITLE,
     template: `%s | ${APP_NAME}`,
   },
-  description: APP_DESCRIPTION_JA,
+  description: APP_DESCRIPTION,
   keywords: [
     "Graph Editor",
     "graph theory",
@@ -136,7 +135,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ja_JP",
-    alternateLocale: ["en_US", "zh_CN"],
     url: "/",
     siteName: APP_NAME,
     title: APP_TITLE,
