@@ -45,7 +45,6 @@ import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/use-panel-presence";
 import {
-  EdgeLabelOverlays,
   EdgeNodeHitboxes,
   SelectEdgeHitboxes,
   SelectNodeHitboxes,
@@ -108,7 +107,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     isGraphOutOfView,
     nodeHitboxes,
     updateRenderedHitboxes,
-  } = useRenderedHitboxes({ chrome, graph });
+  } = useRenderedHitboxes({ chrome, graph, mode });
 
   const { edgeRoutingMeta, edgeRoutingOptions } = useEdgeRoutingMeta(graph);
 
@@ -352,8 +351,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
   });
   const rangeSelectionActive =
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
-  const editingEdgeId =
-    inlineEdit && inlineEdit.kind !== "node-label" ? inlineEdit.edgeId : null;
   const handleCanvasClick = useCallback(() => {
     setContextMenuTarget(null);
   }, [setContextMenuTarget]);
@@ -427,10 +424,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
         onZoom={zoomCanvas}
         onResetZoom={resetCanvasZoom}
       />
-      <InteractionLayers
-        mode={mode}
-        onAddNode={addNodeAtPointer}
-      />
+      <InteractionLayers mode={mode} onAddNode={addNodeAtPointer} />
       {mode === "edge" ? (
         <>
           <EdgeDraftLine
@@ -440,10 +434,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           />
         </>
       ) : null}
-      <EdgeLabelOverlays
-        edges={edgeLabelHitboxes}
-        editingEdgeId={editingEdgeId}
-      />
       <EditFeedbackNodes
         feedbackId={editFeedback?.id ?? null}
         nodes={viewState.feedbackNodeHitboxes}
