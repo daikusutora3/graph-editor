@@ -144,10 +144,7 @@ type InteractionLayersProps = {
   onAddNode: (event: CanvasPointer) => void;
 };
 
-export function InteractionLayers({
-  mode,
-  onAddNode,
-}: InteractionLayersProps) {
+export function InteractionLayers({ mode, onAddNode }: InteractionLayersProps) {
   const { messages } = useI18n();
 
   return (
