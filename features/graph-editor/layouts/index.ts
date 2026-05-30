@@ -5,5 +5,4 @@ export {
   type LayoutDefinition,
   type LayoutDisabledReason,
   type LayoutKind,
-  manualLayoutDisabledReason,
 } from "./manual-layouts";

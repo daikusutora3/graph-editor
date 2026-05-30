@@ -3,7 +3,7 @@
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { graphAtom } from "./state/graph-atoms";
+import { graphAtom, graphStorageReadyAtom } from "./state/graph-atoms";
 
 import { GraphCanvas } from "../canvas/GraphCanvas";
 import { GraphCanvasProvider } from "../canvas/GraphCanvasProvider";
@@ -26,6 +26,7 @@ export function GraphEditor() {
 
 function GraphEditorContent() {
   const graph = useAtomValue(graphAtom);
+  const graphStorageReady = useAtomValue(graphStorageReadyAtom);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useGraphEditorShortcuts();
@@ -36,18 +37,22 @@ function GraphEditorContent() {
       <main className="flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
         <div className="relative min-h-0 flex-1">
           <section className="relative h-full min-w-0 bg-[var(--bg-deep)]">
-            <GraphCanvas chrome={{ sidebarCollapsed }} />
-            <ModeToolbar
-              collapsed={sidebarCollapsed}
-              onCollapsedChange={setSidebarCollapsed}
-            />
-            <GraphStarterCard
-              visible={graph.nodes.length === 0 && graph.edges.length === 0}
-              sidebarCollapsed={sidebarCollapsed}
-            />
+            {graphStorageReady ? (
+              <>
+                <GraphCanvas chrome={{ sidebarCollapsed }} />
+                <ModeToolbar
+                  collapsed={sidebarCollapsed}
+                  onCollapsedChange={setSidebarCollapsed}
+                />
+                <GraphStarterCard
+                  visible={graph.nodes.length === 0 && graph.edges.length === 0}
+                  sidebarCollapsed={sidebarCollapsed}
+                />
+              </>
+            ) : null}
           </section>
         </div>
-        <GraphIOControls />
+        {graphStorageReady ? <GraphIOControls /> : null}
       </main>
     </GraphCanvasProvider>
   );

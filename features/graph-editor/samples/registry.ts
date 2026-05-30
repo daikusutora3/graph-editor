@@ -3,9 +3,7 @@ import type { SampleGraphKind } from "./sample-graphs";
 export type SampleGraphItem = {
   kind: SampleGraphKind;
   label: string;
-  title: string;
   subtitle: string;
-  ariaLabel: string;
 };
 
 export type SampleGraphGroupKey =
@@ -30,8 +28,6 @@ type SampleGraphDefinitionEntry = SampleGraphItem;
 
 export type SampleGraphDefinition = SampleGraphDefinitionEntry & {
   groupKey: SampleGraphGroupKey;
-  groupLabel: string;
-  groupNote: string;
 };
 
 type SampleGraphDefinitionGroup = {
@@ -49,9 +45,7 @@ function sample(
   return {
     kind,
     label,
-    title: label,
     subtitle,
-    ariaLabel: `${label} のサンプルを入力`,
   };
 }
 
@@ -198,8 +192,6 @@ export const sampleGraphDefinitions: SampleGraphDefinition[] =
     group.samples.map((sampleItem) => ({
       ...sampleItem,
       groupKey: group.key,
-      groupLabel: group.label,
-      groupNote: group.note,
     })),
   );
 

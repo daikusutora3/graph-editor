@@ -4,7 +4,7 @@ import { createEdgeRoutingCacheKey } from "../../features/graph-editor/core/layo
 import {
   createManualLayoutCommand,
   layoutDefinitions,
-  manualLayoutDisabledReason,
+  manualLayoutDisabledReasonCode,
 } from "../../features/graph-editor/layouts";
 
 const failures: string[] = [];
@@ -16,11 +16,7 @@ if (kindSet.size !== kinds.length) {
 }
 
 for (const definition of layoutDefinitions) {
-  if (hasBlankLayoutText(definition)) {
-    failures.push(`${definition.kind}: missing display metadata`);
-  }
-
-  manualLayoutDisabledReason(definition.kind, createEmptyGraphModel());
+  manualLayoutDisabledReasonCode(definition.kind, createEmptyGraphModel());
   createManualLayoutCommand(createEmptyGraphModel(), definition.kind);
 }
 
@@ -56,23 +52,23 @@ const triangle = graphFixture({
 });
 
 expect(
-  manualLayoutDisabledReason("tree", undirectedPath) === null,
+  manualLayoutDisabledReasonCode("tree", undirectedPath) === null,
   "tree layout should be enabled for forests",
 );
 expect(
-  manualLayoutDisabledReason("tree", triangle) !== null,
+  manualLayoutDisabledReasonCode("tree", triangle) !== null,
   "tree layout should be disabled for cyclic graphs",
 );
 expect(
-  manualLayoutDisabledReason("dagLayer", directedDag) === null,
+  manualLayoutDisabledReasonCode("dagLayer", directedDag) === null,
   "DAG layout should be enabled for directed acyclic graphs",
 );
 expect(
-  manualLayoutDisabledReason("dagLayer", directedCycle) !== null,
+  manualLayoutDisabledReasonCode("dagLayer", directedCycle) !== null,
   "DAG layout should be disabled for directed cycles",
 );
 expect(
-  manualLayoutDisabledReason("bipartite", triangle) !== null,
+  manualLayoutDisabledReasonCode("bipartite", triangle) !== null,
   "bipartite layout should be disabled for non-bipartite graphs",
 );
 
@@ -137,16 +133,6 @@ function expect(condition: boolean, message: string) {
   if (!condition) {
     failures.push(message);
   }
-}
-
-function hasBlankLayoutText(definition: {
-  label: string;
-  subtitle: string;
-  tooltip: string;
-}) {
-  return [definition.label, definition.subtitle, definition.tooltip].some(
-    (value) => value.trim() === "",
-  );
 }
 
 function graphFixture({
