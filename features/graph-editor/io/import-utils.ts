@@ -37,12 +37,6 @@ export function splitTokens(text: string) {
     .filter(Boolean);
 }
 
-export function finiteNumberOrUndefined(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
 export function arrangeNodes(model: GraphModel) {
   const count = model.nodes.length;
   const radius = Math.max(170, count * 26);

@@ -7,8 +7,7 @@ import { appLocaleMetadata } from "@/lib/site-metadata";
 type GraphExportFormatLabel =
   | "edge-list"
   | "adjacency-list"
-  | "adjacency-matrix"
-  | "json";
+  | "adjacency-matrix";
 
 type Messages = {
   app: {
@@ -430,9 +429,9 @@ const ja = {
     paste: "貼り付け",
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
-    autoDetectHelp: "辺リスト・隣接リスト・隣接行列・JSONに対応",
+    autoDetectHelp: "辺リスト・隣接リスト・隣接行列に対応",
     pastePlaceholder:
-      '辺リスト\n4 4\n1 2\n2 3\n2 4\n3 4\n\n隣接リスト\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n隣接行列\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0\n\nJSON\n{"nodes":[1,2,3],"edges":[[1,2],[2,3]]}',
+      "辺リスト\n4 4\n1 2\n2 3\n2 4\n3 4\n\n隣接リスト\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n隣接行列\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "グラフに反映",
     formatAuto: "自動判定",
     needsReview: "要確認",
@@ -454,7 +453,6 @@ const ja = {
       "edge-list": "辺リスト",
       "adjacency-list": "隣接リスト",
       "adjacency-matrix": "隣接行列",
-      json: "JSON",
     },
   },
   screenshot: {
@@ -723,9 +721,9 @@ const en: Messages = {
     paste: "Paste",
     sample: "Samples",
     loadingSamples: "Loading samples",
-    autoDetectHelp: "Supports edge lists, adjacency lists, matrices, and JSON.",
+    autoDetectHelp: "Supports edge lists, adjacency lists, and matrices.",
     pastePlaceholder:
-      'Edge list\n4 4\n1 2\n2 3\n2 4\n3 4\n\nAdjacency list\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\nAdjacency matrix\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0\n\nJSON\n{"nodes":[1,2,3],"edges":[[1,2],[2,3]]}',
+      "Edge list\n4 4\n1 2\n2 3\n2 4\n3 4\n\nAdjacency list\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\nAdjacency matrix\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "Apply to graph",
     formatAuto: "Auto detect",
     needsReview: "Review needed",
@@ -747,7 +745,6 @@ const en: Messages = {
       "edge-list": "Edge list",
       "adjacency-list": "Adjacency list",
       "adjacency-matrix": "Adjacency matrix",
-      json: "JSON",
     },
   },
   screenshot: {
@@ -1016,9 +1013,9 @@ const zhHans: Messages = {
     paste: "粘贴",
     sample: "示例",
     loadingSamples: "正在加载示例",
-    autoDetectHelp: "支持边列表、邻接表、邻接矩阵和 JSON。",
+    autoDetectHelp: "支持边列表、邻接表和邻接矩阵。",
     pastePlaceholder:
-      '边列表\n4 4\n1 2\n2 3\n2 4\n3 4\n\n邻接表\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n邻接矩阵\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0\n\nJSON\n{"nodes":[1,2,3],"edges":[[1,2],[2,3]]}',
+      "边列表\n4 4\n1 2\n2 3\n2 4\n3 4\n\n邻接表\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n邻接矩阵\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "应用到图",
     formatAuto: "自动识别",
     needsReview: "需要确认",
@@ -1040,7 +1037,6 @@ const zhHans: Messages = {
       "edge-list": "边列表",
       "adjacency-list": "邻接表",
       "adjacency-matrix": "邻接矩阵",
-      json: "JSON",
     },
   },
   screenshot: {

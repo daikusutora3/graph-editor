@@ -22,8 +22,8 @@ Public app: <https://graph-editor.daikusutora3.workers.dev>
 
 ## Highlights
 
-- **Fast graph input**: paste edge lists, adjacency lists, adjacency matrices,
-  or the app's JSON format. The importer auto-detects common formats.
+- **Fast graph input**: paste edge lists, adjacency lists, or adjacency
+  matrices. The importer auto-detects common formats.
 - **Built for graph theory**: switch between directed/undirected and
   weighted/unweighted modes, change the index base, allow self-loops, and keep
   multi-edges readable.
@@ -32,7 +32,7 @@ Public app: <https://graph-editor.daikusutora3.workers.dev>
 - **Layout tools**: apply force, component, BFS, tree, DAG, bipartite, SCC,
   radial, circular, grid, line, and spread layouts.
 - **Export options**: copy or save edge lists, adjacency lists, adjacency
-  matrices, JSON, and PNG images with background and padding controls.
+  matrices, and PNG images with background and padding controls.
 - **Multilingual UI**: Japanese, English, and Simplified Chinese are supported
   in the app.
 

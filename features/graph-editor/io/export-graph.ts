@@ -5,18 +5,16 @@ import type { GraphModel } from "../core/graph/model";
 export type GraphExportFormat =
   | "edge-list"
   | "adjacency-list"
-  | "adjacency-matrix"
-  | "json";
+  | "adjacency-matrix";
 
 export const GRAPH_EXPORT_FORMATS: Array<{
   value: GraphExportFormat;
   label: string;
-  extension: "txt" | "json";
+  extension: "txt";
 }> = [
   { value: "edge-list", label: "辺リスト", extension: "txt" },
   { value: "adjacency-list", label: "隣接リスト", extension: "txt" },
   { value: "adjacency-matrix", label: "隣接行列", extension: "txt" },
-  { value: "json", label: "JSON", extension: "json" },
 ];
 
 export function exportGraph(
@@ -28,8 +26,6 @@ export function exportGraph(
       return exportAdjacencyList(model);
     case "adjacency-matrix":
       return exportAdjacencyMatrix(model);
-    case "json":
-      return JSON.stringify(model, null, 2);
     default:
       return exportEdgeList(model);
   }

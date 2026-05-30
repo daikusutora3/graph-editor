@@ -20,18 +20,6 @@ import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Graph core");
 
-const invalidJson = importGraphInput("{ invalid json", {
-  directed: false,
-  weighted: false,
-  indexBase: 0,
-});
-
-expect(invalidJson.warnings.length > 0, "invalid JSON should report warnings");
-expect(
-  !hasGraphContent(invalidJson.model),
-  "invalid JSON should not produce graph content",
-);
-
 const validEdgeList = importGraphInput("0 1\n1 2", {
   directed: false,
   weighted: false,
@@ -90,22 +78,6 @@ const looseEdgeList = importGraphInput("0 1\n1 2\n2 3", {
 expect(
   looseEdgeList.format === "Edge list",
   "plain pairs without an N M header should fall back to loose edge-list parsing",
-);
-
-const invalidJsonCoordinates = importGraphInput(
-  JSON.stringify({
-    nodes: [{ id: "a", label: "A", x: "bad", y: null }],
-    edges: [],
-  }),
-);
-
-expect(
-  Number.isFinite(invalidJsonCoordinates.model.nodes[0]?.x),
-  "invalid JSON x coordinate should be normalized to a finite number",
-);
-expect(
-  Number.isFinite(invalidJsonCoordinates.model.nodes[0]?.y),
-  "invalid JSON y coordinate should be normalized to a finite number",
 );
 
 const weightedModel = {

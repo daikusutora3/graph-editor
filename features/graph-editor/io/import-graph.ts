@@ -3,7 +3,6 @@ import {
   tryImportAdjacencyMatrix,
 } from "./import-adjacency";
 import { importStructuredEdgeList } from "./import-edge-list";
-import { tryImportJson } from "./import-json";
 import { tryImportLooseEdgeList } from "./import-loose-edge-list";
 import {
   importFailure,
@@ -40,7 +39,6 @@ export function importGraphInput(
   }
 
   const detectedResult = parseFirst([
-    { parse: () => tryImportJson(input, options) },
     { parse: () => tryImportAdjacencyMatrix(lines, options) },
     { parse: () => tryImportAdjacencyList(lines, options) },
   ]);
