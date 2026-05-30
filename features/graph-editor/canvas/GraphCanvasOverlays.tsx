@@ -7,7 +7,6 @@ import { useI18n } from "../i18n/I18nProvider";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { InlineEditTarget, RenderedPoint } from "./graph-canvas-types";
-import type { SelectionBoxRect } from "./graph-canvas-shift-range-selection";
 
 type FitGraphButtonProps = {
   visible: boolean;
@@ -240,34 +239,6 @@ export function EditFeedbackNodes({
         />
       ))}
     </>
-  );
-}
-
-export function ShiftRangeSelectionLayer({
-  active,
-  rect,
-}: {
-  active: boolean;
-  rect: SelectionBoxRect | null;
-}) {
-  if (!active) {
-    return null;
-  }
-
-  return (
-    <div className="absolute inset-0 z-[17] cursor-default" aria-hidden="true">
-      {rect ? (
-        <div
-          className="pointer-events-none absolute border border-[var(--canvas-selection-border)] bg-[var(--canvas-selection-fill)]"
-          style={{
-            height: rect.height,
-            left: rect.left,
-            top: rect.top,
-            width: rect.width,
-          }}
-        />
-      ) : null}
-    </div>
   );
 }
 

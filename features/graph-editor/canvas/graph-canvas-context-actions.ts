@@ -16,17 +16,17 @@ import type {
 } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
 
-import type { GraphContextMenuTarget } from "./graph-canvas-types";
-import type { EdgeLabelHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
+import type {
+  GraphContextMenuTarget,
+  RenderedPoint,
+} from "./graph-canvas-types";
+import {
+  EDGE_LABEL_HITBOX_HEIGHT,
+  edgeLabelHitboxWidth,
+  NODE_HITBOX_SIZE,
+  type EdgeLabelHitbox,
+} from "../adapters/cytoscape/graph-canvas-hitboxes";
 
-type CanvasPointer = {
-  clientX: number;
-  clientY: number;
-};
-type RenderedPointFromPointer = (event: CanvasPointer) => {
-  x: number;
-  y: number;
-};
 type SyncContextSelection = (
   target: Pick<GraphContextMenuTarget, "kind"> & {
     edgeId?: EdgeId;
@@ -38,7 +38,6 @@ type UseGraphCanvasContextActionsOptions = {
   cancelInlineEdit: () => void;
   deleteSelection: (selection: SelectionState) => void;
   executeCommand: (command: GraphIntent) => void;
-  renderedPointFromPointer: RenderedPointFromPointer;
   setContextMenuTarget: Dispatch<SetStateAction<GraphContextMenuTarget | null>>;
   syncContextSelection: SyncContextSelection;
 };
@@ -47,48 +46,49 @@ export function useGraphCanvasContextActions({
   cancelInlineEdit,
   deleteSelection,
   executeCommand,
-  renderedPointFromPointer,
   setContextMenuTarget,
   syncContextSelection,
 }: UseGraphCanvasContextActionsOptions) {
   const openNodeContextMenu = useCallback(
-    (nodeId: NodeId, event: CanvasPointer) => {
+    (nodeId: NodeId, position: RenderedPoint) => {
       cancelInlineEdit();
       syncContextSelection({ kind: "node", nodeId });
       setContextMenuTarget({
+        anchorRect: rectFromCenter(
+          position,
+          NODE_HITBOX_SIZE,
+          NODE_HITBOX_SIZE,
+        ),
         kind: "node",
         nodeId,
-        ...renderedPointFromPointer(event),
+        ...position,
       });
     },
-    [
-      cancelInlineEdit,
-      renderedPointFromPointer,
-      setContextMenuTarget,
-      syncContextSelection,
-    ],
+    [cancelInlineEdit, setContextMenuTarget, syncContextSelection],
   );
 
   const openEdgeContextMenu = useCallback(
-    (edge: EdgeLabelHitbox, event: CanvasPointer) => {
+    (edge: EdgeLabelHitbox) => {
       cancelInlineEdit();
       syncContextSelection({ kind: "edge", edgeId: edge.id });
+      const position = { x: edge.x, y: edge.y };
+
       setContextMenuTarget({
+        anchorRect: rectFromCenter(
+          position,
+          edgeLabelHitboxWidth(edge.label),
+          EDGE_LABEL_HITBOX_HEIGHT,
+        ),
         kind: "edge",
         edgeId: edge.id,
         sourceX: edge.sourceX,
         sourceY: edge.sourceY,
         targetX: edge.targetX,
         targetY: edge.targetY,
-        ...renderedPointFromPointer(event),
+        ...position,
       });
     },
-    [
-      cancelInlineEdit,
-      renderedPointFromPointer,
-      setContextMenuTarget,
-      syncContextSelection,
-    ],
+    [cancelInlineEdit, setContextMenuTarget, syncContextSelection],
   );
 
   const setSelectionEdgeColor = useCallback(
@@ -126,5 +126,18 @@ export function useGraphCanvasContextActions({
     reverseSelectionEdges,
     setSelectionEdgeColor,
     setSelectionNodeColor,
+  };
+}
+
+function rectFromCenter(
+  position: RenderedPoint,
+  width: number,
+  height: number,
+) {
+  return {
+    height,
+    left: position.x - width / 2,
+    top: position.y - height / 2,
+    width,
   };
 }

@@ -164,9 +164,8 @@ export function GraphContextMenu({
 
 const DEFAULT_MENU_SIZE = { width: 240, height: 112 };
 const DEFAULT_CANVAS_SIZE = { width: 1058, height: 994, leftInset: 308 };
+const HITBOX_MENU_GAP = 8;
 const MENU_PADDING = 8;
-const NODE_MENU_CLEARANCE = 42;
-const EDGE_MENU_CLEARANCE = 18;
 const POINTER_MENU_OFFSET = 10;
 const COMPACT_TOOLBAR_WIDTH = 56;
 
@@ -175,82 +174,36 @@ function getContextMenuPosition(
   menu: { width: number; height: number },
   canvas: { width: number; height: number; leftInset: number },
 ) {
-  if (target.kind === "edge") {
-    return getEdgeContextMenuPosition(target, menu, canvas);
+  if (target.anchorRect) {
+    return getAnchorRectContextMenuPosition(target.anchorRect, menu, canvas);
   }
 
-  const preferredRight = target.x + NODE_MENU_CLEARANCE;
-  const preferredLeft = target.x - NODE_MENU_CLEARANCE - menu.width;
+  return getPointerContextMenuPosition(target, menu, canvas);
+}
+
+function getAnchorRectContextMenuPosition(
+  anchor: { height: number; left: number; top: number; width: number },
+  menu: { width: number; height: number },
+  canvas: { width: number; height: number; leftInset: number },
+) {
+  const right = anchor.left + anchor.width;
+  const preferredRight = right + HITBOX_MENU_GAP;
+  const preferredLeft = anchor.left - HITBOX_MENU_GAP - menu.width;
   const fitsRight = preferredRight + menu.width <= canvas.width - MENU_PADDING;
-  const fitsLeft = preferredLeft >= MENU_PADDING;
-  const rawLeft = fitsRight || !fitsLeft ? preferredRight : preferredLeft;
-  const rawTop = target.y - menu.height / 2;
+  const fitsLeft = preferredLeft >= canvas.leftInset;
 
   return {
     left: clamp(
-      rawLeft,
+      fitsRight || !fitsLeft ? preferredRight : preferredLeft,
       canvas.leftInset,
       canvas.width - menu.width - MENU_PADDING,
     ),
     top: clamp(
-      rawTop,
+      anchor.top,
       MENU_PADDING,
       canvas.height - menu.height - MENU_PADDING,
     ),
   };
-}
-
-function getEdgeContextMenuPosition(
-  target: Extract<GraphContextMenuTarget, { kind: "edge" }>,
-  menu: { width: number; height: number },
-  canvas: { width: number; height: number; leftInset: number },
-) {
-  const dx = target.targetX - target.sourceX;
-  const dy = target.targetY - target.sourceY;
-  const length = Math.hypot(dx, dy);
-
-  if (length < 1) {
-    return getPointerContextMenuPosition(target, menu, canvas);
-  }
-
-  const normal = { x: -dy / length, y: dx / length };
-  const halfProjection =
-    (Math.abs(normal.x) * menu.width + Math.abs(normal.y) * menu.height) / 2;
-  const distance = EDGE_MENU_CLEARANCE + halfProjection;
-  const candidates = [1, -1].map((side) => {
-    const center = {
-      x: target.x + normal.x * distance * side,
-      y: target.y + normal.y * distance * side,
-    };
-    const left = clamp(
-      center.x - menu.width / 2,
-      canvas.leftInset,
-      canvas.width - menu.width - MENU_PADDING,
-    );
-    const top = clamp(
-      center.y - menu.height / 2,
-      MENU_PADDING,
-      canvas.height - menu.height - MENU_PADDING,
-    );
-    const actualCenter = {
-      x: left + menu.width / 2,
-      y: top + menu.height / 2,
-    };
-    const projectedDistance = Math.abs(
-      (actualCenter.x - target.x) * normal.x +
-        (actualCenter.y - target.y) * normal.y,
-    );
-
-    return {
-      left,
-      top,
-      score: projectedDistance - halfProjection,
-    };
-  });
-  const best =
-    candidates[0].score >= candidates[1].score ? candidates[0] : candidates[1];
-
-  return { left: best.left, top: best.top };
 }
 
 function getPointerContextMenuPosition(
