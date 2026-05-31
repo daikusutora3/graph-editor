@@ -1,10 +1,16 @@
 import { resolveInlineEditCommit } from "../../features/graph-editor/core/graph/inline-edit-commit";
-import { defaultGraphSettings } from "../../features/graph-editor/core/graph/graph-factory";
 import {
+  createEmptyGraphModel,
+  defaultGraphSettings,
+} from "../../features/graph-editor/core/graph/graph-factory";
+import {
+  addEdgeCommand,
   deleteSelectionCommand,
+  reverseEdgesCommand,
   updateSettingsCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
 import { applyGraphPatch } from "../../features/graph-editor/core/graph/graph-patch";
+import { reduceGraphIntent } from "../../features/graph-editor/core/graph/graph-reducer";
 import { prepareGraphTransaction } from "../../features/graph-editor/core/graph/graph-transaction";
 import {
   computeEdgeRouting,
@@ -78,6 +84,39 @@ const looseEdgeList = importGraphInput("0 1\n1 2\n2 3", {
 expect(
   looseEdgeList.format === "Edge list",
   "plain pairs without an N M header should fall back to loose edge-list parsing",
+);
+
+const constrainedModel: GraphModel = {
+  ...createEmptyGraphModel({ directed: true, allowMultiEdges: false }),
+  nodes: [
+    { id: "a", label: "A", order: 0, x: 0, y: 0 },
+    { id: "b", label: "B", order: 1, x: 100, y: 0 },
+  ],
+  edges: [{ id: "ab", source: "a", target: "b" }],
+};
+
+expect(
+  reduceGraphIntent(
+    constrainedModel,
+    addEdgeCommand({ id: "duplicate", source: "a", target: "b" }),
+  ).edges.length === 1,
+  "reducer should reject duplicate add-edge when multi-edges are disabled",
+);
+
+const reversedConflictModel: GraphModel = {
+  ...constrainedModel,
+  edges: [
+    { id: "ab", source: "a", target: "b" },
+    { id: "ba", source: "b", target: "a" },
+  ],
+};
+
+expect(
+  reduceGraphIntent(
+    reversedConflictModel,
+    reverseEdgesCommand(["ab"]),
+  ).edges.find((edge) => edge.id === "ab")?.source === "a",
+  "reducer should leave a reversed edge unchanged when it would collide",
 );
 
 const weightedModel = {

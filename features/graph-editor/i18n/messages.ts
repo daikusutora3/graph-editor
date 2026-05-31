@@ -114,6 +114,7 @@ type Messages = {
     exportedAria: (label: string) => string;
     copyAria: (label: string, state: "idle" | "copied" | "blocked") => string;
     downloadAria: (label: string) => string;
+    adjacencyLossWarning: string;
     formats: Record<GraphExportFormatLabel, string>;
   };
   screenshot: {
@@ -456,6 +457,8 @@ const ja = {
           ? `${label}をコピーできませんでした`
           : `${label}をコピー`,
     downloadAria: (label: string) => `${label}をダウンロード`,
+    adjacencyLossWarning:
+      "多重辺は隣接リスト・隣接行列では完全に表現できない場合があります。完全な書き出しには辺リストを使ってください。",
     formats: {
       "edge-list": "辺リスト",
       "adjacency-list": "隣接リスト",
@@ -752,6 +755,8 @@ const en: Messages = {
           ? `Could not copy ${label}`
           : `Copy ${label}`,
     downloadAria: (label: string) => `Download ${label}`,
+    adjacencyLossWarning:
+      "Parallel edges may not be represented completely in adjacency lists or matrices. Use edge list for a lossless export.",
     formats: {
       "edge-list": "Edge list",
       "adjacency-list": "Adjacency list",
@@ -1048,6 +1053,8 @@ const zhHans: Messages = {
           ? `无法复制${label}`
           : `复制${label}`,
     downloadAria: (label: string) => `下载${label}`,
+    adjacencyLossWarning:
+      "多重边可能无法在邻接表或邻接矩阵中完整表示。请使用边列表进行无损导出。",
     formats: {
       "edge-list": "边列表",
       "adjacency-list": "邻接表",

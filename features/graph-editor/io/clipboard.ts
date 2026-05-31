@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 
+import { filterAddableEdges } from "../core/graph/edge-constraints";
 import { createEdge, createNode } from "../core/graph/graph-factory";
 import type {
   GraphEdge,
@@ -64,10 +65,18 @@ export function createPasteGraphCommand(
   const offset = Math.max(1, pasteCount) * PASTE_OFFSET_PX;
   const nodeIdMap = new Map<NodeId, NodeId>();
   const createdNodes = createPastedNodes(graph, payload, offset, nodeIdMap);
-  const createdEdges =
+  const candidateEdges =
     createdNodes.length > 0
       ? createPastedEdgesFromNodes(payload.edges, nodeIdMap)
       : createPastedEdgesFromExistingNodes(graph, payload.edges);
+  const graphWithCreatedNodes = {
+    ...graph,
+    nodes: [...graph.nodes, ...createdNodes],
+  };
+  const createdEdges = filterAddableEdges(
+    graphWithCreatedNodes,
+    candidateEdges,
+  );
 
   if (createdNodes.length === 0 && createdEdges.length === 0) {
     return null;

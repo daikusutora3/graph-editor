@@ -43,7 +43,11 @@ export function tryImportAdjacencyMatrix(
     return null;
   }
 
-  if (values.length < 3 || values.some((row) => !row.includes(0))) {
+  if (
+    values.length < 2 ||
+    values.some((row) => !row.includes(0)) ||
+    !isSafeAdjacencyMatrixSize(values, options.directed)
+  ) {
     return null;
   }
 
@@ -104,6 +108,29 @@ export function tryImportAdjacencyMatrix(
   });
 
   return { model, warnings: [], format: "Adjacency matrix" };
+}
+
+function isSafeAdjacencyMatrixSize(
+  values: number[][],
+  directed: boolean | undefined,
+) {
+  if (values.length !== 2) {
+    return true;
+  }
+
+  const isBinary = values.every((row) =>
+    row.every((value) => value === 0 || value === 1),
+  );
+
+  if (!isBinary) {
+    return false;
+  }
+
+  if (!directed && values[0]?.[1] !== values[1]?.[0]) {
+    return false;
+  }
+
+  return true;
 }
 
 export function tryImportAdjacencyList(

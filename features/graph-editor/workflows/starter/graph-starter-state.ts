@@ -114,6 +114,7 @@ export function useGraphStarterState({
     panelPresence,
     openPaste,
     preview,
+    visibleIssues: issues.length > 0 ? issues : (preview?.warnings ?? []),
     setInput,
     setTab,
     tab,

@@ -1,3 +1,4 @@
+import { canUseEdgeEndpoints, filterAddableEdges } from "./edge-constraints";
 import { createEdge, createNode } from "./graph-factory";
 import { stripUndefinedProperties } from "./graph-utils";
 import type { GraphIntent, GraphModel, GraphSettings } from "./model";
@@ -19,8 +20,15 @@ export function reduceGraphIntent(
       });
       return { ...model, nodes: [...model.nodes, node] };
     }
-    case "add-edge":
-      return { ...model, edges: [...model.edges, createEdge(intent.input)] };
+    case "add-edge": {
+      const edge = createEdge(intent.input);
+
+      if (!canUseEdgeEndpoints(model, edge.source, edge.target)) {
+        return model;
+      }
+
+      return { ...model, edges: [...model.edges, edge] };
+    }
     case "delete-selection": {
       const nodeIds = new Set(intent.selection.nodeIds);
       const edgeIds = new Set(intent.selection.edgeIds);
@@ -56,7 +64,21 @@ export function reduceGraphIntent(
         ),
       };
     }
-    case "update-edge":
+    case "update-edge": {
+      const currentEdge = model.edges.find((edge) => edge.id === intent.edgeId);
+      const nextSource = intent.patch.source ?? currentEdge?.source;
+      const nextTarget = intent.patch.target ?? currentEdge?.target;
+      const ignoreEdgeIds = new Set([intent.edgeId]);
+
+      if (
+        currentEdge &&
+        nextSource &&
+        nextTarget &&
+        !canUseEdgeEndpoints(model, nextSource, nextTarget, { ignoreEdgeIds })
+      ) {
+        return model;
+      }
+
       return {
         ...model,
         edges: model.edges.map((edge) =>
@@ -65,6 +87,7 @@ export function reduceGraphIntent(
             : edge,
         ),
       };
+    }
     case "set-edges-color": {
       const idSet = new Set(intent.edgeIds);
       const nextColor = intent.color === "paper" ? undefined : intent.color;
@@ -79,13 +102,24 @@ export function reduceGraphIntent(
     }
     case "reverse-edges": {
       const idSet = new Set(intent.edgeIds);
+      const untouchedEdges = model.edges.filter((edge) => !idSet.has(edge.id));
+      const baseModel = { ...model, edges: untouchedEdges };
+      const acceptedEdges = new Map(
+        filterAddableEdges(
+          baseModel,
+          model.edges
+            .filter((edge) => idSet.has(edge.id))
+            .map((edge) => ({
+              ...edge,
+              source: edge.target,
+              target: edge.source,
+            })),
+        ).map((edge) => [edge.id, edge]),
+      );
+
       return {
         ...model,
-        edges: model.edges.map((edge) =>
-          idSet.has(edge.id)
-            ? { ...edge, source: edge.target, target: edge.source }
-            : edge,
-        ),
+        edges: model.edges.map((edge) => acceptedEdges.get(edge.id) ?? edge),
       };
     }
     case "update-settings": {
@@ -118,16 +152,20 @@ export function reduceGraphIntent(
     case "put-graph-elements": {
       const nodeIds = new Set(intent.nodes.map((node) => node.id));
       const edgeIds = new Set(intent.edges.map((edge) => edge.id));
-      return {
+      const baseModel = {
         ...model,
         nodes: [
           ...model.nodes.filter((node) => !nodeIds.has(node.id)),
           ...intent.nodes,
         ],
-        edges: [
-          ...model.edges.filter((edge) => !edgeIds.has(edge.id)),
-          ...intent.edges,
-        ],
+        edges: model.edges.filter((edge) => !edgeIds.has(edge.id)),
+      };
+      const nextEdges = filterAddableEdges(baseModel, intent.edges);
+
+      return {
+        ...model,
+        nodes: baseModel.nodes,
+        edges: [...baseModel.edges, ...nextEdges],
       };
     }
   }

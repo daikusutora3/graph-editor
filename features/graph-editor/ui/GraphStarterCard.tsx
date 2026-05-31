@@ -46,7 +46,6 @@ export function GraphStarterCard({
     applyText,
     close,
     inputText,
-    issues,
     open,
     panelPresence: starterDialogPresence,
     openPaste,
@@ -54,6 +53,7 @@ export function GraphStarterCard({
     setInput,
     setTab,
     tab,
+    visibleIssues,
   } = starter;
 
   useEffect(() => {
@@ -222,7 +222,7 @@ export function GraphStarterCard({
             {tab === "paste" ? (
               <PasteStarterPane
                 inputText={inputText}
-                issues={issues}
+                issues={visibleIssues}
                 previewFormat={preview?.format}
                 previewModel={preview?.model}
                 textareaRef={textareaRef}

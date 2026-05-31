@@ -49,14 +49,7 @@ export function importGraphInput(
     input,
     detectStructuredEdgeListOptions(lines, options),
   );
-  if (
-    structuredEdgeListResult.warnings.some((warning) =>
-      warning.startsWith("Import is too large"),
-    ) ||
-    structuredEdgeListResult.model.nodes.length > 0 ||
-    structuredEdgeListResult.model.edges.length > 0 ||
-    structuredEdgeListResult.warnings.length === 0
-  ) {
+  if (shouldKeepStructuredEdgeList(structuredEdgeListResult, lines)) {
     return structuredEdgeListResult;
   }
 
@@ -104,11 +97,97 @@ function detectStructuredEdgeListOptions(
   const edgeRows = lines
     .slice(1, edgeCount + 1)
     .map((line) => splitTokens(line.text));
-  const hasThreeColumnEdges =
-    edgeRows.length > 0 && edgeRows.every((row) => row.length === 3);
+  const hasWeightedEdgeRow = edgeRows.some((row) => row.length === 3);
 
   return {
     ...options,
-    weighted: hasThreeColumnEdges,
+    weighted: hasWeightedEdgeRow,
   };
+}
+
+function shouldKeepStructuredEdgeList(
+  result: ImportResult,
+  lines: ParsedLine[],
+) {
+  if (hasImportLimitWarning(result)) {
+    return true;
+  }
+
+  const header = readStructuredHeader(lines);
+  if (!header) {
+    return false;
+  }
+
+  const hasContent =
+    result.model.nodes.length > 0 || result.model.edges.length > 0;
+
+  if (
+    result.warnings.length === 0 &&
+    header.nodeCount > 0 &&
+    header.edgeCount === 0
+  ) {
+    return true;
+  }
+
+  if (
+    result.warnings.length === 0 &&
+    header.nodeCount === 0 &&
+    header.edgeCount === 0 &&
+    lines.length === 1
+  ) {
+    return false;
+  }
+
+  if (result.warnings.length === 0) {
+    return hasContent;
+  }
+
+  if (lines.length === 1 && header.edgeCount > 0) {
+    return false;
+  }
+
+  return hasContent && structuredHeaderEndpointsLookPlausible(lines, header);
+}
+
+function hasImportLimitWarning(result: ImportResult) {
+  return result.warnings.some((warning) =>
+    warning.startsWith("Import is too large"),
+  );
+}
+
+function readStructuredHeader(lines: ParsedLine[]) {
+  const header = splitTokens(lines[0]?.text ?? "");
+  const nodeCount = Number(header[0]);
+  const edgeCount = Number(header[1]);
+
+  if (
+    header.length !== 2 ||
+    !Number.isInteger(nodeCount) ||
+    !Number.isInteger(edgeCount) ||
+    nodeCount < 0 ||
+    edgeCount < 0
+  ) {
+    return null;
+  }
+
+  return { nodeCount, edgeCount };
+}
+
+function structuredHeaderEndpointsLookPlausible(
+  lines: ParsedLine[],
+  header: { nodeCount: number; edgeCount: number },
+) {
+  const endpoints = lines
+    .slice(1, header.edgeCount + 1)
+    .flatMap((line) => splitTokens(line.text).slice(0, 2).map(Number))
+    .filter((value) => Number.isInteger(value));
+
+  if (endpoints.length === 0) {
+    return header.edgeCount === 0;
+  }
+
+  return (
+    endpoints.every((value) => value >= 0 && value < header.nodeCount) ||
+    endpoints.every((value) => value >= 1 && value <= header.nodeCount)
+  );
 }
