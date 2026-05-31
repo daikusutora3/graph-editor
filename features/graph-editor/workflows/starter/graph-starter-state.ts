@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { importGraphInput } from "../../io/import-graph";
-import type { ImportFormat, ImportOptions } from "../../io/import-utils";
+import type { ImportOptions } from "../../io/import-utils";
 import type { ImportResult } from "../../io/import-types";
 import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
@@ -27,7 +27,6 @@ export function useGraphStarterState({
   const applyGraphModel = useApplyGraphModel();
   const [inputText, setInputText] = useState("");
   const [issues, setIssues] = useState<string[]>([]);
-  const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const {
     openValue,
     panelPresence,
@@ -38,9 +37,8 @@ export function useGraphStarterState({
   const importOptions = useMemo<ImportOptions>(
     () => ({
       ...graph.settings,
-      format: importFormat,
     }),
-    [graph.settings, importFormat],
+    [graph.settings],
   );
   const previewParseKey = useMemo(
     () => makeStarterParseKey(inputText, importOptions),
@@ -130,14 +128,12 @@ export function useGraphStarterState({
   return {
     applyText,
     close,
-    importFormat,
     inputText,
     issues,
     open,
     panelPresence,
     openPaste,
     preview,
-    setImportFormat,
     visibleIssues: issues.length > 0 ? issues : (preview?.warnings ?? []),
     setInput,
     setTab,
@@ -152,7 +148,6 @@ type StarterParseResult = {
 
 function makeStarterParseKey(inputText: string, options: ImportOptions) {
   return JSON.stringify({
-    format: options.format ?? "auto",
     inputText,
     settings: {
       allowMultiEdges: options.allowMultiEdges,

@@ -66,7 +66,7 @@ export function AppMenu({ boundaryRef, open, onClose }: AppMenuProps) {
       ref={menuRef}
       role="menu"
       aria-label={messages.appMenu.label}
-      className="gv-app-menu gv-popover absolute top-[calc(100%+0.5rem)] left-0 z-[100] flex w-72 flex-col gap-1 p-1.5"
+      className="gv-app-menu gv-popover absolute top-[calc(100%+0.5rem)] left-0 z-[100] flex w-56 flex-col gap-1 p-1.5"
     >
       <AppMenuLink href={APP_REPOSITORY_URL} label={messages.appMenu.github}>
         <GitHubLogo className="size-4" />
