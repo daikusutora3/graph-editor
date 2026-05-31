@@ -164,6 +164,13 @@ function normalizeGraphModel(value: unknown): GraphModel | null {
     return null;
   }
 
+  if (
+    value.nodes.length > MAX_STORED_GRAPH_NODES ||
+    value.edges.length > MAX_STORED_GRAPH_EDGES
+  ) {
+    return null;
+  }
+
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
 

@@ -7,7 +7,16 @@ import type {
 } from "../core/graph/model";
 import type { ImportResult } from "./import-types";
 
-export type ImportOptions = Partial<GraphSettings>;
+export type ImportFormat =
+  | "auto"
+  | "contest-edge-list"
+  | "edge-pairs"
+  | "adjacency-list"
+  | "adjacency-matrix";
+
+export type ImportOptions = Partial<GraphSettings> & {
+  format?: ImportFormat;
+};
 
 export type ParsedLine = {
   number: number;
@@ -130,6 +139,12 @@ export function ensureNodeByLabel(
   );
   idByLabel.set(label, id);
   return id;
+}
+
+export function shouldRequireNumericWeights(
+  settings: Pick<GraphSettings, "weighted" | "weightKind">,
+) {
+  return settings.weighted && settings.weightKind === "number";
 }
 
 function stripComment(line: string): string {

@@ -90,6 +90,17 @@ expect(
   "weighted adjacency-list import should preserve target(weight) values",
 );
 
+const arrowAdjacencyList = importGraphInput("0 -> 1\n1 -> 2", {
+  indexBase: 0,
+});
+
+expect(
+  arrowAdjacencyList.format === "Adjacency list" &&
+    arrowAdjacencyList.model.settings.directed &&
+    arrowAdjacencyList.model.edges.length === 2,
+  "arrow adjacency-list syntax should imply directed import",
+);
+
 const ambiguousStructuredEdgeList = importGraphInput("2 1\n0 1", {
   directed: false,
   weighted: false,
@@ -115,6 +126,30 @@ expect(
   "2x2 symmetric binary matrix should import as adjacency matrix",
 );
 
+const forcedTwoByTwoMatrix = importGraphInput("0 1\n1 0", {
+  format: "adjacency-matrix",
+  indexBase: 0,
+});
+
+expect(
+  forcedTwoByTwoMatrix.format === "Adjacency matrix" &&
+    forcedTwoByTwoMatrix.model.nodes.length === 2 &&
+    forcedTwoByTwoMatrix.model.edges.length === 1,
+  "forced adjacency-matrix import should accept a 2x2 matrix",
+);
+
+const directedMatrix = importGraphInput("0 1 0\n0 0 1\n0 0 0", {
+  format: "adjacency-matrix",
+  indexBase: 0,
+});
+
+expect(
+  directedMatrix.format === "Adjacency matrix" &&
+    directedMatrix.model.settings.directed &&
+    directedMatrix.model.edges.map((edge) => edge.source).join(",") === "n0,n1",
+  "non-symmetric adjacency matrices should infer directed import",
+);
+
 const oneIndexedLooseEdgeList = importGraphInput("1 2\n2 3\n3 1", {
   directed: false,
   weighted: false,
@@ -126,6 +161,18 @@ expect(
     oneIndexedLooseEdgeList.model.nodes.length === 3 &&
     oneIndexedLooseEdgeList.model.edges.length === 3,
   "1-indexed headerless edge-list should import as loose edge-list",
+);
+
+const forcedSingleEdgePair = importGraphInput("1 2", {
+  format: "edge-pairs",
+  indexBase: 1,
+});
+
+expect(
+  forcedSingleEdgePair.format === "Edge list" &&
+    forcedSingleEdgePair.model.nodes.length === 2 &&
+    forcedSingleEdgePair.model.edges.length === 1,
+  "forced edge-pairs import should accept a single edge",
 );
 
 const oneIndexedStructuredEdgeList = importGraphInput("5 3\n1 5\n2 5\n3 5", {
@@ -142,6 +189,18 @@ expect(
       .join() === "1,2,3,4,5" &&
     oneIndexedStructuredEdgeList.model.edges.length === 3,
   "0-indexed settings should still accept 1-indexed structured edge-list input",
+);
+
+const forcedContestEdgeList = importGraphInput("2 1\n1 2", {
+  format: "contest-edge-list",
+  indexBase: 1,
+});
+
+expect(
+  forcedContestEdgeList.format === "辺リスト" &&
+    forcedContestEdgeList.model.nodes.length === 2 &&
+    forcedContestEdgeList.model.edges.length === 1,
+  "forced contest edge-list import should keep N M interpretation",
 );
 
 const partialStructuredEdgeList = importGraphInput("3 2\n1 2", {
@@ -181,6 +240,30 @@ const importedWithRoutingOff = importGraphInput("1 2\n2 3", {
 expect(
   importedWithRoutingOff.model.settings.autoEdgeRouting === false,
   "paste import should preserve autoEdgeRouting setting",
+);
+
+const nonNumericLooseWeight = importGraphInput("0 1 x", {
+  format: "edge-pairs",
+  weighted: true,
+  indexBase: 0,
+});
+
+expect(
+  nonNumericLooseWeight.model.edges.length === 0 &&
+    nonNumericLooseWeight.warnings[0]?.includes("weight must be numeric"),
+  "weighted edge-pairs import should reject non-numeric weights",
+);
+
+const nonNumericAdjacencyWeight = importGraphInput("0: 1(x)", {
+  format: "adjacency-list",
+  weighted: true,
+  indexBase: 0,
+});
+
+expect(
+  nonNumericAdjacencyWeight.model.edges.length === 0 &&
+    nonNumericAdjacencyWeight.warnings[0]?.includes("weight must be numeric"),
+  "weighted adjacency-list import should reject non-numeric weights",
 );
 
 const looseFallback = importGraphInput("0 1\n1 2", {
