@@ -11,6 +11,23 @@ import type {
   NodeId,
 } from "./model";
 
+type FixedLabelIntentType = Exclude<
+  GraphIntent["type"],
+  "replace-model" | "move-nodes" | "put-graph-elements"
+>;
+
+const FIXED_GRAPH_INTENT_LABELS: Record<FixedLabelIntentType, string> = {
+  "add-edge": "Add edge",
+  "add-node": "Add node",
+  "delete-selection": "Delete selection",
+  "reverse-edges": "Reverse edges",
+  "set-edges-color": "Set edge color",
+  "set-nodes-color": "Set node color",
+  "update-edge": "Update edge",
+  "update-node": "Update node",
+  "update-settings": "Update settings",
+};
+
 export function replaceModelCommand(next: GraphModel): GraphIntent {
   return { type: "replace-model", label: "Replace graph", model: next };
 }
@@ -94,31 +111,13 @@ export function createMoveNodesCommand(
   return { type: "move-nodes", label, after };
 }
 
-export function graphIntentLabel(intent: GraphIntent) {
+export function graphIntentLabel(intent: GraphIntent): string {
   switch (intent.type) {
     case "replace-model":
-      return intent.label;
-    case "add-node":
-      return "Add node";
-    case "add-edge":
-      return "Add edge";
-    case "delete-selection":
-      return "Delete selection";
-    case "update-node":
-      return "Update node";
-    case "set-nodes-color":
-      return "Set node color";
-    case "update-edge":
-      return "Update edge";
-    case "set-edges-color":
-      return "Set edge color";
-    case "reverse-edges":
-      return "Reverse edges";
-    case "update-settings":
-      return "Update settings";
     case "move-nodes":
-      return intent.label;
     case "put-graph-elements":
       return intent.label;
+    default:
+      return FIXED_GRAPH_INTENT_LABELS[intent.type];
   }
 }

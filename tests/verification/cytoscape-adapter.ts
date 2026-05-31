@@ -14,6 +14,7 @@ import { createVerification } from "./harness";
 const { expect, finish } = createVerification("Cytoscape adapter");
 
 verifyElementMapping();
+verifyNodeMappingDoesNotUseIsolatedState();
 verifyDiffSyncPreservesTransientClasses();
 verifyDiffSyncCanSkipDraggedNodePositions();
 verifyEdgeTopologyChangesAreRecreated();
@@ -50,6 +51,36 @@ function verifyElementMapping() {
   expect(
     String(edgeAb?.classes).includes("color-blue"),
     "edge color should map to a class",
+  );
+}
+
+function verifyNodeMappingDoesNotUseIsolatedState() {
+  const graph: GraphModel = {
+    ...createEmptyGraphModel(),
+    nodes: [
+      { id: "isolated", label: "I", order: 0, x: 0, y: 0 },
+      { id: "connected-a", label: "A", order: 1, x: 120, y: 0 },
+      { id: "connected-b", label: "B", order: 2, x: 240, y: 0 },
+    ],
+    edges: [{ id: "ab", source: "connected-a", target: "connected-b" }],
+  };
+  const elements = graphModelToCytoscapeElements(graph);
+  const isolatedNode = elements.find(
+    (element) => element.data?.id === "isolated",
+  );
+  const connectedNode = elements.find(
+    (element) => element.data?.id === "connected-a",
+  );
+
+  expect(
+    !String(isolatedNode?.classes ?? "").includes("isolated") &&
+      !("isolated" in (isolatedNode?.data ?? {})),
+    "isolated nodes should not emit a no-op isolated class or data flag",
+  );
+  expect(
+    !String(connectedNode?.classes ?? "").includes("isolated") &&
+      !("isolated" in (connectedNode?.data ?? {})),
+    "connected nodes should not emit isolated state either",
   );
 }
 

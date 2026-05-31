@@ -42,6 +42,8 @@ import {
   executeCommandAtom,
   futureAtom,
   historyAtom,
+  redoAtom,
+  undoAtom,
 } from "../../features/graph-editor/shell/state/history-atoms";
 import { createVerification } from "./harness";
 
@@ -124,6 +126,7 @@ expect(
 verifyShortcutResolver();
 verifyShortcutPreventDefaultContract();
 verifyCanvasSelectionActions();
+verifyHistoryActions();
 verifyShortcutActions();
 
 finish();
@@ -252,6 +255,87 @@ function verifyCanvasSelectionActions() {
       resolveEdgeSelection({ nodeIds: ["a"], edgeIds: ["ab"] }, "bc", true),
     ) === JSON.stringify({ nodeIds: ["a"], edgeIds: ["ab", "bc"] }),
     "Shift+edge click should add the edge and preserve node selection",
+  );
+}
+
+function verifyHistoryActions() {
+  const historyStore = createStore();
+  historyStore.set(syncExternalGraphAtom, graphFixture());
+  historyStore.set(
+    executeCommandAtom,
+    addNodeCommand({ id: "c", x: 240, y: 0 }),
+  );
+
+  expect(
+    historyStore.get(graphAtom).nodes.some((node) => node.id === "c"),
+    "command should apply the forward graph change",
+  );
+  expect(
+    historyStore.get(historyAtom).length === 1,
+    "command should append one history entry",
+  );
+
+  historyStore.set(undoAtom);
+  expect(
+    !historyStore.get(graphAtom).nodes.some((node) => node.id === "c") &&
+      historyStore.get(historyAtom).length === 0 &&
+      historyStore.get(futureAtom).length === 1,
+    "undo should apply the backward patch and move the entry to future",
+  );
+
+  historyStore.set(redoAtom);
+  expect(
+    historyStore.get(graphAtom).nodes.some((node) => node.id === "c") &&
+      historyStore.get(historyAtom).length === 1 &&
+      historyStore.get(futureAtom).length === 0,
+    "redo should reapply the forward patch and restore history",
+  );
+
+  const staleUndoStore = createStore();
+  staleUndoStore.set(syncExternalGraphAtom, graphFixture());
+  staleUndoStore.set(
+    executeCommandAtom,
+    addNodeCommand({ id: "external-stale", x: 240, y: 0 }),
+  );
+  staleUndoStore.set(syncExternalGraphAtom, createEmptyGraphModel());
+  staleUndoStore.set(undoAtom);
+
+  expect(
+    staleUndoStore.get(graphAtom).nodes.length === 0 &&
+      staleUndoStore.get(historyAtom).length === 0 &&
+      staleUndoStore.get(futureAtom).length === 0,
+    "undo after external sync should clear stale history without replaying patches",
+  );
+
+  const staleRedoStore = createStore();
+  staleRedoStore.set(syncExternalGraphAtom, graphFixture());
+  staleRedoStore.set(
+    executeCommandAtom,
+    addNodeCommand({ id: "redo-stale", x: 240, y: 0 }),
+  );
+  staleRedoStore.set(undoAtom);
+  staleRedoStore.set(syncExternalGraphAtom, createEmptyGraphModel());
+  staleRedoStore.set(redoAtom);
+
+  expect(
+    staleRedoStore.get(graphAtom).nodes.length === 0 &&
+      staleRedoStore.get(historyAtom).length === 0 &&
+      staleRedoStore.get(futureAtom).length === 0,
+    "redo after external sync should clear stale future without replaying patches",
+  );
+
+  const cappedHistoryStore = createStore();
+  cappedHistoryStore.set(syncExternalGraphAtom, createEmptyGraphModel());
+  for (let index = 0; index < 151; index += 1) {
+    cappedHistoryStore.set(
+      executeCommandAtom,
+      addNodeCommand({ id: `n${index}`, x: index, y: 0 }),
+    );
+  }
+
+  expect(
+    cappedHistoryStore.get(historyAtom).length === 150,
+    "history should keep the latest 150 entries",
   );
 }
 
