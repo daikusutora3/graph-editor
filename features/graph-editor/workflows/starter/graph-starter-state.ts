@@ -5,7 +5,8 @@ import type { RefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { importGraphInput } from "../../io/import-graph";
-import type { ImportFormat } from "../../io/import-utils";
+import type { ImportFormat, ImportOptions } from "../../io/import-utils";
+import type { ImportResult } from "../../io/import-types";
 import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
 import { graphAtom } from "../../shell/state/graph-atoms";
@@ -34,16 +35,28 @@ export function useGraphStarterState({
   } = useAnimatedNullableState<"starter">();
   const open = openValue !== null;
   const [tab, setTab] = useState<StarterTab>("paste");
-  const preview = useMemo(() => {
+  const importOptions = useMemo<ImportOptions>(
+    () => ({
+      ...graph.settings,
+      format: importFormat,
+    }),
+    [graph.settings, importFormat],
+  );
+  const previewParseKey = useMemo(
+    () => makeStarterParseKey(inputText, importOptions),
+    [importOptions, inputText],
+  );
+  const parsedPreview = useMemo<StarterParseResult | null>(() => {
     if (!inputText.trim()) {
       return null;
     }
 
-    return importGraphInput(inputText, {
-      ...graph.settings,
-      format: importFormat,
-    });
-  }, [graph.settings, importFormat, inputText]);
+    return {
+      key: previewParseKey,
+      result: importGraphInput(inputText, importOptions),
+    };
+  }, [importOptions, inputText, previewParseKey]);
+  const preview = parsedPreview?.result ?? null;
 
   const close = () => {
     setOpenValue(null);
@@ -94,10 +107,11 @@ export function useGraphStarterState({
   };
 
   const applyText = (text = inputText) => {
-    const result = importGraphInput(text, {
-      ...graph.settings,
-      format: importFormat,
-    });
+    const parseKey = makeStarterParseKey(text, importOptions);
+    const result =
+      parsedPreview?.key === parseKey
+        ? parsedPreview.result
+        : importGraphInput(text, importOptions);
     setIssues(result.warnings);
 
     if (!hasGraphContent(result.model)) {
@@ -129,4 +143,25 @@ export function useGraphStarterState({
     setTab,
     tab,
   };
+}
+
+type StarterParseResult = {
+  key: string;
+  result: ImportResult;
+};
+
+function makeStarterParseKey(inputText: string, options: ImportOptions) {
+  return JSON.stringify({
+    format: options.format ?? "auto",
+    inputText,
+    settings: {
+      allowMultiEdges: options.allowMultiEdges,
+      allowSelfLoops: options.allowSelfLoops,
+      autoEdgeRouting: options.autoEdgeRouting,
+      directed: options.directed,
+      indexBase: options.indexBase,
+      weighted: options.weighted,
+      weightKind: options.weightKind,
+    },
+  });
 }

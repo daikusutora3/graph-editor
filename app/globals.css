@@ -65,7 +65,6 @@
   --canvas-node: #27272a;
   --canvas-node-border: #f8fafc;
   --canvas-node-text: #f8fafc;
-  --canvas-node-isolated: #3f3f46;
   --canvas-node-yellow: #78350f;
   --canvas-node-blue: #1e3a8a;
   --canvas-node-green: #14532d;
@@ -212,7 +211,6 @@
   --canvas-node: #ffffff;
   --canvas-node-border: #111827;
   --canvas-node-text: #111827;
-  --canvas-node-isolated: #ffffff;
   --canvas-node-yellow: #fef3c7;
   --canvas-node-blue: #dbeafe;
   --canvas-node-green: #dcfce7;

@@ -19,14 +19,18 @@ import type {
   ScreenshotDownloadState,
   ScreenshotPreview,
 } from "./graph-io-types";
+import { DEFAULT_PADDING_PX, DEFAULT_LONG_EDGE_PX } from "./graph-io-types";
 import {
-  DEFAULT_PADDING_PX,
-  DEFAULT_LONG_EDGE_PX,
-  MAX_LONG_EDGE_PX,
-  MAX_PADDING_PX,
-  MIN_LONG_EDGE_PX,
-  MIN_PADDING_PX,
-} from "./graph-io-types";
+  clampLongEdgePx,
+  clampPaddingPx,
+  clampPaddingPxForLongEdge,
+  createEmptyScreenshotPreview,
+  isScreenshotPreviewStale,
+  makeScreenshotInputKey,
+  resolveLongEdgePx,
+  resolvePaddingPx,
+  shouldAcceptScreenshotPreviewRequest,
+} from "./graph-io-screenshot-state";
 import type { ThemeMode } from "./theme";
 
 type GraphIOScreenshotOptions = {
@@ -56,13 +60,9 @@ export function useGraphIOScreenshot({
     useState<PngExportPaddingPreset>(DEFAULT_PADDING_PX);
   const [customPaddingPx, setCustomPaddingPxState] =
     useState(DEFAULT_PADDING_PX);
-  const [preview, setPreview] = useState<ScreenshotPreview>({
-    height: null,
-    inputKey: null,
-    state: "empty",
-    url: "",
-    width: null,
-  });
+  const [preview, setPreview] = useState<ScreenshotPreview>(
+    createEmptyScreenshotPreview,
+  );
   const previewUrlRef = useRef("");
   const previewRequestRef = useRef(0);
   const copyResetTimeoutRef = useRef<number | null>(null);
@@ -93,17 +93,12 @@ export function useGraphIOScreenshot({
     [currentPreviewInput],
   );
   const visiblePreview = isGraphEmpty
-    ? {
-        height: null,
-        inputKey: null,
-        state: "empty" as const,
-        url: "",
-        width: null,
-      }
+    ? createEmptyScreenshotPreview()
     : preview;
-  const previewStale =
-    visiblePreview.state === "ready" &&
-    visiblePreview.inputKey !== currentPreviewInputKey;
+  const previewStale = isScreenshotPreviewStale(
+    visiblePreview,
+    currentPreviewInputKey,
+  );
 
   const resetFeedback = () => {
     clearTimeoutRef(copyResetTimeoutRef);
@@ -162,13 +157,7 @@ export function useGraphIOScreenshot({
   function clearPreview() {
     previewRequestRef.current += 1;
     revokePreviewUrl();
-    setPreview({
-      height: null,
-      inputKey: null,
-      state: "empty",
-      url: "",
-      width: null,
-    });
+    setPreview(createEmptyScreenshotPreview());
   }
 
   function revokePreviewUrl() {
@@ -217,7 +206,12 @@ export function useGraphIOScreenshot({
       const objectUrl = URL.createObjectURL(blob);
       const { height, width } = await readImageDimensions(objectUrl);
 
-      if (previewRequestRef.current !== requestId) {
+      if (
+        !shouldAcceptScreenshotPreviewRequest(
+          previewRequestRef.current,
+          requestId,
+        )
+      ) {
         URL.revokeObjectURL(objectUrl);
         return;
       }
@@ -233,7 +227,12 @@ export function useGraphIOScreenshot({
       });
     } catch (error) {
       console.warn("Screenshot preview failed", error);
-      if (previewRequestRef.current === requestId) {
+      if (
+        shouldAcceptScreenshotPreviewRequest(
+          previewRequestRef.current,
+          requestId,
+        )
+      ) {
         setPreview({
           height: null,
           inputKey,
@@ -416,64 +415,6 @@ export function useGraphIOScreenshot({
     setPaddingPreset,
     solidBackground,
   };
-}
-
-function makeScreenshotInputKey({
-  background,
-  graph,
-  longEdgePx,
-  paddingPx,
-}: {
-  background: PngExportBackground;
-  graph: GraphModel;
-  longEdgePx: number;
-  paddingPx: number;
-}) {
-  return JSON.stringify({
-    background,
-    edges: graph.edges,
-    longEdgePx,
-    nodes: graph.nodes,
-    paddingPx,
-    settings: graph.settings,
-  });
-}
-
-function resolveLongEdgePx(
-  preset: PngExportLongEdgePreset,
-  customLongEdgePx: number,
-) {
-  return preset === "custom" ? customLongEdgePx : preset;
-}
-
-function resolvePaddingPx(
-  preset: PngExportPaddingPreset,
-  customPaddingPx: number,
-) {
-  return preset === "custom" ? customPaddingPx : preset;
-}
-
-function clampLongEdgePx(value: number) {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_LONG_EDGE_PX;
-  }
-
-  return Math.min(
-    MAX_LONG_EDGE_PX,
-    Math.max(MIN_LONG_EDGE_PX, Math.round(value)),
-  );
-}
-
-function clampPaddingPx(value: number) {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_PADDING_PX;
-  }
-
-  return Math.min(MAX_PADDING_PX, Math.max(MIN_PADDING_PX, Math.round(value)));
-}
-
-function clampPaddingPxForLongEdge(paddingPx: number, longEdgePx: number) {
-  return Math.min(paddingPx, Math.max(0, Math.floor((longEdgePx - 1) / 2)));
 }
 
 function clearTimeoutRef(ref: MutableRefObject<number | null>) {

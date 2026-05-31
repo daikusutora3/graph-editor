@@ -19,7 +19,6 @@ type CytoscapeNodeData = {
   id: NodeId;
   label: string;
   order: number;
-  isolated: boolean;
   color: GraphColor;
 };
 
@@ -83,15 +82,12 @@ export function graphModelToCytoscapeElements(
   model: GraphModel,
   options: CytoscapeElementOptions = {},
 ): ElementDefinition[] {
-  const degrees = getDegreeCounts(model);
   const edgeMeta =
     options.edgeRoutingMeta ??
     computeCytoscapeEdgeRoutingMeta(model, options.edgeRoutingOptions);
 
   return [
-    ...model.nodes.map((node) =>
-      nodeToCytoscapeElement(node, (degrees.get(node.id) ?? 0) === 0),
-    ),
+    ...model.nodes.map((node) => nodeToCytoscapeElement(node)),
     ...model.edges.map((edge) =>
       edgeToCytoscapeElement(
         edge,
@@ -172,20 +168,14 @@ function edgeRoutingDataChanged(
   );
 }
 
-function nodeToCytoscapeElement(
-  node: GraphNode,
-  isolated = false,
-): ElementDefinition {
+function nodeToCytoscapeElement(node: GraphNode): ElementDefinition {
   return {
     group: "nodes",
-    classes: [isolated ? "isolated" : "", nodeColorClass(node.color)]
-      .filter(Boolean)
-      .join(" "),
+    classes: [nodeColorClass(node.color)].filter(Boolean).join(" "),
     data: {
       id: node.id,
       label: node.label,
       order: node.order,
-      isolated,
       color: node.color ?? "paper",
     } satisfies CytoscapeNodeData,
     position: {
@@ -264,13 +254,6 @@ export function createGraphCanvasStylesheet(
         "text-valign": "center",
         "text-outline-color": palette.node,
         "text-outline-width": 1,
-      }),
-    },
-    {
-      selector: "node.isolated",
-      style: cytoscapeStyle({
-        "background-color": palette.node,
-        "background-opacity": 1,
       }),
     },
     {
@@ -449,19 +432,4 @@ function edgeColorClass(color: GraphColor | undefined) {
 
 function nodeColorClass(color: GraphColor | undefined) {
   return color && color !== "paper" ? `color-${color}` : "";
-}
-
-function getDegreeCounts(model: GraphModel): Map<NodeId, number> {
-  const degrees = new Map<NodeId, number>(
-    model.nodes.map((node) => [node.id, 0]),
-  );
-
-  for (const edge of model.edges) {
-    degrees.set(edge.source, (degrees.get(edge.source) ?? 0) + 1);
-    if (edge.target !== edge.source) {
-      degrees.set(edge.target, (degrees.get(edge.target) ?? 0) + 1);
-    }
-  }
-
-  return degrees;
 }

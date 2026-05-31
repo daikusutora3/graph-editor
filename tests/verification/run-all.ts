@@ -8,6 +8,7 @@ const suites = [
   { name: "editor", path: "tests/verification/editor-state.ts" },
   { name: "storage", path: "tests/verification/storage.ts" },
   { name: "io", path: "tests/verification/io-contracts.ts" },
+  { name: "screenshot", path: "tests/verification/screenshot.ts" },
 ] as const;
 
 for (const suite of suites) {
