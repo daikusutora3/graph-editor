@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import type { GraphModel } from "../core/graph/model";
 import { hasGraphContent } from "../core/graph/selectors";
 import { useI18n } from "../i18n/I18nProvider";
-import type { ImportFormat } from "../io/import-utils";
 import type { StarterTab } from "../workflows/starter/graph-starter-state";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 
@@ -39,23 +38,19 @@ export function StarterTabButton({
 }
 
 export function PasteStarterPane({
-  importFormat,
   inputText,
   issues,
   previewFormat,
   previewModel,
   textareaRef,
-  onImportFormatChange,
   onInputTextChange,
   onApply,
 }: {
-  importFormat: ImportFormat;
   inputText: string;
   issues: string[];
   previewFormat?: string;
   previewModel?: GraphModel;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
-  onImportFormatChange: (format: ImportFormat) => void;
   onInputTextChange: (value: string) => void;
   onApply: () => void;
 }) {
@@ -67,25 +62,6 @@ export function PasteStarterPane({
         <p className="gv-microcopy min-w-0 truncate">
           {messages.starter.autoDetectHelp}
         </p>
-        <label className="flex shrink-0 items-center gap-2 text-[length:var(--app-text-xs)] font-semibold text-[var(--text-dim)]">
-          <span>{messages.starter.formatLabel}</span>
-          <select
-            name="graph-import-format"
-            value={importFormat}
-            aria-label={messages.starter.formatLabel}
-            autoComplete="off"
-            onChange={(event) =>
-              onImportFormatChange(event.target.value as ImportFormat)
-            }
-            className="gv-select-control h-7 min-w-[8.5rem] py-0 pr-7 pl-2 text-[length:var(--app-text-xs)]"
-          >
-            {IMPORT_FORMATS.map((format) => (
-              <option key={format} value={format}>
-                {messages.starter.importFormats[format]}
-              </option>
-            ))}
-          </select>
-        </label>
         <FormatBadge
           format={previewFormat}
           hasInput={Boolean(inputText.trim())}
@@ -146,14 +122,6 @@ export function PasteStarterPane({
     </div>
   );
 }
-
-const IMPORT_FORMATS = [
-  "auto",
-  "contest-edge-list",
-  "edge-pairs",
-  "adjacency-list",
-  "adjacency-matrix",
-] as const satisfies readonly ImportFormat[];
 
 function PastePreviewPanel({
   hasInput,

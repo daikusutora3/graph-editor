@@ -45,13 +45,11 @@ export function GraphStarterCard({
   const {
     applyText,
     close,
-    importFormat,
     inputText,
     open,
     panelPresence: starterDialogPresence,
     openPaste,
     preview,
-    setImportFormat,
     setInput,
     setTab,
     tab,
@@ -223,13 +221,11 @@ export function GraphStarterCard({
           >
             {tab === "paste" ? (
               <PasteStarterPane
-                importFormat={importFormat}
                 inputText={inputText}
                 issues={visibleIssues}
                 previewFormat={preview?.format}
                 previewModel={preview?.model}
                 textareaRef={textareaRef}
-                onImportFormatChange={setImportFormat}
                 onInputTextChange={setInput}
                 onApply={() => applyText()}
               />

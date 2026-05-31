@@ -1,5 +1,4 @@
 import type { LayoutDisabledReason, LayoutKind } from "../layouts";
-import type { ImportFormat } from "../io/import-utils";
 import type { SampleGraphKind } from "../samples/sample-graphs";
 import type { SampleGraphGroupKey } from "../samples/registry";
 import type { Locale } from "./locale";
@@ -92,8 +91,6 @@ type Messages = {
     sample: string;
     loadingSamples: string;
     autoDetectHelp: string;
-    formatLabel: string;
-    importFormats: Record<ImportFormat, string>;
     pastePlaceholder: string;
     apply: string;
     needsReview: string;
@@ -418,14 +415,6 @@ const ja = {
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
     autoDetectHelp: "辺リスト・隣接リスト・隣接行列に対応",
-    formatLabel: "形式",
-    importFormats: {
-      auto: "自動",
-      "contest-edge-list": "競プロ形式",
-      "edge-pairs": "辺ペア列",
-      "adjacency-list": "隣接リスト",
-      "adjacency-matrix": "隣接行列",
-    },
     pastePlaceholder:
       "辺リスト\n4 4\n1 2\n2 3\n2 4\n3 4\n\n隣接リスト\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n隣接行列\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "グラフに反映",
@@ -713,14 +702,6 @@ const en: Messages = {
     sample: "Samples",
     loadingSamples: "Loading samples",
     autoDetectHelp: "Supports edge lists, adjacency lists, and matrices.",
-    formatLabel: "Format",
-    importFormats: {
-      auto: "Auto",
-      "contest-edge-list": "Contest format",
-      "edge-pairs": "Edge pairs",
-      "adjacency-list": "Adjacency list",
-      "adjacency-matrix": "Adjacency matrix",
-    },
     pastePlaceholder:
       "Edge list\n4 4\n1 2\n2 3\n2 4\n3 4\n\nAdjacency list\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\nAdjacency matrix\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "Apply to graph",
@@ -1008,14 +989,6 @@ const zhHans: Messages = {
     sample: "示例",
     loadingSamples: "正在加载示例",
     autoDetectHelp: "支持边列表、邻接表和邻接矩阵。",
-    formatLabel: "格式",
-    importFormats: {
-      auto: "自动",
-      "contest-edge-list": "竞赛格式",
-      "edge-pairs": "边对列表",
-      "adjacency-list": "邻接表",
-      "adjacency-matrix": "邻接矩阵",
-    },
     pastePlaceholder:
       "边列表\n4 4\n1 2\n2 3\n2 4\n3 4\n\n邻接表\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n邻接矩阵\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "应用到图",
