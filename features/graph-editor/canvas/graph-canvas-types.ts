@@ -19,10 +19,6 @@ export type GraphContextMenuTarget =
       anchorRect?: ContextMenuAnchorRect;
       kind: "edge";
       edgeId: EdgeId;
-      sourceX: number;
-      sourceY: number;
-      targetX: number;
-      targetY: number;
       x: number;
       y: number;
     };
