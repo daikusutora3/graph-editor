@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { exportEdgeList } from "../io/export-edge-list";
 import type { GraphModel } from "../core/graph/model";
 import { useI18n } from "../i18n/I18nProvider";
 import {
@@ -29,7 +28,7 @@ import {
 } from "./sample-gallery-layout";
 
 type SampleGalleryPaneProps = {
-  onSampleApplied: (edgeList: string) => void;
+  onSampleApplied: () => void;
 };
 
 export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
@@ -76,7 +75,7 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
       fitAfterUpdate: true,
       selectMode: true,
     });
-    onSampleApplied(exportEdgeList(model));
+    onSampleApplied();
   };
 
   return (

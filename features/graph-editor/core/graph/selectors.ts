@@ -13,19 +13,3 @@ export function getNode(model: GraphModel, nodeId: NodeId): GraphNode | null {
 export function getNodeByOrder(model: GraphModel): GraphNode[] {
   return [...model.nodes].sort((a, b) => a.order - b.order);
 }
-
-export function hasEdgeBetween(
-  model: GraphModel,
-  source: NodeId,
-  target: NodeId,
-): boolean {
-  return model.edges.some((edge) => {
-    if (model.settings.directed) {
-      return edge.source === source && edge.target === target;
-    }
-    return (
-      (edge.source === source && edge.target === target) ||
-      (edge.source === target && edge.target === source)
-    );
-  });
-}

@@ -81,10 +81,6 @@ export function useGraphCanvasContextActions({
         ),
         kind: "edge",
         edgeId: edge.id,
-        sourceX: edge.sourceX,
-        sourceY: edge.sourceY,
-        targetX: edge.targetX,
-        targetY: edge.targetY,
         ...position,
       });
     },

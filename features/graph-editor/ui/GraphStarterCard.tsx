@@ -238,8 +238,7 @@ export function GraphStarterCard({
             {tab === "sample" ? (
               <Suspense fallback={<SampleGalleryFallback />}>
                 <SampleGalleryPane
-                  onSampleApplied={(edgeList) => {
-                    setInput(edgeList);
+                  onSampleApplied={() => {
                     close();
                   }}
                 />

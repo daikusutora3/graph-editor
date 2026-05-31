@@ -73,24 +73,6 @@ export function useGraphCanvasViewportActions({
     [canZoom, cyRef, syncViewportAfterZoom],
   );
 
-  const setCanvasZoomPercent = useCallback(
-    (zoomPercent: number) => {
-      const cy = cyRef.current;
-      const container = cy?.container();
-
-      if (!canZoom || !cy || !container || !Number.isFinite(zoomPercent)) {
-        return;
-      }
-
-      zoomCanvasToLevel(
-        cy,
-        clamp(zoomPercent / 100, MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM),
-      );
-      syncViewportAfterZoom(cy);
-    },
-    [canZoom, cyRef, syncViewportAfterZoom],
-  );
-
   const resetCanvasZoom = useCallback(() => {
     const cy = cyRef.current;
     const container = cy?.container();
@@ -111,7 +93,6 @@ export function useGraphCanvasViewportActions({
     maxZoom: MAX_CANVAS_ZOOM,
     minZoom: MIN_CANVAS_ZOOM,
     resetCanvasZoom,
-    setCanvasZoomPercent,
     zoomCanvas,
     zoomStep: ZOOM_STEP,
   };

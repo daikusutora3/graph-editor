@@ -17,7 +17,6 @@ type Messages = {
     description: string;
     documentTitle: string;
     documentDescription: string;
-    logoAlt: string;
   };
   common: {
     close: string;
@@ -26,10 +25,7 @@ type Messages = {
     copied: string;
     copying: string;
     saved: string;
-    saving: string;
-    save: string;
     copy: string;
-    standard: string;
     lightMode: string;
     darkMode: string;
     switchLightMode: string;
@@ -40,9 +36,7 @@ type Messages = {
     open: string;
     github: string;
     reportIssue: string;
-    reportIssueHelp: string;
     shareOnX: string;
-    shareOnXHelp: string;
   };
   toolbar: {
     quickActions: string;
@@ -92,7 +86,6 @@ type Messages = {
   };
   starter: {
     createGraph: string;
-    createGraphHelp: string;
     dialogLabel: string;
     methodLabel: string;
     paste: string;
@@ -103,7 +96,6 @@ type Messages = {
     importFormats: Record<ImportFormat, string>;
     pastePlaceholder: string;
     apply: string;
-    formatAuto: string;
     needsReview: string;
     detected: (format: string) => string;
     preview: string;
@@ -116,7 +108,6 @@ type Messages = {
     emptyPlaceholder: string;
     exportedAria: (label: string) => string;
     copyAria: (label: string, state: "idle" | "copied" | "blocked") => string;
-    downloadAria: (label: string) => string;
     adjacencyLossWarning: string;
     formats: Record<GraphExportFormatLabel, string>;
   };
@@ -140,7 +131,6 @@ type Messages = {
     previewFailed: string;
     previewLoading: string;
     previewNoDimensions: string;
-    previewReady: string;
     previewRefresh: string;
     copyFallbackSaved: string;
     copyFailed: string;
@@ -155,9 +145,7 @@ type Messages = {
     zoomOut: string;
     resetZoom: (zoomPercent: number) => string;
     zoomIn: string;
-    zoomLevel: string;
     nodePlacementLayer: string;
-    edgeDrawingLayer: string;
     editNodeLabel: string;
     editEdgeWeight: string;
     editEdgeLabel: string;
@@ -360,7 +348,6 @@ const ja = {
     description: "グラフを作成・編集・書き出しできるブラウザアプリ",
     documentTitle: appLocaleMetadata.ja.title,
     documentDescription: appLocaleMetadata.ja.description,
-    logoAlt: "Graph Editor by daikusutora",
   },
   common: {
     close: "閉じる",
@@ -369,10 +356,7 @@ const ja = {
     copied: "コピー済み",
     copying: "コピー中",
     saved: "保存済み",
-    saving: "保存中",
-    save: "保存",
     copy: "コピー",
-    standard: "標準",
     lightMode: "ライト",
     darkMode: "ダーク",
     switchLightMode: "ライトモードに切り替え",
@@ -383,9 +367,7 @@ const ja = {
     open: "アプリメニューを開く",
     github: "GitHub",
     reportIssue: "GitHub Issue",
-    reportIssueHelp: "改善案や不具合報告はこちらまで",
     shareOnX: "Xで共有",
-    shareOnXHelp: "このアプリを紹介する",
   },
   toolbar: {
     quickActions: "クイック操作",
@@ -430,7 +412,6 @@ const ja = {
   },
   starter: {
     createGraph: "グラフを作成",
-    createGraphHelp: "辺リストを貼り付けるかサンプルを選択",
     dialogLabel: "グラフ作成スターター",
     methodLabel: "開始方法",
     paste: "貼り付け",
@@ -448,7 +429,6 @@ const ja = {
     pastePlaceholder:
       "辺リスト\n4 4\n1 2\n2 3\n2 4\n3 4\n\n隣接リスト\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n隣接行列\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "グラフに反映",
-    formatAuto: "自動判定",
     needsReview: "要確認",
     detected: (format: string) => `${format} として認識`,
     preview: "プレビュー",
@@ -467,7 +447,6 @@ const ja = {
         : state === "blocked"
           ? `${label}をコピーできませんでした`
           : `${label}をコピー`,
-    downloadAria: (label: string) => `${label}をダウンロード`,
     adjacencyLossWarning:
       "多重辺は隣接リスト・隣接行列では完全に表現できない場合があります。完全な書き出しには辺リストを使ってください。",
     formats: {
@@ -496,7 +475,6 @@ const ja = {
     previewFailed: "プレビューを作成できませんでした",
     previewLoading: "プレビューを作成中",
     previewNoDimensions: "-- px",
-    previewReady: "書き出しサイズ",
     previewRefresh: "更新",
     copyFallbackSaved: "コピーできなかったためPNGとして保存しました",
     copyFailed: "スクショをクリップボードにコピーできませんでした",
@@ -512,9 +490,7 @@ const ja = {
     resetZoom: (zoomPercent: number) =>
       `表示倍率を100%に戻す。現在 ${zoomPercent}%`,
     zoomIn: "表示を拡大",
-    zoomLevel: "表示倍率",
     nodePlacementLayer: "頂点追加レイヤー",
-    edgeDrawingLayer: "辺追加レイヤー",
     editNodeLabel: "頂点ラベルを編集",
     editEdgeWeight: "辺の重みを編集",
     editEdgeLabel: "辺ラベルを編集",
@@ -665,7 +641,6 @@ const en: Messages = {
     description: "Create, edit, and export graphs in the browser.",
     documentTitle: appLocaleMetadata.en.title,
     documentDescription: appLocaleMetadata.en.description,
-    logoAlt: "Graph Editor by daikusutora",
   },
   common: {
     close: "Close",
@@ -674,10 +649,7 @@ const en: Messages = {
     copied: "Copied",
     copying: "Copying",
     saved: "Saved",
-    saving: "Saving",
-    save: "Save",
     copy: "Copy",
-    standard: "Standard",
     lightMode: "Light",
     darkMode: "Dark",
     switchLightMode: "Switch to light mode",
@@ -688,9 +660,7 @@ const en: Messages = {
     open: "Open app menu",
     github: "GitHub",
     reportIssue: "GitHub Issue",
-    reportIssueHelp: "Send feedback or bug reports here",
     shareOnX: "Share on X",
-    shareOnXHelp: "Share this app",
   },
   toolbar: {
     ...ja.toolbar,
@@ -737,7 +707,6 @@ const en: Messages = {
   },
   starter: {
     createGraph: "Create graph",
-    createGraphHelp: "Paste an edge list or choose a sample",
     dialogLabel: "Graph starter",
     methodLabel: "Start method",
     paste: "Paste",
@@ -755,7 +724,6 @@ const en: Messages = {
     pastePlaceholder:
       "Edge list\n4 4\n1 2\n2 3\n2 4\n3 4\n\nAdjacency list\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\nAdjacency matrix\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "Apply to graph",
-    formatAuto: "Auto detect",
     needsReview: "Review needed",
     detected: (format: string) => `Read as ${format}`,
     preview: "Preview",
@@ -774,7 +742,6 @@ const en: Messages = {
         : state === "blocked"
           ? `Could not copy ${label}`
           : `Copy ${label}`,
-    downloadAria: (label: string) => `Download ${label}`,
     adjacencyLossWarning:
       "Parallel edges may not be represented completely in adjacency lists or matrices. Use edge list for a lossless export.",
     formats: {
@@ -803,7 +770,6 @@ const en: Messages = {
     previewFailed: "Could not create the preview.",
     previewLoading: "Creating preview",
     previewNoDimensions: "-- px",
-    previewReady: "Export size",
     previewRefresh: "Refresh",
     copyFallbackSaved: "Could not copy, so the PNG was saved instead.",
     copyFailed: "Could not copy the screenshot to the clipboard.",
@@ -819,9 +785,7 @@ const en: Messages = {
     resetZoom: (zoomPercent: number) =>
       `Reset zoom to 100%. Current zoom is ${zoomPercent}%.`,
     zoomIn: "Zoom in",
-    zoomLevel: "Zoom level",
     nodePlacementLayer: "Node placement layer",
-    edgeDrawingLayer: "Edge drawing layer",
     editNodeLabel: "Edit node label",
     editEdgeWeight: "Edit edge weight",
     editEdgeLabel: "Edit edge label",
@@ -973,7 +937,6 @@ const zhHans: Messages = {
     description: "在浏览器中创建、编辑并导出图。",
     documentTitle: appLocaleMetadata["zh-Hans"].title,
     documentDescription: appLocaleMetadata["zh-Hans"].description,
-    logoAlt: "Graph Editor by daikusutora",
   },
   common: {
     close: "关闭",
@@ -982,10 +945,7 @@ const zhHans: Messages = {
     copied: "已复制",
     copying: "复制中",
     saved: "已保存",
-    saving: "保存中",
-    save: "保存",
     copy: "复制",
-    standard: "标准",
     lightMode: "浅色",
     darkMode: "深色",
     switchLightMode: "切换到浅色模式",
@@ -996,9 +956,7 @@ const zhHans: Messages = {
     open: "打开应用菜单",
     github: "GitHub",
     reportIssue: "GitHub Issue",
-    reportIssueHelp: "改进建议和问题反馈请发到这里",
     shareOnX: "分享到 X",
-    shareOnXHelp: "分享这个应用",
   },
   toolbar: {
     ...en.toolbar,
@@ -1044,7 +1002,6 @@ const zhHans: Messages = {
   },
   starter: {
     createGraph: "创建图",
-    createGraphHelp: "粘贴边列表或选择示例",
     dialogLabel: "图创建面板",
     methodLabel: "开始方式",
     paste: "粘贴",
@@ -1062,7 +1019,6 @@ const zhHans: Messages = {
     pastePlaceholder:
       "边列表\n4 4\n1 2\n2 3\n2 4\n3 4\n\n邻接表\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n邻接矩阵\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "应用到图",
-    formatAuto: "自动识别",
     needsReview: "需要确认",
     detected: (format: string) => `按 ${format} 读取`,
     preview: "预览",
@@ -1081,7 +1037,6 @@ const zhHans: Messages = {
         : state === "blocked"
           ? `无法复制${label}`
           : `复制${label}`,
-    downloadAria: (label: string) => `下载${label}`,
     adjacencyLossWarning:
       "多重边可能无法在邻接表或邻接矩阵中完整表示。请使用边列表进行无损导出。",
     formats: {
@@ -1110,7 +1065,6 @@ const zhHans: Messages = {
     previewFailed: "无法创建预览。",
     previewLoading: "正在创建预览",
     previewNoDimensions: "-- px",
-    previewReady: "导出尺寸",
     previewRefresh: "更新",
     copyFallbackSaved: "无法复制，已改为保存 PNG。",
     copyFailed: "无法将截图复制到剪贴板。",
@@ -1126,9 +1080,7 @@ const zhHans: Messages = {
     zoomOut: "缩小",
     resetZoom: (zoomPercent: number) => `重置为 100%。当前为 ${zoomPercent}%。`,
     zoomIn: "放大",
-    zoomLevel: "缩放级别",
     nodePlacementLayer: "顶点添加层",
-    edgeDrawingLayer: "边添加层",
     editNodeLabel: "编辑顶点标签",
     editEdgeWeight: "编辑边权值",
     editEdgeLabel: "编辑边标签",
