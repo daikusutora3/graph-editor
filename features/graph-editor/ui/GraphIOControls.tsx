@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { DropdownShell, ExportPanel } from "./GraphIOPanels";
+import { hasLossyAdjacencyExport } from "../io/export-graph";
 import {
   ScreenshotFooter,
   ScreenshotPanel,
@@ -87,6 +88,11 @@ export function GraphIOControls() {
             edgeCount={controller.graph.edges.length}
             exportFormat={controller.exportFormat}
             exportText={controller.exportText}
+            exportWarning={
+              hasLossyAdjacencyExport(controller.graph, controller.exportFormat)
+                ? messages.exportPanel.adjacencyLossWarning
+                : undefined
+            }
             nodeCount={controller.graph.nodes.length}
             onCopyExport={() => void controller.actions.copyExport()}
             onExportFormatChange={controller.setExportFormat}

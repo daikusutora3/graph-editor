@@ -1,4 +1,5 @@
-import { getNode, hasEdgeBetween } from "../core/graph/selectors";
+import { canUseEdgeEndpoints } from "../core/graph/edge-constraints";
+import { getNode } from "../core/graph/selectors";
 import type { GraphModel, NodeId } from "../core/graph/model";
 import type { EdgeDraft } from "../shell/state/editor-state";
 
@@ -86,7 +87,7 @@ export function resolveEdgeCreation({
 
   if (
     !model.settings.allowMultiEdges &&
-    hasEdgeBetween(model, sourceNodeId, targetNodeId)
+    !canUseEdgeEndpoints(model, sourceNodeId, targetNodeId)
   ) {
     const reason = "同じ辺はすでに存在します";
 

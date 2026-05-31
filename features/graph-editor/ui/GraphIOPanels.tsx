@@ -80,6 +80,7 @@ type ExportPanelProps = {
   edgeCount: number;
   exportFormat: GraphExportFormat;
   exportText: string;
+  exportWarning?: string;
   nodeCount: number;
   onCopyExport: () => void;
   onExportFormatChange: (format: GraphExportFormat) => void;
@@ -90,6 +91,7 @@ export function ExportPanel({
   edgeCount,
   exportFormat,
   exportText,
+  exportWarning,
   nodeCount,
   onCopyExport,
   onExportFormatChange,
@@ -134,6 +136,12 @@ export function ExportPanel({
           <span>M={edgeCount}</span>
         </div>
       </div>
+
+      {exportWarning ? (
+        <p className="rounded-[var(--app-radius-sm)] border border-[var(--warn)] bg-[var(--warn-soft)] px-[var(--app-space-3)] py-[var(--app-space-2)] text-[length:var(--app-text-xs)] leading-[var(--app-leading-tight)] text-[var(--warn)]">
+          {exportWarning}
+        </p>
+      ) : null}
 
       <div className="relative">
         <textarea

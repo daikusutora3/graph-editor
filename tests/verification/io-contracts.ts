@@ -2,6 +2,7 @@ import { defaultGraphSettings } from "../../features/graph-editor/core/graph/gra
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   exportGraph,
+  hasLossyAdjacencyExport,
   type GraphExportFormat,
 } from "../../features/graph-editor/io/export-graph";
 import { importGraphInput } from "../../features/graph-editor/io/import-graph";
@@ -53,6 +54,14 @@ const plainUndirectedModel: GraphModel = {
   },
 };
 
+const parallelEdgeModel: GraphModel = {
+  ...plainUndirectedModel,
+  edges: [
+    { id: "e0", source: "n0", target: "n1" },
+    { id: "e1", source: "n0", target: "n1" },
+  ],
+};
+
 for (const format of [
   "edge-list",
   "adjacency-list",
@@ -61,6 +70,13 @@ for (const format of [
   assertRoundTrip(weightedDirectedModel, format);
   assertRoundTrip(plainUndirectedModel, format);
 }
+
+expect(
+  !hasLossyAdjacencyExport(parallelEdgeModel, "edge-list") &&
+    hasLossyAdjacencyExport(parallelEdgeModel, "adjacency-list") &&
+    hasLossyAdjacencyExport(parallelEdgeModel, "adjacency-matrix"),
+  "adjacency exports should warn when parallel edges may not be lossless",
+);
 
 const weightedAdjacencyList = importGraphInput("0: 1(5)\n1: 2(-3)\n2:", {
   directed: true,
@@ -86,6 +102,32 @@ expect(
   "N M shaped input should keep structured edge-list precedence",
 );
 
+const twoByTwoMatrix = importGraphInput("0 1\n1 0", {
+  directed: false,
+  weighted: false,
+  indexBase: 0,
+});
+
+expect(
+  twoByTwoMatrix.format === "Adjacency matrix" &&
+    twoByTwoMatrix.model.nodes.length === 2 &&
+    twoByTwoMatrix.model.edges.length === 1,
+  "2x2 symmetric binary matrix should import as adjacency matrix",
+);
+
+const oneIndexedLooseEdgeList = importGraphInput("1 2\n2 3\n3 1", {
+  directed: false,
+  weighted: false,
+  indexBase: 1,
+});
+
+expect(
+  oneIndexedLooseEdgeList.format === "Edge list" &&
+    oneIndexedLooseEdgeList.model.nodes.length === 3 &&
+    oneIndexedLooseEdgeList.model.edges.length === 3,
+  "1-indexed headerless edge-list should import as loose edge-list",
+);
+
 const oneIndexedStructuredEdgeList = importGraphInput("5 3\n1 5\n2 5\n3 5", {
   directed: false,
   weighted: false,
@@ -100,6 +142,45 @@ expect(
       .join() === "1,2,3,4,5" &&
     oneIndexedStructuredEdgeList.model.edges.length === 3,
   "0-indexed settings should still accept 1-indexed structured edge-list input",
+);
+
+const partialStructuredEdgeList = importGraphInput("3 2\n1 2", {
+  directed: false,
+  weighted: false,
+  indexBase: 1,
+});
+
+expect(
+  partialStructuredEdgeList.format === "辺リスト" &&
+    partialStructuredEdgeList.model.edges.length === 1 &&
+    partialStructuredEdgeList.warnings.length > 0,
+  "plausible incomplete N M edge-list should keep structured interpretation with warnings",
+);
+
+const partialWeightedStructuredEdgeList = importGraphInput("3 2\n1 2 5\n2 3", {
+  directed: false,
+  weighted: false,
+  indexBase: 1,
+});
+
+expect(
+  partialWeightedStructuredEdgeList.format === "辺リスト" &&
+    partialWeightedStructuredEdgeList.model.settings.weighted &&
+    partialWeightedStructuredEdgeList.model.edges.length === 1 &&
+    partialWeightedStructuredEdgeList.warnings.length > 0,
+  "partially malformed weighted structured edge-list should keep weighted interpretation",
+);
+
+const importedWithRoutingOff = importGraphInput("1 2\n2 3", {
+  directed: false,
+  weighted: false,
+  indexBase: 1,
+  autoEdgeRouting: false,
+});
+
+expect(
+  importedWithRoutingOff.model.settings.autoEdgeRouting === false,
+  "paste import should preserve autoEdgeRouting setting",
 );
 
 const looseFallback = importGraphInput("0 1\n1 2", {

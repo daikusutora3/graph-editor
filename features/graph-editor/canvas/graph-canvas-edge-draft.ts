@@ -1,3 +1,4 @@
+import { canUseEdgeEndpoints } from "../core/graph/edge-constraints";
 import type { GraphModel, NodeId } from "../core/graph/model";
 
 import type { RenderedPoint } from "./graph-canvas-types";
@@ -13,13 +14,7 @@ export function getEdgeCandidateError(
 
   if (
     !graph.settings.allowMultiEdges &&
-    graph.edges.some(
-      (edge) =>
-        (edge.source === sourceNodeId && edge.target === targetNodeId) ||
-        (!graph.settings.directed &&
-          edge.source === targetNodeId &&
-          edge.target === sourceNodeId),
-    )
+    !canUseEdgeEndpoints(graph, sourceNodeId, targetNodeId)
   ) {
     return "同じ辺はすでに存在します";
   }

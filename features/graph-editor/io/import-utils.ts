@@ -7,9 +7,7 @@ import type {
 } from "../core/graph/model";
 import type { ImportResult } from "./import-types";
 
-export type ImportOptions = Partial<
-  Pick<GraphSettings, "directed" | "weighted" | "indexBase">
->;
+export type ImportOptions = Partial<GraphSettings>;
 
 export type ParsedLine = {
   number: number;
@@ -58,11 +56,15 @@ export function arrangeNodes(model: GraphModel) {
 export function readImportSettings(
   options: ImportOptions,
   overrides: Partial<Pick<GraphSettings, "directed" | "weighted">> = {},
-) {
+): GraphSettings {
   return {
     directed: overrides.directed ?? options.directed ?? false,
     weighted: overrides.weighted ?? options.weighted ?? false,
     indexBase: options.indexBase ?? 1,
+    allowSelfLoops: options.allowSelfLoops ?? true,
+    allowMultiEdges: options.allowMultiEdges ?? true,
+    autoEdgeRouting: options.autoEdgeRouting ?? true,
+    weightKind: options.weightKind ?? "number",
   };
 }
 

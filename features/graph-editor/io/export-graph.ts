@@ -31,6 +31,31 @@ export function exportGraph(
   }
 }
 
+export function hasLossyAdjacencyExport(
+  model: GraphModel,
+  format: GraphExportFormat,
+) {
+  if (format === "edge-list") {
+    return false;
+  }
+
+  const seen = new Set<string>();
+
+  for (const edge of model.edges) {
+    const key = model.settings.directed
+      ? `${edge.source}\0${edge.target}`
+      : [edge.source, edge.target].sort().join("\0");
+
+    if (seen.has(key)) {
+      return true;
+    }
+
+    seen.add(key);
+  }
+
+  return false;
+}
+
 export function getGraphExportFormat(format: GraphExportFormat) {
   return (
     GRAPH_EXPORT_FORMATS.find((item) => item.value === format) ??
