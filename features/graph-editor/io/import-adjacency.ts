@@ -13,6 +13,7 @@ import {
   type ImportOptions,
   type ParsedLine,
   readImportSettings,
+  shouldRequireNumericWeights,
   splitTokens,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
@@ -43,11 +44,14 @@ export function tryImportAdjacencyMatrix(
     return null;
   }
 
-  if (
-    values.length < 2 ||
-    values.some((row) => !row.includes(0)) ||
-    !isSafeAdjacencyMatrixSize(values, options.directed)
-  ) {
+  if (values.length < 2 || values.some((row) => !row.includes(0))) {
+    return null;
+  }
+
+  const isSymmetric = isSymmetricMatrix(values);
+  const directed = options.directed || !isSymmetric;
+
+  if (!isSafeAdjacencyMatrixSize(values, directed)) {
     return null;
   }
 
@@ -59,7 +63,7 @@ export function tryImportAdjacencyMatrix(
       count +
       row.filter(
         (value, targetIndex) =>
-          value !== 0 && (options.directed || targetIndex >= sourceIndex),
+          value !== 0 && (directed || targetIndex >= sourceIndex),
       ).length,
     0,
   );
@@ -74,7 +78,10 @@ export function tryImportAdjacencyMatrix(
     );
   }
 
-  const settings = readImportSettings(options, { weighted: hasWeightedValue });
+  const settings = readImportSettings(options, {
+    directed,
+    weighted: hasWeightedValue || options.weighted ? true : false,
+  });
   const model = createEmptyGraphModel(settings);
 
   model.nodes = Array.from({ length: values.length }, (_, index) =>
@@ -110,6 +117,14 @@ export function tryImportAdjacencyMatrix(
   return { model, warnings: [], format: "Adjacency matrix" };
 }
 
+function isSymmetricMatrix(values: number[][]) {
+  return values.every((row, sourceIndex) =>
+    row.every(
+      (value, targetIndex) => value === values[targetIndex]?.[sourceIndex],
+    ),
+  );
+}
+
 function isSafeAdjacencyMatrixSize(
   values: number[][],
   directed: boolean | undefined,
@@ -141,6 +156,7 @@ export function tryImportAdjacencyList(
     return null;
   }
 
+  const hasArrowSyntax = lines.some((line) => line.text.includes("->"));
   const labels = lines.flatMap((line) => {
     const separator = line.text.includes("->") ? "->" : ":";
     const [sourceText, targetText = ""] = line.text.split(separator);
@@ -185,7 +201,10 @@ export function tryImportAdjacencyList(
       ...options,
       indexBase: detectIndexBase(labels, options.indexBase),
     },
-    { weighted: hasWeightedTargets || options.weighted ? true : false },
+    {
+      directed: options.directed || hasArrowSyntax,
+      weighted: hasWeightedTargets || options.weighted ? true : false,
+    },
   );
   const model = createEmptyGraphModel(settings);
   const idByLabel = new Map<string, NodeId>();
@@ -218,6 +237,15 @@ export function tryImportAdjacencyList(
         return;
       }
 
+      const weight = parsedTarget.weight ?? "1";
+      if (
+        shouldRequireNumericWeights(settings) &&
+        !Number.isFinite(Number(weight))
+      ) {
+        warnings.push(`line ${line.number}: weight must be numeric.`);
+        return;
+      }
+
       const target = ensureNodeByLabel(model, idByLabel, targetLabel);
 
       if (!settings.directed) {
@@ -233,7 +261,7 @@ export function tryImportAdjacencyList(
           id: `e${model.edges.length}`,
           source,
           target,
-          weight: settings.weighted ? (parsedTarget.weight ?? "1") : undefined,
+          weight: settings.weighted ? weight : undefined,
         }),
       );
     });

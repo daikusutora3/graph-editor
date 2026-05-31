@@ -72,6 +72,11 @@ expect(
   manualLayoutDisabledReasonCode("bipartite", triangle) !== null,
   "bipartite layout should be disabled for non-bipartite graphs",
 );
+expect(
+  manualLayoutDisabledReasonCode("force", largeGraphFixture()) ===
+    "tooLargeGraph",
+  "force layout should be disabled for large graphs",
+);
 
 const routingBase = graphFixture({
   directed: false,
@@ -145,5 +150,19 @@ function graphFixture({
       source,
       target,
     })),
+  };
+}
+
+function largeGraphFixture(): GraphModel {
+  return {
+    ...createEmptyGraphModel(),
+    nodes: Array.from({ length: 301 }, (_, index) => ({
+      id: `n${index}`,
+      label: String(index),
+      order: index,
+      x: 0,
+      y: 0,
+    })),
+    edges: [],
   };
 }

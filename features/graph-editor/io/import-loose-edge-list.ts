@@ -9,6 +9,7 @@ import {
   type ImportOptions,
   type ParsedLine,
   readImportSettings,
+  shouldRequireNumericWeights,
   splitTokens,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
@@ -53,23 +54,35 @@ export function tryImportLooseEdgeList(
 
   const settings = readImportSettings(
     { ...options, indexBase: detectIndexBase(labels, options.indexBase) },
-    { weighted: hasWeights },
+    { weighted: hasWeights || options.weighted ? true : false },
   );
   const model = createEmptyGraphModel(settings);
   const idByLabel = new Map<string, NodeId>();
+  const warnings: string[] = [];
 
-  rows.forEach(([sourceLabel, targetLabel, weight]) => {
+  rows.forEach(([sourceLabel, targetLabel, weight], index) => {
+    const edgeWeight = weight ?? "1";
+    if (
+      shouldRequireNumericWeights(settings) &&
+      !Number.isFinite(Number(edgeWeight))
+    ) {
+      warnings.push(
+        `line ${lines[index]?.number ?? index + 1}: weight must be numeric.`,
+      );
+      return;
+    }
+
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
         source: ensureNodeByLabel(model, idByLabel, sourceLabel),
         target: ensureNodeByLabel(model, idByLabel, targetLabel),
-        weight: settings.weighted ? (weight ?? "1") : undefined,
+        weight: settings.weighted ? edgeWeight : undefined,
       }),
     );
   });
 
   arrangeNodes(model);
 
-  return { model, warnings: [], format: "Edge list" };
+  return { model, warnings, format: "Edge list" };
 }

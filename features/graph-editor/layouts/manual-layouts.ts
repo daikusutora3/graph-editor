@@ -32,6 +32,7 @@ import {
 } from "./layout-geometry";
 
 const LAYOUT_TARGET_EDGE_LENGTH = 124;
+const FORCE_LAYOUT_NODE_LIMIT = 300;
 
 type LayoutRuntimeDefinition = {
   kind: string;
@@ -45,6 +46,7 @@ type LayoutRuntimeDefinition = {
 
 export type LayoutDisabledReason =
   | "emptyGraph"
+  | "tooLargeGraph"
   | "notForest"
   | "dagRequiresDirected"
   | "notDag"
@@ -56,6 +58,8 @@ const manualLayoutDefinitions = [
     kind: "force",
     priority: "primary",
     positions: (model) => layoutForce(model),
+    disabledReason: (model) =>
+      model.nodes.length > FORCE_LAYOUT_NODE_LIMIT ? "tooLargeGraph" : null,
   },
   {
     kind: "circle",

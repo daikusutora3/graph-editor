@@ -5,6 +5,7 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   GRAPH_STORAGE_KEY,
   MAX_STORED_GRAPH_CHARS,
+  MAX_STORED_GRAPH_EDGES,
   MAX_STORED_GRAPH_NODES,
   parseStoredGraph,
   serializeStoredGraphForWrite,
@@ -111,6 +112,28 @@ function verifyStoredGraphSizeLimit() {
   expect(
     serializeStoredGraphForWrite(tooManyNodes) === null,
     "storage serializer should skip graphs with too many nodes before stringify",
+  );
+  expect(
+    parseStoredGraph(JSON.stringify(tooManyNodes)) === null,
+    "storage parser should skip stored graphs with too many nodes before normalization",
+  );
+
+  const tooManyEdges = {
+    ...graphFixture(),
+    edges: Array.from({ length: MAX_STORED_GRAPH_EDGES + 1 }, (_, index) => ({
+      id: `e${index}`,
+      source: "a",
+      target: "b",
+    })),
+  };
+
+  expect(
+    serializeStoredGraphForWrite(tooManyEdges) === null,
+    "storage serializer should skip graphs with too many edges before stringify",
+  );
+  expect(
+    parseStoredGraph(JSON.stringify(tooManyEdges)) === null,
+    "storage parser should skip stored graphs with too many edges before normalization",
   );
 }
 

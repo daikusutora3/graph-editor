@@ -27,10 +27,10 @@ Public app: <https://graph-editor.daikusutora3.workers.dev>
 - **Built for graph theory**: switch between directed/undirected and
   weighted/unweighted modes, change the index base, allow self-loops, and keep
   multi-edges readable.
-- **69 ready-made samples**: explore paths, cycles, trees, planar graphs,
+- **68 ready-made samples**: explore paths, cycles, trees, planar graphs,
   Petersen-style examples, DAGs, SCC demos, flow networks, and more.
-- **Layout tools**: apply force, component, BFS, tree, DAG, bipartite, SCC,
-  radial, circular, grid, line, and spread layouts.
+- **Layout tools**: apply force-directed, BFS, tree, DAG, bipartite, SCC,
+  radial, circular, grid, line, concentric, and spread layouts.
 - **Export options**: copy or save edge lists, adjacency lists, adjacency
   matrices, and PNG images with background and padding controls.
 - **Multilingual UI**: Japanese, English, and Simplified Chinese are supported

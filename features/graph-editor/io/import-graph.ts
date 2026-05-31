@@ -38,6 +38,36 @@ export function importGraphInput(
     return importFailure("Empty input.", options);
   }
 
+  const requestedFormat = options.format ?? "auto";
+
+  if (requestedFormat === "adjacency-matrix") {
+    return (
+      tryImportAdjacencyMatrix(lines, options) ??
+      importFailure("Input is not a valid adjacency matrix.", options)
+    );
+  }
+
+  if (requestedFormat === "adjacency-list") {
+    return (
+      tryImportAdjacencyList(lines, options) ??
+      importFailure("Input is not a valid adjacency list.", options)
+    );
+  }
+
+  if (requestedFormat === "contest-edge-list") {
+    return importStructuredEdgeList(
+      input,
+      detectStructuredEdgeListOptions(lines, options),
+    );
+  }
+
+  if (requestedFormat === "edge-pairs") {
+    return (
+      tryImportLooseEdgeList(lines, options) ??
+      importFailure("Input is not a valid edge pair list.", options)
+    );
+  }
+
   const detectedResult = parseFirst([
     { parse: () => tryImportAdjacencyMatrix(lines, options) },
     { parse: () => tryImportAdjacencyList(lines, options) },
