@@ -1,7 +1,10 @@
 import { createStore } from "jotai/vanilla";
 
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
-import { addNodeCommand } from "../../features/graph-editor/core/graph/graph-intents";
+import {
+  addNodeCommand,
+  updateSettingsCommand,
+} from "../../features/graph-editor/core/graph/graph-intents";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   resolveEdgeSelection,
@@ -12,6 +15,7 @@ import {
   clearGraphAtom,
   replaceGraphModelAtom,
   resetEditorSessionAtom,
+  reverseAllDirectedEdgesAtom,
   setEditorModeAtom,
 } from "../../features/graph-editor/shell/state/editor-actions";
 import {
@@ -26,6 +30,7 @@ import {
   resolveGraphEditorShortcut,
   shouldPreventDefaultForGraphEditorShortcut,
 } from "../../features/graph-editor/shell/state/editor-shortcuts";
+import { isMacShortcutPlatformValue } from "../../features/graph-editor/ui/ModeToolbar";
 import {
   edgeDraftAtom,
   editorModeAtom,
@@ -124,9 +129,12 @@ expect(
 );
 
 verifyShortcutResolver();
+verifyShortcutPlatformLabels();
 verifyShortcutPreventDefaultContract();
 verifyCanvasSelectionActions();
 verifyHistoryActions();
+verifyIndexBaseRelabeling();
+verifyReverseAllDirectedEdgesAction();
 verifyShortcutActions();
 
 finish();
@@ -142,6 +150,11 @@ function verifyShortcutResolver() {
       shortcutEvent({ metaKey: true, shiftKey: true, key: "z" }),
     )?.type === "redo",
     "Shift+Cmd/Ctrl+Z should resolve redo",
+  );
+  expect(
+    resolveGraphEditorShortcut(shortcutEvent({ ctrlKey: true, key: "y" }))
+      ?.type === "redo",
+    "Ctrl+Y should resolve redo for Windows-style redo",
   );
   expect(
     resolveGraphEditorShortcut(shortcutEvent({ ctrlKey: true, key: "a" }))
@@ -165,6 +178,16 @@ function verifyShortcutResolver() {
     resolveGraphEditorShortcut(shortcutEvent({ metaKey: true, key: "q" })) ===
       null,
     "unknown modified keys should not resolve a shortcut",
+  );
+}
+
+function verifyShortcutPlatformLabels() {
+  expect(
+    isMacShortcutPlatformValue("MacIntel", "Mozilla/5.0") &&
+      !isMacShortcutPlatformValue("iPhone", "Mozilla/5.0") &&
+      !isMacShortcutPlatformValue("MacIntel", "Mozilla/5.0 (iPad)") &&
+      !isMacShortcutPlatformValue("Win32", "Mozilla/5.0"),
+    "shortcut labels should use Mac symbols only for macOS, not iOS or Windows",
   );
 }
 
@@ -339,6 +362,83 @@ function verifyHistoryActions() {
   );
 }
 
+function verifyIndexBaseRelabeling() {
+  const indexStore = createStore();
+  indexStore.set(syncExternalGraphAtom, {
+    ...graphFixture(),
+    settings: {
+      ...graphFixture().settings,
+      indexBase: 0,
+    },
+    nodes: [
+      { id: "a", label: "0", order: 0, x: 0, y: 0 },
+      { id: "b", label: "2", order: 1, x: 120, y: 0 },
+      { id: "c", label: "1", order: 2, x: 240, y: 0 },
+      { id: "name", label: "root", order: 3, x: 360, y: 0 },
+    ],
+    edges: [],
+  });
+
+  indexStore.set(executeCommandAtom, updateSettingsCommand({ indexBase: 1 }));
+
+  expect(
+    indexStore
+      .get(graphAtom)
+      .nodes.map((node) => node.label)
+      .join(",") === "1,3,2,root",
+    "index-base changes should shift numeric labels and preserve non-numeric labels",
+  );
+
+  indexStore.set(executeCommandAtom, updateSettingsCommand({ indexBase: 0 }));
+
+  expect(
+    indexStore
+      .get(graphAtom)
+      .nodes.map((node) => node.label)
+      .join(",") === "0,2,1,root",
+    "index-base changes should round-trip manually reordered numeric labels",
+  );
+}
+
+function verifyReverseAllDirectedEdgesAction() {
+  const reverseStore = createStore();
+  reverseStore.set(syncExternalGraphAtom, {
+    ...graphFixture(),
+    nodes: [
+      ...graphFixture().nodes,
+      { id: "c", label: "C", order: 2, x: 240, y: 0 },
+    ],
+    edges: [
+      { id: "ab", source: "a", target: "b" },
+      { id: "bc", source: "b", target: "c" },
+      { id: "cc", source: "c", target: "c" },
+    ],
+  });
+
+  expect(
+    reverseStore.set(reverseAllDirectedEdgesAtom) === true,
+    "reverse-all action should run for directed non-loop edges",
+  );
+  expect(
+    reverseStore
+      .get(graphAtom)
+      .edges.map((edge) => `${edge.id}:${edge.source}->${edge.target}`)
+      .join(",") === "ab:b->a,bc:c->b,cc:c->c",
+    "reverse-all action should reverse directed edges and leave self-loops unchanged",
+  );
+
+  const undirectedStore = createStore();
+  undirectedStore.set(syncExternalGraphAtom, {
+    ...graphFixture(),
+    settings: { ...graphFixture().settings, directed: false },
+  });
+
+  expect(
+    undirectedStore.set(reverseAllDirectedEdgesAtom) === false,
+    "reverse-all action should be disabled for undirected graphs",
+  );
+}
+
 function verifyShortcutActions() {
   const shortcutStore = createStore();
 
@@ -443,12 +543,12 @@ function verifyShortcutActions() {
   );
   expect(
     shortcutStore.get(graphAtom).nodes.find((node) => node.id === "a")
-      ?.color === "yellow",
+      ?.color === "white",
     "color cycle should update selected node color",
   );
   expect(
     shortcutStore.get(graphAtom).edges.find((edge) => edge.id === "ab")
-      ?.color === "yellow",
+      ?.color === "white",
     "color cycle should update selected edge color",
   );
   expect(
@@ -465,6 +565,31 @@ function verifyShortcutActions() {
     shortcutStore.get(graphAtom).nodes.find((node) => node.id === "a")?.x ===
       10,
     "nudge should move selected nodes",
+  );
+
+  shortcutStore.set(selectionAtom, { nodeIds: ["a", "b"], edgeIds: [] });
+  expect(
+    shortcutStore.set(nudgeSelectedNodesAtom, { dx: 5, dy: 5 }) === true,
+    "nudge should return true with multiple selected nodes",
+  );
+  expect(
+    shortcutStore.get(graphAtom).nodes.find((node) => node.id === "a")?.x ===
+      15 &&
+      shortcutStore.get(graphAtom).nodes.find((node) => node.id === "b")?.x ===
+        125,
+    "nudge should move all selected nodes",
+  );
+
+  expect(
+    shortcutStore.set(cycleSelectionColorAtom) === true,
+    "color cycle should return true with multiple selected nodes",
+  );
+  expect(
+    shortcutStore
+      .get(graphAtom)
+      .nodes.filter((node) => node.id === "a" || node.id === "b")
+      .every((node) => node.color === "black"),
+    "color cycle should update all selected nodes",
   );
 
   const cutStore = createStore();

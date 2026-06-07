@@ -119,7 +119,7 @@ export function ExpandedToolbarLayer({
         </div>
 
         <div
-          className="gv-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--app-space-4)] overflow-x-hidden overflow-y-auto overscroll-x-none px-[var(--app-space-3)] pt-[var(--app-space-3)] pb-[var(--app-space-3)]"
+          className="gv-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--app-space-4)] overflow-x-hidden overflow-y-auto overscroll-x-none px-[var(--app-space-3)] pt-[var(--app-space-3)] pb-[var(--app-space-3)] [overflow-anchor:none]"
           onScroll={(event) => {
             if (event.currentTarget.scrollLeft !== 0) {
               event.currentTarget.scrollLeft = 0;

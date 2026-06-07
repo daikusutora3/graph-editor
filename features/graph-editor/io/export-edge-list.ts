@@ -1,5 +1,5 @@
-import { getNodeByOrder } from "../core/graph/selectors";
 import type { GraphModel } from "../core/graph/model";
+import { getExportNodeEntries } from "./export-node-labels";
 
 type EdgeListExportOptions = {
   indexBase?: 0 | 1;
@@ -12,10 +12,11 @@ export function exportEdgeList(
 ): string {
   const indexBase = options.indexBase ?? model.settings.indexBase;
   const weighted = options.weighted ?? model.settings.weighted;
-  const nodes = getNodeByOrder(model);
-  const nodeIndex = new Map(
-    nodes.map((node, index) => [node.id, index + indexBase]),
-  );
+  const nodes = getExportNodeEntries({
+    ...model,
+    settings: { ...model.settings, indexBase },
+  });
+  const nodeIndex = new Map(nodes.map((entry) => [entry.node.id, entry.label]));
   const lines = [`${nodes.length} ${model.edges.length}`];
 
   for (const edge of model.edges) {

@@ -110,7 +110,7 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
                     key={sample.kind}
                     sample={sample}
                     settings={graph.settings}
-                    onClick={() => generateSample(sample.kind)}
+                    onApply={() => generateSample(sample.kind)}
                   />
                 ))}
               </div>
@@ -185,11 +185,11 @@ function SampleGalleryFilter({
 function SampleCard({
   sample,
   settings,
-  onClick,
+  onApply,
 }: {
   sample: SampleGraphItem;
   settings: GraphModel["settings"];
-  onClick: () => void;
+  onApply: () => void;
 }) {
   const { locale, messages } = useI18n();
   const title = messages.samples.item[sample.kind]?.title ?? sample.label;
@@ -202,33 +202,39 @@ function SampleCard({
   );
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={messages.samples.applyAria(title)}
-      title={`${title} (${subtitle})`}
+    <div
       className={cn(
-        SAMPLE_CARD_LAYOUT_CLASS,
-        "w-full border border-transparent bg-[var(--bg-deep)] text-left transition-colors hover:bg-[var(--state-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none",
+        "overflow-hidden rounded-[var(--app-radius-md)] border border-transparent bg-[var(--bg-deep)] transition-colors hover:bg-[var(--state-hover-bg)]",
       )}
     >
-      <span className={cn(SAMPLE_PREVIEW_FRAME_CLASS, "bg-[var(--surface)]")}>
-        <SampleGraphPreview
-          model={model}
-          sampleKind={sample.kind}
-          width={106}
-          height={80}
-        />
-      </span>
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="max-w-full min-w-0 py-px [font-family:var(--app-font-display)] text-[15px] leading-[1.15] font-extrabold break-words whitespace-normal text-[var(--text)]">
-          {title}
+      <button
+        type="button"
+        onClick={onApply}
+        aria-label={messages.samples.applyAria(title)}
+        title={`${title} (${subtitle})`}
+        className={cn(
+          SAMPLE_CARD_LAYOUT_CLASS,
+          "w-full text-left focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none",
+        )}
+      >
+        <span className={cn(SAMPLE_PREVIEW_FRAME_CLASS, "bg-[var(--surface)]")}>
+          <SampleGraphPreview
+            model={model}
+            sampleKind={sample.kind}
+            width={106}
+            height={80}
+          />
         </span>
-        <span className="min-w-0 text-[13px] leading-tight font-semibold [overflow-wrap:anywhere] break-words whitespace-normal text-[var(--text-mute)]">
-          {subtitle}
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="max-w-full min-w-0 py-px [font-family:var(--app-font-display)] text-[15px] leading-[1.15] font-extrabold break-words whitespace-normal text-[var(--text)]">
+            {title}
+          </span>
+          <span className="min-w-0 text-[13px] leading-tight font-semibold [overflow-wrap:anywhere] break-words whitespace-normal text-[var(--text-mute)]">
+            {subtitle}
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
 

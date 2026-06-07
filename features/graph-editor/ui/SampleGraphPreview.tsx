@@ -1,7 +1,8 @@
 import { useId } from "react";
 
 import type { SampleGraphKind } from "../samples/sample-graphs";
-import type { GraphModel } from "../core/graph/model";
+import type { EdgeId, GraphModel } from "../core/graph/model";
+import { computeEdgeRouting } from "../core/layout/edge-routing";
 import { cn } from "@/lib/utils";
 
 type SampleGraphPreviewProps = {
@@ -65,6 +66,7 @@ export function SampleGraphPreview({
     : Math.max(0.9, radius * 0.42);
   const lastIndex = Math.max(0, model.nodes.length - 1);
   const showLabels = editorLike && nodeCount <= 12;
+  const edgeRouting = computeEdgeRouting(model);
 
   return (
     <svg
@@ -99,22 +101,23 @@ export function SampleGraphPreview({
 
         const a = toPoint(source.x, source.y);
         const b = toPoint(target.x, target.y);
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const length = Math.hypot(dx, dy);
-        const shrink = model.settings.directed && length > 0 ? radius * 1.9 : 0;
-        const end = {
-          x: b.x - (dx / Math.max(length, 1)) * shrink,
-          y: b.y - (dy / Math.max(length, 1)) * shrink,
-        };
+        const path = createPreviewEdgePath({
+          directed: model.settings.directed,
+          radius,
+          routing:
+            edgeRouting.get(edge.id) ??
+            edgeRouting.get(edge.id as EdgeId) ??
+            undefined,
+          scale,
+          source: a,
+          target: b,
+        });
 
         return (
-          <line
+          <path
             key={edge.id}
-            x1={a.x}
-            y1={a.y}
-            x2={end.x}
-            y2={end.y}
+            d={path}
+            fill="none"
             stroke="var(--canvas-edge)"
             strokeLinecap="round"
             strokeWidth={edgeStrokeWidth}
@@ -164,6 +167,97 @@ export function SampleGraphPreview({
       })}
     </svg>
   );
+}
+
+export function createPreviewEdgePath({
+  directed,
+  radius,
+  routing,
+  scale,
+  source,
+  target,
+}: {
+  directed: boolean;
+  radius: number;
+  routing?: {
+    bowPx: number;
+    loopDirectionDeg: number;
+    loopSweepDeg: number;
+  };
+  scale: number;
+  source: { x: number; y: number };
+  target: { x: number; y: number };
+}) {
+  if (source.x === target.x && source.y === target.y) {
+    return createLoopPath(source, radius, routing);
+  }
+
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const length = Math.hypot(dx, dy);
+  const shrink = directed && length > 0 ? radius * 1.9 : 0;
+  const end = {
+    x: target.x - (dx / Math.max(length, 1)) * shrink,
+    y: target.y - (dy / Math.max(length, 1)) * shrink,
+  };
+  const bowPx = (routing?.bowPx ?? 0) * scale;
+
+  if (Math.abs(bowPx) < 0.5) {
+    return `M${round(source.x)} ${round(source.y)}L${round(end.x)} ${round(end.y)}`;
+  }
+
+  const normalX = length === 0 ? 0 : -dy / length;
+  const normalY = length === 0 ? 0 : dx / length;
+  const control = {
+    x: (source.x + end.x) / 2 + normalX * bowPx,
+    y: (source.y + end.y) / 2 + normalY * bowPx,
+  };
+
+  return `M${round(source.x)} ${round(source.y)}Q${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`;
+}
+
+function createLoopPath(
+  source: { x: number; y: number },
+  radius: number,
+  routing:
+    | {
+        loopDirectionDeg: number;
+        loopSweepDeg: number;
+      }
+    | undefined,
+) {
+  const direction = ((routing?.loopDirectionDeg ?? -45) * Math.PI) / 180;
+  const sweep = ((routing?.loopSweepDeg ?? 70) * Math.PI) / 180;
+  const loopRadius = radius * 3;
+  const startAngle = direction - sweep / 2;
+  const endAngle = direction + sweep / 2;
+  const start = {
+    x: source.x + Math.cos(startAngle) * radius,
+    y: source.y + Math.sin(startAngle) * radius,
+  };
+  const end = {
+    x: source.x + Math.cos(endAngle) * radius,
+    y: source.y + Math.sin(endAngle) * radius,
+  };
+  const controlA = {
+    x: source.x + Math.cos(startAngle) * loopRadius,
+    y: source.y + Math.sin(startAngle) * loopRadius,
+  };
+  const controlB = {
+    x: source.x + Math.cos(endAngle) * loopRadius,
+    y: source.y + Math.sin(endAngle) * loopRadius,
+  };
+
+  return [
+    `M${round(start.x)} ${round(start.y)}`,
+    `C${round(controlA.x)} ${round(controlA.y)}`,
+    `${round(controlB.x)} ${round(controlB.y)}`,
+    `${round(end.x)} ${round(end.y)}`,
+  ].join(" ");
+}
+
+function round(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function getModelBounds(model: GraphModel) {

@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import type { GraphModel } from "../core/graph/model";
 import { hasGraphContent } from "../core/graph/selectors";
 import { useI18n } from "../i18n/I18nProvider";
+import { formatImportWarning } from "../i18n/import-warning-messages";
+import type { ImportFormatKind } from "../io/import-types";
 import type { StarterTab } from "../workflows/starter/graph-starter-state";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 
@@ -48,13 +50,13 @@ export function PasteStarterPane({
 }: {
   inputText: string;
   issues: string[];
-  previewFormat?: string;
+  previewFormat?: ImportFormatKind;
   previewModel?: GraphModel;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   onInputTextChange: (value: string) => void;
   onApply: () => void;
 }) {
-  const { messages } = useI18n();
+  const { locale, messages } = useI18n();
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-[var(--app-space-3)]">
@@ -101,7 +103,7 @@ export function PasteStarterPane({
       {issues.length > 0 ? (
         <div className="rounded-[var(--app-radius-sm)] border border-[var(--err)] bg-[var(--err-soft)] px-[var(--app-space-4)] py-[var(--app-space-3)] font-mono text-[length:var(--app-text-sm)] leading-[var(--app-leading-code)] text-[var(--err)]">
           {issues.slice(0, 3).map((issue) => (
-            <div key={issue}>{issue}</div>
+            <div key={issue}>{formatImportWarning(issue, locale)}</div>
           ))}
         </div>
       ) : null}
@@ -183,14 +185,15 @@ function FormatBadge({
   hasInput,
   hasIssues,
 }: {
-  format?: string;
+  format?: ImportFormatKind;
   hasInput: boolean;
   hasIssues: boolean;
 }) {
   const { messages } = useI18n();
+  const formatLabel = format ? messages.starter.formats[format] : "graph";
   const statusText = hasIssues
     ? messages.starter.needsReview
-    : messages.starter.detected(format ?? "graph");
+    : messages.starter.detected(formatLabel);
 
   if (!hasInput) {
     return <span aria-hidden="true" className="h-5 w-36 shrink-0" />;

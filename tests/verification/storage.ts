@@ -19,6 +19,7 @@ import { createVerification } from "./harness";
 const { expect, finish } = createVerification("Storage");
 
 verifyGraphStorageBootstrap();
+verifyStoredGraphSettingsCompatibility();
 verifyStoredGraphSizeLimit();
 
 finish();
@@ -68,6 +69,20 @@ function verifyGraphStorageBootstrap() {
       unmount();
     });
   }
+}
+
+function verifyStoredGraphSettingsCompatibility() {
+  const legacyGraph = graphFixture();
+  const { snapToGrid: _snapToGrid, ...legacySettings } = legacyGraph.settings;
+
+  const parsed = parseStoredGraph(
+    JSON.stringify({ ...legacyGraph, settings: legacySettings }),
+  );
+
+  expect(
+    parsed?.settings.snapToGrid === false,
+    "storage parser should default missing snap-to-grid settings for legacy graphs",
+  );
 }
 
 function verifyStoredGraphSizeLimit() {

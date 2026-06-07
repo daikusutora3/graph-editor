@@ -296,6 +296,10 @@ function normalizeSettings(value: unknown): GraphSettings {
       typeof value.autoEdgeRouting === "boolean"
         ? value.autoEdgeRouting
         : defaults.autoEdgeRouting,
+    snapToGrid:
+      typeof value.snapToGrid === "boolean"
+        ? value.snapToGrid
+        : defaults.snapToGrid,
     weightKind:
       value.weightKind === "none" ||
       value.weightKind === "number" ||

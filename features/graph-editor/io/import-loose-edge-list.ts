@@ -35,6 +35,7 @@ export function tryImportLooseEdgeList(
       MAX_IMPORT_EDGES,
       options,
       "Edge list",
+      "edge-pairs",
     );
   }
 
@@ -49,6 +50,7 @@ export function tryImportLooseEdgeList(
       MAX_IMPORT_NODES,
       options,
       "Edge list",
+      "edge-pairs",
     );
   }
 
@@ -84,5 +86,5 @@ export function tryImportLooseEdgeList(
 
   arrangeNodes(model);
 
-  return { model, warnings, format: "Edge list" };
+  return { model, warnings, format: "Edge list", formatKind: "edge-pairs" };
 }

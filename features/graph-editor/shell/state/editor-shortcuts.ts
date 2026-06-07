@@ -43,6 +43,10 @@ export function resolveGraphEditorShortcut(
       return event.shiftKey ? { type: "redo" } : { type: "undo" };
     }
 
+    if (key === "y" && event.ctrlKey && !event.metaKey) {
+      return { type: "redo" };
+    }
+
     if (key === "a") {
       return { type: "select-all" };
     }

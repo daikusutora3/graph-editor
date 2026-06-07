@@ -127,6 +127,7 @@ export function GraphIOControls() {
             screenshotPaddingPreset={controller.screenshot.paddingPreset}
             screenshotPreview={controller.screenshot.preview}
             screenshotPreviewStale={controller.screenshot.previewStale}
+            screenshotScope={controller.screenshot.scope}
             solidBackground={controller.screenshot.solidBackground}
             theme={controller.theme}
             onRefreshPreview={() => void controller.screenshot.refreshPreview()}
@@ -143,6 +144,7 @@ export function GraphIOControls() {
             onScreenshotPaddingPresetChange={
               controller.screenshot.setPaddingPreset
             }
+            onScreenshotScopeChange={controller.screenshot.setScope}
           />
         </DropdownShell>
       ) : null}

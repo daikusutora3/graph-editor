@@ -8,10 +8,8 @@ import {
   isBipartite,
   isDirectedAcyclic,
   isForest,
-  orderBipartiteSide,
   orderedNodeIds,
   orderIndex,
-  pathOrder,
   prioritizeRoot,
   stronglyConnectedComponents,
   undirectedAdjacency,
@@ -594,12 +592,18 @@ function layoutBipartite(model: GraphModel) {
     return currentPositions(model);
   }
 
-  const rawLeft = nodeIds.filter((nodeId) => color.get(nodeId) === 0);
-  const rawRight = nodeIds.filter((nodeId) => color.get(nodeId) === 1);
-  const left = orderBipartiteSide(rawLeft, rawRight, adjacency, order, "desc");
-  const right = orderBipartiteSide(rawRight, rawLeft, adjacency, order, "asc");
+  const componentLayouts = connectedComponents(model).map((component) => {
+    const left = component
+      .filter((nodeId) => color.get(nodeId) === 0)
+      .sort((a, b) => order.get(a)! - order.get(b)!);
+    const right = component
+      .filter((nodeId) => color.get(nodeId) === 1)
+      .sort((a, b) => order.get(a)! - order.get(b)!);
 
-  return positionColumns([left, right], 180, 92);
+    return positionColumns([left, right], 180, 92);
+  });
+
+  return packPositionColumns([componentLayouts], 180, LAYOUT_COMPONENT_GAP);
 }
 
 function layoutDag(model: GraphModel) {
@@ -781,7 +785,7 @@ function layoutRadial(model: GraphModel, rootNodeId?: NodeId) {
 }
 
 function layoutLine(model: GraphModel) {
-  return layoutPathIds(pathOrder(model));
+  return layoutPathIds(orderedNodeIds(model));
 }
 
 function layoutPathIds(nodeIds: NodeId[]) {

@@ -1,19 +1,26 @@
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronDown } from "lucide-react";
+import { ArrowLeftRight, ChevronDown } from "lucide-react";
 
 import type { GraphSettings } from "../core/graph/model";
 import { useI18n } from "../i18n/I18nProvider";
 import type { Locale } from "../i18n/locale";
-import { updateGraphSettingsAtom } from "../shell/state/editor-actions";
+import {
+  reverseAllDirectedEdgesAtom,
+  updateGraphSettingsAtom,
+} from "../shell/state/editor-actions";
 import { graphAtom } from "../shell/state/graph-atoms";
 
 export function GraphSettingsControl() {
   const graph = useAtomValue(graphAtom);
+  const reverseAllDirectedEdges = useSetAtom(reverseAllDirectedEdgesAtom);
   const updateGraphSettings = useSetAtom(updateGraphSettingsAtom);
   const { locale, localeOptions, messages, setLocale } = useI18n();
   const { settings } = graph;
+  const canReverseAll =
+    settings.directed &&
+    graph.edges.some((edge) => edge.source !== edge.target);
   const updateSettings = (patch: Partial<GraphSettings>) => {
     updateGraphSettings(patch);
   };
@@ -29,6 +36,17 @@ export function GraphSettingsControl() {
           { label: messages.settings.directed, value: "directed" },
         ]}
       />
+      <button
+        type="button"
+        className="gv-control h-8 justify-center px-[var(--app-space-3)] text-[length:var(--app-text-xs)]"
+        disabled={!canReverseAll}
+        aria-label={messages.settings.reverseAllEdges}
+        title={messages.settings.reverseAllEdges}
+        onClick={() => reverseAllDirectedEdges()}
+      >
+        <ArrowLeftRight className="size-4" aria-hidden="true" />
+        <span className="truncate">{messages.settings.reverseAllEdges}</span>
+      </button>
       <SettingSegment
         label={messages.settings.weight}
         value={settings.weighted ? "weighted" : "unweighted"}
@@ -51,6 +69,11 @@ export function GraphSettingsControl() {
           { label: "1-indexed", value: "1" },
         ]}
       />
+      <SettingCheckbox
+        label={messages.settings.snapToGrid}
+        checked={settings.snapToGrid}
+        onChange={(checked) => updateSettings({ snapToGrid: checked })}
+      />
       <SettingSelect
         label={messages.settings.language}
         value={locale}
@@ -58,6 +81,28 @@ export function GraphSettingsControl() {
         options={localeOptions}
       />
     </div>
+  );
+}
+
+function SettingCheckbox({
+  checked,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="gv-control h-8 cursor-pointer justify-start px-[var(--app-space-3)] text-[length:var(--app-text-xs)]">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+        className="size-4 accent-[var(--accent-1)]"
+      />
+      <span className="truncate">{label}</span>
+    </label>
   );
 }
 

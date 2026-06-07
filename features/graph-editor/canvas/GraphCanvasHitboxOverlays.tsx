@@ -49,6 +49,7 @@ export function EdgeNodeHitboxes({
             key={node.id}
             type="button"
             data-edge-node-hitbox="true"
+            data-graph-shortcut-target="true"
             aria-label={
               isSource
                 ? locale === "ja"
@@ -110,12 +111,10 @@ export function SelectEdgeHitboxes({
         aria-hidden="true"
       >
         {edges.map((edge) => (
-          <line
-            key={`${edge.id}:line-hitbox`}
-            x1={edge.sourceX}
-            y1={edge.sourceY}
-            x2={edge.targetX}
-            y2={edge.targetY}
+          <path
+            key={`${edge.id}:path-hitbox`}
+            d={createEdgeHitboxPath(edge)}
+            fill="none"
             pointerEvents={rangeSelectionActive ? "none" : "stroke"}
             className="cursor-pointer stroke-transparent"
             strokeWidth="18"
@@ -199,6 +198,64 @@ export function SelectEdgeHitboxes({
       ))}
     </>
   );
+}
+
+export function createEdgeHitboxPath(edge: EdgeLabelHitbox) {
+  if (edge.sourceX === edge.targetX && edge.sourceY === edge.targetY) {
+    return createLoopHitboxPath(edge);
+  }
+
+  if (Math.abs(edge.bowPx) < 0.5) {
+    return `M${round(edge.sourceX)} ${round(edge.sourceY)}L${round(edge.targetX)} ${round(edge.targetY)}`;
+  }
+
+  const dx = edge.targetX - edge.sourceX;
+  const dy = edge.targetY - edge.sourceY;
+  const length = Math.hypot(dx, dy);
+  const normalX = length === 0 ? 0 : -dy / length;
+  const normalY = length === 0 ? 0 : dx / length;
+  const control = {
+    x: (edge.sourceX + edge.targetX) / 2 + normalX * edge.bowPx,
+    y: (edge.sourceY + edge.targetY) / 2 + normalY * edge.bowPx,
+  };
+
+  return `M${round(edge.sourceX)} ${round(edge.sourceY)}Q${round(control.x)} ${round(control.y)} ${round(edge.targetX)} ${round(edge.targetY)}`;
+}
+
+function createLoopHitboxPath(edge: EdgeLabelHitbox) {
+  const direction = (edge.loopDirectionDeg * Math.PI) / 180;
+  const sweep = (edge.loopSweepDeg * Math.PI) / 180;
+  const nodeRadius = 24;
+  const loopRadius = 72;
+  const startAngle = direction - sweep / 2;
+  const endAngle = direction + sweep / 2;
+  const start = {
+    x: edge.sourceX + Math.cos(startAngle) * nodeRadius,
+    y: edge.sourceY + Math.sin(startAngle) * nodeRadius,
+  };
+  const end = {
+    x: edge.sourceX + Math.cos(endAngle) * nodeRadius,
+    y: edge.sourceY + Math.sin(endAngle) * nodeRadius,
+  };
+  const controlA = {
+    x: edge.sourceX + Math.cos(startAngle) * loopRadius,
+    y: edge.sourceY + Math.sin(startAngle) * loopRadius,
+  };
+  const controlB = {
+    x: edge.sourceX + Math.cos(endAngle) * loopRadius,
+    y: edge.sourceY + Math.sin(endAngle) * loopRadius,
+  };
+
+  return [
+    `M${round(start.x)} ${round(start.y)}`,
+    `C${round(controlA.x)} ${round(controlA.y)}`,
+    `${round(controlB.x)} ${round(controlB.y)}`,
+    `${round(end.x)} ${round(end.y)}`,
+  ].join(" ");
+}
+
+function round(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 type SelectNodeHitboxesProps = {

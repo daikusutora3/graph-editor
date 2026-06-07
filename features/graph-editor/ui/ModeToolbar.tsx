@@ -253,9 +253,24 @@ function useIsMacShortcutPlatform() {
   const [isMac, setIsMac] = useState(false);
 
   useLayoutEffect(() => {
-    const platform = navigator.platform || navigator.userAgent;
-    setIsMac(/Mac|iPhone|iPad|iPod/i.test(platform));
+    setIsMac(
+      isMacShortcutPlatformValue(navigator.platform, navigator.userAgent),
+    );
   }, []);
 
   return isMac;
+}
+
+export function isMacShortcutPlatformValue(
+  platform: string | undefined,
+  userAgent: string | undefined,
+) {
+  const platformText = platform ?? "";
+  const userAgentText = userAgent ?? "";
+
+  if (/iPhone|iPad|iPod/i.test(`${platformText} ${userAgentText}`)) {
+    return false;
+  }
+
+  return /Mac/i.test(platformText || userAgentText);
 }

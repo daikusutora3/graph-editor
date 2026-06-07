@@ -17,6 +17,7 @@ export const defaultGraphSettings: GraphSettings = {
   allowSelfLoops: true,
   allowMultiEdges: true,
   autoEdgeRouting: true,
+  snapToGrid: false,
   weightKind: "number",
 };
 

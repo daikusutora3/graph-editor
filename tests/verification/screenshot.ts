@@ -1,6 +1,10 @@
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
+  MAX_LONG_EDGE_PX,
+  PNG_EXPORT_LONG_EDGE_PRESETS,
+} from "../../features/graph-editor/ui/graph-io-types";
+import {
   clampLongEdgePx,
   clampPaddingPx,
   clampPaddingPxForLongEdge,
@@ -28,6 +32,8 @@ function verifyPreviewInputKey() {
     graph,
     longEdgePx: 1024,
     paddingPx: 48,
+    scope: "viewport",
+    theme: "light",
   });
 
   expect(
@@ -37,6 +43,8 @@ function verifyPreviewInputKey() {
         graph,
         longEdgePx: 1024,
         paddingPx: 48,
+        scope: "viewport",
+        theme: "light",
       }),
     "preview input key should include background",
   );
@@ -47,6 +55,8 @@ function verifyPreviewInputKey() {
         graph,
         longEdgePx: 1600,
         paddingPx: 48,
+        scope: "viewport",
+        theme: "light",
       }),
     "preview input key should include long-edge size",
   );
@@ -57,6 +67,8 @@ function verifyPreviewInputKey() {
         graph,
         longEdgePx: 1024,
         paddingPx: 64,
+        scope: "viewport",
+        theme: "light",
       }),
     "preview input key should include padding",
   );
@@ -70,8 +82,53 @@ function verifyPreviewInputKey() {
         },
         longEdgePx: 1024,
         paddingPx: 48,
+        scope: "viewport",
+        theme: "light",
       }),
     "preview input key should include graph content",
+  );
+  expect(
+    baseKey !==
+      makeScreenshotInputKey({
+        background: "white",
+        graph,
+        longEdgePx: 1024,
+        paddingPx: 48,
+        scope: "viewport",
+        theme: "dark",
+      }),
+    "preview input key should include theme",
+  );
+  expect(
+    baseKey !==
+      makeScreenshotInputKey({
+        background: "white",
+        graph,
+        longEdgePx: 1024,
+        paddingPx: 48,
+        scope: "full",
+        theme: "light",
+      }),
+    "preview input key should include export scope",
+  );
+  expect(
+    makeScreenshotInputKey({
+      background: "transparent",
+      graph,
+      longEdgePx: 1024,
+      paddingPx: 48,
+      scope: "viewport",
+      theme: "light",
+    }) !==
+      makeScreenshotInputKey({
+        background: "transparent",
+        graph,
+        longEdgePx: 1024,
+        paddingPx: 48,
+        scope: "viewport",
+        theme: "dark",
+      }),
+    "transparent preview input key should still include theme",
   );
 }
 
@@ -125,8 +182,12 @@ function verifyScreenshotSizingHelpers() {
   expect(
     clampLongEdgePx(Number.NaN) === 1024 &&
       clampLongEdgePx(1) === 320 &&
-      clampLongEdgePx(10_000) === 3000,
+      clampLongEdgePx(10_000) === MAX_LONG_EDGE_PX,
     "long-edge values should clamp to supported bounds",
+  );
+  expect(
+    PNG_EXPORT_LONG_EDGE_PRESETS.includes(3840),
+    "long-edge presets should include a 4K-friendly size",
   );
   expect(
     clampPaddingPx(Number.NaN) === 48 &&

@@ -17,6 +17,8 @@ import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
 type DragSnapshot = Record<NodeId, Position>;
+export const NODE_DRAG_GRID_SIZE_PX = 24;
+
 type HtmlNodeDragState = {
   captureElement: HTMLButtonElement;
   pointerId: number;
@@ -259,10 +261,15 @@ export function useHtmlNodeDrag({
           return;
         }
 
-        node.position({
-          x: startPosition.x + dx,
-          y: startPosition.y + dy,
-        });
+        node.position(
+          resolveDragPosition(
+            {
+              x: startPosition.x + dx,
+              y: startPosition.y + dy,
+            },
+            graph.settings.snapToGrid,
+          ),
+        );
       });
     });
     scheduleDragPreview(cy);
@@ -303,7 +310,13 @@ export function useHtmlNodeDrag({
               return null;
             }
 
-            return [id, clonePosition(node.position())] as const;
+            return [
+              id,
+              resolveDragPosition(
+                clonePosition(node.position()),
+                graph.settings.snapToGrid,
+              ),
+            ] as const;
           })
           .filter((entry): entry is readonly [NodeId, Position] =>
             Boolean(entry),
@@ -324,6 +337,7 @@ export function useHtmlNodeDrag({
       draggingNodeIdsRef,
       executeCommand,
       flushDragPreview,
+      graph.settings.snapToGrid,
       setSelection,
     ],
   );
@@ -351,6 +365,20 @@ export function useHtmlNodeDrag({
     start,
     update,
   };
+}
+
+export function snapPositionToNodeDragGrid(position: Position): Position {
+  return {
+    x: Math.round(position.x / NODE_DRAG_GRID_SIZE_PX) * NODE_DRAG_GRID_SIZE_PX,
+    y: Math.round(position.y / NODE_DRAG_GRID_SIZE_PX) * NODE_DRAG_GRID_SIZE_PX,
+  };
+}
+
+function resolveDragPosition(
+  position: Position,
+  snapToGrid: boolean,
+): Position {
+  return snapToGrid ? snapPositionToNodeDragGrid(position) : position;
 }
 
 function listenForDragEnd(

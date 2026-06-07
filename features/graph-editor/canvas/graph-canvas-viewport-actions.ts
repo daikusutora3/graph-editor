@@ -5,10 +5,10 @@ import type { MutableRefObject } from "react";
 import { useCallback } from "react";
 
 import {
-  clamp,
   fitGraphToAvailableViewport,
   MAX_CANVAS_ZOOM,
   MIN_CANVAS_ZOOM,
+  nextCanvasButtonZoomLevel,
   readZoomPercent,
   ZOOM_STEP,
 } from "../adapters/cytoscape/graph-canvas-viewport";
@@ -22,8 +22,6 @@ type GraphCanvasViewportActionsOptions = {
   flushRenderedHitboxes: (cy: Core) => void;
   setZoomPercent: (zoomPercent: number) => void;
 };
-
-const ZOOM_BUTTON_STEP_PERCENT = ZOOM_STEP * 100;
 
 export function useGraphCanvasViewportActions({
   canZoom,
@@ -67,7 +65,7 @@ export function useGraphCanvasViewportActions({
         return;
       }
 
-      zoomCanvasToLevel(cy, getNextButtonZoomLevel(cy.zoom(), direction));
+      zoomCanvasToLevel(cy, nextCanvasButtonZoomLevel(cy.zoom(), direction));
       syncViewportAfterZoom(cy);
     },
     [canZoom, cyRef, syncViewportAfterZoom],
@@ -109,20 +107,6 @@ function zoomCanvasToLevel(cy: Core, level: number) {
     level,
     renderedPosition: centerOfRect(container.getBoundingClientRect()),
   });
-}
-
-function getNextButtonZoomLevel(currentZoom: number, direction: number) {
-  const currentPercent = currentZoom * 100;
-  const nextPercent =
-    direction > 0
-      ? Math.floor(currentPercent / ZOOM_BUTTON_STEP_PERCENT) *
-          ZOOM_BUTTON_STEP_PERCENT +
-        ZOOM_BUTTON_STEP_PERCENT
-      : Math.ceil(currentPercent / ZOOM_BUTTON_STEP_PERCENT) *
-          ZOOM_BUTTON_STEP_PERCENT -
-        ZOOM_BUTTON_STEP_PERCENT;
-
-  return clamp(nextPercent / 100, MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM);
 }
 
 function centerOfRect(rect: DOMRect) {

@@ -13,3 +13,5 @@ skills-lock.json
 .vercel
 .wrangler
 tsconfig.tsbuildinfo
+.envrc
+.local-bin/

@@ -155,6 +155,7 @@ function makeStarterParseKey(inputText: string, options: ImportOptions) {
       autoEdgeRouting: options.autoEdgeRouting,
       directed: options.directed,
       indexBase: options.indexBase,
+      snapToGrid: options.snapToGrid,
       weighted: options.weighted,
       weightKind: options.weightKind,
     },
