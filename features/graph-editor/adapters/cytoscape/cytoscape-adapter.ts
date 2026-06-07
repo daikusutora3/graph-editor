@@ -41,11 +41,17 @@ export type GraphCanvasPalette = {
   node: string;
   nodeBorder: string;
   nodeText: string;
+  nodeWhite: string;
+  nodeBlack: string;
+  nodeRed: string;
   nodeYellow: string;
   nodeBlue: string;
   nodeGreen: string;
   nodePink: string;
   edge: string;
+  edgeWhite: string;
+  edgeBlack: string;
+  edgeRed: string;
   edgeYellow: string;
   edgeBlue: string;
   edgeGreen: string;
@@ -73,6 +79,9 @@ const MULTI_EDGE_WIDTH = EDGE_WIDTH;
 const SELECTED_EDGE_SELECTORS = [
   "edge:selected",
   "edge.color-yellow:selected",
+  "edge.color-white:selected",
+  "edge.color-black:selected",
+  "edge.color-red:selected",
   "edge.color-blue:selected",
   "edge.color-green:selected",
   "edge.color-pink:selected",
@@ -263,6 +272,32 @@ export function createGraphCanvasStylesheet(
       }),
     },
     {
+      selector: "node.color-white",
+      style: cytoscapeStyle({
+        "background-color": palette.nodeWhite,
+        "border-color": palette.edge,
+        "text-outline-color": palette.nodeWhite,
+        color: "#111827",
+      }),
+    },
+    {
+      selector: "node.color-black",
+      style: cytoscapeStyle({
+        "background-color": palette.nodeBlack,
+        "border-color": palette.edge,
+        "text-outline-color": palette.nodeBlack,
+        color: "#f8fafc",
+      }),
+    },
+    {
+      selector: "node.color-red",
+      style: cytoscapeStyle({
+        "background-color": palette.nodeRed,
+        "border-color": palette.edgeRed,
+        "text-outline-color": palette.nodeRed,
+      }),
+    },
+    {
       selector: "node.color-yellow",
       style: cytoscapeStyle({
         "background-color": palette.nodeYellow,
@@ -344,6 +379,27 @@ export function createGraphCanvasStylesheet(
       selector: "edge.label-editing",
       style: cytoscapeStyle({
         label: "",
+      }),
+    },
+    {
+      selector: "edge.color-white",
+      style: cytoscapeStyle({
+        "line-color": palette.edgeWhite,
+        "target-arrow-color": palette.edgeWhite,
+      }),
+    },
+    {
+      selector: "edge.color-black",
+      style: cytoscapeStyle({
+        "line-color": palette.edgeBlack,
+        "target-arrow-color": palette.edgeBlack,
+      }),
+    },
+    {
+      selector: "edge.color-red",
+      style: cytoscapeStyle({
+        "line-color": palette.edgeRed,
+        "target-arrow-color": palette.edgeRed,
       }),
     },
     {

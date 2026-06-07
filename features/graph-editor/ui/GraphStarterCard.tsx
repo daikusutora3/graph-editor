@@ -223,7 +223,7 @@ export function GraphStarterCard({
               <PasteStarterPane
                 inputText={inputText}
                 issues={visibleIssues}
-                previewFormat={preview?.format}
+                previewFormat={preview?.formatKind}
                 previewModel={preview?.model}
                 textareaRef={textareaRef}
                 onInputTextChange={setInput}

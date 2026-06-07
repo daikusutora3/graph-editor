@@ -5,11 +5,13 @@ import type {
   GraphSettings,
   NodeId,
 } from "../core/graph/model";
-import type { ImportResult } from "./import-types";
+import type { ImportFormatKind, ImportResult } from "./import-types";
 
 export type ImportFormat =
   | "auto"
   | "contest-edge-list"
+  | "tree-edge-list"
+  | "parent-list"
   | "edge-pairs"
   | "adjacency-list"
   | "adjacency-matrix";
@@ -73,6 +75,7 @@ export function readImportSettings(
     allowSelfLoops: options.allowSelfLoops ?? true,
     allowMultiEdges: options.allowMultiEdges ?? true,
     autoEdgeRouting: options.autoEdgeRouting ?? true,
+    snapToGrid: options.snapToGrid ?? false,
     weightKind: options.weightKind ?? "number",
   };
 }
@@ -81,11 +84,13 @@ export function importFailure(
   message: string,
   options: ImportOptions,
   format?: string,
+  formatKind?: ImportFormatKind,
 ): ImportResult {
   return {
     model: createEmptyGraphModel(readImportSettings(options)),
     warnings: [message],
     format,
+    formatKind,
   };
 }
 
@@ -95,6 +100,7 @@ export function importLimitFailure(
   limit: number,
   options: ImportOptions,
   format?: string,
+  formatKind?: ImportFormatKind,
 ) {
   const label =
     kind === "input"
@@ -107,6 +113,7 @@ export function importLimitFailure(
     `Import is too large: ${count.toLocaleString()} ${label}, maximum is ${limit.toLocaleString()}.`,
     options,
     format,
+    formatKind,
   );
 }
 

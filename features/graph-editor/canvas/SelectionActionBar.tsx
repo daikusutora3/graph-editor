@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
@@ -20,6 +21,9 @@ type SelectionActionBarProps = {
   onSetNodeColor: (nodeIds: NodeId[], color: GraphColor) => void;
   onSetEdgeColor: (edgeIds: EdgeId[], color: GraphColor) => void;
   onReverseEdges: (edgeIds: EdgeId[]) => void;
+  onEditSelectedNode: () => void;
+  onEditSelectedEdge: () => void;
+  onDeleteSelection: () => void;
 };
 
 export function SelectionActionBar({
@@ -29,6 +33,9 @@ export function SelectionActionBar({
   onSetNodeColor,
   onSetEdgeColor,
   onReverseEdges,
+  onEditSelectedNode,
+  onEditSelectedEdge,
+  onDeleteSelection,
 }: SelectionActionBarProps) {
   const { messages } = useI18n();
   const selectedNodes = graph.nodes.filter((node) =>
@@ -51,6 +58,13 @@ export function SelectionActionBar({
     selectedEdges.length > 0 && selectedEdgeColors.size === 1
       ? ([...selectedEdgeColors][0] as GraphColor)
       : null;
+  const canReverseSelectedEdges =
+    graph.settings.directed &&
+    selectedEdges.some((edge) => edge.source !== edge.target);
+  const canEditSelectedNode =
+    selection.nodeIds.length === 1 && selection.edgeIds.length === 0;
+  const canEditSelectedEdge =
+    selection.edgeIds.length === 1 && selection.nodeIds.length === 0;
 
   return (
     <div
@@ -79,23 +93,68 @@ export function SelectionActionBar({
             onPick={(color) => onSetEdgeColor(selection.edgeIds, color)}
           />
         ) : null}
-        {graph.settings.directed && selection.edgeIds.length > 0 ? (
+        {canReverseSelectedEdges ? (
           <>
             <div className="h-5 w-px bg-[var(--divider)]" />
-            <button
-              type="button"
-              aria-label={messages.canvas.reverseEdgesTitle}
+            <SelectionActionButton
+              label={messages.canvas.reverseEdges}
               title={messages.canvas.reverseEdgesTitle}
+              icon={<ArrowLeftRight className="size-4" />}
               onClick={() => onReverseEdges(selection.edgeIds)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[var(--app-radius-sm)] bg-transparent px-2.5 text-[length:var(--app-text-sm)] leading-none font-bold whitespace-nowrap text-[var(--text-dim)] transition-colors hover:bg-[var(--state-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
-            >
-              <ArrowLeftRight className="size-4" />
-              <span>{messages.canvas.reverseEdges}</span>
-            </button>
+            />
           </>
         ) : null}
+        {canEditSelectedNode || canEditSelectedEdge ? (
+          <>
+            <div className="h-5 w-px bg-[var(--divider)]" />
+            <SelectionActionButton
+              label={
+                canEditSelectedNode
+                  ? messages.contextMenu.editNodeLabel
+                  : graph.settings.weighted
+                    ? messages.canvas.editEdgeWeight
+                    : messages.contextMenu.editEdgeLabel
+              }
+              icon={<Pencil className="size-4" />}
+              onClick={
+                canEditSelectedNode ? onEditSelectedNode : onEditSelectedEdge
+              }
+            />
+          </>
+        ) : null}
+        <div className="h-5 w-px bg-[var(--divider)]" />
+        <SelectionActionButton
+          label={messages.common.delete}
+          icon={<Trash2 className="size-4" />}
+          onClick={onDeleteSelection}
+        />
       </div>
     </div>
+  );
+}
+
+function SelectionActionButton({
+  icon,
+  label,
+  title = label,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  title?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={title}
+      title={title}
+      onClick={onClick}
+      className="inline-flex h-9 items-center gap-1.5 rounded-[var(--app-radius-sm)] bg-transparent px-2.5 text-[length:var(--app-text-sm)] leading-none font-bold whitespace-nowrap text-[var(--text-dim)] transition-colors hover:bg-[var(--state-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }
 
@@ -185,6 +244,12 @@ function graphColorFill(color: GraphColor) {
   switch (color) {
     case "yellow":
       return "var(--graph-swatch-yellow)";
+    case "white":
+      return "var(--graph-swatch-white)";
+    case "black":
+      return "var(--graph-swatch-black)";
+    case "red":
+      return "var(--graph-swatch-red)";
     case "blue":
       return "var(--graph-swatch-blue)";
     case "green":
@@ -200,6 +265,12 @@ function edgeColorStroke(color: GraphColor) {
   switch (color) {
     case "yellow":
       return "var(--graph-swatch-yellow)";
+    case "white":
+      return "var(--graph-swatch-white)";
+    case "black":
+      return "var(--graph-swatch-black)";
+    case "red":
+      return "var(--graph-swatch-red)";
     case "blue":
       return "var(--graph-swatch-blue)";
     case "green":

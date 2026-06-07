@@ -460,6 +460,23 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           onSetNodeColor={setSelectionNodeColor}
           onSetEdgeColor={setSelectionEdgeColor}
           onReverseEdges={reverseSelectionEdges}
+          onEditSelectedNode={() => {
+            const nodeId = selection.nodeIds[0];
+            const hitbox = nodeHitboxes.find((node) => node.id === nodeId);
+
+            if (nodeId && hitbox) {
+              openNodeLabelEdit(nodeId, { x: hitbox.x, y: hitbox.y });
+            }
+          }}
+          onEditSelectedEdge={() => {
+            const edgeId = selection.edgeIds[0];
+            const hitbox = edgeLabelHitboxes.find((edge) => edge.id === edgeId);
+
+            if (edgeId && hitbox) {
+              openEdgeInlineEdit(edgeId, { x: hitbox.x, y: hitbox.y });
+            }
+          }}
+          onDeleteSelection={() => deleteSelection(selection)}
         />
       ) : null}
       {mode === "edge" ? (

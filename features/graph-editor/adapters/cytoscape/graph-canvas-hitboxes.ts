@@ -23,6 +23,9 @@ export type EdgeLabelHitbox = {
   targetY: number;
   x: number;
   y: number;
+  bowPx: number;
+  loopDirectionDeg: number;
+  loopSweepDeg: number;
 };
 
 export const NODE_HITBOX_SIZE = 48;
@@ -72,10 +75,35 @@ export function readEdgeLabelHitboxes(
       targetY: target.y,
       x: position.x,
       y: position.y,
+      bowPx: readNumericEdgeData(edge, "bow", 0),
+      loopDirectionDeg: readDegreeEdgeData(edge, "loopDirection", -45),
+      loopSweepDeg: readDegreeEdgeData(edge, "loopSweep", 70),
     });
   });
 
   return hitboxes;
+}
+
+function readNumericEdgeData(
+  edge: EdgeSingular,
+  key: string,
+  fallback: number,
+) {
+  const value = Number(edge.data(key));
+
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function readDegreeEdgeData(edge: EdgeSingular, key: string, fallback: number) {
+  const value = edge.data(key);
+
+  if (typeof value === "string" && value.endsWith("deg")) {
+    const numeric = Number(value.slice(0, -3));
+    return Number.isFinite(numeric) ? numeric : fallback;
+  }
+
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
 }
 
 export function readInlineEditPosition(

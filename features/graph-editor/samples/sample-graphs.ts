@@ -383,11 +383,11 @@ function bullPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
 
 function houseXPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
   return {
-    [nodeIds[0]]: { x: -170, y: 110 },
-    [nodeIds[1]]: { x: 170, y: 110 },
-    [nodeIds[2]]: { x: 0, y: 18 },
-    [nodeIds[3]]: { x: 0, y: -155 },
-    [nodeIds[4]]: { x: 150, y: -155 },
+    [nodeIds[0]]: { x: -150, y: 110 },
+    [nodeIds[1]]: { x: 150, y: 110 },
+    [nodeIds[2]]: { x: 150, y: -50 },
+    [nodeIds[3]]: { x: -150, y: -50 },
+    [nodeIds[4]]: { x: 0, y: -180 },
   };
 }
 
@@ -456,11 +456,11 @@ function hypercubePositions(
 function octahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
   return {
     [nodeIds[0]]: { x: 0, y: -220 },
-    [nodeIds[1]]: { x: 0, y: 40 },
-    [nodeIds[2]]: { x: -175, y: 110 },
-    [nodeIds[3]]: { x: 80, y: -65 },
-    [nodeIds[4]]: { x: 175, y: 110 },
-    [nodeIds[5]]: { x: -80, y: -65 },
+    [nodeIds[1]]: { x: 0, y: 70 },
+    [nodeIds[2]]: { x: -190, y: 110 },
+    [nodeIds[3]]: { x: 90, y: -55 },
+    [nodeIds[4]]: { x: 190, y: 110 },
+    [nodeIds[5]]: { x: -90, y: -55 },
   };
 }
 
@@ -2795,10 +2795,191 @@ export const sampleGraphKinds = Object.keys(
   sampleGraphFactories,
 ) as SampleGraphKind[];
 
+export const SIZED_SAMPLE_GRAPH_MIN_NODES = 1;
+export const SIZED_SAMPLE_GRAPH_MAX_NODES = 64;
+export const sizedSampleGraphKinds = [
+  "path",
+  "cycle",
+  "edgeless",
+  "complete",
+  "star",
+  "tree",
+  "grid",
+  "bipartite",
+  "crown",
+  "knight",
+] as const satisfies readonly SampleGraphKind[];
+
+export type SizedSampleGraphKind = (typeof sizedSampleGraphKinds)[number];
+
+export function isSizedSampleGraphKind(
+  kind: SampleGraphKind,
+): kind is SizedSampleGraphKind {
+  return (sizedSampleGraphKinds as readonly SampleGraphKind[]).includes(kind);
+}
+
 export function createSampleGraph(
   kind: SampleGraphKind,
   settings: Partial<GraphSettings> = {},
 ): GraphModel {
   const model = sampleGraphFactories[kind](settings);
   return applyPreferredSampleLayout(kind, model);
+}
+
+export function createSizedSampleGraph(
+  kind: SizedSampleGraphKind,
+  nodeCount: number,
+  settings: Partial<GraphSettings> = {},
+): GraphModel {
+  const count = clampSizedSampleNodeCount(nodeCount);
+  const model = createSizedSampleGraphModel(kind, count, settings);
+
+  return applyPreferredSampleLayout(kind, model);
+}
+
+function createSizedSampleGraphModel(
+  kind: SizedSampleGraphKind,
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
+) {
+  switch (kind) {
+    case "path":
+      return createPathGraph(nodeCount, settings);
+    case "cycle":
+      return createCycleGraph(nodeCount, settings);
+    case "edgeless":
+      return createEdgelessGraph(nodeCount, settings);
+    case "complete":
+      return createCompleteGraph(nodeCount, settings);
+    case "star":
+      return createStarGraph(Math.max(0, nodeCount - 1), settings);
+    case "tree":
+      return createTreeGraph(nodeCount, settings);
+    case "grid":
+      return createExactGridGraph(nodeCount, settings);
+    case "bipartite":
+      return createBipartiteGraph(
+        Math.ceil(nodeCount / 2),
+        Math.floor(nodeCount / 2),
+        settings,
+      );
+    case "crown":
+      return createExactCrownGraph(nodeCount, settings);
+    case "knight":
+      return createExactKnightGraph(nodeCount, settings);
+  }
+}
+
+function clampSizedSampleNodeCount(nodeCount: number) {
+  if (!Number.isFinite(nodeCount)) {
+    return 6;
+  }
+
+  return Math.min(
+    SIZED_SAMPLE_GRAPH_MAX_NODES,
+    Math.max(SIZED_SAMPLE_GRAPH_MIN_NODES, Math.round(nodeCount)),
+  );
+}
+
+function createExactGridGraph(
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
+) {
+  const { columns, rows } = gridDimensionsForNodeCount(nodeCount);
+  const edges: Array<readonly [number, number]> = [];
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const source = row * columns + column;
+
+      if (source >= nodeCount) {
+        continue;
+      }
+
+      const right = source + 1;
+      const down = source + columns;
+
+      if (column + 1 < columns && right < nodeCount) {
+        edges.push([source, right]);
+      }
+      if (down < nodeCount) {
+        edges.push([source, down]);
+      }
+    }
+  }
+
+  return createGraphFromEdges(nodeCount, edges, settings);
+}
+
+function createExactKnightGraph(
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
+) {
+  const { columns, rows } = gridDimensionsForNodeCount(nodeCount);
+  const edges: Array<readonly [number, number]> = [];
+  const moves = [
+    [1, 2],
+    [2, 1],
+  ] as const;
+  const indexOf = (row: number, column: number) => row * columns + column;
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const source = indexOf(row, column);
+
+      if (source >= nodeCount) {
+        continue;
+      }
+
+      for (const [dr, dc] of moves) {
+        for (const rowSign of [-1, 1]) {
+          for (const columnSign of [-1, 1]) {
+            const targetRow = row + dr * rowSign;
+            const targetColumn = column + dc * columnSign;
+            const target = indexOf(targetRow, targetColumn);
+
+            if (
+              targetRow < 0 ||
+              targetRow >= rows ||
+              targetColumn < 0 ||
+              targetColumn >= columns ||
+              target >= nodeCount ||
+              source >= target
+            ) {
+              continue;
+            }
+
+            edges.push([source, target]);
+          }
+        }
+      }
+    }
+  }
+
+  return createGraphFromEdges(nodeCount, edges, settings);
+}
+
+function createExactCrownGraph(
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
+) {
+  const leftCount = Math.ceil(nodeCount / 2);
+  const rightCount = Math.floor(nodeCount / 2);
+  const model = createBipartiteGraph(leftCount, rightCount, settings);
+
+  model.edges = model.edges.filter((edge) => {
+    const leftIndex = Number(edge.source.slice(1));
+    const rightIndex = Number(edge.target.slice(1));
+
+    return leftIndex !== rightIndex;
+  });
+
+  return model;
+}
+
+function gridDimensionsForNodeCount(nodeCount: number) {
+  const columns = Math.max(1, Math.ceil(Math.sqrt(nodeCount)));
+  const rows = Math.max(1, Math.ceil(nodeCount / columns));
+
+  return { columns, rows };
 }

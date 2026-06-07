@@ -44,7 +44,7 @@ const structuredEdgeList = importGraphInput("3 2\n0 1\n1 2", {
 });
 
 expect(
-  structuredEdgeList.format === "辺リスト",
+  structuredEdgeList.formatKind === "contest-edge-list",
   "N M header input should keep structured edge-list precedence",
 );
 expect(
@@ -60,7 +60,7 @@ const adjacencyMatrix = importGraphInput("0 1 0\n1 0 1\n0 1 0", {
 });
 
 expect(
-  adjacencyMatrix.format === "Adjacency matrix",
+  adjacencyMatrix.formatKind === "adjacency-matrix",
   "square numeric input should prefer adjacency-matrix parsing before edge-list parsing",
 );
 
@@ -71,7 +71,7 @@ const adjacencyList = importGraphInput("0: 1 2\n1: 2", {
 });
 
 expect(
-  adjacencyList.format === "Adjacency list",
+  adjacencyList.formatKind === "adjacency-list",
   "colon-separated input should prefer adjacency-list parsing before edge-list parsing",
 );
 
@@ -82,7 +82,7 @@ const looseEdgeList = importGraphInput("0 1\n1 2\n2 3", {
 });
 
 expect(
-  looseEdgeList.format === "Edge list",
+  looseEdgeList.formatKind === "edge-pairs",
   "plain pairs without an N M header should fall back to loose edge-list parsing",
 );
 
@@ -291,6 +291,57 @@ expect(
     return nextBowPx === undefined || nextBowPx - bowPx >= 30;
   }),
   "multi-edge routing should keep parallel edges visually separated",
+);
+
+for (const edgeCount of [12, 13, 14]) {
+  const manyParallelEdges: GraphModel = {
+    version: 1,
+    nodes: [
+      { id: "a", label: "A", order: 0, x: 0, y: 0 },
+      { id: "b", label: "B", order: 1, x: 180, y: 0 },
+    ],
+    edges: Array.from({ length: edgeCount }, (_, index) => ({
+      id: `ab-${index}`,
+      source: "a",
+      target: "b",
+    })),
+    settings: defaultGraphSettings,
+  };
+  const bows = manyParallelEdges.edges
+    .map((edge) => computeEdgeRouting(manyParallelEdges).get(edge.id)?.bowPx)
+    .filter((bowPx): bowPx is number => bowPx != null);
+  const uniqueBows = new Set(bows);
+
+  expect(
+    uniqueBows.size === edgeCount,
+    `${edgeCount} parallel edges should all receive unique bow values`,
+  );
+}
+
+const loopRoutingModel: GraphModel = {
+  version: 1,
+  nodes: [
+    { id: "a", label: "A", order: 0, x: 0, y: 0 },
+    { id: "near-default-loop", label: "B", order: 1, x: 30, y: -30 },
+  ],
+  edges: [{ id: "aa", source: "a", target: "a" }],
+  settings: defaultGraphSettings,
+};
+const loopRouting = computeEdgeRouting(loopRoutingModel);
+
+expect(
+  loopRouting.get("aa")?.loopDirectionDeg !== -45,
+  "self-loop routing should choose another loop direction when the default side is occupied",
+);
+
+const weightedCrossingLabelGraph = importGraphInput(
+  "4 6\n0 1 1\n0 2 100\n0 3 1\n1 2 1\n1 3 1\n2 3 1",
+  { indexBase: 0, weighted: true },
+).model;
+
+expect(
+  (computeEdgeRouting(weightedCrossingLabelGraph).get("e1")?.bowPx ?? 0) !== 0,
+  "weighted crossing edges should route the long weight label away from the shared center",
 );
 
 finish();

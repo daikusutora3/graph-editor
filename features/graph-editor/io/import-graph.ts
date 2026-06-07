@@ -4,6 +4,7 @@ import {
 } from "./import-adjacency";
 import { importStructuredEdgeList } from "./import-edge-list";
 import { tryImportLooseEdgeList } from "./import-loose-edge-list";
+import { tryImportParentList, tryImportTreeEdgeList } from "./import-tree";
 import {
   importFailure,
   importLimitFailure,
@@ -68,9 +69,25 @@ export function importGraphInput(
     );
   }
 
+  if (requestedFormat === "tree-edge-list") {
+    return (
+      tryImportTreeEdgeList(lines, options) ??
+      importFailure("Input is not a valid tree edge list.", options)
+    );
+  }
+
+  if (requestedFormat === "parent-list") {
+    return (
+      tryImportParentList(lines, options) ??
+      importFailure("Input is not a valid parent list.", options)
+    );
+  }
+
   const detectedResult = parseFirst([
     { parse: () => tryImportAdjacencyMatrix(lines, options) },
     { parse: () => tryImportAdjacencyList(lines, options) },
+    { parse: () => tryImportParentList(lines, options) },
+    { parse: () => tryImportTreeEdgeList(lines, options) },
   ]);
 
   if (detectedResult) return detectedResult;
@@ -91,6 +108,7 @@ export function importGraphInput(
   return {
     ...structuredEdgeListResult,
     format: undefined,
+    formatKind: undefined,
   };
 }
 

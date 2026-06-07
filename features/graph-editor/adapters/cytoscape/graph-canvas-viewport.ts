@@ -28,6 +28,20 @@ export function readZoomPercent(cy: Core) {
   return Math.round(cy.zoom() * 100);
 }
 
+export function nextCanvasButtonZoomLevel(
+  currentZoom: number,
+  direction: number,
+) {
+  const stepPercent = ZOOM_STEP * 100;
+  const currentPercent = Math.round(currentZoom * 100);
+  const nextPercent =
+    direction > 0
+      ? Math.floor(currentPercent / stepPercent) * stepPercent + stepPercent
+      : Math.ceil(currentPercent / stepPercent) * stepPercent - stepPercent;
+
+  return clamp(nextPercent / 100, MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM);
+}
+
 export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
   const container = cy.container();
 
@@ -214,11 +228,17 @@ export function readCanvasPalette(): GraphCanvasPalette {
     node: cssVar("--canvas-node", "#ffffff"),
     nodeBorder: cssVar("--canvas-node-border", "#a1a1aa"),
     nodeText: cssVar("--canvas-node-text", "#171717"),
+    nodeWhite: cssVar("--canvas-node-white", "#ffffff"),
+    nodeBlack: cssVar("--canvas-node-black", "#111827"),
+    nodeRed: cssVar("--canvas-node-red", "#fee2e2"),
     nodeYellow: cssVar("--canvas-node-yellow", "#fef3c7"),
     nodeBlue: cssVar("--canvas-node-blue", "#dbeafe"),
     nodeGreen: cssVar("--canvas-node-green", "#dcfce7"),
     nodePink: cssVar("--canvas-node-pink", "#ffe4e6"),
     edge: cssVar("--canvas-edge", "#6b7280"),
+    edgeWhite: cssVar("--canvas-edge-white", "#ffffff"),
+    edgeBlack: cssVar("--canvas-edge-black", "#111827"),
+    edgeRed: cssVar("--canvas-edge-red", "#dc2626"),
     edgeYellow: cssVar("--canvas-edge-yellow", "#d97706"),
     edgeBlue: cssVar("--canvas-edge-blue", "#2563eb"),
     edgeGreen: cssVar("--canvas-edge-green", "#16a34a"),

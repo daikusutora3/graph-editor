@@ -1,6 +1,14 @@
 export type NodeId = string;
 export type EdgeId = string;
-export type GraphColor = "paper" | "yellow" | "blue" | "green" | "pink";
+export type GraphColor =
+  | "paper"
+  | "white"
+  | "black"
+  | "red"
+  | "yellow"
+  | "blue"
+  | "green"
+  | "pink";
 export type WeightKind = "none" | "number" | "string";
 
 export type GraphNode = {
@@ -35,6 +43,7 @@ export type GraphSettings = {
   allowSelfLoops: boolean;
   allowMultiEdges: boolean;
   autoEdgeRouting: boolean;
+  snapToGrid: boolean;
   weightKind: WeightKind;
 };
 

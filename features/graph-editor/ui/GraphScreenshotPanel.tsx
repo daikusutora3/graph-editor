@@ -9,6 +9,7 @@ import type {
   PngExportBackground,
   PngExportLongEdgePreset,
   PngExportPaddingPreset,
+  PngExportScope,
   ScreenshotCopyState,
   ScreenshotDownloadState,
   ScreenshotPreview,
@@ -33,6 +34,7 @@ type ScreenshotPanelProps = {
   screenshotCustomPaddingPx: number;
   screenshotPreview: ScreenshotPreview;
   screenshotPreviewStale: boolean;
+  screenshotScope: PngExportScope;
   solidBackground: "white" | "black";
   theme: ThemeMode;
   onRefreshPreview: () => void;
@@ -41,6 +43,7 @@ type ScreenshotPanelProps = {
   onScreenshotLongEdgePresetChange: (preset: PngExportLongEdgePreset) => void;
   onScreenshotCustomPaddingChange: (paddingPx: number) => void;
   onScreenshotPaddingPresetChange: (preset: PngExportPaddingPreset) => void;
+  onScreenshotScopeChange: (scope: PngExportScope) => void;
 };
 
 type ScreenshotFooterProps = {
@@ -67,6 +70,7 @@ export function ScreenshotPanel({
   screenshotCustomPaddingPx,
   screenshotPreview,
   screenshotPreviewStale,
+  screenshotScope,
   solidBackground,
   theme,
   onRefreshPreview,
@@ -75,11 +79,21 @@ export function ScreenshotPanel({
   onScreenshotLongEdgePresetChange,
   onScreenshotCustomPaddingChange,
   onScreenshotPaddingPresetChange,
+  onScreenshotScopeChange,
 }: ScreenshotPanelProps) {
   const { messages } = useI18n();
 
   return (
     <div className="flex flex-col gap-[var(--app-space-3)]">
+      <OptionGroup
+        label={messages.screenshot.scope}
+        value={screenshotScope}
+        options={[
+          { label: messages.screenshot.viewport, value: "viewport" },
+          { label: messages.screenshot.fullGraph, value: "full" },
+        ]}
+        onChange={onScreenshotScopeChange}
+      />
       <OptionGroup
         label={messages.screenshot.background}
         value={effectiveBackground}

@@ -1,4 +1,5 @@
 import type { LayoutDisabledReason, LayoutKind } from "../layouts";
+import type { ImportFormatKind } from "../io/import-types";
 import type { SampleGraphKind } from "../samples/sample-graphs";
 import type { SampleGraphGroupKey } from "../samples/registry";
 import type { Locale } from "./locale";
@@ -81,6 +82,8 @@ type Messages = {
     unweighted: string;
     weighted: string;
     indexBase: string;
+    snapToGrid: string;
+    reverseAllEdges: string;
     language: string;
   };
   starter: {
@@ -95,6 +98,7 @@ type Messages = {
     apply: string;
     needsReview: string;
     detected: (format: string) => string;
+    formats: Record<ImportFormatKind, string>;
     preview: string;
     previewEmpty: string;
     previewStats: (nodeCount: number, edgeCount: number) => string;
@@ -115,6 +119,9 @@ type Messages = {
     copiedAria: string;
     savedAria: string;
     blockedAria: string;
+    scope: string;
+    viewport: string;
+    fullGraph: string;
     background: string;
     imageSize: string;
     longEdgeCustom: string;
@@ -153,7 +160,17 @@ type Messages = {
     nodeColorTitle: string;
     edgeColorTitle: string;
     colorFor: (kind: "node" | "edge", color: string) => string;
-    colors: Record<"paper" | "yellow" | "blue" | "green" | "pink", string>;
+    colors: Record<
+      | "paper"
+      | "white"
+      | "black"
+      | "red"
+      | "yellow"
+      | "blue"
+      | "green"
+      | "pink",
+      string
+    >;
   };
   contextMenu: {
     nodeMenu: string;
@@ -405,6 +422,8 @@ const ja = {
     unweighted: "重みなし",
     weighted: "重みあり",
     indexBase: "番号",
+    snapToGrid: "ドラッグをグリッドに吸着",
+    reverseAllEdges: "全辺を反転",
     language: "言語",
   },
   starter: {
@@ -420,6 +439,14 @@ const ja = {
     apply: "グラフに反映",
     needsReview: "要確認",
     detected: (format: string) => `${format} として認識`,
+    formats: {
+      "contest-edge-list": "頂点数・辺数つき辺リスト",
+      "tree-edge-list": "木の辺リスト",
+      "parent-list": "親配列",
+      "edge-pairs": "辺の組リスト",
+      "adjacency-list": "隣接リスト",
+      "adjacency-matrix": "隣接行列",
+    },
     preview: "プレビュー",
     previewEmpty: "入力待ち",
     previewStats: (nodeCount: number, edgeCount: number) =>
@@ -451,6 +478,9 @@ const ja = {
     copiedAria: "スクショをコピーしました",
     savedAria: "スクショを保存しました",
     blockedAria: "スクショをコピーできませんでした",
+    scope: "範囲",
+    viewport: "表示中",
+    fullGraph: "グラフ全体",
     background: "背景",
     imageSize: "画像サイズ",
     longEdgeCustom: "カスタム",
@@ -493,6 +523,9 @@ const ja = {
       `${kind === "node" ? "頂点" : "辺"}の色: ${color}`,
     colors: {
       paper: "標準",
+      white: "白",
+      black: "黒",
+      red: "赤",
       yellow: "黄",
       blue: "青",
       green: "緑",
@@ -692,6 +725,8 @@ const en: Messages = {
     unweighted: "Unweighted",
     weighted: "Weighted",
     indexBase: "Index",
+    snapToGrid: "Snap drags to grid",
+    reverseAllEdges: "Reverse all edges",
     language: "Language",
   },
   starter: {
@@ -707,6 +742,14 @@ const en: Messages = {
     apply: "Apply to graph",
     needsReview: "Review needed",
     detected: (format: string) => `Read as ${format}`,
+    formats: {
+      "contest-edge-list": "edge list with counts",
+      "tree-edge-list": "tree edge list",
+      "parent-list": "parent list",
+      "edge-pairs": "edge pair list",
+      "adjacency-list": "adjacency list",
+      "adjacency-matrix": "adjacency matrix",
+    },
     preview: "Preview",
     previewEmpty: "Waiting for input",
     previewStats: (nodeCount: number, edgeCount: number) =>
@@ -738,6 +781,9 @@ const en: Messages = {
     copiedAria: "Screenshot copied",
     savedAria: "Screenshot saved",
     blockedAria: "Could not copy screenshot",
+    scope: "Scope",
+    viewport: "Current view",
+    fullGraph: "Full graph",
     background: "Background",
     imageSize: "Image size",
     longEdgeCustom: "Custom",
@@ -780,6 +826,9 @@ const en: Messages = {
       `${kind === "node" ? "Node" : "Edge"} color: ${color}`,
     colors: {
       paper: "Default",
+      white: "White",
+      black: "Black",
+      red: "Red",
       yellow: "Yellow",
       blue: "Blue",
       green: "Green",
@@ -979,6 +1028,8 @@ const zhHans: Messages = {
     unweighted: "无权",
     weighted: "有权",
     indexBase: "编号",
+    snapToGrid: "拖动吸附到网格",
+    reverseAllEdges: "反转全部边",
     language: "语言",
   },
   starter: {
@@ -994,6 +1045,14 @@ const zhHans: Messages = {
     apply: "应用到图",
     needsReview: "需要确认",
     detected: (format: string) => `按 ${format} 读取`,
+    formats: {
+      "contest-edge-list": "带顶点数和边数的边列表",
+      "tree-edge-list": "树边列表",
+      "parent-list": "父节点列表",
+      "edge-pairs": "边对列表",
+      "adjacency-list": "邻接表",
+      "adjacency-matrix": "邻接矩阵",
+    },
     preview: "预览",
     previewEmpty: "等待输入",
     previewStats: (nodeCount: number, edgeCount: number) =>
@@ -1025,6 +1084,9 @@ const zhHans: Messages = {
     copiedAria: "截图已复制",
     savedAria: "截图已保存",
     blockedAria: "无法复制截图",
+    scope: "范围",
+    viewport: "当前视图",
+    fullGraph: "整个图",
     background: "背景",
     imageSize: "图像尺寸",
     longEdgeCustom: "自定义",
@@ -1067,6 +1129,9 @@ const zhHans: Messages = {
       `${kind === "node" ? "顶点" : "边"}颜色：${color}`,
     colors: {
       paper: "默认",
+      white: "白色",
+      black: "黑色",
+      red: "红色",
       yellow: "黄色",
       blue: "蓝色",
       green: "绿色",

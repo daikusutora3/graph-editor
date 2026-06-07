@@ -1,8 +1,10 @@
 import type { GraphModel } from "../core/graph/model";
+import type { ThemeMode } from "./theme";
 import type {
   PngExportBackground,
   PngExportLongEdgePreset,
   PngExportPaddingPreset,
+  PngExportScope,
   ScreenshotPreview,
 } from "./graph-io-types";
 import {
@@ -19,6 +21,8 @@ export type ScreenshotPreviewInput = {
   graph: GraphModel;
   longEdgePx: number;
   paddingPx: number;
+  scope: PngExportScope;
+  theme: ThemeMode;
 };
 
 export function createEmptyScreenshotPreview(): ScreenshotPreview {
@@ -36,6 +40,8 @@ export function makeScreenshotInputKey({
   graph,
   longEdgePx,
   paddingPx,
+  scope,
+  theme,
 }: ScreenshotPreviewInput) {
   return JSON.stringify({
     background,
@@ -43,7 +49,9 @@ export function makeScreenshotInputKey({
     longEdgePx,
     nodes: graph.nodes,
     paddingPx,
+    scope,
     settings: graph.settings,
+    theme,
   });
 }
 

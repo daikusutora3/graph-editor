@@ -51,6 +51,33 @@ const triangle = graphFixture({
     ["c", "a"],
   ],
 });
+const disconnectedBipartite = graphFixture({
+  directed: false,
+  edges: [
+    ["0", "4"],
+    ["1", "5"],
+    ["2", "4"],
+    ["2", "6"],
+    ["3", "5"],
+    ["3", "7"],
+  ],
+});
+const unorderedTree = {
+  ...graphFixture({
+    directed: false,
+    edges: [
+      ["root", "left"],
+      ["root", "right"],
+      ["left", "leaf"],
+    ],
+  }),
+  nodes: [
+    { id: "root", label: "0", order: 0, x: 0, y: 0 },
+    { id: "left", label: "1", order: 1, x: 0, y: 0 },
+    { id: "right", label: "2", order: 2, x: 0, y: 0 },
+    { id: "leaf", label: "3", order: 3, x: 0, y: 0 },
+  ],
+};
 
 expect(
   manualLayoutDisabledReasonCode("tree", undirectedPath) === null,
@@ -123,6 +150,61 @@ expect(
     { avoidNodes: true },
   ) !== routingBaseKey,
   "routing cache key should include edge routing overrides",
+);
+
+const lineCommand = createManualLayoutCommand(unorderedTree, "line");
+expect(
+  lineCommand.type === "move-nodes" &&
+    lineCommand.after.root.x < lineCommand.after.left.x &&
+    lineCommand.after.left.x < lineCommand.after.right.x &&
+    lineCommand.after.right.x < lineCommand.after.leaf.x,
+  "line layout should preserve node order instead of path traversal order",
+);
+
+const bipartiteCommand = createManualLayoutCommand(
+  disconnectedBipartite,
+  "bipartite",
+);
+const oddComponentY =
+  bipartiteCommand.type === "move-nodes"
+    ? ["1", "3", "5", "7"].map((nodeId) => bipartiteCommand.after[nodeId].y)
+    : [];
+const evenComponentY =
+  bipartiteCommand.type === "move-nodes"
+    ? ["0", "2", "4", "6"].map((nodeId) => bipartiteCommand.after[nodeId].y)
+    : [];
+const oddRange = [Math.min(...oddComponentY), Math.max(...oddComponentY)];
+const evenRange = [Math.min(...evenComponentY), Math.max(...evenComponentY)];
+
+expect(
+  bipartiteCommand.type === "move-nodes" &&
+    (oddRange[1] < evenRange[0] || evenRange[1] < oddRange[0]),
+  "bipartite layout should pack disconnected components into separate bands",
+);
+
+const treeBipartiteCommand = createManualLayoutCommand(
+  graphFixture({
+    directed: false,
+    edges: [
+      ["0", "1"],
+      ["0", "2"],
+      ["1", "3"],
+      ["1", "4"],
+      ["2", "5"],
+      ["2", "6"],
+    ],
+  }),
+  "bipartite",
+);
+
+expect(
+  treeBipartiteCommand.type === "move-nodes" &&
+    treeBipartiteCommand.after["0"].y < treeBipartiteCommand.after["3"].y &&
+    treeBipartiteCommand.after["3"].y < treeBipartiteCommand.after["4"].y &&
+    treeBipartiteCommand.after["4"].y < treeBipartiteCommand.after["5"].y &&
+    treeBipartiteCommand.after["5"].y < treeBipartiteCommand.after["6"].y &&
+    treeBipartiteCommand.after["1"].y < treeBipartiteCommand.after["2"].y,
+  "bipartite layout should keep each side in natural node order",
 );
 
 finish(`Layout verification passed (${layoutDefinitions.length} kinds)`);

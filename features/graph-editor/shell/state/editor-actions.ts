@@ -3,6 +3,7 @@ import { atom } from "jotai";
 import { createEmptyGraphModel } from "../../core/graph/graph-factory";
 import {
   replaceModelCommand,
+  reverseEdgesCommand,
   updateSettingsCommand,
 } from "../../core/graph/graph-intents";
 import type { GraphModel, GraphSettings } from "../../core/graph/model";
@@ -93,3 +94,22 @@ export const updateGraphSettingsAtom = atom(
     set(executeCommandAtom, updateSettingsCommand(patch));
   },
 );
+
+export const reverseAllDirectedEdgesAtom = atom(null, (get, set) => {
+  const graph = get(graphAtom);
+
+  if (!graph.settings.directed) {
+    return false;
+  }
+
+  const edgeIds = graph.edges
+    .filter((edge) => edge.source !== edge.target)
+    .map((edge) => edge.id);
+
+  if (edgeIds.length === 0) {
+    return false;
+  }
+
+  set(executeCommandAtom, reverseEdgesCommand(edgeIds));
+  return true;
+});

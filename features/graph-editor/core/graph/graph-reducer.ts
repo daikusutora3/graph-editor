@@ -195,16 +195,16 @@ function adjustNodeLabelsForIndexBase(
     return nodes;
   }
 
-  return nodes.map((node) => {
-    const expectedPreviousLabel = String(node.order + previousIndexBase);
+  const delta = nextIndexBase - previousIndexBase;
 
-    if (node.label !== expectedPreviousLabel) {
+  return nodes.map((node) => {
+    if (!/^-?\d+$/.test(node.label)) {
       return node;
     }
 
     return {
       ...node,
-      label: String(node.order + nextIndexBase),
+      label: String(Number(node.label) + delta),
     };
   });
 }

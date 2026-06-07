@@ -1,7 +1,9 @@
 import {
   createSampleGraph,
+  createSizedSampleGraph,
   sampleGraphDefinitions,
   sampleGraphKinds,
+  sizedSampleGraphKinds,
   type SampleGraphKind,
 } from "../../features/graph-editor/samples";
 import { sampleExpectations } from "./sample-expectations";
@@ -14,6 +16,7 @@ import {
   isBipartite,
   isDirectedAcyclic,
 } from "../../features/graph-editor/core/graph/graph-analysis";
+import { createPreviewEdgePath } from "../../features/graph-editor/ui/SampleGraphPreview";
 import { createVerification } from "./harness";
 
 type IndexedGraph = {
@@ -216,7 +219,107 @@ for (const kind of sampleGraphKinds) {
   }
 }
 
+verifyNamedSampleGeometry(models);
+verifyPreviewEdgePaths();
+verifySizedSampleGraphs();
+
 finish(`Sample verification passed (${sampleGraphKinds.length} kinds)`);
+
+function verifyNamedSampleGeometry(models: Map<SampleGraphKind, GraphModel>) {
+  const houseX = models.get("houseX");
+  if (houseX) {
+    const nodes = nodePositionByOrder(houseX);
+
+    if (
+      !(
+        nodes[4].y < nodes[2].y &&
+        nodes[4].y < nodes[3].y &&
+        nodes[2].y < nodes[0].y &&
+        nodes[3].y < nodes[1].y &&
+        nodes[0].x < nodes[1].x &&
+        nodes[3].x < nodes[2].x
+      )
+    ) {
+      fail("houseX sample should keep a recognizable house layout");
+    }
+  }
+
+  const octahedral = models.get("octahedral");
+  if (octahedral) {
+    const nodes = nodePositionByOrder(octahedral);
+
+    if (
+      !(
+        nodes[0].y < nodes[3].y &&
+        nodes[0].y < nodes[5].y &&
+        nodes[1].y > nodes[3].y &&
+        nodes[1].y > nodes[5].y &&
+        Math.abs(nodes[3].x + nodes[5].x) <= 1 &&
+        Math.abs(nodes[2].x + nodes[4].x) <= 1
+      )
+    ) {
+      fail("octahedral sample should keep its rotationally balanced layout");
+    }
+  }
+}
+
+function nodePositionByOrder(model: GraphModel) {
+  return [...model.nodes].sort((a, b) => a.order - b.order);
+}
+
+function verifyPreviewEdgePaths() {
+  const loopPath = createPreviewEdgePath({
+    directed: true,
+    radius: 8,
+    routing: { bowPx: 0, loopDirectionDeg: -45, loopSweepDeg: 70 },
+    scale: 1,
+    source: { x: 20, y: 20 },
+    target: { x: 20, y: 20 },
+  });
+
+  if (!loopPath.includes("C")) {
+    fail("preview self-loop edges should render as curved paths");
+  }
+
+  const parallelPath = createPreviewEdgePath({
+    directed: false,
+    radius: 8,
+    routing: { bowPx: 36, loopDirectionDeg: -45, loopSweepDeg: 70 },
+    scale: 0.5,
+    source: { x: 0, y: 0 },
+    target: { x: 100, y: 0 },
+  });
+
+  if (!parallelPath.includes("Q")) {
+    fail("preview bowed edges should render as quadratic paths");
+  }
+}
+
+function verifySizedSampleGraphs() {
+  for (const kind of sizedSampleGraphKinds) {
+    const model = createSizedSampleGraph(kind, 11, {
+      directed: false,
+      weighted: false,
+      indexBase: 0,
+    });
+
+    verifyModelIntegrity(`${kind} sized`, model);
+
+    if (model.nodes.length !== 11) {
+      fail(`${kind}: sized sample should create exactly 11 nodes`);
+    }
+  }
+
+  const complete = createSizedSampleGraph("complete", 7, { indexBase: 0 });
+  if (complete.edges.length !== 21) {
+    fail("complete: sized sample should create K7");
+  }
+
+  const star = createSizedSampleGraph("star", 7, { indexBase: 0 });
+  if (star.edges.length !== 6) {
+    fail("star: sized sample node count should include the center");
+  }
+}
 
 function orderedLabels(model: GraphModel): string[] {
   return [...model.nodes]
@@ -224,7 +327,7 @@ function orderedLabels(model: GraphModel): string[] {
     .map((node) => node.label);
 }
 
-function verifyModelIntegrity(kind: SampleGraphKind, model: GraphModel): void {
+function verifyModelIntegrity(kind: string, model: GraphModel): void {
   const nodeIds = new Set<NodeId>();
   const edgeIds = new Set<string>();
   const nodeOrders = new Set<number>();

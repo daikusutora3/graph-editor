@@ -6,9 +6,16 @@ import {
   type CytoscapeElementOptions,
 } from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
-import { renderedPointInsideViewport } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-viewport";
+import {
+  MAX_CANVAS_ZOOM,
+  MIN_CANVAS_ZOOM,
+  nextCanvasButtonZoomLevel,
+  renderedPointInsideViewport,
+} from "../../features/graph-editor/adapters/cytoscape/graph-canvas-viewport";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
+import { createEdgeHitboxPath } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
+import { snapPositionToNodeDragGrid } from "../../features/graph-editor/canvas/graph-canvas-html-node-drag";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Cytoscape adapter");
@@ -22,6 +29,9 @@ verifyEdgeRoutingCanFollowDraggedNodePositions();
 verifyEdgeRoutingSyncPreservesModelData();
 verifyEdgeRoutingSyncCanRestorePreviewData();
 verifyViewportRescuePointDetection();
+verifyButtonZoomLevels();
+verifyEdgeHitboxPaths();
+verifyNodeDragGridSnapping();
 
 finish();
 
@@ -51,6 +61,19 @@ function verifyElementMapping() {
   expect(
     String(edgeAb?.classes).includes("color-blue"),
     "edge color should map to a class",
+  );
+}
+
+function verifyNodeDragGridSnapping() {
+  expect(
+    JSON.stringify(snapPositionToNodeDragGrid({ x: 13, y: 35 })) ===
+      JSON.stringify({ x: 24, y: 24 }),
+    "node drag snapping should align positions to the 24px canvas grid",
+  );
+  expect(
+    JSON.stringify(snapPositionToNodeDragGrid({ x: -13, y: -35 })) ===
+      JSON.stringify({ x: -24, y: -24 }),
+    "node drag snapping should handle negative coordinates",
   );
 }
 
@@ -268,6 +291,62 @@ function verifyViewportRescuePointDetection() {
     !renderedPointInsideViewport({ x: 1220, y: 40 }, viewport),
     "node centers hidden well beyond the right rail should not be treated as visible",
   );
+}
+
+function verifyButtonZoomLevels() {
+  expect(
+    nextCanvasButtonZoomLevel(1.1, -1) === 1,
+    "zoom-out from 110% should return to 100%",
+  );
+  expect(
+    nextCanvasButtonZoomLevel(1.0000000000000002, 1) === 1.1,
+    "zoom-in should tolerate tiny floating-point noise around 100%",
+  );
+  expect(
+    nextCanvasButtonZoomLevel(MIN_CANVAS_ZOOM, -1) === MIN_CANVAS_ZOOM,
+    "zoom-out should clamp to minimum zoom",
+  );
+  expect(
+    nextCanvasButtonZoomLevel(MAX_CANVAS_ZOOM, 1) === MAX_CANVAS_ZOOM,
+    "zoom-in should clamp to maximum zoom",
+  );
+}
+
+function verifyEdgeHitboxPaths() {
+  const curvedPath = createEdgeHitboxPath({
+    id: "curved",
+    label: "",
+    sourceX: 0,
+    sourceY: 0,
+    targetX: 100,
+    targetY: 0,
+    x: 50,
+    y: 20,
+    bowPx: 32,
+    loopDirectionDeg: -45,
+    loopSweepDeg: 70,
+  });
+
+  expect(
+    curvedPath.includes("Q"),
+    "curved edge hitboxes should follow a quadratic path",
+  );
+
+  const loopPath = createEdgeHitboxPath({
+    id: "loop",
+    label: "",
+    sourceX: 20,
+    sourceY: 20,
+    targetX: 20,
+    targetY: 20,
+    x: 40,
+    y: 0,
+    bowPx: 0,
+    loopDirectionDeg: -45,
+    loopSweepDeg: 70,
+  });
+
+  expect(loopPath.includes("C"), "loop edge hitboxes should be curved paths");
 }
 
 function createCy(

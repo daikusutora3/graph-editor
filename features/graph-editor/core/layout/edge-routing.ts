@@ -34,6 +34,7 @@ const LOOP_SWEEP_DEG = 70;
 const LOOP_SWEEP_STEP_DEG = 16;
 const MAX_LOOP_SWEEP_DEG = 120;
 const NODE_AVOIDANCE_WORK_LIMIT = 30_000;
+const MIN_DUPLICATE_BOW_SPACING_PX = 12;
 
 const defaultEdgeRoutingMeta: EdgeRoutingMeta = {
   bowPx: 0,
@@ -80,6 +81,10 @@ export function computeEdgeRouting(
   for (const edges of routeGroups.values()) {
     if (edges.every((edge) => edge.source === edge.target)) {
       const center = (edges.length - 1) / 2;
+      const source = nodesById.get(edges[0]?.source ?? "");
+      const loopDirectionDeg = source
+        ? chooseLoopDirection(source, model.nodes, resolvedOptions)
+        : resolvedOptions.loopDirectionDeg;
 
       for (const [index, edge] of edges.entries()) {
         meta.set(
@@ -88,7 +93,7 @@ export function computeEdgeRouting(
             bowPx: 0,
             duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
             loopDirectionDeg: Math.round(
-              resolvedOptions.loopDirectionDeg +
+              loopDirectionDeg +
                 (index - center) * resolvedOptions.loopDirectionStepDeg,
             ),
             loopSweepDeg: Math.min(
@@ -110,6 +115,7 @@ export function computeEdgeRouting(
         applyRoutingOverride(edge, {
           bowPx: chooseEdgeBow(
             edge,
+            model.edges,
             model.nodes,
             nodesById,
             0,
@@ -124,13 +130,15 @@ export function computeEdgeRouting(
     }
 
     const center = (edges.length - 1) / 2;
-    const maxDuplicateBow = Math.min(
-      MAX_BOW_PX,
-      center * resolvedOptions.duplicateBowPx,
+    const duplicateBowPx = duplicateBowSpacing(
+      edges.length,
+      resolvedOptions.duplicateBowPx,
     );
+    const maxDuplicateBow = center * duplicateBowPx;
     const groupBowPx = clamp(
       chooseEdgeBow(
         canonicalRoutingEdge(edges[0]),
+        model.edges,
         model.nodes,
         nodesById,
         0,
@@ -141,8 +149,7 @@ export function computeEdgeRouting(
     );
 
     for (const [index, edge] of edges.entries()) {
-      const canonicalBow =
-        groupBowPx + (index - center) * resolvedOptions.duplicateBowPx;
+      const canonicalBow = groupBowPx + (index - center) * duplicateBowPx;
 
       meta.set(
         edge.id,
@@ -159,6 +166,17 @@ export function computeEdgeRouting(
   }
 
   return meta;
+}
+
+function duplicateBowSpacing(edgeCount: number, requestedSpacing: number) {
+  if (edgeCount <= 1) {
+    return requestedSpacing;
+  }
+
+  return Math.max(
+    MIN_DUPLICATE_BOW_SPACING_PX,
+    Math.min(requestedSpacing, (MAX_BOW_PX * 2) / Math.max(1, edgeCount - 1)),
+  );
 }
 
 export function shouldAvoidNodesForEdgeRouting(model: GraphModel) {
@@ -228,6 +246,7 @@ function applyRoutingOverride(
 
 function chooseEdgeBow(
   edge: GraphEdge,
+  edges: GraphEdge[],
   nodes: GraphNode[],
   nodesById: Map<NodeId, GraphNode>,
   baseBowPx: number,
@@ -251,7 +270,9 @@ function chooseEdgeBow(
         source,
         target,
         edge,
+        edges,
         nodes,
+        nodesById,
         baseBowPx,
         options,
       ),
@@ -265,7 +286,9 @@ function chooseEdgeBow(
       source,
       target,
       edge,
+      edges,
       nodes,
+      nodesById,
       baseBowPx,
       options,
     ),
@@ -278,6 +301,71 @@ function chooseEdgeBow(
   }
 
   return Math.round(clamp(best.bowPx, -MAX_BOW_PX, MAX_BOW_PX));
+}
+
+function chooseLoopDirection(
+  source: GraphNode,
+  nodes: GraphNode[],
+  options: Required<EdgeRoutingOptions>,
+) {
+  if (!options.avoidNodes) {
+    return options.loopDirectionDeg;
+  }
+
+  const candidates = loopDirectionCandidates(options);
+  let best = candidates[0] ?? options.loopDirectionDeg;
+  let bestScore = scoreLoopDirection(best, source, nodes, options);
+
+  for (const candidate of candidates.slice(1)) {
+    const score = scoreLoopDirection(candidate, source, nodes, options);
+
+    if (
+      score < bestScore ||
+      (score === bestScore &&
+        Math.abs(candidate - options.loopDirectionDeg) <
+          Math.abs(best - options.loopDirectionDeg))
+    ) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
+function loopDirectionCandidates(options: Required<EdgeRoutingOptions>) {
+  return Array.from({ length: 8 }, (_, index) =>
+    Math.round(options.loopDirectionDeg + index * 45),
+  );
+}
+
+function scoreLoopDirection(
+  directionDeg: number,
+  source: GraphNode,
+  nodes: GraphNode[],
+  options: Required<EdgeRoutingOptions>,
+) {
+  const radians = (directionDeg * Math.PI) / 180;
+  const loopCenter = {
+    x: source.x + Math.cos(radians) * options.nodeClearancePx,
+    y: source.y + Math.sin(radians) * options.nodeClearancePx,
+  };
+  let score =
+    Math.abs(normalizeDegrees(directionDeg - options.loopDirectionDeg)) * 0.01;
+
+  for (const node of nodes) {
+    if (node.id === source.id) continue;
+
+    const distance = Math.hypot(node.x - loopCenter.x, node.y - loopCenter.y);
+    const overlap = Math.max(0, options.nodeClearancePx - distance);
+    score += overlap * overlap;
+  }
+
+  return score;
+}
+
+function normalizeDegrees(value: number) {
+  return ((((value + 180) % 360) + 360) % 360) - 180;
 }
 
 function edgeBowCandidates(baseBowPx: number, offsets: readonly number[]) {
@@ -311,7 +399,9 @@ function scoreCandidateBow(
   source: GraphNode,
   target: GraphNode,
   edge: GraphEdge,
+  edges: GraphEdge[],
   nodes: GraphNode[],
+  nodesById: Map<NodeId, GraphNode>,
   baseBowPx: number,
   options: Required<EdgeRoutingOptions>,
 ) {
@@ -331,7 +421,76 @@ function scoreCandidateBow(
     score += overlap * overlap * endpointWeight;
   }
 
+  score += scoreEdgeLabelOverlap(edge, edges, nodesById, bowPx);
+
   return score;
+}
+
+function scoreEdgeLabelOverlap(
+  edge: GraphEdge,
+  edges: GraphEdge[],
+  nodesById: Map<NodeId, GraphNode>,
+  bowPx: number,
+) {
+  if (!edgeHasVisibleLabel(edge) || edge.source === edge.target) {
+    return 0;
+  }
+
+  const source = nodesById.get(edge.source);
+  const target = nodesById.get(edge.target);
+
+  if (!source || !target) {
+    return 0;
+  }
+
+  const anchor = quadraticPoint(source, target, bowPx, 0.5);
+  let score = 0;
+
+  for (const otherEdge of edges) {
+    if (
+      otherEdge.id === edge.id ||
+      otherEdge.source === otherEdge.target ||
+      !edgeHasVisibleLabel(otherEdge)
+    ) {
+      continue;
+    }
+
+    const otherSource = nodesById.get(otherEdge.source);
+    const otherTarget = nodesById.get(otherEdge.target);
+
+    if (!otherSource || !otherTarget) {
+      continue;
+    }
+
+    const otherAnchor = quadraticPoint(otherSource, otherTarget, 0, 0.5);
+    const distance = Math.hypot(
+      anchor.x - otherAnchor.x,
+      anchor.y - otherAnchor.y,
+    );
+    const clearance = edgeLabelClearance(edge, otherEdge);
+    const overlap = Math.max(0, clearance - distance);
+
+    score += overlap * overlap * 1.4;
+  }
+
+  return score;
+}
+
+function edgeHasVisibleLabel(edge: GraphEdge) {
+  return Boolean(edge.label || edge.weight);
+}
+
+function edgeLabelClearance(edge: GraphEdge, otherEdge: GraphEdge) {
+  const labelLength = Math.max(
+    edgeLabelText(edge).length,
+    edgeLabelText(otherEdge).length,
+  );
+
+  return 34 + labelLength * 4;
+}
+
+function edgeLabelText(edge: GraphEdge) {
+  return edge.label ?? edge.weight ?? "";
 }
 
 function nearestQuadraticPoint(
@@ -362,6 +521,27 @@ function nearestQuadraticPoint(
   }
 
   return best;
+}
+
+function quadraticPoint(
+  source: GraphNode,
+  target: GraphNode,
+  bowPx: number,
+  t: number,
+) {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const length = Math.hypot(dx, dy);
+  const normalX = length === 0 ? 0 : -dy / length;
+  const normalY = length === 0 ? 0 : dx / length;
+  const controlX = (source.x + target.x) / 2 + normalX * bowPx;
+  const controlY = (source.y + target.y) / 2 + normalY * bowPx;
+  const inv = 1 - t;
+
+  return {
+    x: inv * inv * source.x + 2 * inv * t * controlX + t * t * target.x,
+    y: inv * inv * source.y + 2 * inv * t * controlY + t * t * target.y,
+  };
 }
 
 function endpointProximityWeight(t: number) {

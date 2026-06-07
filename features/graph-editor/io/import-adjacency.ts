@@ -23,6 +23,12 @@ export function tryImportAdjacencyMatrix(
   lines: ParsedLine[],
   options: ImportOptions,
 ): ImportResult | null {
+  const rows = lines.map((line) => splitTokens(line.text));
+
+  if (rows.length < 2 || rows.some((row) => row.length !== rows.length)) {
+    return null;
+  }
+
   if (lines.length > MAX_IMPORT_NODES) {
     return importLimitFailure(
       "nodes",
@@ -30,13 +36,8 @@ export function tryImportAdjacencyMatrix(
       MAX_IMPORT_NODES,
       options,
       "Adjacency matrix",
+      "adjacency-matrix",
     );
-  }
-
-  const rows = lines.map((line) => splitTokens(line.text));
-
-  if (rows.length < 2 || rows.some((row) => row.length !== rows.length)) {
-    return null;
   }
 
   const values = rows.map((row) => row.map(Number));
@@ -44,11 +45,23 @@ export function tryImportAdjacencyMatrix(
     return null;
   }
 
-  if (values.length < 2 || values.some((row) => !row.includes(0))) {
+  if (values.length < 2) {
     return null;
   }
 
   const isSymmetric = isSymmetricMatrix(values);
+  const hasZeroValue = values.some((row) => row.includes(0));
+
+  if (!hasZeroValue && options.format !== "adjacency-matrix") {
+    const isBinaryMatrix = values.every((row) =>
+      row.every((value) => value === 0 || value === 1),
+    );
+
+    if (!isBinaryMatrix || !isSymmetric) {
+      return null;
+    }
+  }
+
   const directed = options.directed || !isSymmetric;
 
   if (!isSafeAdjacencyMatrixSize(values, directed)) {
@@ -58,6 +71,15 @@ export function tryImportAdjacencyMatrix(
   const hasWeightedValue = values.some((row) =>
     row.some((value) => value !== 0 && value !== 1),
   );
+
+  if (
+    hasWeightedValue &&
+    options.format !== "adjacency-matrix" &&
+    looksLikeWeightedEdgePairs(rows, values.length)
+  ) {
+    return null;
+  }
+
   const edgeCount = values.reduce(
     (count, row, sourceIndex) =>
       count +
@@ -75,6 +97,7 @@ export function tryImportAdjacencyMatrix(
       MAX_IMPORT_EDGES,
       options,
       "Adjacency matrix",
+      "adjacency-matrix",
     );
   }
 
@@ -114,7 +137,41 @@ export function tryImportAdjacencyMatrix(
     });
   });
 
-  return { model, warnings: [], format: "Adjacency matrix" };
+  return {
+    model,
+    warnings: [],
+    format: "Adjacency matrix",
+    formatKind: "adjacency-matrix",
+  };
+}
+
+function looksLikeWeightedEdgePairs(rows: string[][], matrixSize: number) {
+  if (rows.some((row) => row.length !== 3)) {
+    return false;
+  }
+
+  const endpoints = rows
+    .flatMap((row) => row.slice(0, 2))
+    .map((value) => Number(value));
+
+  if (endpoints.some((value) => !Number.isInteger(value))) {
+    return false;
+  }
+
+  const weights = rows.map((row) => Number(row[2]));
+
+  if (weights.some((value) => value === 0)) {
+    return false;
+  }
+
+  const zeroBased = endpoints.every(
+    (value) => value >= 0 && value < matrixSize,
+  );
+  const oneBased = endpoints.every(
+    (value) => value >= 1 && value <= matrixSize,
+  );
+
+  return !zeroBased && !oneBased;
 }
 
 function isSymmetricMatrix(values: number[][]) {
@@ -177,6 +234,7 @@ export function tryImportAdjacencyList(
       MAX_IMPORT_NODES,
       options,
       "Adjacency list",
+      "adjacency-list",
     );
   }
   if (edgeCount > MAX_IMPORT_EDGES) {
@@ -186,6 +244,7 @@ export function tryImportAdjacencyList(
       MAX_IMPORT_EDGES,
       options,
       "Adjacency list",
+      "adjacency-list",
     );
   }
 
@@ -269,7 +328,12 @@ export function tryImportAdjacencyList(
 
   arrangeNodes(model);
 
-  return { model, warnings, format: "Adjacency list" };
+  return {
+    model,
+    warnings,
+    format: "Adjacency list",
+    formatKind: "adjacency-list",
+  };
 }
 
 function parseAdjacencyTarget(token: string) {

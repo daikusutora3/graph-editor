@@ -55,6 +55,7 @@ export function importStructuredEdgeList(
       MAX_IMPORT_NODES,
       options,
       "辺リスト",
+      "contest-edge-list",
     );
   }
   if (edgeCount > MAX_IMPORT_EDGES) {
@@ -64,6 +65,7 @@ export function importStructuredEdgeList(
       MAX_IMPORT_EDGES,
       options,
       "辺リスト",
+      "contest-edge-list",
     );
   }
 
@@ -148,7 +150,12 @@ export function importStructuredEdgeList(
     );
   }
 
-  return { model, warnings, format: "辺リスト" };
+  return {
+    model,
+    warnings,
+    format: "辺リスト",
+    formatKind: "contest-edge-list",
+  };
 }
 
 function inferStructuredEdgeListIndexBase(

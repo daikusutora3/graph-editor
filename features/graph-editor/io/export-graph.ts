@@ -1,6 +1,6 @@
 import { exportEdgeList } from "./export-edge-list";
-import { getNodeByOrder } from "../core/graph/selectors";
 import type { GraphModel } from "../core/graph/model";
+import { getExportNodeEntries } from "./export-node-labels";
 
 export type GraphExportFormat =
   | "edge-list"
@@ -64,43 +64,59 @@ export function getGraphExportFormat(format: GraphExportFormat) {
 }
 
 function exportAdjacencyList(model: GraphModel): string {
-  const nodes = getNodeByOrder(model);
+  const entries = getExportNodeEntries(model);
   const nodeIndex = createNodeIndex(model);
-  const adjacency = new Map(nodes.map((node) => [node.id, [] as string[]]));
+  const adjacency = new Map(
+    entries.map((entry) => [
+      entry.node.id,
+      [] as Array<{ label: number; value: string }>,
+    ]),
+  );
 
   for (const edge of model.edges) {
     const source = nodeIndex.get(edge.source);
     const target = nodeIndex.get(edge.target);
     if (source == null || target == null) continue;
 
-    adjacency
-      .get(edge.source)
-      ?.push(
-        formatAdjacencyTarget(target, edge.weight, model.settings.weighted),
-      );
+    adjacency.get(edge.source)?.push({
+      label: target,
+      value: formatAdjacencyTarget(
+        target,
+        edge.weight,
+        model.settings.weighted,
+      ),
+    });
 
     if (!model.settings.directed && edge.source !== edge.target) {
-      adjacency
-        .get(edge.target)
-        ?.push(
-          formatAdjacencyTarget(source, edge.weight, model.settings.weighted),
-        );
+      adjacency.get(edge.target)?.push({
+        label: source,
+        value: formatAdjacencyTarget(
+          source,
+          edge.weight,
+          model.settings.weighted,
+        ),
+      });
     }
   }
 
-  return nodes
-    .map((node) => {
-      const label = nodeIndex.get(node.id);
-      return `${label}: ${(adjacency.get(node.id) ?? []).join(" ")}`;
+  return entries
+    .map((entry) => {
+      const label = nodeIndex.get(entry.node.id);
+      const targets = (adjacency.get(entry.node.id) ?? [])
+        .toSorted((a, b) => a.label - b.label)
+        .map((target) => target.value);
+      return `${label}: ${targets.join(" ")}`;
     })
     .join("\n");
 }
 
 function exportAdjacencyMatrix(model: GraphModel): string {
-  const nodes = getNodeByOrder(model);
-  const orderIndex = new Map(nodes.map((node, index) => [node.id, index]));
-  const matrix = Array.from({ length: nodes.length }, () =>
-    Array.from({ length: nodes.length }, () => "0"),
+  const entries = getExportNodeEntries(model);
+  const orderIndex = new Map(
+    entries.map((entry, index) => [entry.node.id, index]),
+  );
+  const matrix = Array.from({ length: entries.length }, () =>
+    Array.from({ length: entries.length }, () => "0"),
   );
 
   for (const edge of model.edges) {
@@ -121,10 +137,7 @@ function exportAdjacencyMatrix(model: GraphModel): string {
 
 function createNodeIndex(model: GraphModel) {
   return new Map(
-    getNodeByOrder(model).map((node, index) => [
-      node.id,
-      index + model.settings.indexBase,
-    ]),
+    getExportNodeEntries(model).map((entry) => [entry.node.id, entry.label]),
   );
 }
 

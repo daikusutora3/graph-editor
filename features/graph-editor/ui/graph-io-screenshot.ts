@@ -15,6 +15,7 @@ import type {
   PngExportBackground,
   PngExportLongEdgePreset,
   PngExportPaddingPreset,
+  PngExportScope,
   ScreenshotCopyState,
   ScreenshotDownloadState,
   ScreenshotPreview,
@@ -52,6 +53,7 @@ export function useGraphIOScreenshot({
   const [downloadMessage, setDownloadMessage] = useState("");
   const [background, setBackgroundState] =
     useState<PngExportBackground>("white");
+  const [scope, setScopeState] = useState<PngExportScope>("viewport");
   const [longEdgePreset, setLongEdgePresetState] =
     useState<PngExportLongEdgePreset>(DEFAULT_LONG_EDGE_PX);
   const [customLongEdgePx, setCustomLongEdgePxState] =
@@ -78,6 +80,8 @@ export function useGraphIOScreenshot({
       graph,
       longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
       paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
+      scope,
+      theme,
     }),
     [
       customLongEdgePx,
@@ -86,6 +90,8 @@ export function useGraphIOScreenshot({
       graph,
       longEdgePreset,
       paddingPreset,
+      scope,
+      theme,
     ],
   );
   const currentPreviewInputKey = useMemo(
@@ -129,10 +135,12 @@ export function useGraphIOScreenshot({
     background,
     longEdgePx,
     paddingPx,
+    scope,
   }: {
     background: PngExportBackground;
     longEdgePx: number;
     paddingPx: number;
+    scope: PngExportScope;
   }) => {
     if (isGraphEmpty) {
       return Promise.reject(new Error("グラフが空です"));
@@ -142,7 +150,7 @@ export function useGraphIOScreenshot({
     const contentLongEdgePx = Math.max(1, longEdgePx - safePaddingPx * 2);
 
     return exportPng({
-      scope: "full",
+      scope,
       background,
       maxWidth: contentLongEdgePx,
       maxHeight: contentLongEdgePx,
@@ -174,6 +182,7 @@ export function useGraphIOScreenshot({
       background?: PngExportBackground;
       longEdgePx?: number;
       paddingPx?: number;
+      scope?: PngExportScope;
     } = {},
   ) {
     const nextInput = {
@@ -183,6 +192,8 @@ export function useGraphIOScreenshot({
         input.longEdgePx ?? resolveLongEdgePx(longEdgePreset, customLongEdgePx),
       paddingPx:
         input.paddingPx ?? resolvePaddingPx(paddingPreset, customPaddingPx),
+      scope: input.scope ?? scope,
+      theme,
     };
     const inputKey = makeScreenshotInputKey(nextInput);
     const requestId = previewRequestRef.current + 1;
@@ -249,6 +260,7 @@ export function useGraphIOScreenshot({
       background: effectiveBackground,
       longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
       paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
+      scope,
     });
 
   const copy = () => {
@@ -351,6 +363,12 @@ export function useGraphIOScreenshot({
     void refreshPreview({ background: nextEffectiveBackground });
   };
 
+  const setScope = (nextScope: PngExportScope) => {
+    setScopeState(nextScope);
+    resetFeedback();
+    void refreshPreview({ scope: nextScope });
+  };
+
   const setPaddingPreset = (nextPreset: PngExportPaddingPreset) => {
     setPaddingPresetState(nextPreset);
     resetFeedback();
@@ -408,11 +426,13 @@ export function useGraphIOScreenshot({
     preview: visiblePreview,
     previewStale,
     refreshPreview,
+    scope,
     setBackground,
     setCustomLongEdgePx,
     setCustomPaddingPx,
     setLongEdgePreset,
     setPaddingPreset,
+    setScope,
     solidBackground,
   };
 }
