@@ -419,6 +419,7 @@ function RailButton({
         aria-pressed={active}
         data-active={active}
         data-accent={accent}
+        data-graph-shortcut-target="true"
         disabled={disabled}
         onClick={onClick}
         title={tooltipText}
@@ -465,6 +466,7 @@ function SwitchRailButton({
         role="switch"
         aria-label={label}
         aria-checked={checked}
+        data-graph-shortcut-target="true"
         disabled={disabled}
         onClick={onClick}
         title={tooltip}

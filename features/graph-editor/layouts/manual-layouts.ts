@@ -384,7 +384,6 @@ function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
   const nodeIds = orderedNodeIds(model);
   const adjacency = undirectedAdjacency(model);
   const components = connectedComponents(model);
-  const degree = degreeMap(model);
   const order = orderIndex(nodeIds);
   const positions: Record<NodeId, { x: number; y: number }> = {};
   const leafGap = 112;
@@ -396,10 +395,7 @@ function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
     const root =
       rootNodeId && componentSet.has(rootNodeId)
         ? rootNodeId
-        : [...component].sort((a, b) => {
-            const byDegree = degree.get(b)! - degree.get(a)!;
-            return byDegree === 0 ? order.get(a)! - order.get(b)! : byDegree;
-          })[0];
+        : [...component].sort((a, b) => order.get(a)! - order.get(b)!)[0];
     const visited = new Set<NodeId>([root]);
     const children = new Map<NodeId, NodeId[]>(
       component.map((nodeId) => [nodeId, []]),

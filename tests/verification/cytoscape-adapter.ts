@@ -26,6 +26,7 @@ verifyDiffSyncPreservesTransientClasses();
 verifyDiffSyncCanSkipDraggedNodePositions();
 verifyEdgeTopologyChangesAreRecreated();
 verifyEdgeRoutingCanFollowDraggedNodePositions();
+verifySelfLoopRoutingCanFollowDraggedNodePositions();
 verifyEdgeRoutingSyncPreservesModelData();
 verifyEdgeRoutingSyncCanRestorePreviewData();
 verifyViewportRescuePointDetection();
@@ -230,6 +231,26 @@ function verifyEdgeRoutingCanFollowDraggedNodePositions() {
   }
 }
 
+function verifySelfLoopRoutingCanFollowDraggedNodePositions() {
+  const graph = selfLoopRoutingFixture();
+  const cy = createCy(graph);
+
+  try {
+    const edge = cy.getElementById("aa");
+    const initialLoopDirection = edge.data("loopDirection");
+
+    cy.getElementById("b").position({ x: 30, y: -30 });
+    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+
+    expect(
+      initialLoopDirection !== edge.data("loopDirection"),
+      "self-loop routing preview should use current Cytoscape node positions during drag",
+    );
+  } finally {
+    cy.destroy();
+  }
+}
+
 function verifyEdgeRoutingSyncPreservesModelData() {
   const graph = edgeRoutingFixture();
   const cy = createCy(graph);
@@ -401,5 +422,16 @@ function edgeRoutingFixture(): GraphModel {
         color: "blue",
       },
     ],
+  };
+}
+
+function selfLoopRoutingFixture(): GraphModel {
+  return {
+    ...createEmptyGraphModel(),
+    nodes: [
+      { id: "a", label: "A", order: 0, x: 0, y: 0 },
+      { id: "b", label: "B", order: 1, x: 120, y: 0 },
+    ],
+    edges: [{ id: "aa", source: "a", target: "a" }],
   };
 }

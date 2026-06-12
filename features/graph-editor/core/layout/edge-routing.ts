@@ -450,6 +450,7 @@ function scoreEdgeLabelOverlap(
     if (
       otherEdge.id === edge.id ||
       otherEdge.source === otherEdge.target ||
+      routeEdgeKey(otherEdge) === routeEdgeKey(edge) ||
       !edgeHasVisibleLabel(otherEdge)
     ) {
       continue;

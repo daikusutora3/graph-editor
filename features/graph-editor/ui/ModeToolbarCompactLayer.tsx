@@ -169,6 +169,7 @@ function CompactToolbarButton({
         aria-label={label}
         aria-pressed={active}
         data-active={active}
+        data-graph-shortcut-target="true"
         disabled={disabled}
         onClick={onClick}
         className={cn(

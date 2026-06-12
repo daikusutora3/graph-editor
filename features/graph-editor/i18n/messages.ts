@@ -190,6 +190,10 @@ type Messages = {
     searchAria: string;
     clearSearch: string;
     empty: string;
+    sizedKindLabel: string;
+    sizedNodeCountLabel: string;
+    sizedNodeCountAria: string;
+    sizedCreate: string;
     group: Record<SampleGraphGroupKey, { label: string; note: string }>;
     item: Partial<
       Record<
@@ -615,6 +619,10 @@ const ja = {
     searchAria: "サンプルを名前で検索",
     clearSearch: "検索をクリア",
     empty: "該当するサンプルはありません",
+    sizedKindLabel: "形",
+    sizedNodeCountLabel: "頂点数",
+    sizedNodeCountAria: "生成する頂点数",
+    sizedCreate: "作成",
     group: {
       basics: {
         label: "基本的なグラフ族",
@@ -919,6 +927,10 @@ const en: Messages = {
     searchAria: "Search samples by name",
     clearSearch: "Clear search",
     empty: "No matching samples",
+    sizedKindLabel: "Shape",
+    sizedNodeCountLabel: "Nodes",
+    sizedNodeCountAria: "Node count to generate",
+    sizedCreate: "Create",
     group: {
       basics: { label: "Basic families", note: "Common starting shapes" },
       extremal: {
@@ -1219,6 +1231,10 @@ const zhHans: Messages = {
     searchAria: "按名称搜索示例",
     clearSearch: "清除搜索",
     empty: "没有匹配的示例",
+    sizedKindLabel: "形状",
+    sizedNodeCountLabel: "顶点数",
+    sizedNodeCountAria: "要生成的顶点数",
+    sizedCreate: "创建",
     group: {
       basics: { label: "基础图族", note: "常见的起始形状" },
       extremal: { label: "二分与极值", note: "染色、匹配和极值示例" },

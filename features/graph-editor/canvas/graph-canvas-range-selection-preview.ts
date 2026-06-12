@@ -232,15 +232,24 @@ function edgeControlPathInBox(box: RenderedBox, edge: EdgeSingular) {
   const points = [
     edge.renderedSourceEndpoint(),
     edge.renderedTargetEndpoint(),
-    ...readRenderedEdgePoints(edge.renderedControlPoints()),
-    ...readRenderedEdgePoints(edge.renderedSegmentPoints()),
+    ...readRenderedEdgePoints(edge, "renderedControlPoints"),
+    ...readRenderedEdgePoints(edge, "renderedSegmentPoints"),
   ].filter(isRenderedPoint);
 
   return points.every((point) => pointInBox(box, point));
 }
 
-function readRenderedEdgePoints(points: RenderedPoint[] | undefined) {
-  return Array.isArray(points) ? points : [];
+function readRenderedEdgePoints(
+  edge: EdgeSingular,
+  method: "renderedControlPoints" | "renderedSegmentPoints",
+) {
+  try {
+    const points = edge[method]();
+
+    return Array.isArray(points) ? points : [];
+  } catch {
+    return [];
+  }
 }
 
 function isRenderedPoint(point: unknown): point is RenderedPoint {
