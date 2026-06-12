@@ -548,7 +548,7 @@ function verifyShortcutActions() {
   );
   expect(
     shortcutStore.get(graphAtom).edges.find((edge) => edge.id === "ab")
-      ?.color === "white",
+      ?.color === "black",
     "color cycle should update selected edge color",
   );
   expect(

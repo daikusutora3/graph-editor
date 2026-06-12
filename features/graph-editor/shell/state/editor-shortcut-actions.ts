@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-import { nextGraphColor } from "../../core/graph/colors";
+import { nextEdgeColor, nextNodeColor } from "../../core/graph/colors";
 import {
   createMoveNodesCommand,
   setEdgesColorCommand,
@@ -101,7 +101,7 @@ export const cycleSelectionColorAtom = atom(null, (get, set) => {
     );
     set(
       executeCommandAtom,
-      setNodesColorCommand(selection.nodeIds, nextGraphColor(firstNode?.color)),
+      setNodesColorCommand(selection.nodeIds, nextNodeColor(firstNode?.color)),
     );
   }
 
@@ -111,7 +111,7 @@ export const cycleSelectionColorAtom = atom(null, (get, set) => {
     );
     set(
       executeCommandAtom,
-      setEdgesColorCommand(selection.edgeIds, nextGraphColor(firstEdge?.color)),
+      setEdgesColorCommand(selection.edgeIds, nextEdgeColor(firstEdge?.color)),
     );
   }
 
