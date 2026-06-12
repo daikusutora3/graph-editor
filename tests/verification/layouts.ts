@@ -161,6 +161,14 @@ expect(
   "line layout should preserve node order instead of path traversal order",
 );
 
+const treeCommand = createManualLayoutCommand(unorderedTree, "tree");
+expect(
+  treeCommand.type === "move-nodes" &&
+    treeCommand.after.root.y < treeCommand.after.left.y &&
+    treeCommand.after.root.y < treeCommand.after.right.y,
+  "tree layout should use the smallest ordered node as the default root",
+);
+
 const bipartiteCommand = createManualLayoutCommand(
   disconnectedBipartite,
   "bipartite",

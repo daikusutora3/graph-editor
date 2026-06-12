@@ -11,12 +11,14 @@ export function reduceGraphIntent(
     case "replace-model":
       return intent.model;
     case "add-node": {
-      const nodeIndex = nextAvailableNodeIndex(model);
+      const nodeLabelIndex = nextAvailableNodeLabelIndex(model);
+      const nodeOrder = nextAvailableNodeOrder(model);
       const node = createNode({
         ...intent.input,
         label:
-          intent.input.label ?? String(nodeIndex + model.settings.indexBase),
-        order: nodeIndex,
+          intent.input.label ??
+          String(nodeLabelIndex + model.settings.indexBase),
+        order: nodeOrder,
       });
       return { ...model, nodes: [...model.nodes, node] };
     }
@@ -171,19 +173,26 @@ export function reduceGraphIntent(
   }
 }
 
-function nextAvailableNodeIndex(model: GraphModel) {
+function nextAvailableNodeLabelIndex(model: GraphModel) {
   const usedLabels = new Set(model.nodes.map((node) => node.label));
-  const usedOrders = new Set(model.nodes.map((node) => node.order));
   let index = 0;
 
-  while (
-    usedLabels.has(String(index + model.settings.indexBase)) ||
-    usedOrders.has(index)
-  ) {
+  while (usedLabels.has(String(index + model.settings.indexBase))) {
     index += 1;
   }
 
   return index;
+}
+
+function nextAvailableNodeOrder(model: GraphModel) {
+  const usedOrders = new Set(model.nodes.map((node) => node.order));
+  let order = 0;
+
+  while (usedOrders.has(order)) {
+    order += 1;
+  }
+
+  return order;
 }
 
 function adjustNodeLabelsForIndexBase(

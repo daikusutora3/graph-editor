@@ -10,6 +10,7 @@ import { useI18n } from "../i18n/I18nProvider";
 
 import {
   edgeLabelHitboxWidth,
+  NODE_HITBOX_SIZE,
   type EdgeLabelHitbox,
   type NodeHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
@@ -308,12 +309,14 @@ export function SelectNodeHitboxes({
                 ? `选择顶点 ${node.label}`
                 : `Select node ${node.label}`
           }
-          className="absolute z-20 size-12 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none active:cursor-grabbing"
+          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none active:cursor-grabbing"
           inert={rangeSelectionActive}
           style={{
+            height: NODE_HITBOX_SIZE,
             left: node.x,
             pointerEvents: rangeSelectionActive ? "none" : undefined,
             top: node.y,
+            width: NODE_HITBOX_SIZE,
           }}
           onPointerDown={(event) => {
             if (onRangeSelectionPointerDown(event)) {

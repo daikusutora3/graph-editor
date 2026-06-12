@@ -44,8 +44,8 @@ export function ModeToolbar({
       className={cn(
         "gv-left-sidebar absolute top-[var(--app-space-3)] left-[var(--app-space-3)] z-[70] min-h-0 border border-[var(--divider)] shadow-[var(--app-shadow-card)] backdrop-blur-xl transition-[width,height,border-radius] duration-[var(--app-duration-base)] ease-[var(--app-ease)] motion-reduce:transition-none",
         toolbar.sidebarCollapsed
-          ? "rounded-[calc(var(--app-radius-md)+2px)]"
-          : "w-[var(--app-toolbar-width)] rounded-[var(--app-radius-lg)]",
+          ? "overflow-visible rounded-[calc(var(--app-radius-md)+2px)]"
+          : "w-[var(--app-toolbar-width)] overflow-hidden rounded-[var(--app-radius-lg)]",
       )}
       style={
         toolbar.toolbarHeight > 0

@@ -10,7 +10,12 @@ import type { GraphModel } from "../core/graph/model";
 import { useI18n } from "../i18n/I18nProvider";
 import {
   createSampleGraph,
+  createSizedSampleGraph,
+  SIZED_SAMPLE_GRAPH_MAX_NODES,
+  SIZED_SAMPLE_GRAPH_MIN_NODES,
+  sizedSampleGraphKinds,
   type SampleGraphKind,
+  type SizedSampleGraphKind,
 } from "../samples/sample-graphs";
 import {
   sampleGraphCount,
@@ -36,6 +41,8 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
   const { locale, messages } = useI18n();
   const applyGraphModel = useApplyGraphModel();
   const [sampleQuery, setSampleQuery] = useState("");
+  const [sizedKind, setSizedKind] = useState<SizedSampleGraphKind>("path");
+  const [sizedNodeCount, setSizedNodeCount] = useState("8");
   const filteredSampleGroups = useMemo(() => {
     const query = sampleQuery.trim().toLowerCase();
 
@@ -77,9 +84,75 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
     });
     onSampleApplied();
   };
+  const generateSizedSample = () => {
+    const parsedNodeCount = Number(sizedNodeCount);
+    const model = createSizedSampleGraph(
+      sizedKind,
+      parsedNodeCount,
+      graph.settings,
+    );
+    applyGraphModel(model, {
+      clearEdgeDraft: true,
+      clearSelection: true,
+      fitAfterUpdate: true,
+      selectMode: true,
+    });
+    onSampleApplied();
+  };
 
   return (
     <div className="gv-sample-gallery flex min-h-0 flex-1 flex-col">
+      <form
+        className="flex flex-wrap items-end gap-[var(--app-space-2)] px-[var(--app-space-3)] pt-[var(--app-space-2)] pb-[var(--app-space-1)]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          generateSizedSample();
+        }}
+      >
+        <label className="flex min-w-[150px] flex-[1_1_160px] flex-col gap-1">
+          <span className="gv-section-label">
+            {messages.samples.sizedKindLabel}
+          </span>
+          <select
+            value={sizedKind}
+            onChange={(event) =>
+              setSizedKind(event.target.value as SizedSampleGraphKind)
+            }
+            className="gv-control h-9 w-full px-[var(--app-space-3)] text-[length:var(--app-text-sm)]"
+          >
+            {sizedSampleGraphKinds.map((kind) => {
+              const sample = messages.samples.item[kind];
+              const fallback = humanizeSampleKind(kind);
+              return (
+                <option key={kind} value={kind}>
+                  {sample?.title ?? fallback}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        <label className="flex w-[112px] flex-col gap-1">
+          <span className="gv-section-label">
+            {messages.samples.sizedNodeCountLabel}
+          </span>
+          <input
+            type="number"
+            min={SIZED_SAMPLE_GRAPH_MIN_NODES}
+            max={SIZED_SAMPLE_GRAPH_MAX_NODES}
+            step={1}
+            value={sizedNodeCount}
+            aria-label={messages.samples.sizedNodeCountAria}
+            onChange={(event) => setSizedNodeCount(event.target.value)}
+            className="gv-control h-9 w-full px-[var(--app-space-3)] text-[length:var(--app-text-sm)]"
+          />
+        </label>
+        <button
+          type="submit"
+          className="gv-control h-9 px-[var(--app-space-4)] text-[length:var(--app-text-sm)]"
+        >
+          {messages.samples.sizedCreate}
+        </button>
+      </form>
       <SampleGalleryFilter
         query={sampleQuery}
         total={sampleGraphCount}

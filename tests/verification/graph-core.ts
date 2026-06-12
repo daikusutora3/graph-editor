@@ -4,9 +4,11 @@ import {
   defaultGraphSettings,
 } from "../../features/graph-editor/core/graph/graph-factory";
 import {
+  addNodeCommand,
   addEdgeCommand,
   deleteSelectionCommand,
   reverseEdgesCommand,
+  updateNodeCommand,
   updateSettingsCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
 import { applyGraphPatch } from "../../features/graph-editor/core/graph/graph-patch";
@@ -200,6 +202,24 @@ expect(
     oneBasedModel.nodes[1]?.label === "Custom",
   "index-base updates should only rewrite generated node labels",
 );
+
+const relabeledAddBase = {
+  ...createEmptyGraphModel({ indexBase: 0 }),
+  nodes: [
+    { id: "a", label: "0", order: 0, x: 0, y: 0 },
+    { id: "b", label: "1", order: 1, x: 100, y: 0 },
+  ],
+};
+const relabeledAddModel = reduceGraphIntent(
+  reduceGraphIntent(relabeledAddBase, updateNodeCommand("b", { label: "2" })),
+  addNodeCommand({ id: "c", x: 200, y: 0 }),
+);
+
+expect(
+  relabeledAddModel.nodes.find((node) => node.id === "c")?.label === "1",
+  "new node labels should reuse gaps created by manual relabeling",
+);
+
 expect(
   oneBasedModel.edges[0]?.weight === "1",
   "enabling weighted mode should default blank edge weights to one",
@@ -317,6 +337,19 @@ for (const edgeCount of [12, 13, 14]) {
     `${edgeCount} parallel edges should all receive unique bow values`,
   );
 }
+
+const weightedParallelEdges = importGraphInput("2 2\n0 1 10\n0 1 20", {
+  indexBase: 0,
+  weighted: true,
+}).model;
+const weightedParallelBows = weightedParallelEdges.edges.map(
+  (edge) => computeEdgeRouting(weightedParallelEdges).get(edge.id)?.bowPx ?? 0,
+);
+expect(
+  weightedParallelBows[0] === -weightedParallelBows[1] &&
+    Math.abs(weightedParallelBows[0]) <= 36,
+  "weighted parallel edges should stay near-symmetric instead of avoiding their own labels",
+);
 
 const loopRoutingModel: GraphModel = {
   version: 1,
