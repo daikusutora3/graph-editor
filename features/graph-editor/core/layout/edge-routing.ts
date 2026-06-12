@@ -173,9 +173,15 @@ function duplicateBowSpacing(edgeCount: number, requestedSpacing: number) {
     return requestedSpacing;
   }
 
+  const maximumUniqueSpacing = (MAX_BOW_PX * 2) / Math.max(1, edgeCount - 1);
+
+  if (maximumUniqueSpacing < MIN_DUPLICATE_BOW_SPACING_PX) {
+    return maximumUniqueSpacing;
+  }
+
   return Math.max(
     MIN_DUPLICATE_BOW_SPACING_PX,
-    Math.min(requestedSpacing, (MAX_BOW_PX * 2) / Math.max(1, edgeCount - 1)),
+    Math.min(requestedSpacing, maximumUniqueSpacing),
   );
 }
 

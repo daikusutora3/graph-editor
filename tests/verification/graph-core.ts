@@ -313,7 +313,7 @@ expect(
   "multi-edge routing should keep parallel edges visually separated",
 );
 
-for (const edgeCount of [12, 13, 14]) {
+for (const edgeCount of [12, 13, 14, 40]) {
   const manyParallelEdges: GraphModel = {
     version: 1,
     nodes: [
@@ -349,6 +349,39 @@ expect(
   weightedParallelBows[0] === -weightedParallelBows[1] &&
     Math.abs(weightedParallelBows[0]) <= 36,
   "weighted parallel edges should stay near-symmetric instead of avoiding their own labels",
+);
+
+const mixedDirectedWeightedParallelEdges: GraphModel = {
+  version: 1,
+  nodes: [
+    { id: "a", label: "A", order: 0, x: 0, y: 0 },
+    { id: "b", label: "B", order: 1, x: 180, y: 0 },
+    { id: "near", label: "near", order: 2, x: 90, y: 8 },
+  ],
+  edges: [
+    { id: "ab-heavy", source: "a", target: "b", weight: "100000" },
+    { id: "ba-heavy", source: "b", target: "a", weight: "200000" },
+    { id: "ab-light", source: "a", target: "b", weight: "1" },
+  ],
+  settings: { ...defaultGraphSettings, directed: true, weighted: true },
+};
+const mixedDirectedWeightedRouting = computeEdgeRouting(
+  mixedDirectedWeightedParallelEdges,
+);
+const mixedDirectedWeightedCanonicalBows =
+  mixedDirectedWeightedParallelEdges.edges
+    .map((edge) =>
+      canonicalBow(edge, mixedDirectedWeightedRouting.get(edge.id)?.bowPx ?? 0),
+    )
+    .toSorted((a, b) => a - b);
+
+expect(
+  mixedDirectedWeightedCanonicalBows.every((bowPx, index) => {
+    const nextBowPx = mixedDirectedWeightedCanonicalBows[index + 1];
+
+    return nextBowPx === undefined || nextBowPx - bowPx >= 30;
+  }),
+  "mixed-direction weighted parallel edges should still receive separated canonical routes",
 );
 
 const loopRoutingModel: GraphModel = {
