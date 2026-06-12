@@ -84,7 +84,7 @@
   --graph-swatch-white: #ffffff;
   --graph-swatch-black: #111827;
   --graph-swatch-red: #ef4444;
-  --graph-swatch-edge: #64748b;
+  --graph-swatch-edge: var(--canvas-edge);
   --graph-swatch-yellow: #f59e0b;
   --graph-swatch-blue: #3b82f6;
   --graph-swatch-green: #22c55e;
