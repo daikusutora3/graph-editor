@@ -319,6 +319,21 @@ function verifySizedSampleGraphs() {
   if (star.edges.length !== 6) {
     fail("star: sized sample node count should include the center");
   }
+
+  const tooSmall = createSizedSampleGraph("path", 0, { indexBase: 0 });
+  if (tooSmall.nodes.length !== 1) {
+    fail("sized sample node count should clamp values below the minimum");
+  }
+
+  const tooLarge = createSizedSampleGraph("path", 999, { indexBase: 0 });
+  if (tooLarge.nodes.length !== 64) {
+    fail("sized sample node count should clamp values above the maximum");
+  }
+
+  const invalid = createSizedSampleGraph("path", Number.NaN, { indexBase: 0 });
+  if (invalid.nodes.length !== 6) {
+    fail("sized sample node count should fall back when input is not finite");
+  }
 }
 
 function orderedLabels(model: GraphModel): string[] {

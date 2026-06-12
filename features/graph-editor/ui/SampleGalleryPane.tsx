@@ -104,6 +104,7 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
     <div className="gv-sample-gallery flex min-h-0 flex-1 flex-col">
       <form
         className="flex flex-wrap items-end gap-[var(--app-space-2)] px-[var(--app-space-3)] pt-[var(--app-space-2)] pb-[var(--app-space-1)]"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           generateSizedSample();
