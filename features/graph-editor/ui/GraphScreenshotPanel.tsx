@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ClipboardCopy, Download } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import { cn } from "@/lib/utils";
@@ -125,65 +125,58 @@ export function ScreenshotFooter({
   onDownloadScreenshot,
 }: ScreenshotFooterProps) {
   const { messages } = useI18n();
+  const copyStatus =
+    screenshotCopyState === "copied" || screenshotCopyState === "saved"
+      ? "success"
+      : screenshotCopyState === "blocked"
+        ? "warning"
+        : undefined;
+  const copyLabel =
+    screenshotCopyState === "copying"
+      ? messages.common.copying
+      : screenshotCopyState === "copied"
+        ? messages.common.copied
+        : screenshotCopyState === "saved"
+          ? messages.common.saved
+          : screenshotCopyState === "blocked"
+            ? messages.common.failed
+            : messages.common.copy;
 
   return (
     <div className="flex min-w-0 justify-end">
-      <div className="grid w-full max-w-[17.5rem] grid-cols-2 gap-1 rounded-[var(--app-radius-sm)] bg-[var(--state-track-bg)] p-1">
-        <ScreenshotActionButton
-          icon={
-            screenshotDownloadState === "saved" ? (
-              <Check className="size-4" />
-            ) : (
-              <Download className="size-4" />
-            )
-          }
-          status={
-            screenshotDownloadState === "saved"
-              ? "success"
+      <div className="flex min-w-0 items-center gap-2">
+        <ScreenshotDownloadButton
+          ariaLabel={
+            screenshotDownloadState === "saving"
+              ? messages.screenshot.downloading
               : screenshotDownloadState === "failed"
-                ? "warning"
-                : undefined
+                ? messages.screenshot.downloadFailed
+                : messages.screenshot.download
           }
+          busy={screenshotDownloadState === "saving"}
           disabled={isGraphEmpty || screenshotDownloadState === "saving"}
+          label={messages.screenshot.download}
+          title={messages.screenshot.download}
           onClick={onDownloadScreenshot}
-        >
-          {screenshotDownloadState === "saving"
-            ? messages.screenshot.downloading
-            : screenshotDownloadState === "saved"
-              ? messages.screenshot.downloaded
-              : screenshotDownloadState === "failed"
-                ? messages.common.failed
-                : messages.screenshot.download}
-        </ScreenshotActionButton>
-        <ScreenshotActionButton
-          icon={
-            screenshotCopyState === "copied" ||
-            screenshotCopyState === "saved" ? (
-              <Check className="size-4" />
-            ) : (
-              <ClipboardCopy className="size-4" />
-            )
+        />
+        <ScreenshotCopyButton
+          ariaLabel={
+            screenshotCopyState === "copying"
+              ? messages.common.copying
+              : screenshotCopyState === "copied"
+                ? messages.screenshot.copiedAria
+                : screenshotCopyState === "saved"
+                  ? messages.screenshot.savedAria
+                  : screenshotCopyState === "blocked"
+                    ? messages.screenshot.blockedAria
+                    : messages.common.copy
           }
-          status={
-            screenshotCopyState === "copied" || screenshotCopyState === "saved"
-              ? "success"
-              : screenshotCopyState === "blocked"
-                ? "warning"
-                : undefined
-          }
+          busy={screenshotCopyState === "copying"}
           disabled={isGraphEmpty || screenshotCopyState === "copying"}
+          label={copyLabel}
+          status={copyStatus}
           onClick={onCopyScreenshot}
-        >
-          {screenshotCopyState === "copying"
-            ? messages.common.copying
-            : screenshotCopyState === "copied"
-              ? messages.common.copied
-              : screenshotCopyState === "saved"
-                ? messages.common.saved
-                : screenshotCopyState === "blocked"
-                  ? messages.common.failed
-                  : messages.common.copy}
-        </ScreenshotActionButton>
+        />
       </div>
     </div>
   );
@@ -380,17 +373,19 @@ function ScreenshotPreviewCard({
   );
 }
 
-function ScreenshotActionButton({
-  children,
+function ScreenshotDownloadButton({
+  ariaLabel,
+  busy = false,
   disabled,
-  icon,
-  status,
+  label,
+  title,
   onClick,
 }: {
-  children: string;
+  ariaLabel: string;
+  busy?: boolean;
   disabled: boolean;
-  icon: ReactNode;
-  status?: "success" | "warning";
+  label: string;
+  title: string;
   onClick: () => void;
 }) {
   return (
@@ -398,17 +393,61 @@ function ScreenshotActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      data-status={status}
+      aria-busy={busy}
+      aria-label={ariaLabel}
+      title={title}
       className={cn(
-        "inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-sm)-1px)] px-2.5 text-[length:var(--app-text-xs)] leading-[var(--app-leading-tight)] font-[650] text-[var(--text-dim)] transition-colors hover:bg-[var(--state-track-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none disabled:text-[var(--text-mute)] disabled:opacity-60",
-        status === "success" &&
-          "bg-[var(--ok-soft)] text-[var(--ok)] hover:bg-[var(--ok-soft)] hover:text-[var(--ok)]",
-        status === "warning" &&
-          "bg-[var(--warn-soft)] text-[var(--warn)] hover:bg-[var(--warn-soft)] hover:text-[var(--warn)]",
+        "inline-flex h-9 w-40 max-w-[calc(100vw-9rem)] min-w-0 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-3 text-[length:var(--app-text-xs)] leading-[var(--app-leading-tight)] font-[700] text-[var(--text-dim)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--state-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--state-focus-ring-offset)] focus-visible:outline-none disabled:text-[var(--text-mute)] disabled:opacity-55",
       )}
     >
-      {icon}
-      <span className="whitespace-nowrap">{children}</span>
+      <Download className="size-4 shrink-0" />
+      <span className="whitespace-nowrap">{label}</span>
+    </button>
+  );
+}
+
+function ScreenshotCopyButton({
+  ariaLabel,
+  busy = false,
+  disabled,
+  label,
+  status,
+  onClick,
+}: {
+  ariaLabel: string;
+  busy?: boolean;
+  disabled: boolean;
+  label: string;
+  status?: "success" | "warning";
+  onClick: () => void;
+}) {
+  const settled = status === "success" || status === "warning";
+  const toneClass =
+    status === "success"
+      ? "border-[var(--ok)] bg-[var(--ok-soft)] font-[800] text-[var(--ok)] hover:border-[var(--ok)] hover:bg-[var(--ok-soft)] hover:text-[var(--ok)]"
+      : status === "warning"
+        ? "border-[var(--warn)] bg-[var(--warn-soft)] font-[800] text-[var(--warn)] hover:border-[var(--warn)] hover:bg-[var(--warn-soft)] hover:text-[var(--warn)]"
+        : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-dim)] hover:border-[var(--border-strong)] hover:bg-[var(--state-hover-bg)] hover:text-[var(--state-hover-text)]";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-busy={busy}
+      aria-label={ariaLabel}
+      data-status={status}
+      className={cn(
+        "inline-flex h-9 w-32 max-w-[calc(100vw-7rem)] min-w-0 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-3 text-[length:var(--app-text-xs)] leading-[var(--app-leading-tight)] font-[700] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--state-focus-ring-offset)] focus-visible:outline-none disabled:text-[var(--text-mute)] disabled:opacity-60",
+        toneClass,
+      )}
+    >
+      {settled ? (
+        <Check className="size-4 shrink-0" strokeWidth={2.5} />
+      ) : (
+        <ClipboardCopy className="size-4 shrink-0" />
+      )}
+      <span className="min-w-0 truncate">{label}</span>
     </button>
   );
 }
