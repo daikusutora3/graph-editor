@@ -126,11 +126,8 @@ export function GraphIOControls() {
             screenshotLongEdgePreset={controller.screenshot.longEdgePreset}
             screenshotPaddingPreset={controller.screenshot.paddingPreset}
             screenshotPreview={controller.screenshot.preview}
-            screenshotPreviewStale={controller.screenshot.previewStale}
-            screenshotScope={controller.screenshot.scope}
             solidBackground={controller.screenshot.solidBackground}
             theme={controller.theme}
-            onRefreshPreview={() => void controller.screenshot.refreshPreview()}
             onScreenshotCustomLongEdgeChange={
               controller.screenshot.setCustomLongEdgePx
             }
@@ -138,13 +135,6 @@ export function GraphIOControls() {
               controller.screenshot.setCustomPaddingPx
             }
             onScreenshotBackgroundChange={controller.screenshot.setBackground}
-            onScreenshotLongEdgePresetChange={
-              controller.screenshot.setLongEdgePreset
-            }
-            onScreenshotPaddingPresetChange={
-              controller.screenshot.setPaddingPreset
-            }
-            onScreenshotScopeChange={controller.screenshot.setScope}
           />
         </DropdownShell>
       ) : null}

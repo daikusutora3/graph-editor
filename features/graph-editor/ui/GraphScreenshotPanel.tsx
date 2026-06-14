@@ -1,28 +1,32 @@
 "use client";
 
-import { Check, ClipboardCopy, Download, RefreshCw } from "lucide-react";
+import { Check, ClipboardCopy, Download } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 import type {
   PngExportBackground,
-  PngExportLongEdgePreset,
-  PngExportPaddingPreset,
-  PngExportScope,
   ScreenshotCopyState,
   ScreenshotDownloadState,
   ScreenshotPreview,
 } from "./graph-io-types";
-import {
-  MAX_LONG_EDGE_PX,
-  MAX_PADDING_PX,
-  MIN_LONG_EDGE_PX,
-  MIN_PADDING_PX,
-  PNG_EXPORT_LONG_EDGE_PRESETS,
-  PNG_EXPORT_PADDING_PRESETS,
+import type {
+  PngExportLongEdgePreset,
+  PngExportPaddingPreset,
 } from "./graph-io-types";
 import type { ThemeMode } from "./theme";
+
+const LONG_EDGE_RANGE = {
+  max: 3840,
+  min: 480,
+  step: 20,
+} as const;
+const PADDING_RANGE = {
+  max: 160,
+  min: 0,
+  step: 4,
+} as const;
 
 type ScreenshotPanelProps = {
   effectiveBackground: PngExportBackground;
@@ -33,17 +37,11 @@ type ScreenshotPanelProps = {
   screenshotPaddingPreset: PngExportPaddingPreset;
   screenshotCustomPaddingPx: number;
   screenshotPreview: ScreenshotPreview;
-  screenshotPreviewStale: boolean;
-  screenshotScope: PngExportScope;
   solidBackground: "white" | "black";
   theme: ThemeMode;
-  onRefreshPreview: () => void;
   onScreenshotCustomLongEdgeChange: (longEdgePx: number) => void;
   onScreenshotBackgroundChange: (background: PngExportBackground) => void;
-  onScreenshotLongEdgePresetChange: (preset: PngExportLongEdgePreset) => void;
   onScreenshotCustomPaddingChange: (paddingPx: number) => void;
-  onScreenshotPaddingPresetChange: (preset: PngExportPaddingPreset) => void;
-  onScreenshotScopeChange: (scope: PngExportScope) => void;
 };
 
 type ScreenshotFooterProps = {
@@ -69,31 +67,16 @@ export function ScreenshotPanel({
   screenshotPaddingPreset,
   screenshotCustomPaddingPx,
   screenshotPreview,
-  screenshotPreviewStale,
-  screenshotScope,
   solidBackground,
   theme,
-  onRefreshPreview,
   onScreenshotCustomLongEdgeChange,
   onScreenshotBackgroundChange,
-  onScreenshotLongEdgePresetChange,
   onScreenshotCustomPaddingChange,
-  onScreenshotPaddingPresetChange,
-  onScreenshotScopeChange,
 }: ScreenshotPanelProps) {
   const { messages } = useI18n();
 
   return (
     <div className="flex flex-col gap-[var(--app-space-3)]">
-      <OptionGroup
-        label={messages.screenshot.scope}
-        value={screenshotScope}
-        options={[
-          { label: messages.screenshot.viewport, value: "viewport" },
-          { label: messages.screenshot.fullGraph, value: "full" },
-        ]}
-        onChange={onScreenshotScopeChange}
-      />
       <OptionGroup
         label={messages.screenshot.background}
         value={effectiveBackground}
@@ -113,19 +96,16 @@ export function ScreenshotPanel({
         customLongEdgePx={screenshotCustomLongEdgePx}
         preset={screenshotLongEdgePreset}
         onCustomLongEdgeChange={onScreenshotCustomLongEdgeChange}
-        onPresetChange={onScreenshotLongEdgePresetChange}
       />
       <PaddingControl
         customPaddingPx={screenshotCustomPaddingPx}
         preset={screenshotPaddingPreset}
         onCustomPaddingChange={onScreenshotCustomPaddingChange}
-        onPresetChange={onScreenshotPaddingPresetChange}
       />
 
       <ScreenshotPreviewCard
+        background={effectiveBackground}
         preview={screenshotPreview}
-        stale={screenshotPreviewStale}
-        onRefresh={onRefreshPreview}
       />
 
       {screenshotCopyMessage || screenshotDownloadMessage ? (
@@ -147,62 +127,64 @@ export function ScreenshotFooter({
   const { messages } = useI18n();
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-[var(--app-space-2)]">
-      <ScreenshotActionButton
-        icon={
-          screenshotDownloadState === "saved" ? (
-            <Check className="size-4" />
-          ) : (
-            <Download className="size-4" />
-          )
-        }
-        status={
-          screenshotDownloadState === "saved"
-            ? "success"
-            : screenshotDownloadState === "failed"
-              ? "warning"
-              : undefined
-        }
-        disabled={isGraphEmpty || screenshotDownloadState === "saving"}
-        onClick={onDownloadScreenshot}
-      >
-        {screenshotDownloadState === "saving"
-          ? messages.screenshot.downloading
-          : screenshotDownloadState === "saved"
-            ? messages.screenshot.downloaded
-            : screenshotDownloadState === "failed"
-              ? messages.common.failed
-              : messages.screenshot.download}
-      </ScreenshotActionButton>
-      <ScreenshotActionButton
-        icon={
-          screenshotCopyState === "copied" ||
-          screenshotCopyState === "saved" ? (
-            <Check className="size-4" />
-          ) : (
-            <ClipboardCopy className="size-4" />
-          )
-        }
-        status={
-          screenshotCopyState === "copied" || screenshotCopyState === "saved"
-            ? "success"
-            : screenshotCopyState === "blocked"
-              ? "warning"
-              : undefined
-        }
-        disabled={isGraphEmpty || screenshotCopyState === "copying"}
-        onClick={onCopyScreenshot}
-      >
-        {screenshotCopyState === "copying"
-          ? messages.common.copying
-          : screenshotCopyState === "copied"
-            ? messages.common.copied
-            : screenshotCopyState === "saved"
-              ? messages.common.saved
-              : screenshotCopyState === "blocked"
+    <div className="flex min-w-0 justify-end">
+      <div className="grid w-full max-w-[17.5rem] grid-cols-2 gap-1 rounded-[var(--app-radius-sm)] bg-[var(--state-track-bg)] p-1">
+        <ScreenshotActionButton
+          icon={
+            screenshotDownloadState === "saved" ? (
+              <Check className="size-4" />
+            ) : (
+              <Download className="size-4" />
+            )
+          }
+          status={
+            screenshotDownloadState === "saved"
+              ? "success"
+              : screenshotDownloadState === "failed"
+                ? "warning"
+                : undefined
+          }
+          disabled={isGraphEmpty || screenshotDownloadState === "saving"}
+          onClick={onDownloadScreenshot}
+        >
+          {screenshotDownloadState === "saving"
+            ? messages.screenshot.downloading
+            : screenshotDownloadState === "saved"
+              ? messages.screenshot.downloaded
+              : screenshotDownloadState === "failed"
                 ? messages.common.failed
-                : messages.common.copy}
-      </ScreenshotActionButton>
+                : messages.screenshot.download}
+        </ScreenshotActionButton>
+        <ScreenshotActionButton
+          icon={
+            screenshotCopyState === "copied" ||
+            screenshotCopyState === "saved" ? (
+              <Check className="size-4" />
+            ) : (
+              <ClipboardCopy className="size-4" />
+            )
+          }
+          status={
+            screenshotCopyState === "copied" || screenshotCopyState === "saved"
+              ? "success"
+              : screenshotCopyState === "blocked"
+                ? "warning"
+                : undefined
+          }
+          disabled={isGraphEmpty || screenshotCopyState === "copying"}
+          onClick={onCopyScreenshot}
+        >
+          {screenshotCopyState === "copying"
+            ? messages.common.copying
+            : screenshotCopyState === "copied"
+              ? messages.common.copied
+              : screenshotCopyState === "saved"
+                ? messages.common.saved
+                : screenshotCopyState === "blocked"
+                  ? messages.common.failed
+                  : messages.common.copy}
+        </ScreenshotActionButton>
+      </div>
     </div>
   );
 }
@@ -211,28 +193,24 @@ function LongEdgeControl({
   customLongEdgePx,
   preset,
   onCustomLongEdgeChange,
-  onPresetChange,
 }: {
   customLongEdgePx: number;
   preset: PngExportLongEdgePreset;
   onCustomLongEdgeChange: (longEdgePx: number) => void;
-  onPresetChange: (preset: PngExportLongEdgePreset) => void;
 }) {
   const { messages } = useI18n();
 
   return (
-    <NumberPresetControl
-      customLabel={messages.screenshot.longEdgeCustom}
-      customValue={customLongEdgePx}
+    <RangeScaleControl
       label={messages.screenshot.imageSize}
-      max={MAX_LONG_EDGE_PX}
-      min={MIN_LONG_EDGE_PX}
+      max={LONG_EDGE_RANGE.max}
+      min={LONG_EDGE_RANGE.min}
       name="screenshot-long-edge"
-      preset={preset}
-      presets={PNG_EXPORT_LONG_EDGE_PRESETS}
-      step={64}
-      onCustomChange={onCustomLongEdgeChange}
-      onPresetChange={onPresetChange}
+      step={LONG_EDGE_RANGE.step}
+      value={resolveNumberPresetValue(preset, customLongEdgePx)}
+      onChange={(nextValue) => {
+        onCustomLongEdgeChange(nextValue);
+      }}
     />
   );
 }
@@ -241,121 +219,113 @@ function PaddingControl({
   customPaddingPx,
   preset,
   onCustomPaddingChange,
-  onPresetChange,
 }: {
   customPaddingPx: number;
   preset: PngExportPaddingPreset;
   onCustomPaddingChange: (paddingPx: number) => void;
-  onPresetChange: (preset: PngExportPaddingPreset) => void;
 }) {
   const { messages } = useI18n();
 
   return (
-    <NumberPresetControl
-      customLabel={messages.screenshot.longEdgeCustom}
-      customValue={customPaddingPx}
+    <RangeScaleControl
       label={messages.screenshot.padding}
-      max={MAX_PADDING_PX}
-      min={MIN_PADDING_PX}
+      max={PADDING_RANGE.max}
+      min={PADDING_RANGE.min}
       name="screenshot-padding"
-      preset={preset}
-      presets={PNG_EXPORT_PADDING_PRESETS}
-      step={8}
-      onCustomChange={onCustomPaddingChange}
-      onPresetChange={onPresetChange}
+      step={PADDING_RANGE.step}
+      value={resolveNumberPresetValue(preset, customPaddingPx)}
+      onChange={(nextValue) => {
+        onCustomPaddingChange(nextValue);
+      }}
     />
   );
 }
 
-function NumberPresetControl<T extends number>({
-  customLabel,
-  customValue,
+function resolveNumberPresetValue<T extends number>(
+  preset: T | "custom",
+  customValue: number,
+) {
+  return preset === "custom" ? customValue : preset;
+}
+
+function RangeScaleControl({
   label,
   max,
   min,
   name,
-  preset,
-  presets,
   step,
-  onCustomChange,
-  onPresetChange,
+  value,
+  onChange,
 }: {
-  customLabel: string;
-  customValue: number;
   label: string;
   max: number;
   min: number;
   name: string;
-  preset: T | "custom";
-  presets: readonly T[];
   step: number;
-  onCustomChange: (value: number) => void;
-  onPresetChange: (preset: T | "custom") => void;
+  value: number;
+  onChange: (value: number) => void;
 }) {
+  const currentValue = snapToStep(value, { max, min, step });
+  const trackFillPercent = ((currentValue - min) / (max - min)) * 100;
+
   return (
     <fieldset className="grid min-w-0 gap-[var(--app-space-2)]">
-      <legend className="gv-microcopy">{label}</legend>
-      <div className="gv-segment" role="radiogroup" aria-label={label}>
-        {presets.map((value) => (
-          <label key={value} className="gv-segment-button">
-            <input
-              className="sr-only"
-              type="radio"
-              name={name}
-              value={value}
-              checked={preset === value}
-              aria-label={`${label}: ${value}px`}
-              onChange={() => onPresetChange(value)}
-            />
-            <span className="block truncate">{value}px</span>
-          </label>
-        ))}
-        <label className="gv-segment-button">
-          <input
-            className="sr-only"
-            type="radio"
-            name={name}
-            value="custom"
-            checked={preset === "custom"}
-            aria-label={`${label}: ${customLabel}`}
-            onChange={() => onPresetChange("custom")}
-          />
-          <span className="block truncate">{customLabel}</span>
-        </label>
+      <legend className="sr-only">{label}</legend>
+      <div className="flex min-h-5 items-center justify-between gap-[var(--app-space-2)]">
+        <span className="gv-microcopy min-w-0 truncate">{label}</span>
+        <output
+          htmlFor={name}
+          className="shrink-0 rounded-[var(--app-radius-sm)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[length:var(--app-text-micro)] leading-none font-bold text-[var(--text-dim)] shadow-[var(--app-shadow-card)]"
+        >
+          {currentValue}px
+        </output>
       </div>
-      {preset === "custom" ? (
-        <label className="flex min-w-0 items-center gap-[var(--app-space-2)]">
-          <span className="gv-microcopy shrink-0">{label}</span>
-          <input
-            type="number"
-            min={min}
-            max={max}
-            step={step}
-            value={customValue}
-            onChange={(event) =>
-              onCustomChange(event.currentTarget.valueAsNumber)
-            }
-            className="h-8 min-w-0 flex-1 rounded-[var(--app-radius-sm)] border border-transparent bg-[var(--state-control-bg)] px-[var(--app-space-3)] font-mono text-[length:var(--app-text-xs)] leading-none font-bold text-[var(--text-dim)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
-          />
-          <span className="shrink-0 text-[length:var(--app-text-xs)] font-bold text-[var(--text-mute)]">
-            px
-          </span>
-        </label>
-      ) : null}
+      <div className="grid min-w-0 gap-1.5 rounded-[var(--app-radius-sm)] bg-[var(--state-control-bg)] px-[var(--app-space-3)] py-[var(--app-space-2)]">
+        <input
+          type="range"
+          name={name}
+          min={min}
+          max={max}
+          step={step}
+          value={currentValue}
+          aria-label={label}
+          onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
+          className="gv-range-control"
+          style={
+            {
+              "--gv-range-fill": `${trackFillPercent}%`,
+            } as CSSProperties
+          }
+        />
+        <div
+          className="flex items-center justify-between text-[length:var(--app-text-micro)] leading-none font-[650] text-[var(--text-mute)]"
+          aria-hidden
+        >
+          <span>{min}</span>
+          <span>{max}</span>
+        </div>
+      </div>
     </fieldset>
   );
 }
 
+function snapToStep(
+  value: number,
+  { max, min, step }: { max: number; min: number; step: number },
+) {
+  const steps = Math.round((value - min) / step);
+  return Math.min(max, Math.max(min, min + steps * step));
+}
+
 function ScreenshotPreviewCard({
+  background,
   preview,
-  stale,
-  onRefresh,
 }: {
+  background: PngExportBackground;
   preview: ScreenshotPreview;
-  stale: boolean;
-  onRefresh: () => void;
 }) {
   const { messages } = useI18n();
+  const transparent = background === "transparent";
   const dimensions =
     preview.state === "ready" && preview.width && preview.height
       ? `${preview.width} x ${preview.height} px`
@@ -377,23 +347,16 @@ function ScreenshotPreviewCard({
           {messages.screenshot.preview}
         </span>
         <div className="flex shrink-0 items-center gap-1.5">
-          {stale ? (
-            <button
-              type="button"
-              className="inline-flex h-6 items-center gap-1 rounded-[var(--app-radius-sm)] bg-[var(--accent-2-soft)] px-2 text-[length:var(--app-text-micro)] leading-none font-bold text-[var(--accent-2-strong)] hover:bg-[var(--state-control-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
-              onClick={onRefresh}
-            >
-              <RefreshCw className="size-3" />
-              <span>{messages.screenshot.previewRefresh}</span>
-            </button>
-          ) : null}
           <span className="rounded-[var(--app-radius-sm)] bg-[var(--surface)] px-2 py-1 font-mono text-[length:var(--app-text-micro)] leading-none font-bold text-[var(--text-mute)] shadow-[var(--app-shadow-card)]">
             {dimensions}
           </span>
         </div>
       </div>
       <div
-        className="grid min-h-24 w-full place-items-center overflow-hidden"
+        className={cn(
+          "grid min-h-24 w-full place-items-center overflow-hidden rounded-[calc(var(--app-radius-sm)-1px)]",
+          transparent && "gv-transparent-preview",
+        )}
         style={previewStyle}
       >
         {preview.state === "ready" && preview.url ? (
@@ -437,15 +400,15 @@ function ScreenshotActionButton({
       disabled={disabled}
       data-status={status}
       className={cn(
-        "inline-flex h-8 min-w-[4.75rem] items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border border-[color-mix(in_srgb,var(--divider)_72%,transparent)] bg-[var(--surface)] px-[var(--app-space-3)] text-[length:var(--app-text-xs)] leading-[var(--app-leading-tight)] font-[650] text-[var(--text-dim)] shadow-[var(--app-shadow-card)] transition-colors hover:border-[var(--divider)] hover:bg-[var(--state-control-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none disabled:border-transparent disabled:bg-[var(--state-control-bg)] disabled:text-[var(--text-mute)] disabled:opacity-70 disabled:shadow-none",
+        "inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-sm)-1px)] px-2.5 text-[length:var(--app-text-xs)] leading-[var(--app-leading-tight)] font-[650] text-[var(--text-dim)] transition-colors hover:bg-[var(--state-track-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none disabled:text-[var(--text-mute)] disabled:opacity-60",
         status === "success" &&
-          "border-transparent bg-[var(--ok-soft)] text-[var(--ok)] hover:bg-[var(--ok-soft)] hover:text-[var(--ok)]",
+          "bg-[var(--ok-soft)] text-[var(--ok)] hover:bg-[var(--ok-soft)] hover:text-[var(--ok)]",
         status === "warning" &&
-          "border-transparent bg-[var(--warn-soft)] text-[var(--warn)] hover:bg-[var(--warn-soft)] hover:text-[var(--warn)]",
+          "bg-[var(--warn-soft)] text-[var(--warn)] hover:bg-[var(--warn-soft)] hover:text-[var(--warn)]",
       )}
     >
       {icon}
-      <span>{children}</span>
+      <span className="whitespace-nowrap">{children}</span>
     </button>
   );
 }

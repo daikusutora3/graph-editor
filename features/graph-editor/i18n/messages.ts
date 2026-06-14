@@ -135,7 +135,6 @@ type Messages = {
     previewFailed: string;
     previewLoading: string;
     previewNoDimensions: string;
-    previewRefresh: string;
     copyFallbackSaved: string;
     copyFailed: string;
     download: string;
@@ -498,7 +497,6 @@ const ja = {
     previewFailed: "プレビューを作成できませんでした",
     previewLoading: "プレビューを作成中",
     previewNoDimensions: "-- px",
-    previewRefresh: "更新",
     copyFallbackSaved: "コピーできなかったためPNGとして保存しました",
     copyFailed: "スクショをクリップボードにコピーできませんでした",
     download: "ダウンロード",
@@ -805,7 +803,6 @@ const en: Messages = {
     previewFailed: "Could not create the preview.",
     previewLoading: "Creating preview",
     previewNoDimensions: "-- px",
-    previewRefresh: "Refresh",
     copyFallbackSaved: "Could not copy, so the PNG was saved instead.",
     copyFailed: "Could not copy the screenshot to the clipboard.",
     download: "Download",
@@ -1112,7 +1109,6 @@ const zhHans: Messages = {
     previewFailed: "无法创建预览。",
     previewLoading: "正在创建预览",
     previewNoDimensions: "-- px",
-    previewRefresh: "更新",
     copyFallbackSaved: "无法复制，已改为保存 PNG。",
     copyFailed: "无法将截图复制到剪贴板。",
     download: "下载",
