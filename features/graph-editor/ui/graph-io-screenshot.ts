@@ -15,7 +15,6 @@ import type {
   PngExportBackground,
   PngExportLongEdgePreset,
   PngExportPaddingPreset,
-  PngExportScope,
   ScreenshotCopyState,
   ScreenshotDownloadState,
   ScreenshotPreview,
@@ -53,7 +52,6 @@ export function useGraphIOScreenshot({
   const [downloadMessage, setDownloadMessage] = useState("");
   const [background, setBackgroundState] =
     useState<PngExportBackground>("white");
-  const [scope, setScopeState] = useState<PngExportScope>("viewport");
   const [longEdgePreset, setLongEdgePresetState] =
     useState<PngExportLongEdgePreset>(DEFAULT_LONG_EDGE_PX);
   const [customLongEdgePx, setCustomLongEdgePxState] =
@@ -74,6 +72,7 @@ export function useGraphIOScreenshot({
     theme === "dark" ? "black" : "white";
   const effectiveBackground: PngExportBackground =
     background === "transparent" ? background : solidBackground;
+  const scope = "full" as const;
   const currentPreviewInput = useMemo(
     () => ({
       background: effectiveBackground,
@@ -140,7 +139,7 @@ export function useGraphIOScreenshot({
     background: PngExportBackground;
     longEdgePx: number;
     paddingPx: number;
-    scope: PngExportScope;
+    scope: "full";
   }) => {
     if (isGraphEmpty) {
       return Promise.reject(new Error("グラフが空です"));
@@ -182,7 +181,6 @@ export function useGraphIOScreenshot({
       background?: PngExportBackground;
       longEdgePx?: number;
       paddingPx?: number;
-      scope?: PngExportScope;
     } = {},
   ) {
     const nextInput = {
@@ -192,7 +190,7 @@ export function useGraphIOScreenshot({
         input.longEdgePx ?? resolveLongEdgePx(longEdgePreset, customLongEdgePx),
       paddingPx:
         input.paddingPx ?? resolvePaddingPx(paddingPreset, customPaddingPx),
-      scope: input.scope ?? scope,
+      scope,
       theme,
     };
     const inputKey = makeScreenshotInputKey(nextInput);
@@ -204,13 +202,17 @@ export function useGraphIOScreenshot({
       return;
     }
 
-    setPreview({
-      height: null,
-      inputKey,
-      state: "loading",
-      url: "",
-      width: null,
-    });
+    setPreview((currentPreview) =>
+      currentPreview.state === "ready" && currentPreview.url
+        ? currentPreview
+        : {
+            height: null,
+            inputKey,
+            state: "loading",
+            url: "",
+            width: null,
+          },
+    );
 
     try {
       const blob = await createBlob(nextInput);
@@ -363,12 +365,6 @@ export function useGraphIOScreenshot({
     void refreshPreview({ background: nextEffectiveBackground });
   };
 
-  const setScope = (nextScope: PngExportScope) => {
-    setScopeState(nextScope);
-    resetFeedback();
-    void refreshPreview({ scope: nextScope });
-  };
-
   const setPaddingPreset = (nextPreset: PngExportPaddingPreset) => {
     setPaddingPresetState(nextPreset);
     resetFeedback();
@@ -432,7 +428,6 @@ export function useGraphIOScreenshot({
     setCustomPaddingPx,
     setLongEdgePreset,
     setPaddingPreset,
-    setScope,
     solidBackground,
   };
 }

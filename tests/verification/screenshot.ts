@@ -180,17 +180,18 @@ function verifyScreenshotSizingHelpers() {
     "padding presets should resolve custom values only for custom mode",
   );
   expect(
-    clampLongEdgePx(Number.NaN) === 1024 &&
+    clampLongEdgePx(Number.NaN) === 640 &&
       clampLongEdgePx(1) === 320 &&
       clampLongEdgePx(10_000) === MAX_LONG_EDGE_PX,
     "long-edge values should clamp to supported bounds",
   );
   expect(
-    PNG_EXPORT_LONG_EDGE_PRESETS.includes(3840),
-    "long-edge presets should include a 4K-friendly size",
+    PNG_EXPORT_LONG_EDGE_PRESETS.length === 3 &&
+      PNG_EXPORT_LONG_EDGE_PRESETS.includes(1024),
+    "long-edge presets should stay compact while keeping a large option",
   );
   expect(
-    clampPaddingPx(Number.NaN) === 48 &&
+    clampPaddingPx(Number.NaN) === 24 &&
       clampPaddingPx(-1) === 0 &&
       clampPaddingPx(999) === 320,
     "padding values should clamp to supported bounds",
