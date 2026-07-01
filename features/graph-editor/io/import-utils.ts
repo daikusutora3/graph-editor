@@ -12,6 +12,7 @@ export type ImportFormat =
   | "contest-edge-list"
   | "tree-edge-list"
   | "parent-list"
+  | "weighted-parent-list"
   | "edge-pairs"
   | "adjacency-list"
   | "adjacency-matrix";
@@ -76,6 +77,7 @@ export function readImportSettings(
     allowMultiEdges: options.allowMultiEdges ?? true,
     autoEdgeRouting: options.autoEdgeRouting ?? true,
     snapToGrid: options.snapToGrid ?? false,
+    arrowScale: options.arrowScale ?? 1,
     weightKind: options.weightKind ?? "number",
   };
 }

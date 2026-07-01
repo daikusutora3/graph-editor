@@ -4,7 +4,11 @@ import {
 } from "./import-adjacency";
 import { importStructuredEdgeList } from "./import-edge-list";
 import { tryImportLooseEdgeList } from "./import-loose-edge-list";
-import { tryImportParentList, tryImportTreeEdgeList } from "./import-tree";
+import {
+  tryImportParentList,
+  tryImportTreeEdgeList,
+  tryImportWeightedParentList,
+} from "./import-tree";
 import {
   importFailure,
   importLimitFailure,
@@ -80,6 +84,13 @@ export function importGraphInput(
     return (
       tryImportParentList(lines, options) ??
       importFailure("Input is not a valid parent list.", options)
+    );
+  }
+
+  if (requestedFormat === "weighted-parent-list") {
+    return (
+      tryImportWeightedParentList(lines, options) ??
+      importFailure("Input is not a valid weighted parent list.", options)
     );
   }
 

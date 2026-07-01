@@ -4,6 +4,7 @@ export type ImportFormatKind =
   | "contest-edge-list"
   | "tree-edge-list"
   | "parent-list"
+  | "weighted-parent-list"
   | "edge-pairs"
   | "adjacency-list"
   | "adjacency-matrix";

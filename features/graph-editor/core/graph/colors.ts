@@ -12,6 +12,7 @@ export const GRAPH_COLORS: GraphColor[] = [
 ];
 
 export const SELECTABLE_NODE_COLORS: GraphColor[] = [
+  "paper",
   "white",
   "black",
   "red",
@@ -21,6 +22,7 @@ export const SELECTABLE_NODE_COLORS: GraphColor[] = [
 ];
 
 export const SELECTABLE_EDGE_COLORS: GraphColor[] = [
+  "paper",
   "black",
   "red",
   "yellow",

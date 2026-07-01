@@ -12,7 +12,11 @@ import {
 } from "../shell/state/editor-actions";
 import { graphAtom } from "../shell/state/graph-atoms";
 
-export function GraphSettingsControl() {
+export function GraphSettingsControl({
+  onSettingsChange,
+}: {
+  onSettingsChange?: () => void;
+}) {
   const graph = useAtomValue(graphAtom);
   const reverseAllDirectedEdges = useSetAtom(reverseAllDirectedEdgesAtom);
   const updateGraphSettings = useSetAtom(updateGraphSettingsAtom);
@@ -23,6 +27,8 @@ export function GraphSettingsControl() {
     graph.edges.some((edge) => edge.source !== edge.target);
   const updateSettings = (patch: Partial<GraphSettings>) => {
     updateGraphSettings(patch);
+    onSettingsChange?.();
+    settleToolbarAfterSettingChange();
   };
 
   return (
@@ -69,6 +75,18 @@ export function GraphSettingsControl() {
           { label: "1-indexed", value: "1" },
         ]}
       />
+      <SettingSegment
+        label={messages.settings.arrowSize}
+        value={arrowScaleToSettingValue(settings.arrowScale)}
+        onChange={(value) =>
+          updateSettings({ arrowScale: arrowScaleFromSettingValue(value) })
+        }
+        options={[
+          { label: messages.settings.arrowSmall, value: "small" },
+          { label: messages.settings.arrowNormal, value: "normal" },
+          { label: messages.settings.arrowLarge, value: "large" },
+        ]}
+      />
       <SettingCheckbox
         label={messages.settings.snapToGrid}
         checked={settings.snapToGrid}
@@ -77,11 +95,65 @@ export function GraphSettingsControl() {
       <SettingSelect
         label={messages.settings.language}
         value={locale}
-        onChange={(value) => setLocale(value as Locale)}
+        onChange={(value) => {
+          setLocale(value as Locale);
+          onSettingsChange?.();
+          settleToolbarAfterSettingChange();
+        }}
         options={localeOptions}
       />
     </div>
   );
+}
+
+function arrowScaleToSettingValue(value: number) {
+  if (value <= 0.75) {
+    return "small";
+  }
+
+  if (value >= 1.4) {
+    return "large";
+  }
+
+  return "normal";
+}
+
+function arrowScaleFromSettingValue(value: string) {
+  switch (value) {
+    case "small":
+      return 0.7;
+    case "large":
+      return 1.5;
+    default:
+      return 1;
+  }
+}
+
+function settleToolbarAfterSettingChange() {
+  const scroller = document.querySelector<HTMLElement>(
+    ".gv-left-sidebar .gv-scrollbar",
+  );
+  const sidebar = document.querySelector<HTMLElement>(".gv-left-sidebar");
+  const scrollerPosition = scroller
+    ? { left: scroller.scrollLeft, top: scroller.scrollTop }
+    : null;
+  const sidebarPosition = sidebar
+    ? { left: sidebar.scrollLeft, top: sidebar.scrollTop }
+    : null;
+  const windowPosition = { left: window.scrollX, top: window.scrollY };
+
+  const restoreScroll = () => {
+    if (sidebar && sidebarPosition) {
+      sidebar.scrollTop = sidebarPosition.top;
+      sidebar.scrollLeft = sidebarPosition.left;
+    }
+    scroller?.scrollTo(scrollerPosition ?? { left: 0, top: 0 });
+    window.scrollTo(windowPosition);
+  };
+
+  window.requestAnimationFrame(restoreScroll);
+  window.setTimeout(restoreScroll, 0);
+  window.setTimeout(restoreScroll, 80);
 }
 
 function SettingCheckbox({
@@ -160,9 +232,24 @@ function SettingSegment({
       <div className="gv-segment" role="radiogroup" aria-label={label}>
         {options.map((option) => {
           const selected = option.value === value;
+          const applyOption = () => {
+            if (selected) {
+              settleToolbarAfterSettingChange();
+              return;
+            }
+
+            onChange(option.value);
+          };
 
           return (
-            <label key={option.value} className="gv-segment-button">
+            <label
+              key={option.value}
+              className="gv-segment-button"
+              onClick={(event) => {
+                event.preventDefault();
+                applyOption();
+              }}
+            >
               <input
                 className="sr-only"
                 type="radio"
@@ -170,6 +257,11 @@ function SettingSegment({
                 value={option.value}
                 checked={selected}
                 aria-label={`${label}: ${option.label}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  applyOption();
+                }}
                 onChange={() => onChange(option.value)}
               />
               <span className="block truncate">{option.label}</span>

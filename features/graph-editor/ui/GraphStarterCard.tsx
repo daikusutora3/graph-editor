@@ -222,11 +222,13 @@ export function GraphStarterCard({
             {tab === "paste" ? (
               <PasteStarterPane
                 inputText={inputText}
+                importFormat={starter.importFormat}
                 issues={visibleIssues}
                 previewFormat={preview?.formatKind}
                 previewModel={preview?.model}
                 textareaRef={textareaRef}
                 onInputTextChange={setInput}
+                onImportFormatChange={starter.setImportFormat}
                 onApply={() => applyText()}
               />
             ) : null}

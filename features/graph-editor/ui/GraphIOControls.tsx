@@ -126,6 +126,7 @@ export function GraphIOControls() {
             screenshotLongEdgePreset={controller.screenshot.longEdgePreset}
             screenshotPaddingPreset={controller.screenshot.paddingPreset}
             screenshotPreview={controller.screenshot.preview}
+            screenshotScope={controller.screenshot.scope}
             solidBackground={controller.screenshot.solidBackground}
             theme={controller.theme}
             onScreenshotCustomLongEdgeChange={
@@ -135,6 +136,7 @@ export function GraphIOControls() {
               controller.screenshot.setCustomPaddingPx
             }
             onScreenshotBackgroundChange={controller.screenshot.setBackground}
+            onScreenshotScopeChange={controller.screenshot.setScope}
           />
         </DropdownShell>
       ) : null}

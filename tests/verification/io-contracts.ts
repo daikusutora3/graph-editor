@@ -323,6 +323,81 @@ expect(
   "parent-list import should infer 1-indexed parents even when current settings are 0-indexed",
 );
 
+const weightedParentList = importGraphInput("5\n1 3\n1 5\n2 2\n2 4", {
+  format: "weighted-parent-list",
+  indexBase: 1,
+});
+
+expect(
+  weightedParentList.formatKind === "weighted-parent-list" &&
+    weightedParentList.model.settings.directed &&
+    weightedParentList.model.settings.weighted &&
+    weightedParentList.model.settings.weightKind === "number" &&
+    weightedParentList.model.edges
+      .map((edge) => `${edge.source}->${edge.target}:${edge.weight}`)
+      .join(",") === "n0->n1:3,n0->n2:5,n1->n3:2,n1->n4:4",
+  "forced weighted parent-list import should create a directed weighted rooted tree",
+);
+
+const ambiguousWeightedParentList = importGraphInput("5\n1 3\n1 5\n2 2\n2 4", {
+  indexBase: 1,
+});
+
+expect(
+  ambiguousWeightedParentList.formatKind !== "weighted-parent-list",
+  "auto import should not steal ambiguous N plus two-column rows from existing tree parsing",
+);
+
+const zeroIndexedWeightedParentList = importGraphInput("4\n0 5\n0 6\n2 7", {
+  format: "weighted-parent-list",
+  indexBase: 0,
+});
+
+expect(
+  zeroIndexedWeightedParentList.formatKind === "weighted-parent-list" &&
+    zeroIndexedWeightedParentList.model.settings.indexBase === 0 &&
+    zeroIndexedWeightedParentList.model.edges
+      .map((edge) => `${edge.source}->${edge.target}:${edge.weight}`)
+      .join(",") === "n0->n1:5,n0->n2:6,n2->n3:7",
+  "weighted parent-list import should support 0-indexed parent labels",
+);
+
+const invalidWeightedParentSelfLoop = importGraphInput("3\n2 1\n1 2", {
+  format: "weighted-parent-list",
+  indexBase: 1,
+});
+
+expect(
+  invalidWeightedParentSelfLoop.formatKind === undefined &&
+    invalidWeightedParentSelfLoop.model.edges.length === 0 &&
+    invalidWeightedParentSelfLoop.warnings.length > 0,
+  "weighted parent-list import should reject self-loops",
+);
+
+const invalidWeightedParentCycle = importGraphInput("4\n1 1\n3 2\n2 3", {
+  format: "weighted-parent-list",
+  indexBase: 1,
+});
+
+expect(
+  invalidWeightedParentCycle.formatKind === undefined &&
+    invalidWeightedParentCycle.model.edges.length === 0 &&
+    invalidWeightedParentCycle.warnings.length > 0,
+  "weighted parent-list import should reject cycles disconnected from the root",
+);
+
+const invalidParentListSelfLoop = importGraphInput("3\n2 1", {
+  format: "parent-list",
+  indexBase: 1,
+});
+
+expect(
+  invalidParentListSelfLoop.formatKind === undefined &&
+    invalidParentListSelfLoop.model.edges.length === 0 &&
+    invalidParentListSelfLoop.warnings.length > 0,
+  "parent-list import should reject self-loops",
+);
+
 const partialStructuredEdgeList = importGraphInput("3 2\n1 2", {
   directed: false,
   weighted: false,

@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { importGraphInput } from "../../io/import-graph";
-import type { ImportOptions } from "../../io/import-utils";
+import type { ImportFormat, ImportOptions } from "../../io/import-utils";
 import type { ImportResult } from "../../io/import-types";
 import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
@@ -34,11 +34,13 @@ export function useGraphStarterState({
   } = useAnimatedNullableState<"starter">();
   const open = openValue !== null;
   const [tab, setTab] = useState<StarterTab>("paste");
+  const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const importOptions = useMemo<ImportOptions>(
     () => ({
       ...graph.settings,
+      format: importFormat,
     }),
-    [graph.settings],
+    [graph.settings, importFormat],
   );
   const previewParseKey = useMemo(
     () => makeStarterParseKey(inputText, importOptions),
@@ -63,6 +65,7 @@ export function useGraphStarterState({
   const openPaste = () => {
     setInputText("");
     setIssues([]);
+    setImportFormat("auto");
     setOpenValue("starter");
     setTab("paste");
   };
@@ -129,11 +132,13 @@ export function useGraphStarterState({
     applyText,
     close,
     inputText,
+    importFormat,
     issues,
     open,
     panelPresence,
     openPaste,
     preview,
+    setImportFormat,
     visibleIssues: issues.length > 0 ? issues : (preview?.warnings ?? []),
     setInput,
     setTab,
@@ -152,8 +157,10 @@ function makeStarterParseKey(inputText: string, options: ImportOptions) {
     settings: {
       allowMultiEdges: options.allowMultiEdges,
       allowSelfLoops: options.allowSelfLoops,
+      arrowScale: options.arrowScale,
       autoEdgeRouting: options.autoEdgeRouting,
       directed: options.directed,
+      format: options.format,
       indexBase: options.indexBase,
       snapToGrid: options.snapToGrid,
       weighted: options.weighted,

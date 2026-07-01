@@ -90,6 +90,7 @@ type SelectEdgeHitboxesProps = {
   weighted: boolean;
   onContextMenu: (edge: EdgeLabelHitbox, event: CanvasPointer) => void;
   onEdit: (edgeId: EdgeId, position: RenderedPoint) => void;
+  onBackgroundClick: () => void;
   onRangeSelectionPointerDown: (event: ReactPointerEvent<Element>) => boolean;
   onSelect: (edgeId: EdgeId, additive: boolean) => void;
 };
@@ -100,6 +101,7 @@ export function SelectEdgeHitboxes({
   weighted,
   onContextMenu,
   onEdit,
+  onBackgroundClick,
   onRangeSelectionPointerDown,
   onSelect,
 }: SelectEdgeHitboxesProps) {
@@ -108,8 +110,18 @@ export function SelectEdgeHitboxes({
   return (
     <>
       <svg
-        className="pointer-events-none absolute inset-0 z-[18] h-full w-full"
+        className="pointer-events-auto absolute inset-0 z-[18] h-full w-full"
         aria-hidden="true"
+        onPointerDownCapture={(event) => {
+          if (event.target === event.currentTarget) {
+            onRangeSelectionPointerDown(event);
+          }
+        }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            onBackgroundClick();
+          }
+        }}
       >
         {edges.map((edge) => (
           <path

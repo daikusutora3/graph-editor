@@ -44,6 +44,7 @@ export type GraphSettings = {
   allowMultiEdges: boolean;
   autoEdgeRouting: boolean;
   snapToGrid: boolean;
+  arrowScale: number;
   weightKind: WeightKind;
 };
 
