@@ -226,7 +226,11 @@ function edgeToCytoscapeElement(
 
 export function createGraphCanvasStylesheet(
   palette: GraphCanvasPalette,
+  arrowScale = 1,
 ): StylesheetJson {
+  const normalArrowScale = clampArrowScale(arrowScale);
+  const selectedArrowScale = normalArrowScale * SELECTED_EDGE_ARROW_SCALE;
+
   return [
     {
       selector: "core",
@@ -353,7 +357,7 @@ export function createGraphCanvasStylesheet(
         "line-opacity": 1,
         "target-arrow-color": palette.edge,
         "target-arrow-shape": "none",
-        "arrow-scale": 1,
+        "arrow-scale": normalArrowScale,
         "box-selection": "contain",
         label: "data(label)",
         "font-family": palette.fontFamily,
@@ -434,7 +438,7 @@ export function createGraphCanvasStylesheet(
       selector: "edge.range-preview",
       style: cytoscapeStyle({
         width: SELECTED_EDGE_WIDTH,
-        "arrow-scale": SELECTED_EDGE_ARROW_SCALE,
+        "arrow-scale": selectedArrowScale,
         "line-color": palette.active,
         "line-opacity": 0.72,
         "target-arrow-color": palette.active,
@@ -459,7 +463,7 @@ export function createGraphCanvasStylesheet(
       selector,
       style: cytoscapeStyle({
         width: SELECTED_EDGE_WIDTH,
-        "arrow-scale": SELECTED_EDGE_ARROW_SCALE,
+        "arrow-scale": selectedArrowScale,
         "line-outline-width": 0,
         "underlay-color": palette.active,
         "underlay-opacity": palette.activeOpacity,
@@ -476,6 +480,14 @@ export function createGraphCanvasStylesheet(
       }),
     },
   ];
+}
+
+function clampArrowScale(value: number) {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  return Math.min(2, Math.max(0.6, value));
 }
 
 function cytoscapeStyle(style: Record<string, string | number>) {

@@ -1,6 +1,7 @@
 import {
   createSampleGraph,
   createSizedSampleGraph,
+  getSizedSampleGraphMaxNodes,
   sampleGraphDefinitions,
   sampleGraphKinds,
   sizedSampleGraphKinds,
@@ -248,16 +249,7 @@ function verifyNamedSampleGeometry(models: Map<SampleGraphKind, GraphModel>) {
   if (octahedral) {
     const nodes = nodePositionByOrder(octahedral);
 
-    if (
-      !(
-        nodes[0].y < nodes[3].y &&
-        nodes[0].y < nodes[5].y &&
-        nodes[1].y > nodes[3].y &&
-        nodes[1].y > nodes[5].y &&
-        Math.abs(nodes[3].x + nodes[5].x) <= 1 &&
-        Math.abs(nodes[2].x + nodes[4].x) <= 1
-      )
-    ) {
+    if (!hasRotationalSymmetry(nodes, 120, 2)) {
       fail("octahedral sample should keep its rotationally balanced layout");
     }
   }
@@ -265,6 +257,34 @@ function verifyNamedSampleGeometry(models: Map<SampleGraphKind, GraphModel>) {
 
 function nodePositionByOrder(model: GraphModel) {
   return [...model.nodes].sort((a, b) => a.order - b.order);
+}
+
+function hasRotationalSymmetry(
+  nodes: { x: number; y: number }[],
+  degrees: number,
+  tolerance: number,
+) {
+  const center = nodes.reduce(
+    (sum, node) => ({ x: sum.x + node.x / nodes.length, y: sum.y + node.y / nodes.length }),
+    { x: 0, y: 0 },
+  );
+  const angle = (degrees * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  return nodes.every((node) => {
+    const dx = node.x - center.x;
+    const dy = node.y - center.y;
+    const rotated = {
+      x: center.x + dx * cos - dy * sin,
+      y: center.y + dx * sin + dy * cos,
+    };
+
+    return nodes.some(
+      (candidate) =>
+        Math.hypot(candidate.x - rotated.x, candidate.y - rotated.y) <= tolerance,
+    );
+  });
 }
 
 function verifyPreviewEdgePaths() {
@@ -320,14 +340,47 @@ function verifySizedSampleGraphs() {
     fail("star: sized sample node count should include the center");
   }
 
+  const customGrid = createSizedSampleGraph(
+    "grid",
+    15,
+    { indexBase: 0 },
+    { columns: 5, rows: 3 },
+  );
+  if (customGrid.nodes.length !== 15 || customGrid.edges.length !== 22) {
+    fail("grid: sized sample should support explicit rows and columns");
+  }
+
+  const customKnight = createSizedSampleGraph(
+    "knight",
+    20,
+    { indexBase: 0 },
+    { columns: 5, knightMove: "long", rows: 4 },
+  );
+  if (customKnight.nodes.length !== 20 || customKnight.edges.length !== 20) {
+    fail("knight: sized sample should support custom move presets");
+  }
+
   const tooSmall = createSizedSampleGraph("path", 0, { indexBase: 0 });
   if (tooSmall.nodes.length !== 1) {
     fail("sized sample node count should clamp values below the minimum");
   }
 
-  const tooLarge = createSizedSampleGraph("path", 999, { indexBase: 0 });
-  if (tooLarge.nodes.length !== 64) {
+  const maxPathNodes = getSizedSampleGraphMaxNodes("path");
+  const tooLarge = createSizedSampleGraph("path", maxPathNodes + 1, {
+    indexBase: 0,
+  });
+  if (tooLarge.nodes.length !== maxPathNodes) {
     fail("sized sample node count should clamp values above the maximum");
+  }
+
+  const completeMaxNodes = getSizedSampleGraphMaxNodes("complete");
+  const completeTooLarge = createSizedSampleGraph(
+    "complete",
+    completeMaxNodes + 1,
+    { indexBase: 0 },
+  );
+  if (completeTooLarge.nodes.length !== completeMaxNodes) {
+    fail("dense sized samples should keep edge counts under the maximum");
   }
 
   const invalid = createSizedSampleGraph("path", Number.NaN, { indexBase: 0 });

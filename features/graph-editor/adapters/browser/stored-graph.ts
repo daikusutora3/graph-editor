@@ -300,6 +300,12 @@ function normalizeSettings(value: unknown): GraphSettings {
       typeof value.snapToGrid === "boolean"
         ? value.snapToGrid
         : defaults.snapToGrid,
+    arrowScale:
+      typeof value.arrowScale === "number" &&
+      Number.isFinite(value.arrowScale) &&
+      value.arrowScale > 0
+        ? Math.min(2, Math.max(0.6, value.arrowScale))
+        : defaults.arrowScale,
     weightKind:
       value.weightKind === "none" ||
       value.weightKind === "number" ||

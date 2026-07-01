@@ -454,14 +454,14 @@ function hypercubePositions(
 }
 
 function octahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
-  return {
-    [nodeIds[0]]: { x: 0, y: -220 },
-    [nodeIds[1]]: { x: 0, y: 70 },
-    [nodeIds[2]]: { x: -190, y: 110 },
-    [nodeIds[3]]: { x: 90, y: -55 },
-    [nodeIds[4]]: { x: 190, y: 110 },
-    [nodeIds[5]]: { x: -90, y: -55 },
-  };
+  return fixedPositions(nodeIds, [
+    { x: 0, y: -220 },
+    { x: 0, y: -85 },
+    { x: 191, y: 110 },
+    { x: 74, y: 42 },
+    { x: -191, y: 110 },
+    { x: -74, y: 42 },
+  ]);
 }
 
 function icosahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
@@ -1275,12 +1275,9 @@ function createKnightGraph(
   rows = 4,
   columns = 4,
   settings: Partial<GraphSettings> = {},
+  moves: readonly (readonly [number, number])[] = KNIGHT_MOVE_PRESETS.standard,
 ): GraphModel {
   const edges: Array<readonly [number, number]> = [];
-  const moves = [
-    [1, 2],
-    [2, 1],
-  ] as const;
   const indexOf = (row: number, column: number) => row * columns + column;
 
   for (let row = 0; row < rows; row += 1) {
@@ -1446,14 +1443,14 @@ function createCubeGraph(settings: Partial<GraphSettings> = {}): GraphModel {
   const model = createEmptyGraphModel(settings);
   const ids: NodeId[] = [];
   const points = [
-    { x: -200, y: -150 },
-    { x: 200, y: -150 },
-    { x: -200, y: 150 },
-    { x: 200, y: 150 },
-    { x: -80, y: -60 },
-    { x: 80, y: -60 },
-    { x: -80, y: 60 },
-    { x: 80, y: 60 },
+    { x: -190, y: -190 },
+    { x: 190, y: -190 },
+    { x: -190, y: 190 },
+    { x: 190, y: 190 },
+    { x: -70, y: -70 },
+    { x: 70, y: -70 },
+    { x: -70, y: 70 },
+    { x: 70, y: 70 },
   ];
 
   points.forEach((point, index) => {
@@ -1819,18 +1816,28 @@ function createTetrahedralGraph(
 function createOctahedralGraph(
   settings: Partial<GraphSettings> = {},
 ): GraphModel {
-  return createGraphFromEdges(
+  const model = createGraphFromEdges(
     6,
-    completeEdges(6).filter(
-      ([source, target]) =>
-        !(
-          (source === 0 && target === 1) ||
-          (source === 2 && target === 3) ||
-          (source === 4 && target === 5)
-        ),
-    ),
+    [
+      [0, 1],
+      [0, 2],
+      [0, 4],
+      [0, 5],
+      [1, 2],
+      [1, 3],
+      [1, 5],
+      [2, 3],
+      [2, 4],
+      [3, 4],
+      [3, 5],
+      [4, 5],
+    ],
     settings,
   );
+  const ids = orderedNodeIds(model);
+  const positions = octahedralPositions(ids);
+
+  return withNodePositions(model, positions);
 }
 
 function createIcosahedralGraph(
@@ -2796,7 +2803,8 @@ export const sampleGraphKinds = Object.keys(
 ) as SampleGraphKind[];
 
 export const SIZED_SAMPLE_GRAPH_MIN_NODES = 1;
-export const SIZED_SAMPLE_GRAPH_MAX_NODES = 64;
+export const SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES = 1000;
+const SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES = 5000;
 export const sizedSampleGraphKinds = [
   "path",
   "cycle",
@@ -2811,6 +2819,34 @@ export const sizedSampleGraphKinds = [
 ] as const satisfies readonly SampleGraphKind[];
 
 export type SizedSampleGraphKind = (typeof sizedSampleGraphKinds)[number];
+export type SizedKnightMoveKind = keyof typeof KNIGHT_MOVE_PRESETS;
+
+export type SizedSampleGraphOptions = {
+  columns?: number;
+  knightMove?: SizedKnightMoveKind;
+  rows?: number;
+};
+
+export const sizedKnightMoveKinds = [
+  "standard",
+  "long",
+  "camel",
+] as const satisfies readonly SizedKnightMoveKind[];
+
+const KNIGHT_MOVE_PRESETS = {
+  standard: [
+    [1, 2],
+    [2, 1],
+  ],
+  long: [
+    [1, 3],
+    [3, 1],
+  ],
+  camel: [
+    [2, 3],
+    [3, 2],
+  ],
+} as const;
 
 export function isSizedSampleGraphKind(
   kind: SampleGraphKind,
@@ -2830,17 +2866,54 @@ export function createSizedSampleGraph(
   kind: SizedSampleGraphKind,
   nodeCount: number,
   settings: Partial<GraphSettings> = {},
+  options: SizedSampleGraphOptions = {},
 ): GraphModel {
-  const count = clampSizedSampleNodeCount(nodeCount);
-  const model = createSizedSampleGraphModel(kind, count, settings);
+  const count = clampSizedSampleNodeCount(kind, nodeCount);
+  const model = createSizedSampleGraphModel(kind, count, settings, options);
+
+  if ((kind === "grid" || kind === "knight") && hasCustomGridDimensions(options)) {
+    return model;
+  }
 
   return applyPreferredSampleLayout(kind, model);
+}
+
+export function getSizedSampleGraphMaxNodes(kind: SizedSampleGraphKind) {
+  switch (kind) {
+    case "complete":
+      return maxCompleteGraphNodesForEdgeLimit(
+        SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES,
+      );
+    case "bipartite":
+      return maxBalancedBipartiteNodesForEdgeLimit(
+        SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES,
+      );
+    case "crown":
+      return maxCrownGraphNodesForEdgeLimit(SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES);
+    default:
+      return SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES;
+  }
+}
+
+export function clampSizedSampleNodeCount(
+  kind: SizedSampleGraphKind,
+  nodeCount: number,
+) {
+  if (!Number.isFinite(nodeCount)) {
+    return 6;
+  }
+
+  return Math.min(
+    getSizedSampleGraphMaxNodes(kind),
+    Math.max(SIZED_SAMPLE_GRAPH_MIN_NODES, Math.round(nodeCount)),
+  );
 }
 
 function createSizedSampleGraphModel(
   kind: SizedSampleGraphKind,
   nodeCount: number,
   settings: Partial<GraphSettings>,
+  options: SizedSampleGraphOptions = {},
 ) {
   switch (kind) {
     case "path":
@@ -2856,7 +2929,7 @@ function createSizedSampleGraphModel(
     case "tree":
       return createTreeGraph(nodeCount, settings);
     case "grid":
-      return createExactGridGraph(nodeCount, settings);
+      return createSizedGridGraph(nodeCount, settings, options);
     case "bipartite":
       return createBipartiteGraph(
         Math.ceil(nodeCount / 2),
@@ -2866,19 +2939,21 @@ function createSizedSampleGraphModel(
     case "crown":
       return createExactCrownGraph(nodeCount, settings);
     case "knight":
-      return createExactKnightGraph(nodeCount, settings);
+      return createSizedKnightGraph(nodeCount, settings, options);
   }
 }
 
-function clampSizedSampleNodeCount(nodeCount: number) {
-  if (!Number.isFinite(nodeCount)) {
-    return 6;
+function createSizedGridGraph(
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
+  options: SizedSampleGraphOptions,
+) {
+  if (!hasCustomGridDimensions(options)) {
+    return createExactGridGraph(nodeCount, settings);
   }
 
-  return Math.min(
-    SIZED_SAMPLE_GRAPH_MAX_NODES,
-    Math.max(SIZED_SAMPLE_GRAPH_MIN_NODES, Math.round(nodeCount)),
-  );
+  const { columns, rows } = sizedGridDimensions(nodeCount, options);
+  return createGridGraph(rows, columns, settings);
 }
 
 function createExactGridGraph(
@@ -2909,6 +2984,22 @@ function createExactGridGraph(
   }
 
   return createGraphFromEdges(nodeCount, edges, settings);
+}
+
+function createSizedKnightGraph(
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
+  options: SizedSampleGraphOptions,
+) {
+  if (!hasCustomGridDimensions(options)) {
+    return createExactKnightGraph(nodeCount, settings);
+  }
+
+  const { columns, rows } = sizedGridDimensions(nodeCount, options);
+  const moves = KNIGHT_MOVE_PRESETS[options.knightMove ?? "standard"];
+  const model = createKnightGraph(rows, columns, settings, moves);
+
+  return withNodePositions(model, gridPositions(orderedNodeIds(model), columns));
 }
 
 function createExactKnightGraph(
@@ -2959,6 +3050,31 @@ function createExactKnightGraph(
   return createGraphFromEdges(nodeCount, edges, settings);
 }
 
+function sizedGridDimensions(
+  nodeCount: number,
+  options: SizedSampleGraphOptions,
+) {
+  if (hasCustomGridDimensions(options)) {
+    return {
+      columns: options.columns ?? 1,
+      rows: options.rows ?? 1,
+    };
+  }
+
+  return gridDimensionsForNodeCount(nodeCount);
+}
+
+function hasCustomGridDimensions(options: SizedSampleGraphOptions) {
+  return (
+    Number.isInteger(options.rows) &&
+    Number.isInteger(options.columns) &&
+    (options.rows ?? 0) > 0 &&
+    (options.columns ?? 0) > 0 &&
+    (options.rows ?? 1) * (options.columns ?? 1) <=
+      SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES
+  );
+}
+
 function createExactCrownGraph(
   nodeCount: number,
   settings: Partial<GraphSettings>,
@@ -2982,4 +3098,30 @@ function gridDimensionsForNodeCount(nodeCount: number) {
   const rows = Math.max(1, Math.ceil(nodeCount / columns));
 
   return { columns, rows };
+}
+
+function maxCompleteGraphNodesForEdgeLimit(maxEdges: number) {
+  return Math.floor((1 + Math.sqrt(1 + 8 * maxEdges)) / 2);
+}
+
+function maxBalancedBipartiteNodesForEdgeLimit(maxEdges: number) {
+  return Math.floor(2 * Math.sqrt(maxEdges));
+}
+
+function maxCrownGraphNodesForEdgeLimit(maxEdges: number) {
+  let nodeCount = maxBalancedBipartiteNodesForEdgeLimit(maxEdges);
+
+  while (nodeCount > SIZED_SAMPLE_GRAPH_MIN_NODES) {
+    const leftCount = Math.ceil(nodeCount / 2);
+    const rightCount = Math.floor(nodeCount / 2);
+    const edgeCount = leftCount * rightCount - Math.min(leftCount, rightCount);
+
+    if (edgeCount <= maxEdges) {
+      return nodeCount;
+    }
+
+    nodeCount -= 1;
+  }
+
+  return SIZED_SAMPLE_GRAPH_MIN_NODES;
 }

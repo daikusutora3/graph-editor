@@ -34,6 +34,7 @@ export function useGraphIOController() {
   const screenshot = useGraphIOScreenshot({
     graph,
     isGraphEmpty,
+    previewEnabled: screenshotOpen || panelPresence.value === "screenshot",
     theme,
   });
   const exportText = useMemo(

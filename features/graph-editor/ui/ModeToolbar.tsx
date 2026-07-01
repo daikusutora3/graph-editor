@@ -52,6 +52,11 @@ export function ModeToolbar({
           ? { height: toolbar.toolbarHeight }
           : undefined
       }
+      onScroll={(event) => {
+        if (event.currentTarget.scrollTop !== 0) {
+          event.currentTarget.scrollTop = 0;
+        }
+      }}
     >
       <ExpandedToolbarLayer {...toolbar.expandedLayerProps} />
 

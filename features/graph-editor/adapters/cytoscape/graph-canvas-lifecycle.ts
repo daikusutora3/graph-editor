@@ -78,7 +78,10 @@ export function useGraphCanvasLifecycle({
     const cy = cytoscape({
       container: containerRef.current,
       elements,
-      style: createGraphCanvasStylesheet(readCanvasPalette()),
+      style: createGraphCanvasStylesheet(
+        readCanvasPalette(),
+        graph.settings.arrowScale,
+      ),
       layout: { name: "preset", fit: false },
       boxSelectionEnabled: mode === "select",
       selectionType: "single",
@@ -118,7 +121,12 @@ export function useGraphCanvasLifecycle({
         return;
       }
 
-      cy.style(createGraphCanvasStylesheet(readCanvasPalette()));
+      cy.style(
+        createGraphCanvasStylesheet(
+          readCanvasPalette(),
+          graph.settings.arrowScale,
+        ),
+      );
       cy.resize();
     };
 
@@ -131,7 +139,24 @@ export function useGraphCanvasLifecycle({
     return () => {
       observer.disconnect();
     };
-  }, [cyRef]);
+  }, [cyRef, graph.settings.arrowScale]);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+
+    if (!cy) {
+      return;
+    }
+
+    cy.style(
+      createGraphCanvasStylesheet(
+        readCanvasPalette(),
+        graph.settings.arrowScale,
+      ),
+    );
+    cy.resize();
+    updateRenderedHitboxes(cy);
+  }, [cyRef, graph.settings.arrowScale, updateRenderedHitboxes]);
 
   useEffect(() => {
     const cy = cyRef.current;

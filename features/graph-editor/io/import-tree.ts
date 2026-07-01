@@ -129,6 +129,11 @@ export function tryImportParentList(
   }
 
   const indexBase = inferTreeIndexBase(parents, nodeCount, options.indexBase);
+  const parentIndices = parents.map((parentLabel) => parentLabel - indexBase);
+  if (!isRootedParentTree(parentIndices, nodeCount)) {
+    return null;
+  }
+
   const model = createEmptyGraphModel({
     ...readImportSettings({ ...options, indexBase }, { directed: true }),
     directed: true,
@@ -136,12 +141,8 @@ export function tryImportParentList(
 
   model.nodes = createIndexedNodes(nodeCount, indexBase);
   parents.forEach((parentLabel, index) => {
-    const parentIndex = parentLabel - indexBase;
+    const parentIndex = parentIndices[index];
     const childIndex = index + 1;
-
-    if (parentIndex < 0 || parentIndex >= nodeCount) {
-      return;
-    }
 
     model.edges.push(
       createEdge({
@@ -165,6 +166,91 @@ export function tryImportParentList(
   };
 }
 
+export function tryImportWeightedParentList(
+  lines: ParsedLine[],
+  options: ImportOptions,
+): ImportResult | null {
+  const header = splitTokens(lines[0]?.text ?? "");
+  const nodeCount = Number(header[0]);
+
+  if (
+    header.length !== 1 ||
+    !Number.isInteger(nodeCount) ||
+    nodeCount < 2 ||
+    lines.length !== nodeCount
+  ) {
+    return null;
+  }
+
+  const rows = lines.slice(1).map((line) => splitTokens(line.text));
+  if (rows.some((row) => row.length !== 2)) {
+    return null;
+  }
+
+  if (nodeCount > MAX_IMPORT_NODES) {
+    return importLimitFailure(
+      "nodes",
+      nodeCount,
+      MAX_IMPORT_NODES,
+      options,
+      "Weighted parent list",
+      "weighted-parent-list",
+    );
+  }
+
+  const parents = rows.map(([parent]) => Number(parent));
+  const weights = rows.map(([, weight]) => Number(weight));
+  if (
+    parents.some((value) => !Number.isInteger(value)) ||
+    weights.some((value) => !Number.isFinite(value))
+  ) {
+    return null;
+  }
+
+  const indexBase = inferTreeIndexBase(parents, nodeCount, options.indexBase);
+  const parentIndices = parents.map((parentLabel) => parentLabel - indexBase);
+  if (!isRootedParentTree(parentIndices, nodeCount)) {
+    return null;
+  }
+
+  const model = createEmptyGraphModel({
+    ...readImportSettings(
+      { ...options, indexBase, weightKind: "number" },
+      { directed: true, weighted: true },
+    ),
+    directed: true,
+    weighted: true,
+    weightKind: "number",
+  });
+
+  model.nodes = createIndexedNodes(nodeCount, indexBase);
+  rows.forEach(([parentText, weight], index) => {
+    const parentIndex = parentIndices[index];
+    const childIndex = index + 1;
+
+    model.edges.push(
+      createEdge({
+        id: `e${model.edges.length}`,
+        source: model.nodes[parentIndex].id,
+        target: model.nodes[childIndex].id,
+        weight,
+      }),
+    );
+  });
+
+  if (model.edges.length !== nodeCount - 1) {
+    return null;
+  }
+
+  arrangeNodes(model);
+  return {
+    model,
+    warnings: [],
+    format: "Weighted parent list",
+    formatKind: "weighted-parent-list",
+  };
+}
+
 function createIndexedNodes(nodeCount: number, indexBase: 0 | 1) {
   return Array.from({ length: nodeCount }, (_, index) =>
     createNode({
@@ -173,6 +259,35 @@ function createIndexedNodes(nodeCount: number, indexBase: 0 | 1) {
       order: index,
     }),
   );
+}
+
+function isRootedParentTree(parentIndices: number[], nodeCount: number) {
+  if (
+    parentIndices.length !== nodeCount - 1 ||
+    parentIndices.some(
+      (parentIndex) => parentIndex < 0 || parentIndex >= nodeCount,
+    )
+  ) {
+    return false;
+  }
+
+  for (let childIndex = 1; childIndex < nodeCount; childIndex += 1) {
+    const seen = new Set<number>([childIndex]);
+    let current = childIndex;
+
+    while (current !== 0) {
+      const parentIndex = parentIndices[current - 1];
+
+      if (parentIndex === undefined || seen.has(parentIndex)) {
+        return false;
+      }
+
+      seen.add(parentIndex);
+      current = parentIndex;
+    }
+  }
+
+  return true;
 }
 
 function inferTreeIndexBase(

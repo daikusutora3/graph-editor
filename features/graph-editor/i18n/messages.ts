@@ -82,6 +82,10 @@ type Messages = {
     unweighted: string;
     weighted: string;
     indexBase: string;
+    arrowSize: string;
+    arrowSmall: string;
+    arrowNormal: string;
+    arrowLarge: string;
     snapToGrid: string;
     reverseAllEdges: string;
     language: string;
@@ -94,6 +98,8 @@ type Messages = {
     sample: string;
     loadingSamples: string;
     autoDetectHelp: string;
+    formatLabel: string;
+    autoFormat: string;
     pastePlaceholder: string;
     apply: string;
     needsReview: string;
@@ -192,6 +198,10 @@ type Messages = {
     sizedKindLabel: string;
     sizedNodeCountLabel: string;
     sizedNodeCountAria: string;
+    sizedRowsLabel: string;
+    sizedColumnsLabel: string;
+    sizedKnightMoveLabel: string;
+    sizedKnightMoves: Record<"standard" | "long" | "camel", string>;
     sizedCreate: string;
     group: Record<SampleGraphGroupKey, { label: string; note: string }>;
     item: Partial<
@@ -425,6 +435,10 @@ const ja = {
     unweighted: "重みなし",
     weighted: "重みあり",
     indexBase: "番号",
+    arrowSize: "矢印",
+    arrowSmall: "小",
+    arrowNormal: "標準",
+    arrowLarge: "大",
     snapToGrid: "ドラッグをグリッドに吸着",
     reverseAllEdges: "全辺を反転",
     language: "言語",
@@ -437,6 +451,8 @@ const ja = {
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
     autoDetectHelp: "辺リスト・隣接リスト・隣接行列に対応",
+    formatLabel: "形式",
+    autoFormat: "自動判定",
     pastePlaceholder:
       "辺リスト\n4 4\n1 2\n2 3\n2 4\n3 4\n\n隣接リスト\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n隣接行列\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "グラフに反映",
@@ -446,6 +462,7 @@ const ja = {
       "contest-edge-list": "頂点数・辺数つき辺リスト",
       "tree-edge-list": "木の辺リスト",
       "parent-list": "親配列",
+      "weighted-parent-list": "重み付き親配列",
       "edge-pairs": "辺の組リスト",
       "adjacency-list": "隣接リスト",
       "adjacency-matrix": "隣接行列",
@@ -620,6 +637,14 @@ const ja = {
     sizedKindLabel: "形",
     sizedNodeCountLabel: "頂点数",
     sizedNodeCountAria: "生成する頂点数",
+    sizedRowsLabel: "行",
+    sizedColumnsLabel: "列",
+    sizedKnightMoveLabel: "移動",
+    sizedKnightMoves: {
+      standard: "標準 (1,2)",
+      long: "長距離 (1,3)",
+      camel: "キャメル (2,3)",
+    },
     sizedCreate: "作成",
     group: {
       basics: {
@@ -731,6 +756,10 @@ const en: Messages = {
     unweighted: "Unweighted",
     weighted: "Weighted",
     indexBase: "Index",
+    arrowSize: "Arrows",
+    arrowSmall: "Small",
+    arrowNormal: "Normal",
+    arrowLarge: "Large",
     snapToGrid: "Snap drags to grid",
     reverseAllEdges: "Reverse all edges",
     language: "Language",
@@ -743,6 +772,8 @@ const en: Messages = {
     sample: "Samples",
     loadingSamples: "Loading samples",
     autoDetectHelp: "Supports edge lists, adjacency lists, and matrices.",
+    formatLabel: "Format",
+    autoFormat: "Auto detect",
     pastePlaceholder:
       "Edge list\n4 4\n1 2\n2 3\n2 4\n3 4\n\nAdjacency list\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\nAdjacency matrix\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "Apply to graph",
@@ -752,6 +783,7 @@ const en: Messages = {
       "contest-edge-list": "edge list with counts",
       "tree-edge-list": "tree edge list",
       "parent-list": "parent list",
+      "weighted-parent-list": "weighted parent list",
       "edge-pairs": "edge pair list",
       "adjacency-list": "adjacency list",
       "adjacency-matrix": "adjacency matrix",
@@ -927,6 +959,14 @@ const en: Messages = {
     sizedKindLabel: "Shape",
     sizedNodeCountLabel: "Nodes",
     sizedNodeCountAria: "Node count to generate",
+    sizedRowsLabel: "Rows",
+    sizedColumnsLabel: "Columns",
+    sizedKnightMoveLabel: "Move",
+    sizedKnightMoves: {
+      standard: "Standard (1,2)",
+      long: "Long (1,3)",
+      camel: "Camel (2,3)",
+    },
     sizedCreate: "Create",
     group: {
       basics: { label: "Basic families", note: "Common starting shapes" },
@@ -1037,6 +1077,10 @@ const zhHans: Messages = {
     unweighted: "无权",
     weighted: "有权",
     indexBase: "编号",
+    arrowSize: "箭头",
+    arrowSmall: "小",
+    arrowNormal: "标准",
+    arrowLarge: "大",
     snapToGrid: "拖动吸附到网格",
     reverseAllEdges: "反转全部边",
     language: "语言",
@@ -1049,6 +1093,8 @@ const zhHans: Messages = {
     sample: "示例",
     loadingSamples: "正在加载示例",
     autoDetectHelp: "支持边列表、邻接表和邻接矩阵。",
+    formatLabel: "格式",
+    autoFormat: "自动检测",
     pastePlaceholder:
       "边列表\n4 4\n1 2\n2 3\n2 4\n3 4\n\n邻接表\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n邻接矩阵\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "应用到图",
@@ -1058,6 +1104,7 @@ const zhHans: Messages = {
       "contest-edge-list": "带顶点数和边数的边列表",
       "tree-edge-list": "树边列表",
       "parent-list": "父节点列表",
+      "weighted-parent-list": "带权父节点列表",
       "edge-pairs": "边对列表",
       "adjacency-list": "邻接表",
       "adjacency-matrix": "邻接矩阵",
@@ -1230,6 +1277,14 @@ const zhHans: Messages = {
     sizedKindLabel: "形状",
     sizedNodeCountLabel: "顶点数",
     sizedNodeCountAria: "要生成的顶点数",
+    sizedRowsLabel: "行",
+    sizedColumnsLabel: "列",
+    sizedKnightMoveLabel: "移动",
+    sizedKnightMoves: {
+      standard: "标准 (1,2)",
+      long: "长步 (1,3)",
+      camel: "骆驼 (2,3)",
+    },
     sizedCreate: "创建",
     group: {
       basics: { label: "基础图族", note: "常见的起始形状" },

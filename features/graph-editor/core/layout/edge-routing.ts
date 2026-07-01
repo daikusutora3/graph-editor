@@ -351,23 +351,41 @@ function scoreLoopDirection(
   nodes: GraphNode[],
   options: Required<EdgeRoutingOptions>,
 ) {
-  const radians = (directionDeg * Math.PI) / 180;
-  const loopCenter = {
-    x: source.x + Math.cos(radians) * options.nodeClearancePx,
-    y: source.y + Math.sin(radians) * options.nodeClearancePx,
-  };
+  const loopPoints = loopSamplePoints(source, directionDeg, options);
   let score =
     Math.abs(normalizeDegrees(directionDeg - options.loopDirectionDeg)) * 0.01;
 
   for (const node of nodes) {
     if (node.id === source.id) continue;
 
-    const distance = Math.hypot(node.x - loopCenter.x, node.y - loopCenter.y);
+    const distance = Math.min(
+      ...loopPoints.map((point) => Math.hypot(node.x - point.x, node.y - point.y)),
+    );
     const overlap = Math.max(0, options.nodeClearancePx - distance);
     score += overlap * overlap;
   }
 
   return score;
+}
+
+function loopSamplePoints(
+  source: GraphNode,
+  directionDeg: number,
+  options: Required<EdgeRoutingOptions>,
+) {
+  const direction = (directionDeg * Math.PI) / 180;
+  const sweep = (options.loopSweepDeg * Math.PI) / 180;
+  const radius = options.nodeClearancePx * 1.7;
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const t = index / 6;
+    const angle = direction - sweep / 2 + sweep * t;
+
+    return {
+      x: source.x + Math.cos(angle) * radius,
+      y: source.y + Math.sin(angle) * radius,
+    };
+  });
 }
 
 function normalizeDegrees(value: number) {

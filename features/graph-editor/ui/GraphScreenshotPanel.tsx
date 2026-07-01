@@ -10,6 +10,7 @@ import type {
   ScreenshotCopyState,
   ScreenshotDownloadState,
   ScreenshotPreview,
+  PngExportScope,
 } from "./graph-io-types";
 import type {
   PngExportLongEdgePreset,
@@ -37,11 +38,13 @@ type ScreenshotPanelProps = {
   screenshotPaddingPreset: PngExportPaddingPreset;
   screenshotCustomPaddingPx: number;
   screenshotPreview: ScreenshotPreview;
+  screenshotScope: PngExportScope;
   solidBackground: "white" | "black";
   theme: ThemeMode;
   onScreenshotCustomLongEdgeChange: (longEdgePx: number) => void;
   onScreenshotBackgroundChange: (background: PngExportBackground) => void;
   onScreenshotCustomPaddingChange: (paddingPx: number) => void;
+  onScreenshotScopeChange: (scope: PngExportScope) => void;
 };
 
 type ScreenshotFooterProps = {
@@ -67,16 +70,27 @@ export function ScreenshotPanel({
   screenshotPaddingPreset,
   screenshotCustomPaddingPx,
   screenshotPreview,
+  screenshotScope,
   solidBackground,
   theme,
   onScreenshotCustomLongEdgeChange,
   onScreenshotBackgroundChange,
   onScreenshotCustomPaddingChange,
+  onScreenshotScopeChange,
 }: ScreenshotPanelProps) {
   const { messages } = useI18n();
 
   return (
     <div className="flex flex-col gap-[var(--app-space-3)]">
+      <OptionGroup
+        label={messages.screenshot.scope}
+        value={screenshotScope}
+        options={[
+          { label: messages.screenshot.fullGraph, value: "full" },
+          { label: messages.screenshot.viewport, value: "viewport" },
+        ]}
+        onChange={onScreenshotScopeChange}
+      />
       <OptionGroup
         label={messages.screenshot.background}
         value={effectiveBackground}
@@ -92,11 +106,13 @@ export function ScreenshotPanel({
         ]}
         onChange={onScreenshotBackgroundChange}
       />
-      <LongEdgeControl
-        customLongEdgePx={screenshotCustomLongEdgePx}
-        preset={screenshotLongEdgePreset}
-        onCustomLongEdgeChange={onScreenshotCustomLongEdgeChange}
-      />
+      {screenshotScope === "full" ? (
+        <LongEdgeControl
+          customLongEdgePx={screenshotCustomLongEdgePx}
+          preset={screenshotLongEdgePreset}
+          onCustomLongEdgeChange={onScreenshotCustomLongEdgeChange}
+        />
+      ) : null}
       <PaddingControl
         customPaddingPx={screenshotCustomPaddingPx}
         preset={screenshotPaddingPreset}

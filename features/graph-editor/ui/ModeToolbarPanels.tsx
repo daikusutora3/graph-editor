@@ -253,7 +253,9 @@ export function ExpandedToolbarLayer({
           </ToolbarGroup>
 
           <ToolbarGroup label={messages.toolbar.groups.settings}>
-            <GraphSettingsControl />
+            <GraphSettingsControl
+              onSettingsChange={() => onSetShowAllLayouts(false)}
+            />
           </ToolbarGroup>
 
           <div className="flex min-w-0 flex-col">

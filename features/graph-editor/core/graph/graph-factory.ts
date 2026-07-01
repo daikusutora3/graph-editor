@@ -18,6 +18,7 @@ export const defaultGraphSettings: GraphSettings = {
   allowMultiEdges: true,
   autoEdgeRouting: true,
   snapToGrid: false,
+  arrowScale: 1,
   weightKind: "number",
 };
 
