@@ -20,6 +20,9 @@ import {
 } from "./import-utils";
 import type { ImportResult } from "./import-types";
 
+export const WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING =
+  "Input may be a weighted parent list. If the second value on each row is an edge weight, select Weighted parent list manually.";
+
 type ImportParser = {
   parse: () => ImportResult | null;
 };
@@ -94,6 +97,10 @@ export function importGraphInput(
     );
   }
 
+  const weightedParentListCandidate = tryImportWeightedParentList(
+    lines,
+    options,
+  );
   const detectedResult = parseFirst([
     { parse: () => tryImportAdjacencyMatrix(lines, options) },
     { parse: () => tryImportAdjacencyList(lines, options) },
@@ -101,7 +108,12 @@ export function importGraphInput(
     { parse: () => tryImportTreeEdgeList(lines, options) },
   ]);
 
-  if (detectedResult) return detectedResult;
+  if (detectedResult) {
+    return withWeightedParentListAmbiguityWarning(
+      detectedResult,
+      weightedParentListCandidate,
+    );
+  }
 
   const structuredEdgeListResult = importStructuredEdgeList(
     input,
@@ -133,6 +145,26 @@ function parseFirst(parsers: ImportParser[]) {
   }
 
   return null;
+}
+
+function withWeightedParentListAmbiguityWarning(
+  detectedResult: ImportResult,
+  weightedParentListCandidate: ImportResult | null,
+) {
+  if (
+    !weightedParentListCandidate ||
+    weightedParentListCandidate.model.edges.length === 0
+  ) {
+    return detectedResult;
+  }
+
+  return {
+    ...detectedResult,
+    warnings: [
+      ...detectedResult.warnings,
+      WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
+    ],
+  };
 }
 
 function detectStructuredEdgeListOptions(

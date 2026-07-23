@@ -6,7 +6,10 @@ import {
   type GraphExportFormat,
 } from "../../features/graph-editor/io/export-graph";
 import { formatImportWarning } from "../../features/graph-editor/i18n/import-warning-messages";
-import { importGraphInput } from "../../features/graph-editor/io/import-graph";
+import {
+  importGraphInput,
+  WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
+} from "../../features/graph-editor/io/import-graph";
 import {
   MAX_IMPORT_EDGES,
   MAX_IMPORT_INPUT_CHARS,
@@ -339,13 +342,39 @@ expect(
   "forced weighted parent-list import should create a directed weighted rooted tree",
 );
 
+const singleNodeWeightedParentList = importGraphInput("1", {
+  format: "weighted-parent-list",
+});
+
+expect(
+  singleNodeWeightedParentList.formatKind === "weighted-parent-list" &&
+    singleNodeWeightedParentList.model.settings.directed &&
+    singleNodeWeightedParentList.model.settings.weighted &&
+    singleNodeWeightedParentList.model.settings.indexBase === 1 &&
+    singleNodeWeightedParentList.model.nodes.length === 1 &&
+    singleNodeWeightedParentList.model.nodes[0]?.label === "1" &&
+    singleNodeWeightedParentList.model.edges.length === 0,
+  "weighted parent-list import should support a one-node rooted tree",
+);
+
 const ambiguousWeightedParentList = importGraphInput("5\n1 3\n1 5\n2 2\n2 4", {
   indexBase: 1,
 });
 
 expect(
-  ambiguousWeightedParentList.formatKind !== "weighted-parent-list",
-  "auto import should not steal ambiguous N plus two-column rows from existing tree parsing",
+  ambiguousWeightedParentList.formatKind !== "weighted-parent-list" &&
+    ambiguousWeightedParentList.warnings.includes(
+      WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
+    ),
+  "auto import should preserve existing tree parsing and warn about a possible weighted parent list",
+);
+
+expect(
+  formatImportWarning(WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING, "ja") ===
+    "重み付き親配列の可能性があります。各行の2つ目の値が辺の重みなら、形式で「重み付き親配列」を選択してください。" &&
+    formatImportWarning(WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING, "zh-Hans") ===
+      "输入可能是带权父节点列表。如果每行的第二个值是边权，请手动选择“带权父节点列表”格式。",
+  "weighted parent-list ambiguity warning should be localized",
 );
 
 const zeroIndexedWeightedParentList = importGraphInput("4\n0 5\n0 6\n2 7", {
