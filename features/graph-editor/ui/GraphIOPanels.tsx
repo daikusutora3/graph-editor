@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, ClipboardCopy, X } from "lucide-react";
+import { Check, ClipboardCopy, X } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 
 import {
@@ -12,6 +12,7 @@ import { useI18n } from "../i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 
 import type { CopyState } from "./graph-io-types";
+import { SelectControl } from "./SelectControl";
 
 type DropdownShellProps = {
   title: ReactNode;
@@ -107,29 +108,21 @@ export function ExportPanel({
           <span className="gv-microcopy">
             {messages.exportPanel.formatAria}
           </span>
-          <span className="relative block min-w-0">
-            <select
-              name="graph-export-format"
-              value={exportFormat}
-              aria-label={messages.exportPanel.formatAria}
-              autoComplete="off"
-              onChange={(event) =>
-                onExportFormatChange(event.target.value as GraphExportFormat)
-              }
-              className="gv-select-control"
-            >
-              {GRAPH_EXPORT_FORMATS.map((format) => (
-                <option key={format.value} value={format.value}>
-                  {messages.exportPanel.formats[format.value]}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              className="pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2 text-[var(--text-mute)]"
-              aria-hidden="true"
-              strokeWidth={2}
-            />
-          </span>
+          <SelectControl
+            name="graph-export-format"
+            value={exportFormat}
+            aria-label={messages.exportPanel.formatAria}
+            autoComplete="off"
+            onChange={(event) =>
+              onExportFormatChange(event.target.value as GraphExportFormat)
+            }
+          >
+            {GRAPH_EXPORT_FORMATS.map((format) => (
+              <option key={format.value} value={format.value}>
+                {messages.exportPanel.formats[format.value]}
+              </option>
+            ))}
+          </SelectControl>
         </label>
         <div className="flex h-8 shrink-0 items-center gap-2 rounded-[var(--app-radius-sm)] bg-[var(--state-control-bg)] px-[var(--app-space-3)] font-mono text-[length:var(--app-text-xs)] leading-none font-bold text-[var(--text-dim)]">
           <span>N={nodeCount}</span>

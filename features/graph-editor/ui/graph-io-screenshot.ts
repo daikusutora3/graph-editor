@@ -4,7 +4,6 @@ import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useGraphCanvasApi } from "../canvas/GraphCanvasProvider";
-import type { GraphModel } from "../core/graph/model";
 import {
   downloadBlob,
   ensurePngBlob,
@@ -33,16 +32,17 @@ import {
   shouldAcceptScreenshotPreviewRequest,
 } from "./graph-io-screenshot-state";
 import type { ThemeMode } from "./theme";
+import { useDebouncedValue } from "./use-debounced-value";
 
 type GraphIOScreenshotOptions = {
-  graph: GraphModel;
+  graphRevision: number;
   isGraphEmpty: boolean;
   previewEnabled: boolean;
   theme: ThemeMode;
 };
 
 export function useGraphIOScreenshot({
-  graph,
+  graphRevision,
   isGraphEmpty,
   previewEnabled,
   theme,
@@ -79,7 +79,7 @@ export function useGraphIOScreenshot({
   const currentPreviewInput = useMemo(
     () => ({
       background: effectiveBackground,
-      graph,
+      graphRevision,
       longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
       paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
       scope,
@@ -89,16 +89,17 @@ export function useGraphIOScreenshot({
       customLongEdgePx,
       customPaddingPx,
       effectiveBackground,
-      graph,
+      graphRevision,
       longEdgePreset,
       paddingPreset,
       scope,
       theme,
     ],
   );
+  const debouncedPreviewInput = useDebouncedValue(currentPreviewInput, 150);
   const currentPreviewInputKey = useMemo(
-    () => makeScreenshotInputKey(currentPreviewInput),
-    [currentPreviewInput],
+    () => makeScreenshotInputKey(debouncedPreviewInput),
+    [debouncedPreviewInput],
   );
   const visiblePreview = isGraphEmpty
     ? createEmptyScreenshotPreview()
@@ -185,25 +186,8 @@ export function useGraphIOScreenshot({
     previewUrlRef.current = "";
   }
 
-  async function refreshPreview(
-    input: {
-      background?: PngExportBackground;
-      longEdgePx?: number;
-      paddingPx?: number;
-      scope?: PngExportScope;
-    } = {},
-  ) {
-    const nextInput = {
-      background: input.background ?? effectiveBackground,
-      graph,
-      longEdgePx:
-        input.longEdgePx ?? resolveLongEdgePx(longEdgePreset, customLongEdgePx),
-      paddingPx:
-        input.paddingPx ?? resolvePaddingPx(paddingPreset, customPaddingPx),
-      scope: input.scope ?? scope,
-      theme,
-    };
-    const inputKey = makeScreenshotInputKey(nextInput);
+  async function refreshPreview() {
+    const inputKey = currentPreviewInputKey;
     const requestId = previewRequestRef.current + 1;
     previewRequestRef.current = requestId;
 
@@ -225,7 +209,7 @@ export function useGraphIOScreenshot({
     );
 
     try {
-      const blob = await createBlob(nextInput);
+      const blob = await createBlob(debouncedPreviewInput);
       const objectUrl = URL.createObjectURL(blob);
       const { height, width } = await readImageDimensions(objectUrl);
 
@@ -370,17 +354,11 @@ export function useGraphIOScreenshot({
   const setBackground = (nextBackground: PngExportBackground) => {
     setBackgroundState(nextBackground);
     resetFeedback();
-    const nextEffectiveBackground =
-      nextBackground === "transparent" ? nextBackground : solidBackground;
-    void refreshPreview({ background: nextEffectiveBackground });
   };
 
   const setPaddingPreset = (nextPreset: PngExportPaddingPreset) => {
     setPaddingPresetState(nextPreset);
     resetFeedback();
-    void refreshPreview({
-      paddingPx: resolvePaddingPx(nextPreset, customPaddingPx),
-    });
   };
 
   const setCustomPaddingPx = (nextPaddingPx: number) => {
@@ -388,15 +366,11 @@ export function useGraphIOScreenshot({
     setPaddingPresetState("custom");
     setCustomPaddingPxState(paddingPx);
     resetFeedback();
-    void refreshPreview({ paddingPx });
   };
 
   const setLongEdgePreset = (nextPreset: PngExportLongEdgePreset) => {
     setLongEdgePresetState(nextPreset);
     resetFeedback();
-    void refreshPreview({
-      longEdgePx: resolveLongEdgePx(nextPreset, customLongEdgePx),
-    });
   };
 
   const setCustomLongEdgePx = (nextLongEdgePx: number) => {
@@ -404,13 +378,11 @@ export function useGraphIOScreenshot({
     setLongEdgePresetState("custom");
     setCustomLongEdgePxState(longEdgePx);
     resetFeedback();
-    void refreshPreview({ longEdgePx });
   };
 
   const setScope = (nextScope: PngExportScope) => {
     setScopeState(nextScope);
     resetFeedback();
-    void refreshPreview({ scope: nextScope });
   };
 
   useEffect(() => {
@@ -445,7 +417,6 @@ export function useGraphIOScreenshot({
     paddingPreset,
     preview: visiblePreview,
     previewStale,
-    refreshPreview,
     scope,
     setBackground,
     setCustomLongEdgePx,

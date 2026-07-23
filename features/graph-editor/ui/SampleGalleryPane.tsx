@@ -26,6 +26,7 @@ import {
 } from "../samples/registry";
 import { graphAtom } from "../shell/state/graph-atoms";
 import { useApplyGraphModel } from "../workflows/starter/use-apply-graph-model";
+import { SelectControl } from "./SelectControl";
 
 import { SampleGraphPreview } from "./SampleGraphPreview";
 import {
@@ -297,7 +298,10 @@ function SampleCard({
     >
       <div className={SAMPLE_CARD_LAYOUT_CLASS}>{sampleSummary}</div>
       <form
-        className="flex min-h-14 flex-wrap items-end gap-[var(--app-space-2)] border-t border-[var(--divider)] px-[var(--app-space-3)] py-[var(--app-space-2)]"
+        className={cn(
+          "flex min-h-14 flex-wrap gap-[var(--app-space-2)] border-t border-[var(--divider)] px-[var(--app-space-3)] py-[var(--app-space-2)]",
+          sizedKind ? "items-end" : "items-center",
+        )}
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -343,20 +347,20 @@ function SampleCard({
                   <span className="gv-section-label">
                     {messages.samples.sizedKnightMoveLabel}
                   </span>
-                  <select
+                  <SelectControl
                     value={knightMove}
                     aria-label={messages.samples.sizedKnightMoveLabel}
                     onChange={(event) =>
                       setKnightMove(event.target.value as SizedKnightMoveKind)
                     }
-                    className="gv-control h-8 w-full px-[var(--app-space-2)] text-[length:var(--app-text-xs)]"
+                    className="h-8"
                   >
                     {sizedKnightMoveKinds.map((move) => (
                       <option key={move} value={move}>
                         {messages.samples.sizedKnightMoves[move]}
                       </option>
                     ))}
-                  </select>
+                  </SelectControl>
                 </label>
               ) : null}
             </>

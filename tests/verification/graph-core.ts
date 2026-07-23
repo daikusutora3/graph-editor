@@ -11,11 +11,11 @@ import {
   updateNodeCommand,
   updateSettingsCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
-import { applyGraphPatch } from "../../features/graph-editor/core/graph/graph-patch";
 import { reduceGraphIntent } from "../../features/graph-editor/core/graph/graph-reducer";
 import { prepareGraphTransaction } from "../../features/graph-editor/core/graph/graph-transaction";
 import {
   computeEdgeRouting,
+  resolveRoutingMode,
   shouldAvoidNodesForEdgeRouting,
 } from "../../features/graph-editor/core/layout/edge-routing";
 import {
@@ -108,6 +108,18 @@ expect(
     addEdgeCommand({ id: "duplicate", source: "a", target: "b" }),
   ).edges.length === 1,
   "reducer should reject duplicate add-edge when multi-edges are disabled",
+);
+
+const preparedNodeUpdate = prepareGraphTransaction(
+  constrainedModel,
+  updateNodeCommand("a", { label: "Updated" }),
+  4,
+);
+expect(
+  preparedNodeUpdate?.after.nodes[0]?.label === "Updated" &&
+    preparedNodeUpdate.transaction.beforeRevision === 4 &&
+    preparedNodeUpdate.transaction.afterRevision === 5,
+  "prepared transactions should retain the completed after model and revision patch",
 );
 
 const reversedConflictModel: GraphModel = {
@@ -427,10 +439,18 @@ const adaptiveCurveGraph: GraphModel = {
   settings: defaultGraphSettings,
 };
 const adaptiveCurve = computeEdgeRouting(adaptiveCurveGraph).get("ab");
+const simpleAdaptiveCurve = computeEdgeRouting(adaptiveCurveGraph, {
+  mode: "simple",
+}).get("ab");
 
 expect(
   adaptiveCurve?.controlPointWeights.length === 4,
   "separated obstacles should produce a local multi-control-point route",
+);
+expect(
+  simpleAdaptiveCurve?.controlPointWeights.length === 1 &&
+    simpleAdaptiveCurve.controlPointDistancesPx[0] === 0,
+  "simple routing should skip obstacle scoring and keep a straight edge",
 );
 expect(
   adaptiveCurve != null &&
@@ -514,13 +534,31 @@ const incrementalGraph: GraphModel = {
 const previousIncrementalRoutes = computeEdgeRouting(incrementalGraph);
 const incrementalRoutes = computeEdgeRouting(incrementalGraph, {
   previousMeta: previousIncrementalRoutes,
-  quality: "interactive",
+  mode: "quality",
   rerouteEdgeIds: new Set(["ab"]),
 });
 
 expect(
   incrementalRoutes.get("cd") === previousIncrementalRoutes.get("cd"),
   "interactive routing should reuse clean edge-group geometry without recomputing it",
+);
+
+const oversizedRoutingGraph: GraphModel = {
+  ...createEmptyGraphModel(),
+  nodes: [
+    { id: "a", label: "A", order: 0, x: 0, y: 0 },
+    { id: "b", label: "B", order: 1, x: 200, y: 0 },
+  ],
+  edges: Array.from({ length: 201 }, (_, index) => ({
+    id: `edge-${index}`,
+    source: "a",
+    target: "b",
+  })),
+};
+
+expect(
+  resolveRoutingMode(oversizedRoutingGraph, "quality") === "simple",
+  "quality routing should fall back to simple mode above the edge-pair work limit",
 );
 
 finish();
@@ -538,8 +576,8 @@ function applyIntent(
   model: GraphModel,
   intent: Parameters<typeof prepareGraphTransaction>[1],
 ) {
-  const transaction = prepareGraphTransaction(model, intent, 0);
-  return transaction ? applyGraphPatch(model, transaction.forward) : model;
+  const prepared = prepareGraphTransaction(model, intent, 0);
+  return prepared?.after ?? model;
 }
 
 function canonicalBow(edge: GraphEdge, bowPx: number) {

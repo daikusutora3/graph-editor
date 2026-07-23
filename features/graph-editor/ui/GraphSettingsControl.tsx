@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtomValue, useSetAtom } from "jotai";
-import { ArrowLeftRight, ChevronDown } from "lucide-react";
+import { ArrowLeftRight } from "lucide-react";
 
 import type { GraphSettings } from "../core/graph/model";
 import { useI18n } from "../i18n/I18nProvider";
@@ -11,6 +11,7 @@ import {
   updateGraphSettingsAtom,
 } from "../shell/state/editor-actions";
 import { graphAtom } from "../shell/state/graph-atoms";
+import { SelectControl } from "./SelectControl";
 
 export function GraphSettingsControl({
   onSettingsChange,
@@ -191,27 +192,19 @@ function SettingSelect({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="relative block min-w-0">
-        <select
-          name="graph-language"
-          value={value}
-          aria-label={label}
-          autoComplete="off"
-          onChange={(event) => onChange(event.target.value)}
-          className="gv-select-control"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          className="pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2 text-[var(--text-mute)]"
-          aria-hidden="true"
-          strokeWidth={2}
-        />
-      </span>
+      <SelectControl
+        name="graph-language"
+        value={value}
+        aria-label={label}
+        autoComplete="off"
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </SelectControl>
     </label>
   );
 }

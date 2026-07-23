@@ -3,7 +3,7 @@
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { graphAtom, graphStorageReadyAtom } from "./state/graph-atoms";
+import { graphIsEmptyAtom, graphStorageReadyAtom } from "./state/graph-atoms";
 
 import { GraphCanvas } from "../canvas/GraphCanvas";
 import { GraphCanvasProvider } from "../canvas/GraphCanvasProvider";
@@ -26,7 +26,7 @@ export function GraphEditor({ initialLocale }: { initialLocale?: Locale }) {
 }
 
 function GraphEditorContent() {
-  const graph = useAtomValue(graphAtom);
+  const graphIsEmpty = useAtomValue(graphIsEmptyAtom);
   const graphStorageReady = useAtomValue(graphStorageReadyAtom);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -40,13 +40,13 @@ function GraphEditorContent() {
           <section className="relative h-full min-w-0 bg-[var(--bg-deep)]">
             {graphStorageReady ? (
               <>
-                <GraphCanvas chrome={{ sidebarCollapsed }} />
+                <GraphCanvas sidebarCollapsed={sidebarCollapsed} />
                 <ModeToolbar
                   collapsed={sidebarCollapsed}
                   onCollapsedChange={setSidebarCollapsed}
                 />
                 <GraphStarterCard
-                  visible={graph.nodes.length === 0 && graph.edges.length === 0}
+                  visible={graphIsEmpty}
                   sidebarCollapsed={sidebarCollapsed}
                 />
               </>

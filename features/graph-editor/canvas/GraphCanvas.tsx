@@ -64,10 +64,10 @@ type CanvasPointer = {
   clientY: number;
 };
 type GraphCanvasProps = {
-  chrome: GraphCanvasChrome;
+  sidebarCollapsed: boolean;
 };
 
-export function GraphCanvas({ chrome }: GraphCanvasProps) {
+export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const draggingNodeIdsRef = useRef<ReadonlySet<NodeId>>(new Set());
@@ -94,6 +94,10 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
 
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
+  const chrome = useMemo<GraphCanvasChrome>(
+    () => ({ sidebarCollapsed }),
+    [sidebarCollapsed],
+  );
 
   const exportPng = useGraphImageExport({
     cyRef,
@@ -107,19 +111,16 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     isGraphOutOfView,
     nodeHitboxes,
     updateRenderedHitboxes,
-  } = useRenderedHitboxes({ chrome, graph, mode });
+  } = useRenderedHitboxes({ graph, mode, sidebarCollapsed });
 
   const { edgeRoutingMeta, edgeRoutingOptions } = useEdgeRoutingMeta(graph);
 
   const elements = useMemo(() => {
     return graphModelToCytoscapeElements(graph, {
       edgeRoutingMeta,
-      edgeRoutingOptions: {
-        avoidNodes: edgeRoutingOptions.avoidNodes,
-        variant: 0,
-      },
+      edgeRoutingOptions,
     });
-  }, [edgeRoutingMeta, edgeRoutingOptions.avoidNodes, graph]);
+  }, [edgeRoutingMeta, edgeRoutingOptions, graph]);
   const graphHasElements = elements.length > 0;
 
   useEffect(() => {
@@ -305,7 +306,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
     containerRef,
     cyRef,
     elements,
-    chrome,
+    sidebarCollapsed,
     edgeRoutingOptions,
     graph,
     mode,
@@ -557,7 +558,7 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
           target={contextMenuPresence.value}
           graph={graph}
           panelState={contextMenuPresence.state}
-          sidebarCollapsed={chrome.sidebarCollapsed}
+          sidebarCollapsed={sidebarCollapsed}
           selection={selection}
           onClose={() => setContextMenuTarget(null)}
           onEditNodeLabel={openNodeLabelEdit}

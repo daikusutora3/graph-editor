@@ -162,7 +162,7 @@ function createLayoutPositions(
 ) {
   const positions = getLayoutRuntime(kind).positions(model, rootNodeId);
 
-  return ensureMinimumNodeDistance(positions);
+  return kind === "force" ? positions : ensureMinimumNodeDistance(positions);
 }
 
 export function manualLayoutDisabledReasonCode(
@@ -248,11 +248,13 @@ function layoutForceComponent(
   nodeIds: NodeId[],
   edges: ReadonlyArray<readonly [NodeId, NodeId]>,
 ) {
+  const seedPositions = layoutCircle(
+    nodeIds,
+    layoutCircleRadius(nodeIds.length),
+  );
   const positions = new Map(
     nodeIds.map((nodeId, nodeIndex) => {
-      const seeded = layoutCircle(nodeIds, layoutCircleRadius(nodeIds.length))[
-        nodeId
-      ];
+      const seeded = seedPositions[nodeId];
       const jitter = {
         x: (pseudoRandom(nodeIndex + 17) - 0.5) * 24,
         y: (pseudoRandom(nodeIndex + 53) - 0.5) * 24,

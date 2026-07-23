@@ -22,21 +22,21 @@ export const executeCommandAtom = atom(
   null,
   (get, set, intent: GraphIntent) => {
     const graph = get(graphAtom);
-    const transaction = prepareGraphTransaction(
+    const prepared = prepareGraphTransaction(
       graph,
       intent,
       get(graphRevisionAtom),
     );
 
-    if (!transaction) {
+    if (!prepared) {
       return;
     }
 
-    const nextGraph = applyGraphPatch(graph, transaction.forward);
-    set(graphAtom, nextGraph);
+    const { after, transaction } = prepared;
+    set(graphAtom, after);
     set(graphRevisionAtom, transaction.afterRevision);
     set(edgeDraftAtom, createEmptyEdgeDraft());
-    set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
+    set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), after));
     set(historyAtom, appendHistory(get(historyAtom), transaction));
     set(futureAtom, []);
   },

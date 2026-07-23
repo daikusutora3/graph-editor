@@ -24,20 +24,28 @@ export type EdgeRoutingMeta = EdgeCurveGeometry & {
   loopSweepDeg: number;
 };
 
+export type EdgeRoutingMode = "simple" | "quality";
+
 export type EdgeRoutingOptions = {
-  variant?: number;
-  avoidNodes?: boolean;
+  mode?: EdgeRoutingMode;
   previousMeta?: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
   rerouteEdgeIds?: ReadonlySet<EdgeId> | null;
-  quality?: "interactive" | "settled";
-  nodeClearancePx?: number;
-  duplicateBowPx?: number;
-  loopDirectionDeg?: number;
-  loopDirectionStepDeg?: number;
-  loopSweepDeg?: number;
-  loopSweepStepDeg?: number;
-  maxLoopSweepDeg?: number;
-  candidateBowPx?: readonly number[];
+};
+
+type ResolvedEdgeRoutingOptions = {
+  avoidNodes: boolean;
+  candidateBowPx: readonly number[];
+  duplicateBowPx: number;
+  loopDirectionDeg: number;
+  loopDirectionStepDeg: number;
+  loopSweepDeg: number;
+  loopSweepStepDeg: number;
+  maxLoopSweepDeg: number;
+  nodeClearancePx: number;
+  previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
+  quality: "interactive" | "settled";
+  rerouteEdgeIds: ReadonlySet<EdgeId> | null;
+  variant: number;
 };
 
 const MAX_BOW_PX = 180;
@@ -59,7 +67,7 @@ const defaultEdgeRoutingMeta: EdgeRoutingMeta = {
   loopSweepDeg: LOOP_SWEEP_DEG,
 };
 
-const defaultEdgeRoutingOptions: Required<EdgeRoutingOptions> = {
+const defaultEdgeRoutingOptions: ResolvedEdgeRoutingOptions = {
   variant: 0,
   avoidNodes: true,
   previousMeta: new Map(),
@@ -79,7 +87,7 @@ export function computeEdgeRouting(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
 ): Map<EdgeId, EdgeRoutingMeta> {
-  const resolvedOptions = { ...defaultEdgeRoutingOptions, ...options };
+  const resolvedOptions = resolveEdgeRoutingOptions(model, options);
   const routeGroups = new Map<string, GraphEdge[]>();
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
 
@@ -234,18 +242,51 @@ function duplicateBowSpacing(edgeCount: number, requestedSpacing: number) {
 }
 
 export function shouldAvoidNodesForEdgeRouting(model: GraphModel) {
-  if (model.nodes.length === 0 || model.edges.length === 0) {
-    return false;
+  return resolveRoutingMode(model, "quality") === "quality";
+}
+
+export function resolveRoutingMode(
+  model: GraphModel,
+  requestedMode: EdgeRoutingMode,
+): EdgeRoutingMode {
+  if (requestedMode === "simple") {
+    return "simple";
   }
 
-  return model.nodes.length * model.edges.length <= NODE_AVOIDANCE_WORK_LIMIT;
+  const nodeAvoidanceAffordable =
+    model.nodes.length > 0 &&
+    model.edges.length > 0 &&
+    model.nodes.length * model.edges.length <= NODE_AVOIDANCE_WORK_LIMIT;
+  const edgeScoringAffordable =
+    model.edges.length * model.edges.length <= EDGE_PAIR_SCORING_WORK_LIMIT;
+
+  return nodeAvoidanceAffordable && edgeScoringAffordable
+    ? "quality"
+    : "simple";
+}
+
+function resolveEdgeRoutingOptions(
+  model: GraphModel,
+  options: EdgeRoutingOptions,
+): ResolvedEdgeRoutingOptions {
+  const mode = resolveRoutingMode(model, options.mode ?? "quality");
+
+  return {
+    ...defaultEdgeRoutingOptions,
+    avoidNodes: mode === "quality",
+    previousMeta:
+      options.previousMeta ?? defaultEdgeRoutingOptions.previousMeta,
+    quality: options.rerouteEdgeIds ? "interactive" : "settled",
+    rerouteEdgeIds:
+      options.rerouteEdgeIds ?? defaultEdgeRoutingOptions.rerouteEdgeIds,
+  };
 }
 
 export function createEdgeRoutingCacheKey(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
 ) {
-  const resolvedOptions = { ...defaultEdgeRoutingOptions, ...options };
+  const resolvedOptions = resolveEdgeRoutingOptions(model, options);
   const optionSignature = [
     model.settings.directed,
     resolvedOptions.variant,
@@ -311,20 +352,19 @@ function chooseEdgeCurve(
   edges: GraphEdge[],
   nodes: GraphNode[],
   nodesById: Map<NodeId, GraphNode>,
-  options: Required<EdgeRoutingOptions>,
+  options: ResolvedEdgeRoutingOptions,
 ): EdgeCurveGeometry {
-  const legacyBow = chooseEdgeBow(edge, edges, nodes, nodesById, 0, options);
-  const legacyCurve = singleBowCurve(legacyBow);
+  const simpleCurve = singleBowCurve(0);
 
   if (!options.avoidNodes || edge.source === edge.target) {
-    return legacyCurve;
+    return simpleCurve;
   }
 
   const source = nodesById.get(edge.source);
   const target = nodesById.get(edge.target);
 
   if (!source || !target) {
-    return legacyCurve;
+    return simpleCurve;
   }
 
   const obstacles = projectedEdgeObstacles(
@@ -353,7 +393,7 @@ function chooseEdgeCurve(
       controlPointWeights: previous.controlPointWeights,
     });
   }
-  let best = candidates[0] ?? legacyCurve;
+  let best = candidates[0] ?? simpleCurve;
   let bestScore = scoreCandidateCurve(
     best,
     source,
@@ -519,7 +559,7 @@ function scoreCandidateCurve(
   edges: GraphEdge[],
   nodes: GraphNode[],
   nodesById: Map<NodeId, GraphNode>,
-  options: Required<EdgeRoutingOptions>,
+  options: ResolvedEdgeRoutingOptions,
 ) {
   let collisionCount = 0;
   let penetrationScore = 0;
@@ -676,7 +716,7 @@ function acuteCrossingAngle(
 function scoreCurveInstability(
   curve: EdgeCurveGeometry,
   edge: GraphEdge,
-  options: Required<EdgeRoutingOptions>,
+  options: ResolvedEdgeRoutingOptions,
 ) {
   if (options.quality !== "interactive") {
     return 0;
@@ -841,69 +881,10 @@ function orientCanonicalCurve(
     : reverseEdgeCurve(canonicalCurve);
 }
 
-function chooseEdgeBow(
-  edge: GraphEdge,
-  edges: GraphEdge[],
-  nodes: GraphNode[],
-  nodesById: Map<NodeId, GraphNode>,
-  baseBowPx: number,
-  options: Required<EdgeRoutingOptions>,
-) {
-  if (edge.source === edge.target) return 0;
-  if (!options.avoidNodes) {
-    return Math.round(clamp(baseBowPx, -MAX_BOW_PX, MAX_BOW_PX));
-  }
-
-  const source = nodesById.get(edge.source);
-  const target = nodesById.get(edge.target);
-
-  if (!source || !target) return 0;
-
-  const candidates = edgeBowCandidates(baseBowPx, options.candidateBowPx).map(
-    (bowPx) => ({
-      bowPx,
-      score: scoreCandidateBow(
-        bowPx,
-        source,
-        target,
-        edge,
-        edges,
-        nodes,
-        nodesById,
-        baseBowPx,
-        options,
-      ),
-    }),
-  );
-  const variant = Math.trunc(options.variant);
-  let best = candidates[0] ?? {
-    bowPx: baseBowPx,
-    score: scoreCandidateBow(
-      baseBowPx,
-      source,
-      target,
-      edge,
-      edges,
-      nodes,
-      nodesById,
-      baseBowPx,
-      options,
-    ),
-  };
-
-  for (const candidate of candidates.slice(1)) {
-    if (compareCandidate(candidate, best, baseBowPx, variant) < 0) {
-      best = candidate;
-    }
-  }
-
-  return Math.round(clamp(best.bowPx, -MAX_BOW_PX, MAX_BOW_PX));
-}
-
 function chooseLoopDirection(
   source: GraphNode,
   nodes: GraphNode[],
-  options: Required<EdgeRoutingOptions>,
+  options: ResolvedEdgeRoutingOptions,
 ) {
   if (!options.avoidNodes) {
     return options.loopDirectionDeg;
@@ -930,7 +911,7 @@ function chooseLoopDirection(
   return best;
 }
 
-function loopDirectionCandidates(options: Required<EdgeRoutingOptions>) {
+function loopDirectionCandidates(options: ResolvedEdgeRoutingOptions) {
   return Array.from({ length: 24 }, (_, index) =>
     Math.round(options.loopDirectionDeg + index * 15),
   );
@@ -940,7 +921,7 @@ function scoreLoopDirection(
   directionDeg: number,
   source: GraphNode,
   nodes: GraphNode[],
-  options: Required<EdgeRoutingOptions>,
+  options: ResolvedEdgeRoutingOptions,
 ) {
   const loopPoints = loopSamplePoints(source, directionDeg, options);
   let score =
@@ -964,7 +945,7 @@ function scoreLoopDirection(
 function loopSamplePoints(
   source: GraphNode,
   directionDeg: number,
-  options: Required<EdgeRoutingOptions>,
+  options: ResolvedEdgeRoutingOptions,
 ) {
   const direction = (directionDeg * Math.PI) / 180;
   const sweep = (options.loopSweepDeg * Math.PI) / 180;
@@ -995,105 +976,6 @@ function edgeBowCandidates(baseBowPx: number, offsets: readonly number[]) {
   return [...candidates];
 }
 
-function compareCandidate(
-  a: { bowPx: number; score: number },
-  b: { bowPx: number; score: number },
-  baseBowPx: number,
-  variant: number,
-) {
-  if (a.score !== b.score) {
-    return a.score - b.score;
-  }
-
-  return (
-    candidatePreference(a.bowPx, baseBowPx, variant) -
-    candidatePreference(b.bowPx, baseBowPx, variant)
-  );
-}
-
-function scoreCandidateBow(
-  bowPx: number,
-  source: GraphNode,
-  target: GraphNode,
-  edge: GraphEdge,
-  edges: GraphEdge[],
-  nodes: GraphNode[],
-  nodesById: Map<NodeId, GraphNode>,
-  baseBowPx: number,
-  options: Required<EdgeRoutingOptions>,
-) {
-  const length = Math.hypot(target.x - source.x, target.y - source.y);
-  let score = Math.abs(bowPx) * 0.04 + Math.abs(bowPx - baseBowPx) * 0.025;
-
-  if (length === 0) return score;
-
-  for (const node of nodes) {
-    if (node.id === edge.source || node.id === edge.target) continue;
-
-    const nearest = nearestQuadraticPoint(source, target, bowPx, node);
-    const endpointWeight = endpointProximityWeight(nearest.t);
-    if (endpointWeight === 0) continue;
-
-    const overlap = Math.max(0, options.nodeClearancePx - nearest.distance);
-    score += overlap * overlap * endpointWeight;
-  }
-
-  score += scoreEdgeLabelOverlap(edge, edges, nodesById, bowPx);
-
-  return score;
-}
-
-function scoreEdgeLabelOverlap(
-  edge: GraphEdge,
-  edges: GraphEdge[],
-  nodesById: Map<NodeId, GraphNode>,
-  bowPx: number,
-) {
-  if (!edgeHasVisibleLabel(edge) || edge.source === edge.target) {
-    return 0;
-  }
-
-  const source = nodesById.get(edge.source);
-  const target = nodesById.get(edge.target);
-
-  if (!source || !target) {
-    return 0;
-  }
-
-  const anchor = quadraticPoint(source, target, bowPx, 0.5);
-  let score = 0;
-
-  for (const otherEdge of edges) {
-    if (
-      otherEdge.id === edge.id ||
-      otherEdge.source === otherEdge.target ||
-      routeEdgeKey(otherEdge) === routeEdgeKey(edge) ||
-      !edgeHasVisibleLabel(otherEdge)
-    ) {
-      continue;
-    }
-
-    const otherSource = nodesById.get(otherEdge.source);
-    const otherTarget = nodesById.get(otherEdge.target);
-
-    if (!otherSource || !otherTarget) {
-      continue;
-    }
-
-    const otherAnchor = quadraticPoint(otherSource, otherTarget, 0, 0.5);
-    const distance = Math.hypot(
-      anchor.x - otherAnchor.x,
-      anchor.y - otherAnchor.y,
-    );
-    const clearance = edgeLabelClearance(edge, otherEdge);
-    const overlap = Math.max(0, clearance - distance);
-
-    score += overlap * overlap * 1.4;
-  }
-
-  return score;
-}
-
 function edgeHasVisibleLabel(edge: GraphEdge) {
   return Boolean(edge.label || edge.weight);
 }
@@ -1111,81 +993,6 @@ function edgeLabelText(edge: GraphEdge) {
   return edge.label ?? edge.weight ?? "";
 }
 
-function nearestQuadraticPoint(
-  source: GraphNode,
-  target: GraphNode,
-  bowPx: number,
-  node: GraphNode,
-) {
-  const dx = target.x - source.x;
-  const dy = target.y - source.y;
-  const length = Math.hypot(dx, dy);
-  const normalX = length === 0 ? 0 : -dy / length;
-  const normalY = length === 0 ? 0 : dx / length;
-  const controlX = (source.x + target.x) / 2 + normalX * bowPx;
-  const controlY = (source.y + target.y) / 2 + normalY * bowPx;
-  let best = { distance: Number.POSITIVE_INFINITY, t: 0 };
-
-  for (let step = 0; step <= 20; step += 1) {
-    const t = step / 20;
-    const inv = 1 - t;
-    const x = inv * inv * source.x + 2 * inv * t * controlX + t * t * target.x;
-    const y = inv * inv * source.y + 2 * inv * t * controlY + t * t * target.y;
-    const distance = Math.hypot(node.x - x, node.y - y);
-
-    if (distance < best.distance) {
-      best = { distance, t };
-    }
-  }
-
-  return best;
-}
-
-function quadraticPoint(
-  source: GraphNode,
-  target: GraphNode,
-  bowPx: number,
-  t: number,
-) {
-  const dx = target.x - source.x;
-  const dy = target.y - source.y;
-  const length = Math.hypot(dx, dy);
-  const normalX = length === 0 ? 0 : -dy / length;
-  const normalY = length === 0 ? 0 : dx / length;
-  const controlX = (source.x + target.x) / 2 + normalX * bowPx;
-  const controlY = (source.y + target.y) / 2 + normalY * bowPx;
-  const inv = 1 - t;
-
-  return {
-    x: inv * inv * source.x + 2 * inv * t * controlX + t * t * target.x,
-    y: inv * inv * source.y + 2 * inv * t * controlY + t * t * target.y,
-  };
-}
-
-function endpointProximityWeight(t: number) {
-  const endpointDistance = Math.min(t, 1 - t);
-
-  if (endpointDistance <= 0.08) return 0;
-  if (endpointDistance >= 0.24) return 1;
-
-  return (endpointDistance - 0.08) / 0.16;
-}
-
-function candidatePreference(
-  bowPx: number,
-  baseBowPx: number,
-  variant: number,
-) {
-  const signPreference =
-    Math.abs(variant % 2) === 1 ? -Math.sign(bowPx) : Math.sign(bowPx);
-  const curvePreference =
-    Math.floor(Math.abs(variant) / 2) % 2 === 1
-      ? -Math.abs(bowPx - baseBowPx)
-      : Math.abs(bowPx - baseBowPx);
-
-  return curvePreference + signPreference * 0.001;
-}
-
 function canonicalRoutingEdge(edge: GraphEdge): GraphEdge {
   if (edge.source <= edge.target) {
     return edge;
@@ -1200,8 +1007,8 @@ function canonicalRoutingEdge(edge: GraphEdge): GraphEdge {
 
 function orientPreviousRouteForCanonicalEdge(
   edge: GraphEdge,
-  options: Required<EdgeRoutingOptions>,
-): Required<EdgeRoutingOptions> {
+  options: ResolvedEdgeRoutingOptions,
+): ResolvedEdgeRoutingOptions {
   if (edge.source <= edge.target) {
     return options;
   }

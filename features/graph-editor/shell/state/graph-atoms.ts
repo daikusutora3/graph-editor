@@ -36,6 +36,11 @@ export const graphStorageReadyAtom = atom(
   (get) => get(storedGraphAtom).status === "ready",
 );
 
+export const graphIsEmptyAtom = atom((get) => {
+  const graph = get(storedGraphAtom).graph;
+  return graph.nodes.length === 0 && graph.edges.length === 0;
+});
+
 export const graphAtom = atom(
   (get) => get(storedGraphAtom).graph,
   (_get, set, graph: GraphModel) => {

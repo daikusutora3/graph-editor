@@ -10,14 +10,13 @@ import {
 } from "../core/layout/edge-routing";
 
 export function useEdgeRoutingMeta(graph: GraphModel) {
-  const avoidNodes =
+  const mode =
     graph.settings.autoEdgeRouting && shouldAvoidNodesForEdgeRouting(graph);
   const edgeRoutingOptions = useMemo(
     () => ({
-      avoidNodes,
-      variant: 0,
+      mode: mode ? ("quality" as const) : ("simple" as const),
     }),
-    [avoidNodes],
+    [mode],
   );
   const cacheKey = useMemo(
     () => createEdgeRoutingCacheKey(graph, edgeRoutingOptions),

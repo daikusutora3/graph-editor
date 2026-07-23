@@ -3,11 +3,16 @@ import { diffGraphModels, isEmptyGraphPatch } from "./graph-patch";
 import { reduceGraphIntent } from "./graph-reducer";
 import type { GraphIntent, GraphModel, GraphTransaction } from "./model";
 
+export type PreparedGraphTransaction = {
+  after: GraphModel;
+  transaction: GraphTransaction;
+};
+
 export function prepareGraphTransaction(
   before: GraphModel,
   intent: GraphIntent,
   beforeRevision: number,
-): GraphTransaction | null {
+): PreparedGraphTransaction | null {
   const after = reduceGraphIntent(before, intent);
   const forward = diffGraphModels(before, after);
 
@@ -16,10 +21,13 @@ export function prepareGraphTransaction(
   }
 
   return {
-    label: graphIntentLabel(intent),
-    forward,
-    backward: diffGraphModels(after, before),
-    beforeRevision,
-    afterRevision: beforeRevision + 1,
+    after,
+    transaction: {
+      label: graphIntentLabel(intent),
+      forward,
+      backward: diffGraphModels(after, before),
+      beforeRevision,
+      afterRevision: beforeRevision + 1,
+    },
   };
 }

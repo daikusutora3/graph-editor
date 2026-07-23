@@ -10,7 +10,6 @@ import {
   type graphModelToCytoscapeElements,
 } from "./cytoscape-adapter";
 import { withCytoscapeBatch } from "./cytoscape-batch";
-import type { GraphCanvasChrome } from "../../canvas/graph-canvas-types";
 import type { GraphModel } from "../../core/graph/model";
 import type { EdgeRoutingOptions } from "../../core/layout/edge-routing";
 import type {
@@ -37,7 +36,7 @@ type UseGraphCanvasLifecycleOptions = {
   containerRef: RefObject<HTMLDivElement | null>;
   cyRef: MutableRefObject<Core | null>;
   elements: ReturnType<typeof graphModelToCytoscapeElements>;
-  chrome: GraphCanvasChrome;
+  sidebarCollapsed: boolean;
   edgeRoutingOptions: EdgeRoutingOptions;
   graph: GraphModel;
   mode: EditorMode;
@@ -55,7 +54,7 @@ export function useGraphCanvasLifecycle({
   containerRef,
   cyRef,
   elements,
-  chrome,
+  sidebarCollapsed,
   edgeRoutingOptions,
   graph,
   mode,
@@ -69,6 +68,16 @@ export function useGraphCanvasLifecycle({
   updateRenderedHitboxes,
 }: UseGraphCanvasLifecycleOptions) {
   const previousSidebarCollapsedRef = useRef<boolean | null>(null);
+  const arrowScaleRef = useRef(graph.settings.arrowScale);
+  const flushRenderedHitboxesRef = useRef(flushRenderedHitboxes);
+  const setZoomPercentRef = useRef(setZoomPercent);
+  const sidebarCollapsedRef = useRef(sidebarCollapsed);
+  const updateRenderedHitboxesRef = useRef(updateRenderedHitboxes);
+  arrowScaleRef.current = graph.settings.arrowScale;
+  flushRenderedHitboxesRef.current = flushRenderedHitboxes;
+  setZoomPercentRef.current = setZoomPercent;
+  sidebarCollapsedRef.current = sidebarCollapsed;
+  updateRenderedHitboxesRef.current = updateRenderedHitboxes;
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -97,8 +106,10 @@ export function useGraphCanvasLifecycle({
         return;
       }
 
-      centerGraphOrigin(cy, chrome);
-      setZoomPercent(readZoomPercent(cy));
+      centerGraphOrigin(cy, {
+        sidebarCollapsed: sidebarCollapsedRef.current,
+      });
+      setZoomPercentRef.current(readZoomPercent(cy));
     });
 
     return () => {
@@ -107,7 +118,29 @@ export function useGraphCanvasLifecycle({
       cy.destroy();
       cyRef.current = null;
     };
-  }, []);
+  }, [containerRef, cyRef]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const cy = cyRef.current;
+
+    if (!container || !cy) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      if (cy.destroyed()) {
+        return;
+      }
+
+      cy.resize();
+      updateRenderedHitboxesRef.current(cy);
+      setZoomPercentRef.current(readZoomPercent(cy));
+    });
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [containerRef, cyRef]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -122,12 +155,10 @@ export function useGraphCanvasLifecycle({
       }
 
       cy.style(
-        createGraphCanvasStylesheet(
-          readCanvasPalette(),
-          graph.settings.arrowScale,
-        ),
+        createGraphCanvasStylesheet(readCanvasPalette(), arrowScaleRef.current),
       );
       cy.resize();
+      updateRenderedHitboxesRef.current(cy);
     };
 
     const observer = new MutationObserver(updateCanvasTheme);
@@ -139,7 +170,7 @@ export function useGraphCanvasLifecycle({
     return () => {
       observer.disconnect();
     };
-  }, [cyRef, graph.settings.arrowScale]);
+  }, [cyRef]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -155,8 +186,8 @@ export function useGraphCanvasLifecycle({
       ),
     );
     cy.resize();
-    updateRenderedHitboxes(cy);
-  }, [cyRef, graph.settings.arrowScale, updateRenderedHitboxes]);
+    updateRenderedHitboxesRef.current(cy);
+  }, [cyRef, graph.settings.arrowScale]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -169,13 +200,17 @@ export function useGraphCanvasLifecycle({
       cy.resize();
 
       if (cy.elements().length > 0) {
-        fitGraphToAvailableViewport(cy, chrome);
+        fitGraphToAvailableViewport(cy, {
+          sidebarCollapsed: sidebarCollapsedRef.current,
+        });
       } else {
-        centerGraphOrigin(cy, chrome);
+        centerGraphOrigin(cy, {
+          sidebarCollapsed: sidebarCollapsedRef.current,
+        });
       }
 
-      updateRenderedHitboxes(cy);
-      setZoomPercent(readZoomPercent(cy));
+      updateRenderedHitboxesRef.current(cy);
+      setZoomPercentRef.current(readZoomPercent(cy));
     };
 
     try {
@@ -197,14 +232,15 @@ export function useGraphCanvasLifecycle({
       suppressSelectionSyncRef.current = false;
     }
 
-    cy.resize();
     cy.userZoomingEnabled(elements.length > 0);
 
     if (elements.length === 0) {
       pendingFitAfterUpdateRef.current = false;
-      centerGraphOrigin(cy, chrome);
-      flushRenderedHitboxes(cy);
-      setZoomPercent(readZoomPercent(cy));
+      centerGraphOrigin(cy, {
+        sidebarCollapsed: sidebarCollapsedRef.current,
+      });
+      flushRenderedHitboxesRef.current(cy);
+      setZoomPercentRef.current(readZoomPercent(cy));
       return;
     }
 
@@ -214,19 +250,15 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
-    updateRenderedHitboxes(cy);
+    updateRenderedHitboxesRef.current(cy);
   }, [
     cyRef,
     elements,
     edgeRoutingOptions,
-    flushRenderedHitboxes,
     draggingNodeIdsRef,
     graph,
     selectionRef,
-    setZoomPercent,
-    chrome,
     suppressSelectionSyncRef,
-    updateRenderedHitboxes,
   ]);
 
   useEffect(() => {
@@ -239,16 +271,18 @@ export function useGraphCanvasLifecycle({
     cy.resize();
 
     const previousSidebarCollapsed = previousSidebarCollapsedRef.current;
-    previousSidebarCollapsedRef.current = chrome.sidebarCollapsed;
+    previousSidebarCollapsedRef.current = sidebarCollapsed;
 
     if (
       previousSidebarCollapsed !== null &&
-      previousSidebarCollapsed !== chrome.sidebarCollapsed
+      previousSidebarCollapsed !== sidebarCollapsed
     ) {
       const previousCenter = readGraphViewportCenterX(cy, {
         sidebarCollapsed: previousSidebarCollapsed,
       });
-      const nextCenter = readGraphViewportCenterX(cy, chrome);
+      const nextCenter = readGraphViewportCenterX(cy, {
+        sidebarCollapsed,
+      });
 
       if (previousCenter !== null && nextCenter !== null) {
         const pan = cy.pan();
@@ -265,8 +299,8 @@ export function useGraphCanvasLifecycle({
           );
 
           const timeoutId = window.setTimeout(() => {
-            flushRenderedHitboxes(cy);
-            setZoomPercent(readZoomPercent(cy));
+            flushRenderedHitboxesRef.current(cy);
+            setZoomPercentRef.current(readZoomPercent(cy));
           }, APP_ANIMATION_DURATION_MS + 40);
 
           return () => window.clearTimeout(timeoutId);
@@ -276,9 +310,9 @@ export function useGraphCanvasLifecycle({
       }
     }
 
-    flushRenderedHitboxes(cy);
-    setZoomPercent(readZoomPercent(cy));
-  }, [chrome, cyRef, flushRenderedHitboxes, setZoomPercent]);
+    flushRenderedHitboxesRef.current(cy);
+    setZoomPercentRef.current(readZoomPercent(cy));
+  }, [cyRef, sidebarCollapsed]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -309,15 +343,15 @@ export function useGraphCanvasLifecycle({
         return;
       }
 
-      updateRenderedHitboxes(cy);
+      updateRenderedHitboxesRef.current(cy);
     };
     const updateZoomOverlay = () => {
       if (cy.destroyed()) {
         return;
       }
 
-      updateRenderedHitboxes(cy);
-      setZoomPercent(readZoomPercent(cy));
+      updateRenderedHitboxesRef.current(cy);
+      setZoomPercentRef.current(readZoomPercent(cy));
     };
 
     cy.on("pan", updateCanvasOverlay);
@@ -329,7 +363,7 @@ export function useGraphCanvasLifecycle({
         cy.off("zoom resize", updateZoomOverlay);
       }
     };
-  }, [cyRef, setZoomPercent, updateRenderedHitboxes]);
+  }, [cyRef]);
 }
 
 function syncDraggedEdgeRoutingPreview(
@@ -338,7 +372,7 @@ function syncDraggedEdgeRoutingPreview(
   edgeRoutingOptions: EdgeRoutingOptions,
   draggingNodeIds: ReadonlySet<string>,
 ) {
-  if (draggingNodeIds.size === 0 || !edgeRoutingOptions.avoidNodes) {
+  if (draggingNodeIds.size === 0 || edgeRoutingOptions.mode !== "quality") {
     return;
   }
 

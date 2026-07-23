@@ -11,6 +11,7 @@ import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
 import { graphAtom } from "../../shell/state/graph-atoms";
 import { useAnimatedNullableState } from "../../ui/use-panel-presence";
+import { useDebouncedValue } from "../../ui/use-debounced-value";
 
 import { useApplyGraphModel } from "./use-apply-graph-model";
 
@@ -42,20 +43,21 @@ export function useGraphStarterState({
     }),
     [graph.settings, importFormat],
   );
+  const debouncedInputText = useDebouncedValue(inputText, 150);
   const previewParseKey = useMemo(
-    () => makeStarterParseKey(inputText, importOptions),
-    [importOptions, inputText],
+    () => makeStarterParseKey(debouncedInputText, importOptions),
+    [debouncedInputText, importOptions],
   );
   const parsedPreview = useMemo<StarterParseResult | null>(() => {
-    if (!inputText.trim()) {
+    if (!debouncedInputText.trim()) {
       return null;
     }
 
     return {
       key: previewParseKey,
-      result: importGraphInput(inputText, importOptions),
+      result: importGraphInput(debouncedInputText, importOptions),
     };
-  }, [importOptions, inputText, previewParseKey]);
+  }, [debouncedInputText, importOptions, previewParseKey]);
   const preview = parsedPreview?.result ?? null;
 
   const close = () => {

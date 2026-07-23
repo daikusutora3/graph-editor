@@ -5,7 +5,7 @@ import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { exportGraph, type GraphExportFormat } from "../io/export-graph";
-import { graphAtom } from "../shell/state/graph-atoms";
+import { graphAtom, graphRevisionAtom } from "../shell/state/graph-atoms";
 
 import { copyTextToClipboard } from "../adapters/browser/file-actions";
 import { useGraphIODropdown } from "./graph-io-dropdown";
@@ -15,6 +15,7 @@ import { type ThemeMode, useThemeMode } from "./theme";
 
 export function useGraphIOController() {
   const graph = useAtomValue(graphAtom);
+  const graphRevision = useAtomValue(graphRevisionAtom);
   const { theme, setTheme } = useThemeMode();
   const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
   const [exportFormat, setExportFormat] =
@@ -32,7 +33,7 @@ export function useGraphIOController() {
 
   const isGraphEmpty = graph.nodes.length === 0;
   const screenshot = useGraphIOScreenshot({
-    graph,
+    graphRevision,
     isGraphEmpty,
     previewEnabled: screenshotOpen || panelPresence.value === "screenshot",
     theme,
@@ -61,7 +62,6 @@ export function useGraphIOController() {
     }
 
     setOpenPanel("screenshot");
-    void screenshot.refreshPreview();
   };
 
   const copyExport = async () => {
