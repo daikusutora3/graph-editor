@@ -20,6 +20,12 @@ function translateImportWarningToJapanese(message: string) {
   if (message === "Empty input.") {
     return "入力が空です。";
   }
+  if (
+    message ===
+    "Input may be a weighted parent list. If the second value on each row is an edge weight, select Weighted parent list manually."
+  ) {
+    return "重み付き親配列の可能性があります。各行の2つ目の値が辺の重みなら、形式で「重み付き親配列」を選択してください。";
+  }
 
   const invalidFormat = text.match(/^Input is not a valid (.+)\.$/);
   if (invalidFormat) {
@@ -89,6 +95,12 @@ function translateImportWarningToChinese(message: string) {
 
   if (message === "Empty input.") {
     return "输入为空。";
+  }
+  if (
+    message ===
+    "Input may be a weighted parent list. If the second value on each row is an edge weight, select Weighted parent list manually."
+  ) {
+    return "输入可能是带权父节点列表。如果每行的第二个值是边权，请手动选择“带权父节点列表”格式。";
   }
 
   const invalidFormat = text.match(/^Input is not a valid (.+)\.$/);
@@ -170,6 +182,7 @@ function formatNameJa(name: string) {
       "edge pair list": "辺の組リスト",
       "tree edge list": "木の辺リスト",
       "parent list": "親配列",
+      "weighted parent list": "重み付き親配列",
     }[name] ?? name
   );
 }
@@ -182,6 +195,7 @@ function formatNameZh(name: string) {
       "edge pair list": "边的二元组列表",
       "tree edge list": "树边列表",
       "parent list": "父节点数组",
+      "weighted parent list": "带权父节点列表",
     }[name] ?? name
   );
 }

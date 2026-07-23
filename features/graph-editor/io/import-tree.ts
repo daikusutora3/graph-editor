@@ -176,7 +176,7 @@ export function tryImportWeightedParentList(
   if (
     header.length !== 1 ||
     !Number.isInteger(nodeCount) ||
-    nodeCount < 2 ||
+    nodeCount < 1 ||
     lines.length !== nodeCount
   ) {
     return null;
@@ -224,7 +224,7 @@ export function tryImportWeightedParentList(
   });
 
   model.nodes = createIndexedNodes(nodeCount, indexBase);
-  rows.forEach(([parentText, weight], index) => {
+  rows.forEach(([, weight], index) => {
     const parentIndex = parentIndices[index];
     const childIndex = index + 1;
 
