@@ -15,7 +15,6 @@ import {
   editorModeAtom,
   selectionAtom,
 } from "../shell/state/editor-atoms";
-import { createEmptySelection } from "../shell/state/editor-state";
 import { graphAtom } from "../shell/state/graph-atoms";
 import {
   deleteSelectionAtom,
@@ -508,7 +507,6 @@ export function GraphCanvas({ chrome }: GraphCanvasProps) {
             weighted={graph.settings.weighted}
             onSelect={selectEdge}
             onEdit={openEdgeInlineEdit}
-            onBackgroundClick={() => setSelection(createEmptySelection())}
             onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
             onContextMenu={openEdgeContextMenu}
           />
