@@ -329,6 +329,19 @@ button:disabled {
   transform: translateY(1px);
 }
 
+input.gv-control:active:not(:disabled),
+select.gv-control:active:not(:disabled),
+textarea.gv-control:active:not(:disabled) {
+  transform: none;
+}
+
+input.gv-card-number-input,
+input.gv-card-number-input:hover:not(:disabled),
+input.gv-card-number-input:active:not(:disabled) {
+  border: 1px solid var(--divider);
+  background: var(--surface);
+}
+
 .gv-control-primary {
   background: var(--ink);
   color: var(--surface);
