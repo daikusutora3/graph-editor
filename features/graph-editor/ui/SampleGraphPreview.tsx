@@ -2,7 +2,11 @@ import { useId } from "react";
 
 import type { SampleGraphKind } from "../samples/sample-graphs";
 import type { EdgeId, GraphModel } from "../core/graph/model";
-import { computeEdgeRouting } from "../core/layout/edge-routing";
+import {
+  computeEdgeRouting,
+  shouldAvoidNodesForEdgeRouting,
+} from "../core/layout/edge-routing";
+import { edgeCurveSvgPath } from "../core/layout/edge-route-geometry";
 import { cn } from "@/lib/utils";
 
 type SampleGraphPreviewProps = {
@@ -66,7 +70,10 @@ export function SampleGraphPreview({
     : Math.max(0.9, radius * 0.42);
   const lastIndex = Math.max(0, model.nodes.length - 1);
   const showLabels = editorLike && nodeCount <= 12;
-  const edgeRouting = computeEdgeRouting(model);
+  const edgeRouting = computeEdgeRouting(model, {
+    avoidNodes:
+      model.settings.autoEdgeRouting && shouldAvoidNodesForEdgeRouting(model),
+  });
 
   return (
     <svg
@@ -181,6 +188,8 @@ export function createPreviewEdgePath({
   radius: number;
   routing?: {
     bowPx: number;
+    controlPointDistancesPx?: readonly number[];
+    controlPointWeights?: readonly number[];
     loopDirectionDeg: number;
     loopSweepDeg: number;
   };
@@ -200,20 +209,12 @@ export function createPreviewEdgePath({
     x: target.x - (dx / Math.max(length, 1)) * shrink,
     y: target.y - (dy / Math.max(length, 1)) * shrink,
   };
-  const bowPx = (routing?.bowPx ?? 0) * scale;
-
-  if (Math.abs(bowPx) < 0.5) {
-    return `M${round(source.x)} ${round(source.y)}L${round(end.x)} ${round(end.y)}`;
-  }
-
-  const normalX = length === 0 ? 0 : -dy / length;
-  const normalY = length === 0 ? 0 : dx / length;
-  const control = {
-    x: (source.x + end.x) / 2 + normalX * bowPx,
-    y: (source.y + end.y) / 2 + normalY * bowPx,
-  };
-
-  return `M${round(source.x)} ${round(source.y)}Q${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`;
+  return edgeCurveSvgPath(source, end, {
+    controlPointDistancesPx: (
+      routing?.controlPointDistancesPx ?? [routing?.bowPx ?? 0]
+    ).map((distance) => distance * scale),
+    controlPointWeights: routing?.controlPointWeights ?? [0.5],
+  });
 }
 
 function createLoopPath(

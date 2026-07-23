@@ -8,8 +8,16 @@ import type {
 import { useCallback, useEffect, useRef } from "react";
 
 import { createMoveNodesCommand } from "../core/graph/graph-intents";
-import type { GraphIntent, GraphModel, NodeId } from "../core/graph/model";
-import type { EdgeRoutingOptions } from "../core/layout/edge-routing";
+import type {
+  EdgeId,
+  GraphIntent,
+  GraphModel,
+  NodeId,
+} from "../core/graph/model";
+import type {
+  EdgeRoutingMeta,
+  EdgeRoutingOptions,
+} from "../core/layout/edge-routing";
 import type { SelectionState } from "../shell/state/editor-state";
 
 import { syncCytoscapeEdgeRoutingData } from "../adapters/cytoscape/cytoscape-adapter";
@@ -57,6 +65,9 @@ export function useHtmlNodeDrag({
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
   const dragCleanupRef = useRef<(() => void) | null>(null);
+  const dragRoutingMetaRef = useRef<ReadonlyMap<EdgeId, EdgeRoutingMeta>>(
+    new Map(),
+  );
 
   const cancelScheduledDragFrame = useCallback(() => {
     if (dragFrameRef.current === null) {
@@ -108,7 +119,15 @@ export function useHtmlNodeDrag({
 
       if (edgeRoutingOptions.avoidNodes) {
         withCytoscapeBatch(cy, () => {
-          syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions);
+          dragRoutingMetaRef.current = syncCytoscapeEdgeRoutingData(
+            cy,
+            graph,
+            edgeRoutingOptions,
+            {
+              movedNodeIds: draggingNodeIdsRef.current,
+              previousMeta: dragRoutingMetaRef.current,
+            },
+          );
         });
       }
 
@@ -118,11 +137,30 @@ export function useHtmlNodeDrag({
   );
 
   const flushDragPreview = useCallback(
-    (cy: Core) => {
+    (cy: Core, settled = false) => {
       cancelScheduledDragFrame();
+
+      if (settled && edgeRoutingOptions.avoidNodes) {
+        withCytoscapeBatch(cy, () => {
+          dragRoutingMetaRef.current = syncCytoscapeEdgeRoutingData(
+            cy,
+            graph,
+            edgeRoutingOptions,
+          );
+        });
+        schedulePostRoutingHitboxes(cy);
+        return;
+      }
+
       syncDragPreview(cy);
     },
-    [cancelScheduledDragFrame, syncDragPreview],
+    [
+      cancelScheduledDragFrame,
+      edgeRoutingOptions,
+      graph,
+      schedulePostRoutingHitboxes,
+      syncDragPreview,
+    ],
   );
 
   const scheduleDragPreview = useCallback(
@@ -157,7 +195,8 @@ export function useHtmlNodeDrag({
     withCytoscapeBatch(cy, () => {
       restoreDragSnapshot(cy, state);
     });
-    flushDragPreview(cy);
+    flushDragPreview(cy, true);
+    dragRoutingMetaRef.current = new Map();
   }, [
     cancelScheduledDragFrame,
     cancelScheduledPostRoutingHitboxes,
@@ -184,6 +223,7 @@ export function useHtmlNodeDrag({
     }
 
     cancel();
+    dragRoutingMetaRef.current = new Map();
 
     const selectedNodeIds = selectionRef.current.nodeIds.includes(nodeId)
       ? selectionRef.current.nodeIds
@@ -285,7 +325,6 @@ export function useHtmlNodeDrag({
       }
 
       htmlNodeDragRef.current = null;
-      draggingNodeIdsRef.current = new Set();
       cleanupDragListeners();
       releasePointerCapture(state);
 
@@ -294,13 +333,17 @@ export function useHtmlNodeDrag({
         withCytoscapeBatch(cy, () => {
           restoreDragSnapshot(cy, state);
         });
-        flushDragPreview(cy);
+        flushDragPreview(cy, true);
+        draggingNodeIdsRef.current = new Set();
+        dragRoutingMetaRef.current = new Map();
         return;
       }
 
       suppressClickRef.current = true;
       lastMovedAtRef.current = Date.now();
-      flushDragPreview(cy);
+      flushDragPreview(cy, true);
+      draggingNodeIdsRef.current = new Set();
+      dragRoutingMetaRef.current = new Map();
       const after = Object.fromEntries(
         state.nodeIds
           .map((id) => {

@@ -24,6 +24,8 @@ export type EdgeLabelHitbox = {
   x: number;
   y: number;
   bowPx: number;
+  controlPointDistancesPx?: readonly number[];
+  controlPointWeights?: readonly number[];
   loopDirectionDeg: number;
   loopSweepDeg: number;
 };
@@ -76,12 +78,40 @@ export function readEdgeLabelHitboxes(
       x: position.x,
       y: position.y,
       bowPx: readNumericEdgeData(edge, "bow", 0),
+      controlPointDistancesPx: readNumericArrayEdgeData(
+        edge,
+        "controlPointDistances",
+        [readNumericEdgeData(edge, "bow", 0)],
+      ).map((distance) => distance * cy.zoom()),
+      controlPointWeights: readNumericArrayEdgeData(
+        edge,
+        "controlPointWeights",
+        [0.5],
+      ),
       loopDirectionDeg: readDegreeEdgeData(edge, "loopDirection", -45),
       loopSweepDeg: readDegreeEdgeData(edge, "loopSweep", 70),
     });
   });
 
   return hitboxes;
+}
+
+function readNumericArrayEdgeData(
+  edge: EdgeSingular,
+  key: string,
+  fallback: readonly number[],
+) {
+  const value = edge.data(key);
+
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => typeof item === "number" && Number.isFinite(item))
+  ) {
+    return value as number[];
+  }
+
+  return [...fallback];
 }
 
 function readNumericEdgeData(
