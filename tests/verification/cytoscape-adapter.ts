@@ -225,7 +225,7 @@ function verifyEdgeRoutingCanFollowDraggedNodePositions() {
     const initialBow = edge.data("bow");
 
     cy.getElementById("c").position({ x: 60, y: 140 });
-    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+    syncCytoscapeEdgeRoutingData(cy, graph, { mode: "quality" });
 
     expect(
       initialBow !== edge.data("bow") && edge.data("bow") === 0,
@@ -245,7 +245,7 @@ function verifySelfLoopRoutingCanFollowDraggedNodePositions() {
     const initialLoopDirection = edge.data("loopDirection");
 
     cy.getElementById("b").position({ x: 30, y: -30 });
-    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+    syncCytoscapeEdgeRoutingData(cy, graph, { mode: "quality" });
 
     expect(
       initialLoopDirection !== edge.data("loopDirection"),
@@ -264,7 +264,7 @@ function verifyEdgeRoutingSyncPreservesModelData() {
     const edge = cy.getElementById("ab");
 
     cy.getElementById("c").position({ x: 60, y: 140 });
-    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+    syncCytoscapeEdgeRoutingData(cy, graph, { mode: "quality" });
 
     expect(edge.data("source") === "a", "routing sync should keep source");
     expect(edge.data("target") === "b", "routing sync should keep target");
@@ -285,9 +285,9 @@ function verifyEdgeRoutingSyncCanRestorePreviewData() {
     const initialBow = edge.data("bow");
 
     cy.getElementById("c").position({ x: 60, y: 140 });
-    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+    syncCytoscapeEdgeRoutingData(cy, graph, { mode: "quality" });
     cy.getElementById("c").position({ x: 60, y: 5 });
-    syncCytoscapeEdgeRoutingData(cy, graph, { avoidNodes: true });
+    syncCytoscapeEdgeRoutingData(cy, graph, { mode: "quality" });
 
     expect(
       edge.data("bow") === initialBow,

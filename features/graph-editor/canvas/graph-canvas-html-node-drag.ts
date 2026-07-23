@@ -117,7 +117,7 @@ export function useHtmlNodeDrag({
         return;
       }
 
-      if (edgeRoutingOptions.avoidNodes) {
+      if (edgeRoutingOptions.mode === "quality") {
         withCytoscapeBatch(cy, () => {
           dragRoutingMetaRef.current = syncCytoscapeEdgeRoutingData(
             cy,
@@ -140,7 +140,7 @@ export function useHtmlNodeDrag({
     (cy: Core, settled = false) => {
       cancelScheduledDragFrame();
 
-      if (settled && edgeRoutingOptions.avoidNodes) {
+      if (settled && edgeRoutingOptions.mode === "quality") {
         withCytoscapeBatch(cy, () => {
           dragRoutingMetaRef.current = syncCytoscapeEdgeRoutingData(
             cy,

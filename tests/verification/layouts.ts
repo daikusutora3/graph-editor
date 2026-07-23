@@ -105,6 +105,12 @@ expect(
   "force layout should be disabled for large graphs",
 );
 
+expect(
+  JSON.stringify(createManualLayoutCommand(undirectedPath, "force")) ===
+    JSON.stringify(createManualLayoutCommand(undirectedPath, "force")),
+  "force layout should remain deterministic for the same graph",
+);
+
 const routingBase = graphFixture({
   directed: false,
   edges: [
@@ -113,7 +119,7 @@ const routingBase = graphFixture({
   ],
 });
 const routingBaseKey = createEdgeRoutingCacheKey(routingBase, {
-  avoidNodes: true,
+  mode: "quality",
 });
 expect(
   createEdgeRoutingCacheKey(
@@ -123,7 +129,7 @@ expect(
         node.id === "a" ? { ...node, label: "renamed" } : node,
       ),
     },
-    { avoidNodes: true },
+    { mode: "quality" },
   ) === routingBaseKey,
   "routing cache key should ignore node labels",
 );
@@ -135,7 +141,7 @@ expect(
         node.id === "a" ? { ...node, x: node.x + 10 } : node,
       ),
     },
-    { avoidNodes: true },
+    { mode: "quality" },
   ) !== routingBaseKey,
   "routing cache key should include node positions when node avoidance is enabled",
 );
@@ -147,7 +153,7 @@ expect(
         edge.id === "e0" ? { ...edge, routing: { bowPx: 20 } } : edge,
       ),
     },
-    { avoidNodes: true },
+    { mode: "quality" },
   ) !== routingBaseKey,
   "routing cache key should include edge routing overrides",
 );

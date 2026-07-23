@@ -13,6 +13,7 @@ import type { ImportFormatKind } from "../io/import-types";
 import type { ImportFormat } from "../io/import-utils";
 import type { StarterTab } from "../workflows/starter/graph-starter-state";
 import { SampleGraphPreview } from "./SampleGraphPreview";
+import { SelectControl } from "./SelectControl";
 
 export function StarterTabButton({
   tab,
@@ -71,13 +72,14 @@ export function PasteStarterPane({
         </p>
         <label className="flex shrink-0 items-center gap-1.5">
           <span className="sr-only">{messages.starter.formatLabel}</span>
-          <select
+          <SelectControl
             aria-label={messages.starter.formatLabel}
             value={importFormat}
             onChange={(event) =>
               onImportFormatChange(event.target.value as ImportFormat)
             }
-            className="gv-control h-8 max-w-[11rem] px-2 text-[length:var(--app-text-xs)]"
+            className="h-8"
+            containerClassName="w-[11rem]"
           >
             <option value="auto">{messages.starter.autoFormat}</option>
             {importFormatOptions.map((format) => (
@@ -85,7 +87,7 @@ export function PasteStarterPane({
                 {messages.starter.formats[format]}
               </option>
             ))}
-          </select>
+          </SelectControl>
         </label>
         <FormatBadge
           format={previewFormat}

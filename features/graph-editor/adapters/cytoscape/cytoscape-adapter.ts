@@ -141,7 +141,6 @@ export function syncCytoscapeEdgeRoutingData(
       ? {
           ...edgeRoutingOptions,
           previousMeta: interaction.previousMeta,
-          quality: "interactive",
           rerouteEdgeIds,
         }
       : edgeRoutingOptions,

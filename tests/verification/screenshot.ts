@@ -1,5 +1,3 @@
-import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
-import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   MAX_LONG_EDGE_PX,
   PNG_EXPORT_LONG_EDGE_PRESETS,
@@ -26,10 +24,9 @@ verifyScreenshotSizingHelpers();
 finish();
 
 function verifyPreviewInputKey() {
-  const graph = graphFixture();
   const baseKey = makeScreenshotInputKey({
     background: "white",
-    graph,
+    graphRevision: 7,
     longEdgePx: 1024,
     paddingPx: 48,
     scope: "viewport",
@@ -40,7 +37,7 @@ function verifyPreviewInputKey() {
     baseKey !==
       makeScreenshotInputKey({
         background: "black",
-        graph,
+        graphRevision: 7,
         longEdgePx: 1024,
         paddingPx: 48,
         scope: "viewport",
@@ -52,7 +49,7 @@ function verifyPreviewInputKey() {
     baseKey !==
       makeScreenshotInputKey({
         background: "white",
-        graph,
+        graphRevision: 7,
         longEdgePx: 1600,
         paddingPx: 48,
         scope: "viewport",
@@ -64,7 +61,7 @@ function verifyPreviewInputKey() {
     baseKey !==
       makeScreenshotInputKey({
         background: "white",
-        graph,
+        graphRevision: 7,
         longEdgePx: 1024,
         paddingPx: 64,
         scope: "viewport",
@@ -76,22 +73,19 @@ function verifyPreviewInputKey() {
     baseKey !==
       makeScreenshotInputKey({
         background: "white",
-        graph: {
-          ...graph,
-          nodes: [{ ...graph.nodes[0], label: "Changed" }, graph.nodes[1]],
-        },
+        graphRevision: 8,
         longEdgePx: 1024,
         paddingPx: 48,
         scope: "viewport",
         theme: "light",
       }),
-    "preview input key should include graph content",
+    "preview input key should include graph revision",
   );
   expect(
     baseKey !==
       makeScreenshotInputKey({
         background: "white",
-        graph,
+        graphRevision: 7,
         longEdgePx: 1024,
         paddingPx: 48,
         scope: "viewport",
@@ -103,7 +97,7 @@ function verifyPreviewInputKey() {
     baseKey !==
       makeScreenshotInputKey({
         background: "white",
-        graph,
+        graphRevision: 7,
         longEdgePx: 1024,
         paddingPx: 48,
         scope: "full",
@@ -114,7 +108,7 @@ function verifyPreviewInputKey() {
   expect(
     makeScreenshotInputKey({
       background: "transparent",
-      graph,
+      graphRevision: 7,
       longEdgePx: 1024,
       paddingPx: 48,
       scope: "viewport",
@@ -122,7 +116,7 @@ function verifyPreviewInputKey() {
     }) !==
       makeScreenshotInputKey({
         background: "transparent",
-        graph,
+        graphRevision: 7,
         longEdgePx: 1024,
         paddingPx: 48,
         scope: "viewport",
@@ -142,11 +136,15 @@ function verifyPreviewStateHelpers() {
   );
 
   expect(
-    !isScreenshotPreviewStale(
+    isScreenshotPreviewStale(
       { ...emptyPreview, state: "failed", inputKey: "old" },
       "new",
     ),
-    "failed previews should not be reported as stale",
+    "failed previews with an old key should be stale",
+  );
+  expect(
+    isScreenshotPreviewStale(emptyPreview, "new"),
+    "empty previews should be stale when a preview is requested",
   );
   expect(
     !isScreenshotPreviewStale(
@@ -200,15 +198,4 @@ function verifyScreenshotSizingHelpers() {
     clampPaddingPxForLongEdge(100, 101) === 50,
     "padding should be capped so at least one content pixel remains",
   );
-}
-
-function graphFixture(): GraphModel {
-  return {
-    ...createEmptyGraphModel({ directed: true }),
-    nodes: [
-      { id: "a", label: "A", order: 0, x: 0, y: 0 },
-      { id: "b", label: "B", order: 1, x: 120, y: 0 },
-    ],
-    edges: [{ id: "ab", source: "a", target: "b" }],
-  };
 }

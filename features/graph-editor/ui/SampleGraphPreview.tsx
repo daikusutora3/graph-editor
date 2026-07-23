@@ -2,10 +2,7 @@ import { useId } from "react";
 
 import type { SampleGraphKind } from "../samples/sample-graphs";
 import type { EdgeId, GraphModel } from "../core/graph/model";
-import {
-  computeEdgeRouting,
-  shouldAvoidNodesForEdgeRouting,
-} from "../core/layout/edge-routing";
+import { computeEdgeRouting } from "../core/layout/edge-routing";
 import { edgeCurveSvgPath } from "../core/layout/edge-route-geometry";
 import { cn } from "@/lib/utils";
 
@@ -70,10 +67,7 @@ export function SampleGraphPreview({
     : Math.max(0.9, radius * 0.42);
   const lastIndex = Math.max(0, model.nodes.length - 1);
   const showLabels = editorLike && nodeCount <= 12;
-  const edgeRouting = computeEdgeRouting(model, {
-    avoidNodes:
-      model.settings.autoEdgeRouting && shouldAvoidNodesForEdgeRouting(model),
-  });
+  const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
 
   return (
     <svg
