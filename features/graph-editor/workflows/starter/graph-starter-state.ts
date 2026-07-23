@@ -4,9 +4,13 @@ import { useAtomValue } from "jotai";
 import type { RefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import { importGraphInput } from "../../io/import-graph";
+import {
+  evaluateGraphInput,
+  MULTIPLE_FORMATS_AMBIGUITY_WARNING,
+  WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
+} from "../../io/import-graph";
 import type { ImportFormat, ImportOptions } from "../../io/import-utils";
-import type { ImportResult } from "../../io/import-types";
+import type { ImportEvaluation } from "../../io/import-types";
 import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
 import { graphAtom } from "../../shell/state/graph-atoms";
@@ -55,10 +59,20 @@ export function useGraphStarterState({
 
     return {
       key: previewParseKey,
-      result: importGraphInput(debouncedInputText, importOptions),
+      evaluation: evaluateGraphInput(debouncedInputText, importOptions),
     };
   }, [debouncedInputText, importOptions, previewParseKey]);
-  const preview = parsedPreview?.result ?? null;
+  const evaluation = parsedPreview?.evaluation ?? null;
+  const preview = evaluation?.result ?? null;
+  const analysis = evaluation?.analysis ?? null;
+  const previewWarnings =
+    analysis?.status === "ambiguous"
+      ? (preview?.warnings ?? []).filter(
+          (warning) =>
+            warning !== MULTIPLE_FORMATS_AMBIGUITY_WARNING &&
+            warning !== WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
+        )
+      : (preview?.warnings ?? []);
 
   const close = () => {
     setOpenValue(null);
@@ -111,13 +125,17 @@ export function useGraphStarterState({
 
   const applyText = (text = inputText) => {
     const parseKey = makeStarterParseKey(text, importOptions);
-    const result =
+    const currentEvaluation =
       parsedPreview?.key === parseKey
-        ? parsedPreview.result
-        : importGraphInput(text, importOptions);
+        ? parsedPreview.evaluation
+        : evaluateGraphInput(text, importOptions);
+    const { analysis: currentAnalysis, result } = currentEvaluation;
     setIssues(result.warnings);
 
-    if (!hasGraphContent(result.model)) {
+    if (
+      currentAnalysis.status === "ambiguous" ||
+      !hasGraphContent(result.model)
+    ) {
       return;
     }
 
@@ -130,8 +148,14 @@ export function useGraphStarterState({
     setIssues([]);
   };
 
+  const selectImportFormat = (value: ImportFormat) => {
+    setImportFormat(value);
+    setIssues([]);
+  };
+
   return {
     applyText,
+    analysis,
     close,
     inputText,
     importFormat,
@@ -140,8 +164,8 @@ export function useGraphStarterState({
     panelPresence,
     openPaste,
     preview,
-    setImportFormat,
-    visibleIssues: issues.length > 0 ? issues : (preview?.warnings ?? []),
+    setImportFormat: selectImportFormat,
+    visibleIssues: issues.length > 0 ? issues : previewWarnings,
     setInput,
     setTab,
     tab,
@@ -150,7 +174,7 @@ export function useGraphStarterState({
 
 type StarterParseResult = {
   key: string;
-  result: ImportResult;
+  evaluation: ImportEvaluation;
 };
 
 function makeStarterParseKey(inputText: string, options: ImportOptions) {

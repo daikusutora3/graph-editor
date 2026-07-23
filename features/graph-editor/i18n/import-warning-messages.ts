@@ -26,6 +26,15 @@ function translateImportWarningToJapanese(message: string) {
   ) {
     return "重み付き親配列の可能性があります。各行の2つ目の値が辺の重みなら、形式で「重み付き親配列」を選択してください。";
   }
+  if (
+    message ===
+    "Input matches multiple graph formats. Select a format before applying."
+  ) {
+    return "複数の形式として解釈できます。反映する形式を選択してください。";
+  }
+  if (message === "Input does not match a supported graph format.") {
+    return "対応しているグラフ形式として読み取れません。";
+  }
 
   const invalidFormat = text.match(/^Input is not a valid (.+)\.$/);
   if (invalidFormat) {
@@ -101,6 +110,15 @@ function translateImportWarningToChinese(message: string) {
     "Input may be a weighted parent list. If the second value on each row is an edge weight, select Weighted parent list manually."
   ) {
     return "输入可能是带权父节点列表。如果每行的第二个值是边权，请手动选择“带权父节点列表”格式。";
+  }
+  if (
+    message ===
+    "Input matches multiple graph formats. Select a format before applying."
+  ) {
+    return "输入可按多种图格式解释。应用前请选择一种格式。";
+  }
+  if (message === "Input does not match a supported graph format.") {
+    return "无法识别为支持的图格式。";
   }
 
   const invalidFormat = text.match(/^Input is not a valid (.+)\.$/);

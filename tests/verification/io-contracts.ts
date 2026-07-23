@@ -7,7 +7,9 @@ import {
 } from "../../features/graph-editor/io/export-graph";
 import { formatImportWarning } from "../../features/graph-editor/i18n/import-warning-messages";
 import {
+  evaluateGraphInput,
   importGraphInput,
+  MULTIPLE_FORMATS_AMBIGUITY_WARNING,
   WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
 } from "../../features/graph-editor/io/import-graph";
 import {
@@ -362,12 +364,125 @@ const ambiguousWeightedParentList = importGraphInput("5\n1 3\n1 5\n2 2\n2 4", {
 });
 
 expect(
-  ambiguousWeightedParentList.formatKind !== "weighted-parent-list" &&
-    ambiguousWeightedParentList.warnings.includes(
+  ambiguousWeightedParentList.formatKind === "weighted-parent-list" &&
+    ambiguousWeightedParentList.warnings.length === 0,
+  "auto import should select weighted parent lists when the same rows do not form a valid tree",
+);
+
+const treeAndWeightedParentEvaluation = evaluateGraphInput("3\n1 2\n1 3", {
+  indexBase: 1,
+});
+
+expect(
+  treeAndWeightedParentEvaluation.analysis.status === "ambiguous" &&
+    treeAndWeightedParentEvaluation.analysis.candidates
+      .slice(0, 2)
+      .map((candidate) => candidate.formatKind)
+      .join(",") === "tree-edge-list,weighted-parent-list" &&
+    treeAndWeightedParentEvaluation.result.warnings.includes(
       WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
     ),
-  "auto import should preserve existing tree parsing and warn about a possible weighted parent list",
+  "auto import should expose valid tree and weighted-parent interpretations as ambiguous",
 );
+
+const weightedThreeByThreeEvaluation = evaluateGraphInput(
+  "0 1 5\n1 2 6\n2 0 7",
+  { indexBase: 0 },
+);
+
+expect(
+  weightedThreeByThreeEvaluation.analysis.status === "ambiguous" &&
+    weightedThreeByThreeEvaluation.analysis.candidates
+      .slice(0, 2)
+      .map((candidate) => candidate.formatKind)
+      .join(",") === "adjacency-matrix,edge-pairs" &&
+    weightedThreeByThreeEvaluation.result.warnings.includes(
+      MULTIPLE_FORMATS_AMBIGUITY_WARNING,
+    ),
+  "3x3 weighted rows should not silently resolve between matrix and edge-pair interpretations",
+);
+
+const invalidCyclicTree = importGraphInput("4\n1 2\n2 1\n3 4", {
+  format: "tree-edge-list",
+  indexBase: 1,
+});
+
+expect(
+  invalidCyclicTree.formatKind === undefined &&
+    invalidCyclicTree.model.edges.length === 0,
+  "tree edge-list import should reject cycles and disconnected components",
+);
+
+const extraAdjacencySeparator = importGraphInput("a: b: c\nb: a", {
+  format: "adjacency-list",
+});
+
+expect(
+  extraAdjacencySeparator.formatKind === undefined &&
+    extraAdjacencySeparator.model.edges.length === 0,
+  "adjacency-list import should reject unconsumed separators",
+);
+
+for (const invalidTreeInput of [
+  "3\n1 1\n1 2",
+  "4\n1 2\n1 2\n3 4",
+  "4\n1 2\n2 3\n3 1",
+]) {
+  const invalidTree = importGraphInput(invalidTreeInput, {
+    format: "tree-edge-list",
+    indexBase: 1,
+  });
+  expect(
+    invalidTree.formatKind === undefined &&
+      invalidTree.model.edges.length === 0,
+    `tree validation should reject invalid input: ${JSON.stringify(invalidTreeInput)}`,
+  );
+}
+
+const deletedStructuredToken = evaluateGraphInput("4 3\n1 2\n2\n3 4", {
+  indexBase: 1,
+});
+
+expect(
+  deletedStructuredToken.analysis.status === "invalid" &&
+    deletedStructuredToken.result.formatKind === undefined,
+  "deleting a structured edge token should fail instead of silently switching formats",
+);
+
+let fuzzSeed = 0x2f6e2b1;
+for (let caseIndex = 0; caseIndex < 250; caseIndex += 1) {
+  const lineCount = 1 + nextFuzzInt(8);
+  const input = Array.from({ length: lineCount }, () =>
+    Array.from({ length: 1 + nextFuzzInt(4) }, () =>
+      String(nextFuzzInt(12) - 2),
+    ).join(nextFuzzInt(2) === 0 ? " " : ","),
+  ).join("\n");
+  const fuzzOptions = { indexBase: nextFuzzInt(2) as 0 | 1 };
+  const first = evaluateGraphInput(input, fuzzOptions);
+  const second = evaluateGraphInput(input, fuzzOptions);
+  const firstSignature = JSON.stringify({
+    status: first.analysis.status,
+    candidates: first.analysis.candidates,
+    formatKind: first.result.formatKind,
+  });
+  const secondSignature = JSON.stringify({
+    status: second.analysis.status,
+    candidates: second.analysis.candidates,
+    formatKind: second.result.formatKind,
+  });
+
+  expect(
+    firstSignature === secondSignature &&
+      first.result.model.nodes.length <= MAX_IMPORT_NODES &&
+      first.result.model.edges.length <= MAX_IMPORT_EDGES,
+    `detector fuzz case ${caseIndex} should be deterministic and bounded`,
+  );
+}
+
+function nextFuzzInt(max: number) {
+  fuzzSeed = (Math.imul(fuzzSeed, 1_664_525) + 1_013_904_223) >>> 0;
+  return fuzzSeed % max;
+}
 
 expect(
   formatImportWarning(WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING, "ja") ===
@@ -375,6 +490,14 @@ expect(
     formatImportWarning(WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING, "zh-Hans") ===
       "输入可能是带权父节点列表。如果每行的第二个值是边权，请手动选择“带权父节点列表”格式。",
   "weighted parent-list ambiguity warning should be localized",
+);
+
+expect(
+  formatImportWarning(MULTIPLE_FORMATS_AMBIGUITY_WARNING, "ja") ===
+    "複数の形式として解釈できます。反映する形式を選択してください。" &&
+    formatImportWarning(MULTIPLE_FORMATS_AMBIGUITY_WARNING, "zh-Hans") ===
+      "输入可按多种图格式解释。应用前请选择一种格式。",
+  "generic format ambiguity warning should be localized",
 );
 
 const zeroIndexedWeightedParentList = importGraphInput("4\n0 5\n0 6\n2 7", {
