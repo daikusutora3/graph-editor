@@ -102,6 +102,10 @@ type Messages = {
     autoFormat: string;
     pastePlaceholder: string;
     apply: string;
+    applyAs: (format: string) => string;
+    applyWithWarnings: string;
+    ambiguousTitle: string;
+    ambiguousHelp: string;
     needsReview: string;
     detected: (format: string) => string;
     formats: Record<ImportFormatKind, string>;
@@ -450,12 +454,16 @@ const ja = {
     paste: "貼り付け",
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
-    autoDetectHelp: "辺リスト・隣接リスト・隣接行列に対応",
+    autoDetectHelp: "対応形式を入力内容から判定します",
     formatLabel: "形式",
     autoFormat: "自動判定",
     pastePlaceholder:
       "辺リスト\n4 4\n1 2\n2 3\n2 4\n3 4\n\n隣接リスト\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n隣接行列\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "グラフに反映",
+    applyAs: (format: string) => `${format}として反映`,
+    applyWithWarnings: "警告を確認して反映",
+    ambiguousTitle: "複数の形式として解釈できます",
+    ambiguousHelp: "反映する形式を選択してください。",
     needsReview: "要確認",
     detected: (format: string) => `${format} として認識`,
     formats: {
@@ -771,12 +779,16 @@ const en: Messages = {
     paste: "Paste",
     sample: "Samples",
     loadingSamples: "Loading samples",
-    autoDetectHelp: "Supports edge lists, adjacency lists, and matrices.",
+    autoDetectHelp: "Detects the supported format from your input.",
     formatLabel: "Format",
     autoFormat: "Auto detect",
     pastePlaceholder:
       "Edge list\n4 4\n1 2\n2 3\n2 4\n3 4\n\nAdjacency list\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\nAdjacency matrix\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "Apply to graph",
+    applyAs: (format: string) => `Apply as ${format}`,
+    applyWithWarnings: "Apply after reviewing warnings",
+    ambiguousTitle: "This input has multiple interpretations",
+    ambiguousHelp: "Select the format you want to apply.",
     needsReview: "Review needed",
     detected: (format: string) => `Read as ${format}`,
     formats: {
@@ -1092,12 +1104,16 @@ const zhHans: Messages = {
     paste: "粘贴",
     sample: "示例",
     loadingSamples: "正在加载示例",
-    autoDetectHelp: "支持边列表、邻接表和邻接矩阵。",
+    autoDetectHelp: "根据输入内容检测支持的格式。",
     formatLabel: "格式",
     autoFormat: "自动检测",
     pastePlaceholder:
       "边列表\n4 4\n1 2\n2 3\n2 4\n3 4\n\n邻接表\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n邻接矩阵\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "应用到图",
+    applyAs: (format: string) => `按${format}应用`,
+    applyWithWarnings: "确认警告后应用",
+    ambiguousTitle: "此输入可按多种格式解释",
+    ambiguousHelp: "请选择要应用的格式。",
     needsReview: "需要确认",
     detected: (format: string) => `按 ${format} 读取`,
     formats: {

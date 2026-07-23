@@ -221,6 +221,7 @@ export function GraphStarterCard({
           >
             {tab === "paste" ? (
               <PasteStarterPane
+                analysis={starter.analysis}
                 inputText={inputText}
                 importFormat={starter.importFormat}
                 issues={visibleIssues}

@@ -13,6 +13,11 @@ import {
   type ParsedLine,
 } from "./import-utils";
 import type { ImportResult } from "./import-types";
+import {
+  inferTreeIndexBase,
+  isRootedParentTreeLabels,
+  isUndirectedTreeLabels,
+} from "./import-tree-validation";
 
 export function tryImportTreeEdgeList(
   lines: ParsedLine[],
@@ -52,6 +57,13 @@ export function tryImportTreeEdgeList(
   }
 
   const indexBase = inferTreeIndexBase(endpoints, nodeCount, options.indexBase);
+  const edges = edgeRows.map(
+    ([sourceText, targetText]) =>
+      [Number(sourceText), Number(targetText)] as const,
+  );
+  if (!isUndirectedTreeLabels(edges, nodeCount, options.indexBase)) {
+    return null;
+  }
   const model = createEmptyGraphModel({
     ...readImportSettings({ ...options, indexBase }),
     directed: options.directed ?? false,
@@ -130,7 +142,7 @@ export function tryImportParentList(
 
   const indexBase = inferTreeIndexBase(parents, nodeCount, options.indexBase);
   const parentIndices = parents.map((parentLabel) => parentLabel - indexBase);
-  if (!isRootedParentTree(parentIndices, nodeCount)) {
+  if (!isRootedParentTreeLabels(parents, nodeCount, options.indexBase)) {
     return null;
   }
 
@@ -209,7 +221,7 @@ export function tryImportWeightedParentList(
 
   const indexBase = inferTreeIndexBase(parents, nodeCount, options.indexBase);
   const parentIndices = parents.map((parentLabel) => parentLabel - indexBase);
-  if (!isRootedParentTree(parentIndices, nodeCount)) {
+  if (!isRootedParentTreeLabels(parents, nodeCount, options.indexBase)) {
     return null;
   }
 
@@ -259,56 +271,4 @@ function createIndexedNodes(nodeCount: number, indexBase: 0 | 1) {
       order: index,
     }),
   );
-}
-
-function isRootedParentTree(parentIndices: number[], nodeCount: number) {
-  if (
-    parentIndices.length !== nodeCount - 1 ||
-    parentIndices.some(
-      (parentIndex) => parentIndex < 0 || parentIndex >= nodeCount,
-    )
-  ) {
-    return false;
-  }
-
-  for (let childIndex = 1; childIndex < nodeCount; childIndex += 1) {
-    const seen = new Set<number>([childIndex]);
-    let current = childIndex;
-
-    while (current !== 0) {
-      const parentIndex = parentIndices[current - 1];
-
-      if (parentIndex === undefined || seen.has(parentIndex)) {
-        return false;
-      }
-
-      seen.add(parentIndex);
-      current = parentIndex;
-    }
-  }
-
-  return true;
-}
-
-function inferTreeIndexBase(
-  labels: number[],
-  nodeCount: number,
-  fallback: 0 | 1 | undefined,
-) {
-  const allZeroBased = labels.every((value) => value >= 0 && value < nodeCount);
-  const allOneBased = labels.every((value) => value >= 1 && value <= nodeCount);
-
-  if (labels.includes(0) && allZeroBased) {
-    return 0;
-  }
-
-  if (allOneBased) {
-    return 1;
-  }
-
-  if (allZeroBased) {
-    return 0;
-  }
-
-  return fallback ?? 1;
 }

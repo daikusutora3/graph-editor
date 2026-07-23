@@ -209,7 +209,13 @@ export function tryImportAdjacencyList(
   lines: ParsedLine[],
   options: ImportOptions,
 ): ImportResult | null {
-  if (!lines.every((line) => /[:]|->/.test(line.text))) {
+  const separators = lines.map(
+    (line) => line.text.match(/->|:/g)?.map(String) ?? [],
+  );
+  if (
+    separators.some((matches) => matches.length !== 1) ||
+    new Set(separators.map((matches) => matches[0])).size !== 1
+  ) {
     return null;
   }
 
