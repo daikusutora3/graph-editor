@@ -14,6 +14,7 @@ import {
   type EdgeLabelHitbox,
   type NodeHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
+import { edgeCurveSvgPath } from "../core/layout/edge-route-geometry";
 import type { RenderedPoint } from "./graph-canvas-types";
 
 type CanvasPointer = {
@@ -206,21 +207,14 @@ export function createEdgeHitboxPath(edge: EdgeLabelHitbox) {
     return createLoopHitboxPath(edge);
   }
 
-  if (Math.abs(edge.bowPx) < 0.5) {
-    return `M${round(edge.sourceX)} ${round(edge.sourceY)}L${round(edge.targetX)} ${round(edge.targetY)}`;
-  }
-
-  const dx = edge.targetX - edge.sourceX;
-  const dy = edge.targetY - edge.sourceY;
-  const length = Math.hypot(dx, dy);
-  const normalX = length === 0 ? 0 : -dy / length;
-  const normalY = length === 0 ? 0 : dx / length;
-  const control = {
-    x: (edge.sourceX + edge.targetX) / 2 + normalX * edge.bowPx,
-    y: (edge.sourceY + edge.targetY) / 2 + normalY * edge.bowPx,
-  };
-
-  return `M${round(edge.sourceX)} ${round(edge.sourceY)}Q${round(control.x)} ${round(control.y)} ${round(edge.targetX)} ${round(edge.targetY)}`;
+  return edgeCurveSvgPath(
+    { x: edge.sourceX, y: edge.sourceY },
+    { x: edge.targetX, y: edge.targetY },
+    {
+      controlPointDistancesPx: edge.controlPointDistancesPx ?? [edge.bowPx],
+      controlPointWeights: edge.controlPointWeights ?? [0.5],
+    },
+  );
 }
 
 function createLoopHitboxPath(edge: EdgeLabelHitbox) {

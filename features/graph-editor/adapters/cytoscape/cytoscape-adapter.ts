@@ -6,6 +6,7 @@ import {
   type EdgeRoutingMeta,
   type EdgeRoutingOptions,
 } from "../../core/layout/edge-routing";
+import { minimumCurveDistanceToNode } from "../../core/layout/edge-route-geometry";
 import type {
   EdgeId,
   GraphColor,
@@ -30,6 +31,8 @@ type CytoscapeEdgeData = {
   weight?: string;
   color: GraphColor;
   bow: number;
+  controlPointDistances: readonly number[];
+  controlPointWeights: readonly number[];
   duplicate: boolean;
   loopDirection: string;
   loopSweep: string;
@@ -119,10 +122,29 @@ export function syncCytoscapeEdgeRoutingData(
   cy: Core,
   model: GraphModel,
   edgeRoutingOptions?: EdgeRoutingOptions,
+  interaction?: {
+    movedNodeIds: ReadonlySet<NodeId>;
+    previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
+  },
 ) {
+  const positionedModel = graphModelWithCytoscapeNodePositions(cy, model);
+  const rerouteEdgeIds = interaction
+    ? interactiveRerouteEdgeIds(
+        positionedModel,
+        interaction.previousMeta,
+        interaction.movedNodeIds,
+      )
+    : null;
   const edgeRoutingMeta = computeCytoscapeEdgeRoutingMeta(
-    graphModelWithCytoscapeNodePositions(cy, model),
-    edgeRoutingOptions,
+    positionedModel,
+    interaction
+      ? {
+          ...edgeRoutingOptions,
+          previousMeta: interaction.previousMeta,
+          quality: "interactive",
+          rerouteEdgeIds,
+        }
+      : edgeRoutingOptions,
   );
 
   cy.edges().forEach((edge) => {
@@ -134,11 +156,62 @@ export function syncCytoscapeEdgeRoutingData(
 
     edge.data({
       bow: meta.bowPx,
+      controlPointDistances: meta.controlPointDistancesPx,
+      controlPointWeights: meta.controlPointWeights,
       duplicate: meta.duplicate,
       loopDirection: `${meta.loopDirectionDeg}deg`,
       loopSweep: `${meta.loopSweepDeg}deg`,
     });
   });
+
+  return edgeRoutingMeta;
+}
+
+function interactiveRerouteEdgeIds(
+  model: GraphModel,
+  previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
+  movedNodeIds: ReadonlySet<NodeId>,
+) {
+  if (previousMeta.size === 0 || movedNodeIds.size === 0) {
+    return null;
+  }
+
+  const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
+  const movedNodes = model.nodes.filter((node) => movedNodeIds.has(node.id));
+  const reroute = new Set<EdgeId>();
+
+  for (const edge of model.edges) {
+    const previous = previousMeta.get(edge.id);
+
+    if (
+      movedNodeIds.has(edge.source) ||
+      movedNodeIds.has(edge.target) ||
+      edge.source === edge.target ||
+      (previous?.controlPointWeights.length ?? 0) > 1
+    ) {
+      reroute.add(edge.id);
+      continue;
+    }
+
+    const source = nodesById.get(edge.source);
+    const target = nodesById.get(edge.target);
+
+    if (!source || !target || !previous) {
+      reroute.add(edge.id);
+      continue;
+    }
+
+    if (
+      movedNodes.some(
+        (node) =>
+          minimumCurveDistanceToNode(source, target, previous, node) < 84,
+      )
+    ) {
+      reroute.add(edge.id);
+    }
+  }
+
+  return reroute;
 }
 
 function graphModelWithCytoscapeNodePositions(
@@ -171,6 +244,11 @@ function edgeRoutingDataChanged(
 ) {
   return (
     data.bow !== meta.bowPx ||
+    !sameNumericArray(
+      data.controlPointDistances,
+      meta.controlPointDistancesPx,
+    ) ||
+    !sameNumericArray(data.controlPointWeights, meta.controlPointWeights) ||
     data.duplicate !== meta.duplicate ||
     data.loopDirection !== `${meta.loopDirectionDeg}deg` ||
     data.loopSweep !== `${meta.loopSweepDeg}deg`
@@ -217,6 +295,8 @@ function edgeToCytoscapeElement(
       weight: edge.weight,
       color: edge.color ?? "paper",
       bow: routingMeta.bowPx,
+      controlPointDistances: routingMeta.controlPointDistancesPx,
+      controlPointWeights: routingMeta.controlPointWeights,
       duplicate: routingMeta.duplicate,
       loopDirection: `${routingMeta.loopDirectionDeg}deg`,
       loopSweep: `${routingMeta.loopSweepDeg}deg`,
@@ -267,6 +347,7 @@ export function createGraphCanvasStylesheet(
         "text-valign": "center",
         "text-outline-color": palette.node,
         "text-outline-width": 1,
+        "underlay-shape": "ellipse",
       }),
     },
     {
@@ -349,8 +430,8 @@ export function createGraphCanvasStylesheet(
       style: cytoscapeStyle({
         width: EDGE_WIDTH,
         "curve-style": "unbundled-bezier",
-        "control-point-distances": "data(bow)",
-        "control-point-weights": 0.5,
+        "control-point-distances": "data(controlPointDistances)",
+        "control-point-weights": "data(controlPointWeights)",
         "loop-direction": "data(loopDirection)",
         "loop-sweep": "data(loopSweep)",
         "line-color": palette.edge,
@@ -480,6 +561,16 @@ export function createGraphCanvasStylesheet(
       }),
     },
   ];
+}
+
+function sameNumericArray(value: unknown, expected: readonly number[]) {
+  if (!Array.isArray(value) || value.length !== expected.length) {
+    return false;
+  }
+
+  return value.every(
+    (item, index) => typeof item === "number" && item === expected[index],
+  );
 }
 
 function clampArrowScale(value: number) {

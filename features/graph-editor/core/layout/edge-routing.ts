@@ -6,8 +6,18 @@ import type {
   NodeId,
 } from "../graph/model";
 import { normalizeEdgeRoutingOverride } from "../graph/edge-routing-overrides";
+import {
+  approximateCurveLength,
+  edgeCurveMidpoint,
+  minimumCurveDistanceToNode,
+  offsetEdgeCurve,
+  reverseEdgeCurve,
+  sampleEdgeCurve,
+  singleBowCurve,
+  type EdgeCurveGeometry,
+} from "./edge-route-geometry";
 
-export type EdgeRoutingMeta = {
+export type EdgeRoutingMeta = EdgeCurveGeometry & {
   bowPx: number;
   duplicate: boolean;
   loopDirectionDeg: number;
@@ -17,6 +27,9 @@ export type EdgeRoutingMeta = {
 export type EdgeRoutingOptions = {
   variant?: number;
   avoidNodes?: boolean;
+  previousMeta?: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
+  rerouteEdgeIds?: ReadonlySet<EdgeId> | null;
+  quality?: "interactive" | "settled";
   nodeClearancePx?: number;
   duplicateBowPx?: number;
   loopDirectionDeg?: number;
@@ -34,10 +47,13 @@ const LOOP_SWEEP_DEG = 70;
 const LOOP_SWEEP_STEP_DEG = 16;
 const MAX_LOOP_SWEEP_DEG = 120;
 const NODE_AVOIDANCE_WORK_LIMIT = 30_000;
+const EDGE_PAIR_SCORING_WORK_LIMIT = 40_000;
 const MIN_DUPLICATE_BOW_SPACING_PX = 12;
 
 const defaultEdgeRoutingMeta: EdgeRoutingMeta = {
   bowPx: 0,
+  controlPointDistancesPx: [0],
+  controlPointWeights: [0.5],
   duplicate: false,
   loopDirectionDeg: LOOP_DIRECTION_DEG,
   loopSweepDeg: LOOP_SWEEP_DEG,
@@ -46,6 +62,9 @@ const defaultEdgeRoutingMeta: EdgeRoutingMeta = {
 const defaultEdgeRoutingOptions: Required<EdgeRoutingOptions> = {
   variant: 0,
   avoidNodes: true,
+  previousMeta: new Map(),
+  rerouteEdgeIds: null,
+  quality: "settled",
   nodeClearancePx: 42,
   duplicateBowPx: 36,
   loopDirectionDeg: LOOP_DIRECTION_DEG,
@@ -79,6 +98,24 @@ export function computeEdgeRouting(
   const meta = new Map<EdgeId, EdgeRoutingMeta>();
 
   for (const edges of routeGroups.values()) {
+    if (
+      resolvedOptions.rerouteEdgeIds &&
+      edges.every(
+        (edge) =>
+          !resolvedOptions.rerouteEdgeIds?.has(edge.id) &&
+          resolvedOptions.previousMeta.has(edge.id),
+      )
+    ) {
+      for (const edge of edges) {
+        const previous = resolvedOptions.previousMeta.get(edge.id);
+
+        if (previous) {
+          meta.set(edge.id, previous);
+        }
+      }
+      continue;
+    }
+
     if (edges.every((edge) => edge.source === edge.target)) {
       const center = (edges.length - 1) / 2;
       const source = nodesById.get(edges[0]?.source ?? "");
@@ -91,6 +128,8 @@ export function computeEdgeRouting(
           edge.id,
           applyRoutingOverride(edge, {
             bowPx: 0,
+            controlPointDistancesPx: [0],
+            controlPointWeights: [0.5],
             duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
             loopDirectionDeg: Math.round(
               loopDirectionDeg +
@@ -110,17 +149,18 @@ export function computeEdgeRouting(
 
     if (edges.length === 1) {
       const edge = edges[0];
+      const curve = chooseEdgeCurve(
+        edge,
+        model.edges,
+        model.nodes,
+        nodesById,
+        resolvedOptions,
+      );
       meta.set(
         edge.id,
         applyRoutingOverride(edge, {
-          bowPx: chooseEdgeBow(
-            edge,
-            model.edges,
-            model.nodes,
-            nodesById,
-            0,
-            resolvedOptions,
-          ),
+          ...curve,
+          bowPx: representativeBow(curve),
           duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
           loopDirectionDeg: resolvedOptions.loopDirectionDeg,
           loopSweepDeg: resolvedOptions.loopSweepDeg,
@@ -135,28 +175,36 @@ export function computeEdgeRouting(
       resolvedOptions.duplicateBowPx,
     );
     const maxDuplicateBow = center * duplicateBowPx;
-    const groupBowPx = clamp(
-      chooseEdgeBow(
-        canonicalRoutingEdge(edges[0]),
+    const firstEdge = edges[0];
+    const canonicalEdge = canonicalRoutingEdge(firstEdge);
+    const canonicalOptions = orientPreviousRouteForCanonicalEdge(
+      firstEdge,
+      resolvedOptions,
+    );
+    const groupCurve = clampCurveDistances(
+      chooseEdgeCurve(
+        canonicalEdge,
         model.edges,
         model.nodes,
         nodesById,
-        0,
-        resolvedOptions,
+        canonicalOptions,
       ),
       -MAX_BOW_PX + maxDuplicateBow,
       MAX_BOW_PX - maxDuplicateBow,
     );
 
     for (const [index, edge] of edges.entries()) {
-      const canonicalBow = groupBowPx + (index - center) * duplicateBowPx;
+      const canonicalCurve = offsetEdgeCurve(
+        groupCurve,
+        (index - center) * duplicateBowPx,
+      );
+      const curve = orientCanonicalCurve(edge, canonicalCurve);
 
       meta.set(
         edge.id,
         applyRoutingOverride(edge, {
-          bowPx: Math.round(
-            clamp(edgeBow(edge, canonicalBow), -MAX_BOW_PX, MAX_BOW_PX),
-          ),
+          ...curve,
+          bowPx: representativeBow(curve),
           duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
           loopDirectionDeg: resolvedOptions.loopDirectionDeg,
           loopSweepDeg: resolvedOptions.loopSweepDeg,
@@ -202,6 +250,7 @@ export function createEdgeRoutingCacheKey(
     model.settings.directed,
     resolvedOptions.variant,
     resolvedOptions.avoidNodes,
+    resolvedOptions.quality,
     resolvedOptions.nodeClearancePx,
     resolvedOptions.duplicateBowPx,
     resolvedOptions.loopDirectionDeg,
@@ -244,10 +293,552 @@ function applyRoutingOverride(
     };
   }
 
+  if (routing.bowPx != null) {
+    return {
+      ...meta,
+      ...singleBowCurve(routing.bowPx),
+      bowPx: routing.bowPx,
+    };
+  }
+
   return {
     ...meta,
-    bowPx: routing.bowPx ?? meta.bowPx,
   };
+}
+
+function chooseEdgeCurve(
+  edge: GraphEdge,
+  edges: GraphEdge[],
+  nodes: GraphNode[],
+  nodesById: Map<NodeId, GraphNode>,
+  options: Required<EdgeRoutingOptions>,
+): EdgeCurveGeometry {
+  const legacyBow = chooseEdgeBow(edge, edges, nodes, nodesById, 0, options);
+  const legacyCurve = singleBowCurve(legacyBow);
+
+  if (!options.avoidNodes || edge.source === edge.target) {
+    return legacyCurve;
+  }
+
+  const source = nodesById.get(edge.source);
+  const target = nodesById.get(edge.target);
+
+  if (!source || !target) {
+    return legacyCurve;
+  }
+
+  const obstacles = projectedEdgeObstacles(
+    edge,
+    source,
+    target,
+    nodes,
+    options.nodeClearancePx,
+  );
+
+  const candidates = edgeBowCandidates(0, options.candidateBowPx).map(
+    singleBowCurve,
+  );
+
+  if (obstacles.length > 0) {
+    candidates.push(
+      createObstacleAvoidingCurve(obstacles, 1),
+      createObstacleAvoidingCurve(obstacles, -1),
+    );
+  }
+  const previous = options.previousMeta.get(edge.id);
+
+  if (previous && options.quality === "interactive") {
+    candidates.unshift({
+      controlPointDistancesPx: previous.controlPointDistancesPx,
+      controlPointWeights: previous.controlPointWeights,
+    });
+  }
+  let best = candidates[0] ?? legacyCurve;
+  let bestScore = scoreCandidateCurve(
+    best,
+    source,
+    target,
+    edge,
+    edges,
+    nodes,
+    nodesById,
+    options,
+  );
+
+  for (const candidate of candidates.slice(1)) {
+    const score = scoreCandidateCurve(
+      candidate,
+      source,
+      target,
+      edge,
+      edges,
+      nodes,
+      nodesById,
+      options,
+    );
+
+    if (
+      score < bestScore ||
+      (score === bestScore &&
+        compareCurvePreference(candidate, best, options.variant) < 0)
+    ) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+
+  return clampCurveDistances(best, -MAX_BOW_PX, MAX_BOW_PX);
+}
+
+type ProjectedObstacleCluster = {
+  endWeight: number;
+  negativeDistancePx: number;
+  positiveDistancePx: number;
+  startWeight: number;
+};
+
+function projectedEdgeObstacles(
+  edge: GraphEdge,
+  source: GraphNode,
+  target: GraphNode,
+  nodes: GraphNode[],
+  clearancePx: number,
+) {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const length = Math.hypot(dx, dy);
+
+  if (length === 0) {
+    return [];
+  }
+
+  const unitX = dx / length;
+  const unitY = dy / length;
+  const normalX = -unitY;
+  const normalY = unitX;
+  const extentWeight = Math.min(0.22, clearancePx / length);
+  const obstacles = nodes
+    .filter((node) => node.id !== edge.source && node.id !== edge.target)
+    .map((node) => {
+      const relativeX = node.x - source.x;
+      const relativeY = node.y - source.y;
+
+      return {
+        endWeight: clamp(
+          (relativeX * unitX + relativeY * unitY) / length + extentWeight,
+          0.08,
+          0.92,
+        ),
+        negativeDistancePx:
+          relativeX * normalX + relativeY * normalY - clearancePx,
+        positiveDistancePx:
+          relativeX * normalX + relativeY * normalY + clearancePx,
+        startWeight: clamp(
+          (relativeX * unitX + relativeY * unitY) / length - extentWeight,
+          0.08,
+          0.92,
+        ),
+        perpendicularDistance: Math.abs(
+          relativeX * normalX + relativeY * normalY,
+        ),
+      };
+    })
+    .filter(
+      (obstacle) =>
+        obstacle.startWeight < obstacle.endWeight &&
+        obstacle.perpendicularDistance < clearancePx * 1.8,
+    )
+    .toSorted((a, b) => a.startWeight - b.startWeight);
+  const clusters: ProjectedObstacleCluster[] = [];
+
+  for (const obstacle of obstacles) {
+    const previous = clusters.at(-1);
+
+    if (previous && obstacle.startWeight <= previous.endWeight + 0.06) {
+      previous.endWeight = Math.max(previous.endWeight, obstacle.endWeight);
+      previous.positiveDistancePx = Math.max(
+        previous.positiveDistancePx,
+        obstacle.positiveDistancePx,
+      );
+      previous.negativeDistancePx = Math.min(
+        previous.negativeDistancePx,
+        obstacle.negativeDistancePx,
+      );
+      continue;
+    }
+
+    clusters.push({
+      endWeight: obstacle.endWeight,
+      negativeDistancePx: obstacle.negativeDistancePx,
+      positiveDistancePx: obstacle.positiveDistancePx,
+      startWeight: obstacle.startWeight,
+    });
+  }
+
+  if (clusters.length <= 2) {
+    return clusters;
+  }
+
+  return [
+    {
+      startWeight: clusters[0]?.startWeight ?? 0.2,
+      endWeight: clusters.at(-1)?.endWeight ?? 0.8,
+      positiveDistancePx: Math.max(
+        ...clusters.map((cluster) => cluster.positiveDistancePx),
+      ),
+      negativeDistancePx: Math.min(
+        ...clusters.map((cluster) => cluster.negativeDistancePx),
+      ),
+    },
+  ];
+}
+
+function createObstacleAvoidingCurve(
+  obstacles: ProjectedObstacleCluster[],
+  side: 1 | -1,
+): EdgeCurveGeometry {
+  return {
+    controlPointDistancesPx: obstacles.flatMap((obstacle) => {
+      const distance =
+        side > 0 ? obstacle.positiveDistancePx : obstacle.negativeDistancePx;
+
+      return [distance, distance];
+    }),
+    controlPointWeights: obstacles.flatMap((obstacle) => [
+      obstacle.startWeight,
+      obstacle.endWeight,
+    ]),
+  };
+}
+
+function scoreCandidateCurve(
+  curve: EdgeCurveGeometry,
+  source: GraphNode,
+  target: GraphNode,
+  edge: GraphEdge,
+  edges: GraphEdge[],
+  nodes: GraphNode[],
+  nodesById: Map<NodeId, GraphNode>,
+  options: Required<EdgeRoutingOptions>,
+) {
+  let collisionCount = 0;
+  let penetrationScore = 0;
+
+  for (const node of nodes) {
+    if (node.id === edge.source || node.id === edge.target) {
+      continue;
+    }
+
+    const distance = minimumCurveDistanceToNode(source, target, curve, node);
+    const overlap = Math.max(0, options.nodeClearancePx - distance);
+
+    if (overlap > 0) {
+      collisionCount += 1;
+      penetrationScore += overlap * overlap;
+    }
+  }
+
+  const directLength = Math.hypot(target.x - source.x, target.y - source.y);
+  const extraLength = Math.max(
+    0,
+    approximateCurveLength(source, target, curve) - directLength,
+  );
+  const maximumOffset = Math.max(
+    0,
+    ...curve.controlPointDistancesPx.map(Math.abs),
+  );
+
+  return (
+    collisionCount * 1_000_000 +
+    penetrationScore * 1_000 +
+    scoreCurveCrossings(edge, edges, nodesById, source, target, curve) +
+    scoreCurveLabelOverlap(edge, edges, nodesById, curve) +
+    extraLength * 0.2 +
+    maximumOffset * 0.03 +
+    curve.controlPointWeights.length * 0.4 +
+    scoreCurveZigzag(curve) +
+    scoreCurveInstability(curve, edge, options)
+  );
+}
+
+function scoreCurveCrossings(
+  edge: GraphEdge,
+  edges: GraphEdge[],
+  nodesById: Map<NodeId, GraphNode>,
+  source: GraphNode,
+  target: GraphNode,
+  curve: EdgeCurveGeometry,
+) {
+  if (edges.length * edges.length > EDGE_PAIR_SCORING_WORK_LIMIT) {
+    return 0;
+  }
+
+  const samples = sampleEdgeCurve(source, target, curve, 8);
+  let score = 0;
+
+  for (const otherEdge of edges) {
+    if (
+      otherEdge.id === edge.id ||
+      otherEdge.source === edge.source ||
+      otherEdge.source === edge.target ||
+      otherEdge.target === edge.source ||
+      otherEdge.target === edge.target
+    ) {
+      continue;
+    }
+
+    const otherSource = nodesById.get(otherEdge.source);
+    const otherTarget = nodesById.get(otherEdge.target);
+
+    if (!otherSource || !otherTarget) {
+      continue;
+    }
+
+    for (let index = 1; index < samples.length; index += 1) {
+      const segmentStart = samples[index - 1];
+      const segmentEnd = samples[index];
+
+      if (
+        !segmentStart ||
+        !segmentEnd ||
+        !segmentsProperlyIntersect(
+          segmentStart,
+          segmentEnd,
+          otherSource,
+          otherTarget,
+        )
+      ) {
+        continue;
+      }
+
+      const crossingAngle = acuteCrossingAngle(
+        segmentStart,
+        segmentEnd,
+        otherSource,
+        otherTarget,
+      );
+      score += 500 + Math.max(0, 90 - crossingAngle) * 4;
+      break;
+    }
+  }
+
+  return score;
+}
+
+function segmentsProperlyIntersect(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+  d: { x: number; y: number },
+) {
+  const abC = orientation(a, b, c);
+  const abD = orientation(a, b, d);
+  const cdA = orientation(c, d, a);
+  const cdB = orientation(c, d, b);
+  const epsilon = 0.001;
+
+  return abC * abD < -epsilon && cdA * cdB < -epsilon;
+}
+
+function orientation(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+) {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+function acuteCrossingAngle(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+  d: { x: number; y: number },
+) {
+  const firstX = b.x - a.x;
+  const firstY = b.y - a.y;
+  const secondX = d.x - c.x;
+  const secondY = d.y - c.y;
+  const denominator = Math.hypot(firstX, firstY) * Math.hypot(secondX, secondY);
+
+  if (denominator === 0) {
+    return 0;
+  }
+
+  const cosine = Math.min(
+    1,
+    Math.max(-1, (firstX * secondX + firstY * secondY) / denominator),
+  );
+  const degrees = (Math.acos(Math.abs(cosine)) * 180) / Math.PI;
+
+  return Math.min(90, degrees);
+}
+
+function scoreCurveInstability(
+  curve: EdgeCurveGeometry,
+  edge: GraphEdge,
+  options: Required<EdgeRoutingOptions>,
+) {
+  if (options.quality !== "interactive") {
+    return 0;
+  }
+
+  const previous = options.previousMeta.get(edge.id);
+
+  if (!previous) {
+    return 0;
+  }
+
+  const sampleCount = Math.max(
+    curve.controlPointDistancesPx.length,
+    previous.controlPointDistancesPx.length,
+  );
+  let difference = 0;
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const currentDistance =
+      curve.controlPointDistancesPx[
+        Math.min(index, curve.controlPointDistancesPx.length - 1)
+      ] ?? 0;
+    const previousDistance =
+      previous.controlPointDistancesPx[
+        Math.min(index, previous.controlPointDistancesPx.length - 1)
+      ] ?? 0;
+    difference += Math.abs(currentDistance - previousDistance);
+  }
+
+  const currentSide = Math.sign(representativeBow(curve));
+  const previousSide = Math.sign(representativeBow(previous));
+  const sideChangePenalty =
+    currentSide !== 0 && previousSide !== 0 && currentSide !== previousSide
+      ? 120
+      : 0;
+
+  return difference * 0.8 + sideChangePenalty;
+}
+
+function scoreCurveLabelOverlap(
+  edge: GraphEdge,
+  edges: GraphEdge[],
+  nodesById: Map<NodeId, GraphNode>,
+  curve: EdgeCurveGeometry,
+) {
+  if (
+    !edgeHasVisibleLabel(edge) ||
+    edges.length * edges.length > EDGE_PAIR_SCORING_WORK_LIMIT
+  ) {
+    return 0;
+  }
+
+  const source = nodesById.get(edge.source);
+  const target = nodesById.get(edge.target);
+
+  if (!source || !target) {
+    return 0;
+  }
+
+  const anchor = edgeCurveMidpoint(source, target, curve);
+  let score = 0;
+
+  for (const otherEdge of edges) {
+    if (
+      otherEdge.id === edge.id ||
+      otherEdge.source === otherEdge.target ||
+      routeEdgeKey(otherEdge) === routeEdgeKey(edge) ||
+      !edgeHasVisibleLabel(otherEdge)
+    ) {
+      continue;
+    }
+
+    const otherSource = nodesById.get(otherEdge.source);
+    const otherTarget = nodesById.get(otherEdge.target);
+
+    if (!otherSource || !otherTarget) {
+      continue;
+    }
+
+    const otherAnchor = {
+      x: (otherSource.x + otherTarget.x) / 2,
+      y: (otherSource.y + otherTarget.y) / 2,
+    };
+    const distance = Math.hypot(
+      anchor.x - otherAnchor.x,
+      anchor.y - otherAnchor.y,
+    );
+    const overlap = Math.max(0, edgeLabelClearance(edge, otherEdge) - distance);
+    score += overlap * overlap * 1.4;
+  }
+
+  return score;
+}
+
+function scoreCurveZigzag(curve: EdgeCurveGeometry) {
+  let score = 0;
+
+  for (
+    let index = 1;
+    index < curve.controlPointDistancesPx.length;
+    index += 1
+  ) {
+    const previous = curve.controlPointDistancesPx[index - 1] ?? 0;
+    const current = curve.controlPointDistancesPx[index] ?? 0;
+
+    if (Math.sign(previous) !== Math.sign(current)) {
+      score += Math.abs(previous - current) * 2;
+    }
+  }
+
+  return score;
+}
+
+function compareCurvePreference(
+  a: EdgeCurveGeometry,
+  b: EdgeCurveGeometry,
+  variant: number,
+) {
+  const aOffset = representativeBow(a);
+  const bOffset = representativeBow(b);
+  const sign = Math.abs(Math.trunc(variant) % 2) === 1 ? -1 : 1;
+
+  return (
+    a.controlPointWeights.length - b.controlPointWeights.length ||
+    Math.abs(aOffset) - Math.abs(bOffset) ||
+    (aOffset - bOffset) * sign
+  );
+}
+
+function representativeBow(curve: EdgeCurveGeometry) {
+  if (curve.controlPointDistancesPx.length === 0) {
+    return 0;
+  }
+
+  return Math.round(
+    curve.controlPointDistancesPx.reduce(
+      (total, distance) => total + distance,
+      0,
+    ) / curve.controlPointDistancesPx.length,
+  );
+}
+
+function clampCurveDistances(
+  curve: EdgeCurveGeometry,
+  minimum: number,
+  maximum: number,
+): EdgeCurveGeometry {
+  return {
+    ...curve,
+    controlPointDistancesPx: curve.controlPointDistancesPx.map((distance) =>
+      Math.round(clamp(distance, minimum, maximum)),
+    ),
+  };
+}
+
+function orientCanonicalCurve(
+  edge: GraphEdge,
+  canonicalCurve: EdgeCurveGeometry,
+) {
+  return edge.source <= edge.target
+    ? canonicalCurve
+    : reverseEdgeCurve(canonicalCurve);
 }
 
 function chooseEdgeBow(
@@ -340,8 +931,8 @@ function chooseLoopDirection(
 }
 
 function loopDirectionCandidates(options: Required<EdgeRoutingOptions>) {
-  return Array.from({ length: 8 }, (_, index) =>
-    Math.round(options.loopDirectionDeg + index * 45),
+  return Array.from({ length: 24 }, (_, index) =>
+    Math.round(options.loopDirectionDeg + index * 15),
   );
 }
 
@@ -359,7 +950,9 @@ function scoreLoopDirection(
     if (node.id === source.id) continue;
 
     const distance = Math.min(
-      ...loopPoints.map((point) => Math.hypot(node.x - point.x, node.y - point.y)),
+      ...loopPoints.map((point) =>
+        Math.hypot(node.x - point.x, node.y - point.y),
+      ),
     );
     const overlap = Math.max(0, options.nodeClearancePx - distance);
     score += overlap * overlap;
@@ -593,14 +1186,6 @@ function candidatePreference(
   return curvePreference + signPreference * 0.001;
 }
 
-function edgeBow(edge: GraphEdge, canonicalBowPx: number) {
-  if (edge.source === edge.target || edge.source <= edge.target) {
-    return canonicalBowPx;
-  }
-
-  return -canonicalBowPx;
-}
-
 function canonicalRoutingEdge(edge: GraphEdge): GraphEdge {
   if (edge.source <= edge.target) {
     return edge;
@@ -611,6 +1196,30 @@ function canonicalRoutingEdge(edge: GraphEdge): GraphEdge {
     source: edge.target,
     target: edge.source,
   };
+}
+
+function orientPreviousRouteForCanonicalEdge(
+  edge: GraphEdge,
+  options: Required<EdgeRoutingOptions>,
+): Required<EdgeRoutingOptions> {
+  if (edge.source <= edge.target) {
+    return options;
+  }
+
+  const previous = options.previousMeta.get(edge.id);
+
+  if (!previous) {
+    return options;
+  }
+
+  const previousMeta = new Map(options.previousMeta);
+  previousMeta.set(edge.id, {
+    ...previous,
+    ...reverseEdgeCurve(previous),
+    bowPx: -previous.bowPx,
+  });
+
+  return { ...options, previousMeta };
 }
 
 function routeEdgeKey(edge: GraphEdge) {

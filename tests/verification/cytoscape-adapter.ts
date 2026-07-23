@@ -63,6 +63,11 @@ function verifyElementMapping() {
     String(edgeAb?.classes).includes("color-blue"),
     "edge color should map to a class",
   );
+  expect(
+    Array.isArray(edgeAb?.data?.controlPointDistances) &&
+      Array.isArray(edgeAb.data.controlPointWeights),
+    "edge routing should map control-point arrays into Cytoscape data",
+  );
 }
 
 function verifyNodeDragGridSnapping() {
@@ -344,13 +349,15 @@ function verifyEdgeHitboxPaths() {
     x: 50,
     y: 20,
     bowPx: 32,
+    controlPointDistancesPx: [32, 48],
+    controlPointWeights: [0.3, 0.7],
     loopDirectionDeg: -45,
     loopSweepDeg: 70,
   });
 
   expect(
-    curvedPath.includes("Q"),
-    "curved edge hitboxes should follow a quadratic path",
+    curvedPath.match(/Q/g)?.length === 2,
+    "curved edge hitboxes should follow every quadratic segment",
   );
 
   const loopPath = createEdgeHitboxPath({

@@ -18,6 +18,11 @@ import {
   computeEdgeRouting,
   shouldAvoidNodesForEdgeRouting,
 } from "../../features/graph-editor/core/layout/edge-routing";
+import {
+  minimumCurveDistanceToNode,
+  reverseEdgeCurve,
+  sampleEdgeCurve,
+} from "../../features/graph-editor/core/layout/edge-route-geometry";
 import { importGraphInput } from "../../features/graph-editor/io/import-graph";
 import { hasGraphContent } from "../../features/graph-editor/core/graph/selectors";
 import type {
@@ -408,6 +413,114 @@ const weightedCrossingLabelGraph = importGraphInput(
 expect(
   (computeEdgeRouting(weightedCrossingLabelGraph).get("e1")?.bowPx ?? 0) !== 0,
   "weighted crossing edges should route the long weight label away from the shared center",
+);
+
+const adaptiveCurveGraph: GraphModel = {
+  version: 1,
+  nodes: [
+    { id: "a", label: "A", order: 0, x: 0, y: 0 },
+    { id: "b", label: "B", order: 1, x: 320, y: 0 },
+    { id: "near-1", label: "C", order: 2, x: 100, y: 0 },
+    { id: "near-2", label: "D", order: 3, x: 220, y: 0 },
+  ],
+  edges: [{ id: "ab", source: "a", target: "b" }],
+  settings: defaultGraphSettings,
+};
+const adaptiveCurve = computeEdgeRouting(adaptiveCurveGraph).get("ab");
+
+expect(
+  adaptiveCurve?.controlPointWeights.length === 4,
+  "separated obstacles should produce a local multi-control-point route",
+);
+expect(
+  adaptiveCurve != null &&
+    adaptiveCurveGraph.nodes
+      .slice(2)
+      .every(
+        (node) =>
+          minimumCurveDistanceToNode(
+            adaptiveCurveGraph.nodes[0]!,
+            adaptiveCurveGraph.nodes[1]!,
+            adaptiveCurve,
+            node,
+          ) >= 39,
+      ),
+  "adaptive routes should preserve node clearance without one oversized global bow",
+);
+
+const manualCurveGraph: GraphModel = {
+  ...adaptiveCurveGraph,
+  nodes: adaptiveCurveGraph.nodes.slice(0, 2),
+  edges: [
+    {
+      id: "ab",
+      source: "a",
+      target: "b",
+      routing: { bowPx: 24 },
+    },
+  ],
+};
+const manualCurve = computeEdgeRouting(manualCurveGraph).get("ab");
+
+expect(
+  manualCurve?.controlPointDistancesPx.length === 1 &&
+    manualCurve.controlPointDistancesPx[0] === 24 &&
+    manualCurve.controlPointWeights[0] === 0.5,
+  "legacy manual bow overrides should remain a single control point",
+);
+
+const forwardCurve = {
+  controlPointDistancesPx: [48, 64],
+  controlPointWeights: [0.3, 0.72],
+};
+const reversedCurve = reverseEdgeCurve(forwardCurve);
+const forwardSamples = sampleEdgeCurve(
+  { x: 0, y: 0 },
+  { x: 200, y: 40 },
+  forwardCurve,
+);
+const reverseSamples = sampleEdgeCurve(
+  { x: 200, y: 40 },
+  { x: 0, y: 0 },
+  reversedCurve,
+).reverse();
+
+expect(
+  forwardSamples.every((point, index) => {
+    const reversedPoint = reverseSamples[index];
+
+    return (
+      reversedPoint != null &&
+      Math.hypot(point.x - reversedPoint.x, point.y - reversedPoint.y) < 0.001
+    );
+  }),
+  "reversing a multi-control-point route should preserve its physical curve",
+);
+
+const incrementalGraph: GraphModel = {
+  version: 1,
+  nodes: [
+    { id: "a", label: "A", order: 0, x: 0, y: 0 },
+    { id: "b", label: "B", order: 1, x: 200, y: 0 },
+    { id: "c", label: "C", order: 2, x: 0, y: 160 },
+    { id: "d", label: "D", order: 3, x: 200, y: 160 },
+  ],
+  edges: [
+    { id: "ab", source: "a", target: "b" },
+    { id: "cd", source: "c", target: "d" },
+  ],
+  settings: defaultGraphSettings,
+};
+const previousIncrementalRoutes = computeEdgeRouting(incrementalGraph);
+const incrementalRoutes = computeEdgeRouting(incrementalGraph, {
+  previousMeta: previousIncrementalRoutes,
+  quality: "interactive",
+  rerouteEdgeIds: new Set(["ab"]),
+});
+
+expect(
+  incrementalRoutes.get("cd") === previousIncrementalRoutes.get("cd"),
+  "interactive routing should reuse clean edge-group geometry without recomputing it",
 );
 
 finish();
