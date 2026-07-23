@@ -2,7 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type FocusEvent, useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,9 +13,8 @@ import {
   createSampleGraph,
   createSizedSampleGraph,
   getSizedSampleGraphMaxNodes,
-  SIZED_SAMPLE_GRAPH_MIN_NODES,
+  isSizedSampleGraphKind,
   sizedKnightMoveKinds,
-  sizedSampleGraphKinds,
   type SampleGraphKind,
   type SizedKnightMoveKind,
   type SizedSampleGraphKind,
@@ -39,19 +38,20 @@ type SampleGalleryPaneProps = {
   onSampleApplied: () => void;
 };
 
+type SizedSampleValues = {
+  columns: number;
+  knightMove: SizedKnightMoveKind;
+  nodeCount: number;
+  rows: number;
+};
+
+const POSITIVE_INTEGER_INPUT_PATTERN = /^\d*$/;
+
 export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
   const graph = useAtomValue(graphAtom);
   const { locale, messages } = useI18n();
   const applyGraphModel = useApplyGraphModel();
   const [sampleQuery, setSampleQuery] = useState("");
-  const [sizedKind, setSizedKind] = useState<SizedSampleGraphKind>("path");
-  const [sizedNodeCount, setSizedNodeCount] = useState("8");
-  const [sizedRows, setSizedRows] = useState("4");
-  const [sizedColumns, setSizedColumns] = useState("4");
-  const [sizedKnightMove, setSizedKnightMove] =
-    useState<SizedKnightMoveKind>("standard");
-  const sizedMaxNodeCount = getSizedSampleGraphMaxNodes(sizedKind);
-  const usesGridDimensions = sizedKind === "grid" || sizedKind === "knight";
   const filteredSampleGroups = useMemo(() => {
     const query = sampleQuery.trim().toLowerCase();
 
@@ -93,30 +93,27 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
     });
     onSampleApplied();
   };
-  const generateSizedSample = () => {
-    const rows = clampPositiveInteger(Number(sizedRows), 4);
-    const columns = clampPositiveInteger(Number(sizedColumns), 4);
+  const generateSizedSample = (
+    kind: SizedSampleGraphKind,
+    values: SizedSampleValues,
+  ) => {
+    const usesGridDimensions = kind === "grid" || kind === "knight";
     const parsedNodeCount = usesGridDimensions
-      ? rows * columns
-      : Number(sizedNodeCount);
+      ? values.rows * values.columns
+      : values.nodeCount;
     const normalizedNodeCount = clampSizedSampleNodeCount(
-      sizedKind,
+      kind,
       parsedNodeCount,
     );
-    setSizedNodeCount(String(normalizedNodeCount));
-    if (usesGridDimensions && normalizedNodeCount === rows * columns) {
-      setSizedRows(String(rows));
-      setSizedColumns(String(columns));
-    }
     const model = createSizedSampleGraph(
-      sizedKind,
+      kind,
       normalizedNodeCount,
       graph.settings,
       usesGridDimensions
         ? {
-            columns,
-            knightMove: sizedKnightMove,
-            rows,
+            columns: values.columns,
+            knightMove: values.knightMove,
+            rows: values.rows,
           }
         : undefined,
     );
@@ -131,101 +128,6 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
 
   return (
     <div className="gv-sample-gallery flex min-h-0 flex-1 flex-col">
-      <form
-        className="flex flex-wrap items-end gap-[var(--app-space-2)] px-[var(--app-space-3)] pt-[var(--app-space-2)] pb-[var(--app-space-1)]"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          generateSizedSample();
-        }}
-      >
-        <label className="flex min-w-[150px] flex-[1_1_160px] flex-col gap-1">
-          <span className="gv-section-label">
-            {messages.samples.sizedKindLabel}
-          </span>
-          <select
-            value={sizedKind}
-            aria-label={messages.samples.sizedKindLabel}
-            onChange={(event) => {
-              const nextKind = event.target.value as SizedSampleGraphKind;
-              setSizedKind(nextKind);
-              setSizedNodeCount((currentNodeCount) =>
-                String(
-                  clampSizedSampleNodeCount(nextKind, Number(currentNodeCount)),
-                ),
-              );
-            }}
-            className="gv-control h-9 w-full px-[var(--app-space-3)] text-[length:var(--app-text-sm)]"
-          >
-            {sizedSampleGraphKinds.map((kind) => {
-              const sample = messages.samples.item[kind];
-              const fallback = humanizeSampleKind(kind);
-              return (
-                <option key={kind} value={kind}>
-                  {sample?.title ?? fallback}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-        {usesGridDimensions ? (
-          <>
-            <DimensionInput
-              label={messages.samples.sizedRowsLabel}
-              value={sizedRows}
-              onChange={setSizedRows}
-            />
-            <DimensionInput
-              label={messages.samples.sizedColumnsLabel}
-              value={sizedColumns}
-              onChange={setSizedColumns}
-            />
-            {sizedKind === "knight" ? (
-              <label className="flex min-w-[128px] flex-[1_1_132px] flex-col gap-1">
-                <span className="gv-section-label">
-                  {messages.samples.sizedKnightMoveLabel}
-                </span>
-                <select
-                  value={sizedKnightMove}
-                  aria-label={messages.samples.sizedKnightMoveLabel}
-                  onChange={(event) =>
-                    setSizedKnightMove(event.target.value as SizedKnightMoveKind)
-                  }
-                  className="gv-control h-9 w-full px-[var(--app-space-3)] text-[length:var(--app-text-sm)]"
-                >
-                  {sizedKnightMoveKinds.map((move) => (
-                    <option key={move} value={move}>
-                      {messages.samples.sizedKnightMoves[move]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-          </>
-        ) : (
-          <label className="flex w-[112px] flex-col gap-1">
-            <span className="gv-section-label">
-              {messages.samples.sizedNodeCountLabel}
-            </span>
-            <input
-              type="number"
-              min={SIZED_SAMPLE_GRAPH_MIN_NODES}
-              max={sizedMaxNodeCount}
-              step={1}
-              value={sizedNodeCount}
-              aria-label={messages.samples.sizedNodeCountAria}
-              onChange={(event) => setSizedNodeCount(event.target.value)}
-              className="gv-control h-9 w-full px-[var(--app-space-3)] text-[length:var(--app-text-sm)]"
-            />
-          </label>
-        )}
-        <button
-          type="submit"
-          className="gv-control h-9 px-[var(--app-space-4)] text-[length:var(--app-text-sm)]"
-        >
-          {messages.samples.sizedCreate}
-        </button>
-      </form>
       <SampleGalleryFilter
         query={sampleQuery}
         total={sampleGraphCount}
@@ -257,6 +159,7 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
                     sample={sample}
                     settings={graph.settings}
                     onApply={() => generateSample(sample.kind)}
+                    onApplySized={generateSizedSample}
                   />
                 ))}
               </div>
@@ -280,32 +183,6 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
         )}
       </div>
     </div>
-  );
-}
-
-function DimensionInput({
-  label,
-  onChange,
-  value,
-}: {
-  label: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <label className="flex w-[84px] flex-col gap-1">
-      <span className="gv-section-label">{label}</span>
-      <input
-        type="number"
-        min={SIZED_SAMPLE_GRAPH_MIN_NODES}
-        max={100}
-        step={1}
-        value={value}
-        aria-label={label}
-        onChange={(event) => onChange(event.target.value)}
-        className="gv-control h-9 w-full px-[var(--app-space-3)] text-[length:var(--app-text-sm)]"
-      />
-    </label>
   );
 }
 
@@ -366,10 +243,12 @@ function SampleCard({
   sample,
   settings,
   onApply,
+  onApplySized,
 }: {
   sample: SampleGraphItem;
   settings: GraphModel["settings"];
   onApply: () => void;
+  onApplySized: (kind: SizedSampleGraphKind, values: SizedSampleValues) => void;
 }) {
   const { locale, messages } = useI18n();
   const title = messages.samples.item[sample.kind]?.title ?? sample.label;
@@ -380,42 +259,171 @@ function SampleCard({
     () => createSampleGraph(sample.kind, settings),
     [sample.kind, settings],
   );
+  const [nodeCount, setNodeCount] = useState(() => String(model.nodes.length));
+  const [rows, setRows] = useState(() => (sample.kind === "grid" ? "3" : "4"));
+  const [columns, setColumns] = useState(() =>
+    sample.kind === "grid" ? "3" : "4",
+  );
+  const [knightMove, setKnightMove] = useState<SizedKnightMoveKind>("standard");
+  const sizedKind = isSizedSampleGraphKind(sample.kind) ? sample.kind : null;
+  const usesGridDimensions = sizedKind === "grid" || sizedKind === "knight";
+
+  const sampleSummary = (
+    <>
+      <span className={cn(SAMPLE_PREVIEW_FRAME_CLASS, "bg-[var(--bg-deep)]")}>
+        <SampleGraphPreview
+          model={model}
+          sampleKind={sample.kind}
+          width={106}
+          height={80}
+        />
+      </span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="max-w-full min-w-0 py-px [font-family:var(--app-font-display)] text-[15px] leading-[1.15] font-extrabold break-words whitespace-normal text-[var(--text)]">
+          {title}
+        </span>
+        <span className="min-w-0 text-[13px] leading-tight font-semibold [overflow-wrap:anywhere] break-words whitespace-normal text-[var(--text-mute)]">
+          {subtitle}
+        </span>
+      </span>
+    </>
+  );
 
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--app-radius-md)] border border-transparent bg-[var(--bg-deep)] transition-colors hover:bg-[var(--state-hover-bg)]",
+        "overflow-hidden rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--surface)]",
       )}
     >
-      <button
-        type="button"
-        onClick={onApply}
-        aria-label={messages.samples.applyAria(title)}
-        title={`${title} (${subtitle})`}
-        className={cn(
-          SAMPLE_CARD_LAYOUT_CLASS,
-          "w-full text-left focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none",
-        )}
+      <div className={SAMPLE_CARD_LAYOUT_CLASS}>{sampleSummary}</div>
+      <form
+        className="flex min-h-14 flex-wrap items-end gap-[var(--app-space-2)] border-t border-[var(--divider)] px-[var(--app-space-3)] py-[var(--app-space-2)]"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+
+          if (!sizedKind) {
+            onApply();
+            return;
+          }
+
+          const normalizedRows = clampPositiveInteger(Number(rows), 4);
+          const normalizedColumns = clampPositiveInteger(Number(columns), 4);
+          const normalizedNodeCount = clampSizedSampleNodeCount(
+            sizedKind,
+            Number(nodeCount),
+          );
+
+          setNodeCount(String(normalizedNodeCount));
+          setRows(String(normalizedRows));
+          setColumns(String(normalizedColumns));
+          onApplySized(sizedKind, {
+            columns: normalizedColumns,
+            knightMove,
+            nodeCount: normalizedNodeCount,
+            rows: normalizedRows,
+          });
+        }}
       >
-        <span className={cn(SAMPLE_PREVIEW_FRAME_CLASS, "bg-[var(--surface)]")}>
-          <SampleGraphPreview
-            model={model}
-            sampleKind={sample.kind}
-            width={106}
-            height={80}
-          />
-        </span>
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="max-w-full min-w-0 py-px [font-family:var(--app-font-display)] text-[15px] leading-[1.15] font-extrabold break-words whitespace-normal text-[var(--text)]">
-            {title}
-          </span>
-          <span className="min-w-0 text-[13px] leading-tight font-semibold [overflow-wrap:anywhere] break-words whitespace-normal text-[var(--text-mute)]">
-            {subtitle}
-          </span>
-        </span>
-      </button>
+        {sizedKind ? (
+          usesGridDimensions ? (
+            <>
+              <CardNumberInput
+                label={messages.samples.sizedRowsLabel}
+                value={rows}
+                onChange={setRows}
+              />
+              <CardNumberInput
+                label={messages.samples.sizedColumnsLabel}
+                value={columns}
+                onChange={setColumns}
+              />
+              {sizedKind === "knight" ? (
+                <label className="flex min-w-[130px] flex-[1_1_130px] flex-col gap-1">
+                  <span className="gv-section-label">
+                    {messages.samples.sizedKnightMoveLabel}
+                  </span>
+                  <select
+                    value={knightMove}
+                    aria-label={messages.samples.sizedKnightMoveLabel}
+                    onChange={(event) =>
+                      setKnightMove(event.target.value as SizedKnightMoveKind)
+                    }
+                    className="gv-control h-8 w-full px-[var(--app-space-2)] text-[length:var(--app-text-xs)]"
+                  >
+                    {sizedKnightMoveKinds.map((move) => (
+                      <option key={move} value={move}>
+                        {messages.samples.sizedKnightMoves[move]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </>
+          ) : (
+            <CardNumberInput
+              label={messages.samples.sizedNodeCountLabel}
+              value={nodeCount}
+              max={getSizedSampleGraphMaxNodes(sizedKind)}
+              onChange={setNodeCount}
+            />
+          )
+        ) : null}
+        <button
+          type="submit"
+          aria-label={`${title}: ${messages.samples.sizedCreate}`}
+          title={`${title} (${subtitle})`}
+          className="gv-control gv-control-primary ml-auto h-8 px-[var(--app-space-3)] text-[length:var(--app-text-xs)]"
+        >
+          {messages.samples.sizedCreate}
+        </button>
+      </form>
     </div>
   );
+}
+
+function CardNumberInput({
+  label,
+  max = 100,
+  onChange,
+  value,
+}: {
+  label: string;
+  max?: number;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="flex min-w-[76px] flex-[1_1_76px] flex-col gap-1">
+      <span className="gv-section-label">{label}</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={String(max).length}
+        value={value}
+        aria-label={label}
+        onFocus={selectInputValueOnFocus}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          if (POSITIVE_INTEGER_INPUT_PATTERN.test(nextValue)) {
+            onChange(nextValue);
+          }
+        }}
+        className="gv-control gv-card-number-input h-8 w-full px-[var(--app-space-2)] text-[length:var(--app-text-xs)]"
+      />
+    </label>
+  );
+}
+
+function selectInputValueOnFocus(event: FocusEvent<HTMLInputElement>) {
+  const input = event.currentTarget;
+
+  window.requestAnimationFrame(() => {
+    if (document.activeElement === input) {
+      input.select();
+    }
+  });
 }
 
 function humanizeSampleKind(kind: SampleGraphKind) {
