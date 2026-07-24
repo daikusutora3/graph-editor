@@ -384,7 +384,7 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
       const edge = cyRef.current?.getElementById(edgeId);
 
       if (!edge || edge.empty() || !edge.isEdge()) {
-        return;
+        return null;
       }
 
       edge.data({
@@ -392,6 +392,12 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
         controlPointDistances: [bowPx],
         controlPointWeights: [0.5],
       });
+
+      const midpoint = edge.renderedMidpoint();
+
+      return Number.isFinite(midpoint.x) && Number.isFinite(midpoint.y)
+        ? { x: midpoint.x, y: midpoint.y }
+        : null;
     },
     [cyRef],
   );
@@ -579,6 +585,7 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
           />
           {selectedBendEdge && selectedBendHitbox ? (
             <EdgeBendHandle
+              canReset={selectedBendEdge.routing != null}
               edge={selectedBendHitbox}
               zoom={zoomPercent / 100}
               onPreview={(bowPx) => previewEdgeBow(selectedBendEdge.id, bowPx)}
@@ -587,6 +594,13 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
                 executeCommand(
                   updateEdgeCommand(selectedBendEdge.id, {
                     routing: { bowPx },
+                  }),
+                )
+              }
+              onReset={() =>
+                executeCommand(
+                  updateEdgeCommand(selectedBendEdge.id, {
+                    routing: undefined,
                   }),
                 )
               }

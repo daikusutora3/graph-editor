@@ -4,7 +4,10 @@ import {
   parseStoredGraph,
   serializeStoredGraphForWrite,
 } from "../../features/graph-editor/adapters/browser/stored-graph";
-import { edgeBowPxFromRenderedPointer } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
+import {
+  edgeBendHandlePosition,
+  edgeBowPxFromRenderedPointer,
+} from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { defaultGraphSettings } from "../../features/graph-editor/core/graph/graph-factory";
 import { updateEdgeCommand } from "../../features/graph-editor/core/graph/graph-intents";
 import type {
@@ -288,6 +291,29 @@ const pointerBow = edgeBowPxFromRenderedPointer(
 expect(
   pointerBow === 60,
   "bend handle pointer distance should account for zoom and the quadratic midpoint",
+);
+const renderedMidpoint = edgeBendHandlePosition(
+  {
+    id: "manual",
+    label: "",
+    sourceX: 0,
+    sourceY: 0,
+    targetX: 200,
+    targetY: 0,
+    x: 94,
+    y: 63,
+    bowPx: 100,
+    controlPointDistancesPx: [100],
+    controlPointWeights: [0.5],
+    loopDirectionDeg: -45,
+    loopSweepDeg: 70,
+  },
+  null,
+  1,
+);
+expect(
+  renderedMidpoint.x === 94 && renderedMidpoint.y === 63,
+  "an idle bend handle should use Cytoscape's exact rendered midpoint",
 );
 
 for (const route of computeEdgeRouting(obstructedGraph).values()) {
