@@ -26,6 +26,7 @@ import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
 type DragSnapshot = Record<NodeId, Position>;
 export const NODE_DRAG_GRID_SIZE_PX = 24;
+const INTERACTIVE_EDGE_ROUTING_INTERVAL_MS = 80;
 
 type HtmlNodeDragState = {
   captureElement: HTMLButtonElement;
@@ -63,6 +64,8 @@ export function useHtmlNodeDrag({
 }: UseHtmlNodeDragOptions) {
   const htmlNodeDragRef = useRef<HtmlNodeDragState | null>(null);
   const dragFrameRef = useRef<number | null>(null);
+  const dragRoutingTimerRef = useRef<number | null>(null);
+  const lastDragRoutingAtRef = useRef(0);
   const postRoutingHitboxFrameRef = useRef<number | null>(null);
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
@@ -72,12 +75,15 @@ export function useHtmlNodeDrag({
   );
 
   const cancelScheduledDragFrame = useCallback(() => {
-    if (dragFrameRef.current === null) {
-      return;
+    if (dragFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
     }
 
-    window.cancelAnimationFrame(dragFrameRef.current);
-    dragFrameRef.current = null;
+    if (dragRoutingTimerRef.current !== null) {
+      window.clearTimeout(dragRoutingTimerRef.current);
+      dragRoutingTimerRef.current = null;
+    }
   }, []);
 
   const cancelScheduledPostRoutingHitboxes = useCallback(() => {
@@ -114,18 +120,34 @@ export function useHtmlNodeDrag({
   );
 
   const syncDragPreview = useCallback(
-    (cy: Core) => {
+    (cy: Core, forceRouting = false) => {
       if (cy.destroyed()) {
         return;
       }
 
       if (edgeRoutingOptions.mode === "quality") {
-        withCytoscapeBatch(cy, () => {
-          syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions, {
-            movedNodeIds: draggingNodeIdsRef.current,
-            previousMeta: dragRoutingBaselineRef.current,
+        const now = performance.now();
+        const elapsed = now - lastDragRoutingAtRef.current;
+
+        if (forceRouting || elapsed >= INTERACTIVE_EDGE_ROUTING_INTERVAL_MS) {
+          if (dragRoutingTimerRef.current !== null) {
+            window.clearTimeout(dragRoutingTimerRef.current);
+            dragRoutingTimerRef.current = null;
+          }
+
+          withCytoscapeBatch(cy, () => {
+            syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions, {
+              movedNodeIds: draggingNodeIdsRef.current,
+              previousMeta: dragRoutingBaselineRef.current,
+            });
           });
-        });
+          lastDragRoutingAtRef.current = now;
+        } else if (dragRoutingTimerRef.current === null) {
+          dragRoutingTimerRef.current = window.setTimeout(() => {
+            dragRoutingTimerRef.current = null;
+            syncDragPreview(cy, true);
+          }, INTERACTIVE_EDGE_ROUTING_INTERVAL_MS - elapsed);
+        }
       }
 
       schedulePostRoutingHitboxes(cy);
@@ -136,7 +158,7 @@ export function useHtmlNodeDrag({
   const flushDragPreview = useCallback(
     (cy: Core) => {
       cancelScheduledDragFrame();
-      syncDragPreview(cy);
+      syncDragPreview(cy, true);
     },
     [cancelScheduledDragFrame, syncDragPreview],
   );
@@ -163,6 +185,7 @@ export function useHtmlNodeDrag({
     cleanupDragListeners();
     cancelScheduledDragFrame();
     cancelScheduledPostRoutingHitboxes();
+    lastDragRoutingAtRef.current = 0;
 
     if (!state || !cy || cy.destroyed()) {
       draggingNodeIdsRef.current = new Set();
@@ -204,6 +227,7 @@ export function useHtmlNodeDrag({
 
     cancel();
     dragRoutingBaselineRef.current = edgeRoutingMeta;
+    lastDragRoutingAtRef.current = 0;
 
     const selectedNodeIds = selectionRef.current.nodeIds.includes(nodeId)
       ? selectionRef.current.nodeIds
