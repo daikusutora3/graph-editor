@@ -13,6 +13,11 @@ import type {
 } from "../../features/graph-editor/core/graph/model";
 import { edgeCurveMidpoint } from "../../features/graph-editor/core/layout/edge-route-geometry";
 import {
+  emptyEdgeRoutingContinuitySnapshot,
+  readPreviousAutomaticRoutingMeta,
+  updateAutomaticRoutingSnapshot,
+} from "../../features/graph-editor/core/layout/edge-routing-continuity";
+import {
   createEdgeRoutingCacheKey,
   computeEdgeRouting,
   type EdgeRoutingMeta,
@@ -165,6 +170,44 @@ const manualRoute = computeEdgeRouting(manualGraph).get("manual");
 expect(
   manualRoute?.bowPx === 48 && manualRoute.controlPointDistancesPx[0] === 48,
   "manual routing.bowPx should win over automatic routing",
+);
+
+const automaticBeforeManual = computeEdgeRouting({
+  ...manualGraph,
+  edges: [{ ...manualGraph.edges[0]!, routing: undefined }],
+});
+const automaticSnapshot = updateAutomaticRoutingSnapshot(
+  { ...manualGraph, edges: [{ ...manualGraph.edges[0]!, routing: undefined }] },
+  emptyEdgeRoutingContinuitySnapshot(),
+  automaticBeforeManual,
+);
+const manualDuringEdit = computeEdgeRouting(manualGraph, {
+  previousMeta: readPreviousAutomaticRoutingMeta(
+    manualGraph,
+    automaticSnapshot,
+  ),
+});
+const snapshotDuringEdit = updateAutomaticRoutingSnapshot(
+  manualGraph,
+  automaticSnapshot,
+  manualDuringEdit,
+);
+const automaticAfterUndo = computeEdgeRouting(
+  { ...manualGraph, edges: [{ ...manualGraph.edges[0]!, routing: undefined }] },
+  {
+    previousMeta: readPreviousAutomaticRoutingMeta(
+      {
+        ...manualGraph,
+        edges: [{ ...manualGraph.edges[0]!, routing: undefined }],
+      },
+      snapshotDuringEdit,
+    ),
+  },
+);
+expect(
+  routingSignature(automaticAfterUndo) ===
+    routingSignature(automaticBeforeManual),
+  "undoing a manual bend should restore the automatic route from before the edit",
 );
 
 const simpleManual = computeEdgeRouting(manualGraph, { mode: "simple" });

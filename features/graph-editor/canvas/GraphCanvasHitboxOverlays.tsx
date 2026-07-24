@@ -225,14 +225,18 @@ export function EdgeBendHandle({
   const [previewBowPx, setPreviewBowPx] = useState<number | null>(null);
   const pendingBowRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
+  const cancelDragRef = useRef<(() => void) | null>(null);
   const bowPx = previewBowPx ?? edge.bowPx;
-  const position =
-    previewBowPx == null
-      ? { x: edge.x, y: edge.y }
-      : edgeBendHandlePosition(edge, bowPx, zoom);
+  const position = edgeBendHandlePosition(
+    edge,
+    previewBowPx == null ? null : bowPx,
+    zoom,
+  );
 
   useEffect(() => {
     return () => {
+      cancelDragRef.current?.();
+
       if (frameRef.current != null) {
         cancelAnimationFrame(frameRef.current);
       }
@@ -253,13 +257,17 @@ export function EdgeBendHandle({
     }
   };
 
-  const updateFromPointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const bounds = event.currentTarget.offsetParent?.getBoundingClientRect();
+  const updateFromPointer = (
+    button: HTMLButtonElement,
+    clientX: number,
+    clientY: number,
+  ) => {
+    const bounds = button.offsetParent?.getBoundingClientRect();
     const nextBowPx = edgeBowPxFromRenderedPointer(
       edge,
       {
-        x: event.clientX - (bounds?.left ?? 0),
-        y: event.clientY - (bounds?.top ?? 0),
+        x: clientX - (bounds?.left ?? 0),
+        y: clientY - (bounds?.top ?? 0),
       },
       zoom,
     );
@@ -293,47 +301,128 @@ export function EdgeBendHandle({
       onPointerDown={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        event.currentTarget.setPointerCapture(event.pointerId);
-        updateFromPointer(event);
-      }}
-      onPointerMove={(event) => {
-        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-          return;
+        cancelDragRef.current?.();
+
+        const button = event.currentTarget;
+        const pointerId = event.pointerId;
+        const startClientX = event.clientX;
+        const startClientY = event.clientY;
+        let active = true;
+        let moved = false;
+
+        const cleanup = () => {
+          if (!active) {
+            return;
+          }
+
+          active = false;
+          window.removeEventListener("pointermove", handlePointerMove, true);
+          window.removeEventListener("pointerup", handlePointerUp, true);
+          window.removeEventListener(
+            "pointercancel",
+            handlePointerCancel,
+            true,
+          );
+          window.removeEventListener("blur", handleWindowBlur);
+          cancelDragRef.current = null;
+        };
+        const releasePointerCapture = () => {
+          if (button.hasPointerCapture(pointerId)) {
+            button.releasePointerCapture(pointerId);
+          }
+        };
+        const cancelDrag = () => {
+          if (!active) {
+            return;
+          }
+
+          cleanup();
+          releasePointerCapture();
+
+          if (frameRef.current != null) {
+            cancelAnimationFrame(frameRef.current);
+            frameRef.current = null;
+          }
+
+          pendingBowRef.current = null;
+          setPreviewBowPx(null);
+          onCancel();
+        };
+        function handlePointerMove(pointerEvent: PointerEvent) {
+          if (!active || pointerEvent.pointerId !== pointerId) {
+            return;
+          }
+
+          pointerEvent.preventDefault();
+          moved ||= pointerMoved(
+            startClientX,
+            startClientY,
+            pointerEvent.clientX,
+            pointerEvent.clientY,
+          );
+
+          if (!moved) {
+            return;
+          }
+
+          updateFromPointer(button, pointerEvent.clientX, pointerEvent.clientY);
+        }
+        function handlePointerUp(pointerEvent: PointerEvent) {
+          if (!active || pointerEvent.pointerId !== pointerId) {
+            return;
+          }
+
+          pointerEvent.preventDefault();
+          moved ||= pointerMoved(
+            startClientX,
+            startClientY,
+            pointerEvent.clientX,
+            pointerEvent.clientY,
+          );
+
+          if (!moved) {
+            cancelDrag();
+            return;
+          }
+
+          const nextBowPx = updateFromPointer(
+            button,
+            pointerEvent.clientX,
+            pointerEvent.clientY,
+          );
+          flushPreview();
+          cleanup();
+          releasePointerCapture();
+          setPreviewBowPx(null);
+          onCommit(nextBowPx);
+        }
+        function handlePointerCancel(pointerEvent: PointerEvent) {
+          if (pointerEvent.pointerId === pointerId) {
+            cancelDrag();
+          }
+        }
+        function handleWindowBlur() {
+          cancelDrag();
         }
 
-        event.preventDefault();
-        event.stopPropagation();
-        updateFromPointer(event);
-      }}
-      onPointerUp={(event) => {
-        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-          return;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-        const nextBowPx = updateFromPointer(event);
-        flushPreview();
-        event.currentTarget.releasePointerCapture(event.pointerId);
-        setPreviewBowPx(null);
-        onCommit(nextBowPx);
-      }}
-      onPointerCancel={(event) => {
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-          event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-
-        if (frameRef.current != null) {
-          cancelAnimationFrame(frameRef.current);
-          frameRef.current = null;
-        }
-
-        pendingBowRef.current = null;
-        setPreviewBowPx(null);
-        onCancel();
+        cancelDragRef.current = cancelDrag;
+        window.addEventListener("pointermove", handlePointerMove, true);
+        window.addEventListener("pointerup", handlePointerUp, true);
+        window.addEventListener("pointercancel", handlePointerCancel, true);
+        window.addEventListener("blur", handleWindowBlur);
+        button.setPointerCapture(pointerId);
       }}
     />
   );
+}
+
+function pointerMoved(
+  startClientX: number,
+  startClientY: number,
+  clientX: number,
+  clientY: number,
+) {
+  return Math.hypot(clientX - startClientX, clientY - startClientY) > 2;
 }
 
 export function edgeBowPxFromRenderedPointer(
@@ -364,15 +453,19 @@ export function edgeBowPxFromRenderedPointer(
 
 function edgeBendHandlePosition(
   edge: EdgeLabelHitbox,
-  bowPx: number,
+  previewBowPx: number | null,
   zoom: number,
 ) {
   return edgeCurveMidpoint(
     { x: edge.sourceX, y: edge.sourceY },
     { x: edge.targetX, y: edge.targetY },
     {
-      controlPointDistancesPx: [bowPx * zoom],
-      controlPointWeights: [0.5],
+      controlPointDistancesPx:
+        previewBowPx == null
+          ? (edge.controlPointDistancesPx ?? [edge.bowPx * zoom])
+          : [previewBowPx * zoom],
+      controlPointWeights:
+        previewBowPx == null ? (edge.controlPointWeights ?? [0.5]) : [0.5],
     },
   );
 }
