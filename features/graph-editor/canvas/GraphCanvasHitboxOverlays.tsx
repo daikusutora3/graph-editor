@@ -207,31 +207,39 @@ export function SelectEdgeHitboxes({
 }
 
 type EdgeBendHandleProps = {
+  canReset: boolean;
   edge: EdgeLabelHitbox;
   zoom: number;
   onCancel: () => void;
   onCommit: (bowPx: number) => void;
-  onPreview: (bowPx: number) => void;
+  onPreview: (bowPx: number) => RenderedPoint | null;
+  onReset: () => void;
 };
 
 export function EdgeBendHandle({
+  canReset,
   edge,
   zoom,
   onCancel,
   onCommit,
   onPreview,
+  onReset,
 }: EdgeBendHandleProps) {
   const { messages } = useI18n();
-  const [previewBowPx, setPreviewBowPx] = useState<number | null>(null);
+  const [preview, setPreview] = useState<{
+    bowPx: number;
+    position: RenderedPoint;
+  } | null>(null);
   const pendingBowRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
   const cancelDragRef = useRef<(() => void) | null>(null);
-  const bowPx = previewBowPx ?? edge.bowPx;
-  const position = edgeBendHandlePosition(
-    edge,
-    previewBowPx == null ? null : bowPx,
-    zoom,
-  );
+  const draggingRef = useRef(false);
+  const suppressResetClickUntilRef = useRef(0);
+  const showsManualRouting = canReset || preview != null;
+  const position = preview?.position ?? { x: edge.x, y: edge.y };
+  const handleLabel = canReset
+    ? `${messages.canvas.adjustEdgeCurve} / ${messages.canvas.resetEdgeCurve}`
+    : messages.canvas.adjustEdgeCurve;
 
   useEffect(() => {
     return () => {
@@ -243,6 +251,24 @@ export function EdgeBendHandle({
     };
   }, []);
 
+  useEffect(() => {
+    if (
+      canReset &&
+      !draggingRef.current &&
+      preview != null &&
+      Math.abs(edge.bowPx - preview.bowPx) < 0.01
+    ) {
+      setPreview(null);
+    }
+  }, [canReset, edge.bowPx, preview]);
+
+  const applyPreview = (bowPx: number) => {
+    setPreview({
+      bowPx,
+      position: onPreview(bowPx) ?? edgeBendHandlePosition(edge, bowPx, zoom),
+    });
+  };
+
   const flushPreview = () => {
     if (frameRef.current != null) {
       cancelAnimationFrame(frameRef.current);
@@ -253,7 +279,7 @@ export function EdgeBendHandle({
     pendingBowRef.current = null;
 
     if (pendingBow != null) {
-      onPreview(pendingBow);
+      applyPreview(pendingBow);
     }
   };
 
@@ -272,7 +298,6 @@ export function EdgeBendHandle({
       zoom,
     );
     pendingBowRef.current = nextBowPx;
-    setPreviewBowPx(nextBowPx);
 
     if (frameRef.current == null) {
       frameRef.current = requestAnimationFrame(() => {
@@ -281,7 +306,7 @@ export function EdgeBendHandle({
         pendingBowRef.current = null;
 
         if (pendingBow != null) {
-          onPreview(pendingBow);
+          applyPreview(pendingBow);
         }
       });
     }
@@ -293,11 +318,26 @@ export function EdgeBendHandle({
     <button
       type="button"
       data-edge-bend-handle="true"
-      aria-label={messages.canvas.adjustEdgeCurve}
-      title={messages.canvas.adjustEdgeCurve}
-      className="absolute z-[24] size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full border-2 border-[var(--canvas-overlay-bg)] bg-[var(--accent)] shadow-[var(--app-shadow-card)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none active:cursor-grabbing"
+      data-edge-routing-mode={showsManualRouting ? "manual" : "automatic"}
+      aria-label={handleLabel}
+      title={handleLabel}
+      className={[
+        "absolute z-[24] size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full border-2 shadow-[var(--app-shadow-card)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none active:cursor-grabbing",
+        showsManualRouting
+          ? "border-[var(--canvas-overlay-bg)] bg-[var(--accent)]"
+          : "border-[var(--accent)] bg-white",
+      ].join(" ")}
       style={{ left: position.x, top: position.y }}
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+
+        if (
+          canReset &&
+          performance.now() >= suppressResetClickUntilRef.current
+        ) {
+          onReset();
+        }
+      }}
       onPointerDown={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -309,6 +349,7 @@ export function EdgeBendHandle({
         const startClientY = event.clientY;
         let active = true;
         let moved = false;
+        draggingRef.current = true;
 
         const cleanup = () => {
           if (!active) {
@@ -316,6 +357,7 @@ export function EdgeBendHandle({
           }
 
           active = false;
+          draggingRef.current = false;
           window.removeEventListener("pointermove", handlePointerMove, true);
           window.removeEventListener("pointerup", handlePointerUp, true);
           window.removeEventListener(
@@ -345,7 +387,7 @@ export function EdgeBendHandle({
           }
 
           pendingBowRef.current = null;
-          setPreviewBowPx(null);
+          setPreview(null);
           onCancel();
         };
         function handlePointerMove(pointerEvent: PointerEvent) {
@@ -393,7 +435,7 @@ export function EdgeBendHandle({
           flushPreview();
           cleanup();
           releasePointerCapture();
-          setPreviewBowPx(null);
+          suppressResetClickUntilRef.current = performance.now() + 300;
           onCommit(nextBowPx);
         }
         function handlePointerCancel(pointerEvent: PointerEvent) {
@@ -451,21 +493,21 @@ export function edgeBowPxFromRenderedPointer(
   return Math.round(Math.max(-180, Math.min(180, (renderedBowPx * 2) / zoom)));
 }
 
-function edgeBendHandlePosition(
+export function edgeBendHandlePosition(
   edge: EdgeLabelHitbox,
   previewBowPx: number | null,
   zoom: number,
 ) {
+  if (previewBowPx == null) {
+    return { x: edge.x, y: edge.y };
+  }
+
   return edgeCurveMidpoint(
     { x: edge.sourceX, y: edge.sourceY },
     { x: edge.targetX, y: edge.targetY },
     {
-      controlPointDistancesPx:
-        previewBowPx == null
-          ? (edge.controlPointDistancesPx ?? [edge.bowPx * zoom])
-          : [previewBowPx * zoom],
-      controlPointWeights:
-        previewBowPx == null ? (edge.controlPointWeights ?? [0.5]) : [0.5],
+      controlPointDistancesPx: [previewBowPx * zoom],
+      controlPointWeights: [0.5],
     },
   );
 }
