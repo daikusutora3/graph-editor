@@ -146,8 +146,27 @@ function sameEdgeLabelHitboxes(a: EdgeLabelHitbox[], b: EdgeLabelHitbox[]) {
         item.targetX === next.targetX &&
         item.targetY === next.targetY &&
         item.x === next.x &&
-        item.y === next.y
+        item.y === next.y &&
+        item.bowPx === next.bowPx &&
+        sameNumbers(
+          item.controlPointDistancesPx,
+          next.controlPointDistancesPx,
+        ) &&
+        sameNumbers(item.controlPointWeights, next.controlPointWeights)
       );
     })
+  );
+}
+
+function sameNumbers(
+  a: readonly number[] | undefined,
+  b: readonly number[] | undefined,
+) {
+  if (a === b) {
+    return true;
+  }
+
+  return (
+    a?.length === b?.length && a?.every((value, index) => value === b?.[index])
   );
 }
