@@ -41,6 +41,7 @@ type AtomSetter<T> = (value: T | ((current: T) => T)) => void;
 type UseHtmlNodeDragOptions = {
   cyRef: MutableRefObject<Core | null>;
   draggingNodeIdsRef: MutableRefObject<ReadonlySet<NodeId>>;
+  edgeRoutingMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
   edgeRoutingOptions: EdgeRoutingOptions;
   executeCommand: (command: GraphIntent) => void;
   graph: GraphModel;
@@ -52,6 +53,7 @@ type UseHtmlNodeDragOptions = {
 export function useHtmlNodeDrag({
   cyRef,
   draggingNodeIdsRef,
+  edgeRoutingMeta,
   edgeRoutingOptions,
   executeCommand,
   graph,
@@ -65,7 +67,7 @@ export function useHtmlNodeDrag({
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
   const dragCleanupRef = useRef<(() => void) | null>(null);
-  const dragRoutingMetaRef = useRef<ReadonlyMap<EdgeId, EdgeRoutingMeta>>(
+  const dragRoutingBaselineRef = useRef<ReadonlyMap<EdgeId, EdgeRoutingMeta>>(
     new Map(),
   );
 
@@ -119,15 +121,10 @@ export function useHtmlNodeDrag({
 
       if (edgeRoutingOptions.mode === "quality") {
         withCytoscapeBatch(cy, () => {
-          dragRoutingMetaRef.current = syncCytoscapeEdgeRoutingData(
-            cy,
-            graph,
-            edgeRoutingOptions,
-            {
-              movedNodeIds: draggingNodeIdsRef.current,
-              previousMeta: dragRoutingMetaRef.current,
-            },
-          );
+          syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions, {
+            movedNodeIds: draggingNodeIdsRef.current,
+            previousMeta: dragRoutingBaselineRef.current,
+          });
         });
       }
 
@@ -137,30 +134,11 @@ export function useHtmlNodeDrag({
   );
 
   const flushDragPreview = useCallback(
-    (cy: Core, settled = false) => {
+    (cy: Core) => {
       cancelScheduledDragFrame();
-
-      if (settled && edgeRoutingOptions.mode === "quality") {
-        withCytoscapeBatch(cy, () => {
-          dragRoutingMetaRef.current = syncCytoscapeEdgeRoutingData(
-            cy,
-            graph,
-            edgeRoutingOptions,
-          );
-        });
-        schedulePostRoutingHitboxes(cy);
-        return;
-      }
-
       syncDragPreview(cy);
     },
-    [
-      cancelScheduledDragFrame,
-      edgeRoutingOptions,
-      graph,
-      schedulePostRoutingHitboxes,
-      syncDragPreview,
-    ],
+    [cancelScheduledDragFrame, syncDragPreview],
   );
 
   const scheduleDragPreview = useCallback(
@@ -182,12 +160,13 @@ export function useHtmlNodeDrag({
     const cy = cyRef.current;
 
     htmlNodeDragRef.current = null;
-    draggingNodeIdsRef.current = new Set();
     cleanupDragListeners();
     cancelScheduledDragFrame();
     cancelScheduledPostRoutingHitboxes();
 
     if (!state || !cy || cy.destroyed()) {
+      draggingNodeIdsRef.current = new Set();
+      dragRoutingBaselineRef.current = new Map();
       return;
     }
 
@@ -195,8 +174,9 @@ export function useHtmlNodeDrag({
     withCytoscapeBatch(cy, () => {
       restoreDragSnapshot(cy, state);
     });
-    flushDragPreview(cy, true);
-    dragRoutingMetaRef.current = new Map();
+    flushDragPreview(cy);
+    draggingNodeIdsRef.current = new Set();
+    dragRoutingBaselineRef.current = new Map();
   }, [
     cancelScheduledDragFrame,
     cancelScheduledPostRoutingHitboxes,
@@ -223,7 +203,7 @@ export function useHtmlNodeDrag({
     }
 
     cancel();
-    dragRoutingMetaRef.current = new Map();
+    dragRoutingBaselineRef.current = edgeRoutingMeta;
 
     const selectedNodeIds = selectionRef.current.nodeIds.includes(nodeId)
       ? selectionRef.current.nodeIds
@@ -333,17 +313,17 @@ export function useHtmlNodeDrag({
         withCytoscapeBatch(cy, () => {
           restoreDragSnapshot(cy, state);
         });
-        flushDragPreview(cy, true);
+        flushDragPreview(cy);
         draggingNodeIdsRef.current = new Set();
-        dragRoutingMetaRef.current = new Map();
+        dragRoutingBaselineRef.current = new Map();
         return;
       }
 
       suppressClickRef.current = true;
       lastMovedAtRef.current = Date.now();
-      flushDragPreview(cy, true);
+      flushDragPreview(cy);
       draggingNodeIdsRef.current = new Set();
-      dragRoutingMetaRef.current = new Map();
+      dragRoutingBaselineRef.current = new Map();
       const after = Object.fromEntries(
         state.nodeIds
           .map((id) => {

@@ -2871,7 +2871,10 @@ export function createSizedSampleGraph(
   const count = clampSizedSampleNodeCount(kind, nodeCount);
   const model = createSizedSampleGraphModel(kind, count, settings, options);
 
-  if ((kind === "grid" || kind === "knight") && hasCustomGridDimensions(options)) {
+  if (
+    (kind === "grid" || kind === "knight") &&
+    hasCustomGridDimensions(options)
+  ) {
     return model;
   }
 
@@ -2999,7 +3002,10 @@ function createSizedKnightGraph(
   const moves = KNIGHT_MOVE_PRESETS[options.knightMove ?? "standard"];
   const model = createKnightGraph(rows, columns, settings, moves);
 
-  return withNodePositions(model, gridPositions(orderedNodeIds(model), columns));
+  return withNodePositions(
+    model,
+    gridPositions(orderedNodeIds(model), columns),
+  );
 }
 
 function createExactKnightGraph(

@@ -7,7 +7,11 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { graphModelToCytoscapeElements } from "../adapters/cytoscape/cytoscape-adapter";
-import { addEdgeCommand, addNodeCommand } from "../core/graph/graph-intents";
+import {
+  addEdgeCommand,
+  addNodeCommand,
+  updateEdgeCommand,
+} from "../core/graph/graph-intents";
 import { resolveEdgeCreation } from "./graph-canvas-edge-creation";
 import type { NodeId } from "../core/graph/model";
 import {
@@ -46,6 +50,7 @@ import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/use-panel-presence";
 import {
   EdgeNodeHitboxes,
+  EdgeBendHandle,
   SelectEdgeHitboxes,
   SelectNodeHitboxes,
 } from "./GraphCanvasHitboxOverlays";
@@ -267,6 +272,7 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
   const htmlNodeDrag = useHtmlNodeDrag({
     cyRef,
     draggingNodeIdsRef,
+    edgeRoutingMeta,
     edgeRoutingOptions,
     executeCommand,
     graph,
@@ -320,6 +326,14 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
     updateRenderedHitboxes,
   });
 
+  useEffect(() => {
+    const cy = cyRef.current;
+
+    if (cy && !cy.destroyed()) {
+      flushRenderedHitboxes(cy);
+    }
+  }, [flushRenderedHitboxes, mode]);
+
   const {
     deleteContextSelection,
     openEdgeContextMenu,
@@ -355,6 +369,55 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
   });
   const rangeSelectionActive =
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
+  const selectedBendEdge =
+    selection.nodeIds.length === 0 && selection.edgeIds.length === 1
+      ? graph.edges.find(
+          (edge) =>
+            edge.id === selection.edgeIds[0] && edge.source !== edge.target,
+        )
+      : null;
+  const selectedBendHitbox = selectedBendEdge
+    ? edgeLabelHitboxes.find((edge) => edge.id === selectedBendEdge.id)
+    : null;
+  const previewEdgeBow = useCallback(
+    (edgeId: string, bowPx: number) => {
+      const edge = cyRef.current?.getElementById(edgeId);
+
+      if (!edge || edge.empty() || !edge.isEdge()) {
+        return;
+      }
+
+      edge.data({
+        bow: bowPx,
+        controlPointDistances: [bowPx],
+        controlPointWeights: [0.5],
+      });
+    },
+    [cyRef],
+  );
+  const restoreSelectedEdgeRouting = useCallback(() => {
+    if (!selectedBendEdge) {
+      return;
+    }
+
+    const meta = edgeRoutingMeta.get(selectedBendEdge.id);
+
+    if (!meta) {
+      return;
+    }
+
+    const edge = cyRef.current?.getElementById(selectedBendEdge.id);
+
+    if (!edge || edge.empty() || !edge.isEdge()) {
+      return;
+    }
+
+    edge.data({
+      bow: meta.bowPx,
+      controlPointDistances: meta.controlPointDistancesPx,
+      controlPointWeights: meta.controlPointWeights,
+    });
+  }, [cyRef, edgeRoutingMeta, selectedBendEdge]);
   const handleCanvasClick = useCallback(() => {
     setContextMenuTarget(null);
   }, [setContextMenuTarget]);
@@ -461,6 +524,9 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
           onSetNodeColor={setSelectionNodeColor}
           onSetEdgeColor={setSelectionEdgeColor}
           onReverseEdges={reverseSelectionEdges}
+          onResetEdgeCurve={(edgeId) =>
+            executeCommand(updateEdgeCommand(edgeId, { routing: undefined }))
+          }
           onEditSelectedNode={() => {
             const nodeId = selection.nodeIds[0];
             const hitbox = nodeHitboxes.find((node) => node.id === nodeId);
@@ -511,6 +577,21 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
             onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
             onContextMenu={openEdgeContextMenu}
           />
+          {selectedBendEdge && selectedBendHitbox ? (
+            <EdgeBendHandle
+              edge={selectedBendHitbox}
+              zoom={zoomPercent / 100}
+              onPreview={(bowPx) => previewEdgeBow(selectedBendEdge.id, bowPx)}
+              onCancel={restoreSelectedEdgeRouting}
+              onCommit={(bowPx) =>
+                executeCommand(
+                  updateEdgeCommand(selectedBendEdge.id, {
+                    routing: { bowPx },
+                  }),
+                )
+              }
+            />
+          ) : null}
           <SelectNodeHitboxes
             nodes={nodeHitboxes}
             rangeSelectionActive={rangeSelectionActive}

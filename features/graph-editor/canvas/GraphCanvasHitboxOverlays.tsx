@@ -4,6 +4,7 @@ import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { EdgeId, NodeId } from "../core/graph/model";
 import { useI18n } from "../i18n/I18nProvider";
@@ -14,7 +15,10 @@ import {
   type EdgeLabelHitbox,
   type NodeHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
-import { edgeCurveSvgPath } from "../core/layout/edge-route-geometry";
+import {
+  edgeCurveMidpoint,
+  edgeCurveSvgPath,
+} from "../core/layout/edge-route-geometry";
 import type { RenderedPoint } from "./graph-canvas-types";
 
 type CanvasPointer = {
@@ -199,6 +203,177 @@ export function SelectEdgeHitboxes({
         />
       ))}
     </>
+  );
+}
+
+type EdgeBendHandleProps = {
+  edge: EdgeLabelHitbox;
+  zoom: number;
+  onCancel: () => void;
+  onCommit: (bowPx: number) => void;
+  onPreview: (bowPx: number) => void;
+};
+
+export function EdgeBendHandle({
+  edge,
+  zoom,
+  onCancel,
+  onCommit,
+  onPreview,
+}: EdgeBendHandleProps) {
+  const { messages } = useI18n();
+  const [previewBowPx, setPreviewBowPx] = useState<number | null>(null);
+  const pendingBowRef = useRef<number | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const bowPx = previewBowPx ?? edge.bowPx;
+  const position =
+    previewBowPx == null
+      ? { x: edge.x, y: edge.y }
+      : edgeBendHandlePosition(edge, bowPx, zoom);
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current != null) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
+
+  const flushPreview = () => {
+    if (frameRef.current != null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    const pendingBow = pendingBowRef.current;
+    pendingBowRef.current = null;
+
+    if (pendingBow != null) {
+      onPreview(pendingBow);
+    }
+  };
+
+  const updateFromPointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const bounds = event.currentTarget.offsetParent?.getBoundingClientRect();
+    const nextBowPx = edgeBowPxFromRenderedPointer(
+      edge,
+      {
+        x: event.clientX - (bounds?.left ?? 0),
+        y: event.clientY - (bounds?.top ?? 0),
+      },
+      zoom,
+    );
+    pendingBowRef.current = nextBowPx;
+    setPreviewBowPx(nextBowPx);
+
+    if (frameRef.current == null) {
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null;
+        const pendingBow = pendingBowRef.current;
+        pendingBowRef.current = null;
+
+        if (pendingBow != null) {
+          onPreview(pendingBow);
+        }
+      });
+    }
+
+    return nextBowPx;
+  };
+
+  return (
+    <button
+      type="button"
+      data-edge-bend-handle="true"
+      aria-label={messages.canvas.adjustEdgeCurve}
+      title={messages.canvas.adjustEdgeCurve}
+      className="absolute z-[24] size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full border-2 border-[var(--canvas-overlay-bg)] bg-[var(--accent)] shadow-[var(--app-shadow-card)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none active:cursor-grabbing"
+      style={{ left: position.x, top: position.y }}
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        updateFromPointer(event);
+      }}
+      onPointerMove={(event) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        updateFromPointer(event);
+      }}
+      onPointerUp={(event) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        const nextBowPx = updateFromPointer(event);
+        flushPreview();
+        event.currentTarget.releasePointerCapture(event.pointerId);
+        setPreviewBowPx(null);
+        onCommit(nextBowPx);
+      }}
+      onPointerCancel={(event) => {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        if (frameRef.current != null) {
+          cancelAnimationFrame(frameRef.current);
+          frameRef.current = null;
+        }
+
+        pendingBowRef.current = null;
+        setPreviewBowPx(null);
+        onCancel();
+      }}
+    />
+  );
+}
+
+export function edgeBowPxFromRenderedPointer(
+  edge: Pick<EdgeLabelHitbox, "sourceX" | "sourceY" | "targetX" | "targetY">,
+  pointer: RenderedPoint,
+  zoom: number,
+) {
+  const sourceX = edge.sourceX;
+  const sourceY = edge.sourceY;
+  const targetX = edge.targetX;
+  const targetY = edge.targetY;
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const length = Math.hypot(dx, dy);
+
+  if (length === 0 || zoom <= 0) {
+    return 0;
+  }
+
+  const midpointX = (sourceX + targetX) / 2;
+  const midpointY = (sourceY + targetY) / 2;
+  const renderedBowPx =
+    (pointer.x - midpointX) * (-dy / length) +
+    (pointer.y - midpointY) * (dx / length);
+
+  return Math.round(Math.max(-180, Math.min(180, (renderedBowPx * 2) / zoom)));
+}
+
+function edgeBendHandlePosition(
+  edge: EdgeLabelHitbox,
+  bowPx: number,
+  zoom: number,
+) {
+  return edgeCurveMidpoint(
+    { x: edge.sourceX, y: edge.sourceY },
+    { x: edge.targetX, y: edge.targetY },
+    {
+      controlPointDistancesPx: [bowPx * zoom],
+      controlPointWeights: [0.5],
+    },
   );
 }
 

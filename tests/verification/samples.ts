@@ -265,7 +265,10 @@ function hasRotationalSymmetry(
   tolerance: number,
 ) {
   const center = nodes.reduce(
-    (sum, node) => ({ x: sum.x + node.x / nodes.length, y: sum.y + node.y / nodes.length }),
+    (sum, node) => ({
+      x: sum.x + node.x / nodes.length,
+      y: sum.y + node.y / nodes.length,
+    }),
     { x: 0, y: 0 },
   );
   const angle = (degrees * Math.PI) / 180;
@@ -282,7 +285,8 @@ function hasRotationalSymmetry(
 
     return nodes.some(
       (candidate) =>
-        Math.hypot(candidate.x - rotated.x, candidate.y - rotated.y) <= tolerance,
+        Math.hypot(candidate.x - rotated.x, candidate.y - rotated.y) <=
+        tolerance,
     );
   });
 }

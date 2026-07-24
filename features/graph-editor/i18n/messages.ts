@@ -162,6 +162,8 @@ type Messages = {
     editNodeLabel: string;
     editEdgeWeight: string;
     editEdgeLabel: string;
+    adjustEdgeCurve: string;
+    resetEdgeCurve: string;
     reverseEdges: string;
     reverseEdgesTitle: string;
     nodeColor: string;
@@ -540,6 +542,8 @@ const ja = {
     editNodeLabel: "頂点ラベルを編集",
     editEdgeWeight: "辺の重みを編集",
     editEdgeLabel: "辺ラベルを編集",
+    adjustEdgeCurve: "辺の曲がりを調整",
+    resetEdgeCurve: "自動配置に戻す",
     reverseEdges: "向き反転",
     reverseEdgesTitle: "始点と終点を入れ替え",
     nodeColor: "頂点の色",
@@ -865,6 +869,8 @@ const en: Messages = {
     editNodeLabel: "Edit node label",
     editEdgeWeight: "Edit edge weight",
     editEdgeLabel: "Edit edge label",
+    adjustEdgeCurve: "Adjust edge curve",
+    resetEdgeCurve: "Return to automatic routing",
     reverseEdges: "Reverse",
     reverseEdgesTitle: "Swap source and target",
     nodeColor: "Node color",
@@ -1190,6 +1196,8 @@ const zhHans: Messages = {
     editNodeLabel: "编辑顶点标签",
     editEdgeWeight: "编辑边权值",
     editEdgeLabel: "编辑边标签",
+    adjustEdgeCurve: "调整边的弯曲",
+    resetEdgeCurve: "恢复自动布线",
     reverseEdges: "反向",
     reverseEdgesTitle: "交换起点和终点",
     nodeColor: "顶点颜色",
