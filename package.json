@@ -23,6 +23,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "benchmark:edge-routing": "bun run tests/benchmarks/edge-routing.ts",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "format": "prettier . --write",

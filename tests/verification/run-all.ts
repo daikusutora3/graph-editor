@@ -4,6 +4,7 @@ const suites = [
   { name: "core", path: "tests/verification/graph-core.ts" },
   { name: "samples", path: "tests/verification/samples.ts" },
   { name: "layouts", path: "tests/verification/layouts.ts" },
+  { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
   { name: "storage", path: "tests/verification/storage.ts" },

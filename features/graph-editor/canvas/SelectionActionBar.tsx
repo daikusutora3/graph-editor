@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
@@ -24,6 +24,7 @@ type SelectionActionBarProps = {
   onSetNodeColor: (nodeIds: NodeId[], color: GraphColor) => void;
   onSetEdgeColor: (edgeIds: EdgeId[], color: GraphColor) => void;
   onReverseEdges: (edgeIds: EdgeId[]) => void;
+  onResetEdgeCurve: (edgeId: EdgeId) => void;
   onEditSelectedNode: () => void;
   onEditSelectedEdge: () => void;
   onDeleteSelection: () => void;
@@ -36,6 +37,7 @@ export function SelectionActionBar({
   onSetNodeColor,
   onSetEdgeColor,
   onReverseEdges,
+  onResetEdgeCurve,
   onEditSelectedNode,
   onEditSelectedEdge,
   onDeleteSelection,
@@ -78,6 +80,10 @@ export function SelectionActionBar({
     selection.nodeIds.length === 1 && selection.edgeIds.length === 0;
   const canEditSelectedEdge =
     selection.edgeIds.length === 1 && selection.nodeIds.length === 0;
+  const manuallyRoutedEdge =
+    canEditSelectedEdge && selectedEdges[0]?.routing?.bowPx != null
+      ? selectedEdges[0]
+      : null;
 
   return (
     <div
@@ -138,6 +144,16 @@ export function SelectionActionBar({
               onClick={
                 canEditSelectedNode ? onEditSelectedNode : onEditSelectedEdge
               }
+            />
+          </>
+        ) : null}
+        {manuallyRoutedEdge ? (
+          <>
+            <SelectionActionDivider />
+            <SelectionActionButton
+              label={messages.canvas.resetEdgeCurve}
+              icon={<RotateCcw className="size-4" />}
+              onClick={() => onResetEdgeCurve(manuallyRoutedEdge.id)}
             />
           </>
         ) : null}
