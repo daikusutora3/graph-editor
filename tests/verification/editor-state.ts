@@ -30,7 +30,10 @@ import {
   resolveGraphEditorShortcut,
   shouldPreventDefaultForGraphEditorShortcut,
 } from "../../features/graph-editor/shell/state/editor-shortcuts";
-import { isMacShortcutPlatformValue } from "../../features/graph-editor/ui/ModeToolbar";
+import {
+  isMacShortcutPlatformValue,
+  shortcutPlatformValue,
+} from "../../features/graph-editor/ui/ModeToolbar";
 import {
   edgeDraftAtom,
   editorModeAtom,
@@ -188,6 +191,15 @@ function verifyShortcutPlatformLabels() {
       !isMacShortcutPlatformValue("MacIntel", "Mozilla/5.0 (iPad)") &&
       !isMacShortcutPlatformValue("Win32", "Mozilla/5.0"),
     "shortcut labels should use Mac symbols only for macOS, not iOS or Windows",
+  );
+  expect(
+    shortcutPlatformValue("MacIntel", "Mozilla/5.0") === "mac" &&
+      shortcutPlatformValue("Win32", "Mozilla/5.0") === "other" &&
+      shortcutPlatformValue("iPhone", "Mozilla/5.0") === "touch" &&
+      shortcutPlatformValue("MacIntel", "Mozilla/5.0 (iPad)") === "touch" &&
+      shortcutPlatformValue("MacIntel", "Mozilla/5.0 (Macintosh)", 5) ===
+        "touch",
+    "touch-only iOS devices should hide keyboard shortcut guidance",
   );
 }
 

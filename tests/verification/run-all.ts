@@ -10,6 +10,7 @@ const suites = [
   { name: "storage", path: "tests/verification/storage.ts" },
   { name: "io", path: "tests/verification/io-contracts.ts" },
   { name: "screenshot", path: "tests/verification/screenshot.ts" },
+  { name: "privacy", path: "tests/verification/privacy-check.ts" },
 ] as const;
 
 for (const suite of suites) {

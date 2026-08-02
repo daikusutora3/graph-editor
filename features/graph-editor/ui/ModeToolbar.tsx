@@ -95,9 +95,18 @@ function useModeToolbarState({
   const [restoreFocusAfterToggle, setRestoreFocusAfterToggle] = useState(false);
   const [showAllLayouts, setShowAllLayouts] = useState(false);
   const isGraphEmpty = graph.nodes.length === 0 && graph.edges.length === 0;
-  const isMacShortcutPlatform = useIsMacShortcutPlatform();
-  const undoShortcut = isMacShortcutPlatform ? "⌘Z" : "Ctrl+Z";
-  const redoShortcut = isMacShortcutPlatform ? "⇧⌘Z" : "Ctrl+Shift+Z";
+  const shortcutPlatform = useShortcutPlatform();
+  const showShortcutHints = shortcutPlatform !== "touch";
+  const undoShortcut = showShortcutHints
+    ? shortcutPlatform === "mac"
+      ? "⌘Z"
+      : "Ctrl+Z"
+    : undefined;
+  const redoShortcut = showShortcutHints
+    ? shortcutPlatform === "mac"
+      ? "⇧⌘Z"
+      : "Ctrl+Shift+Z"
+    : undefined;
   const toolbarHeight = sidebarCollapsed ? compactHeight : expandedHeight;
   const clearArmedVisible = clearArmed && !isGraphEmpty;
 
@@ -192,6 +201,7 @@ function useModeToolbarState({
       isGraphEmpty,
       mode,
       redoShortcut,
+      showShortcutHints,
       sidebarCollapsed,
       undoShortcut,
       onClearEditor: clearEditor,
@@ -210,6 +220,7 @@ function useModeToolbarState({
       isGraphEmpty,
       mode,
       redoShortcut,
+      showShortcutHints,
       showAllLayouts,
       sidebarCollapsed,
       undoShortcut,
@@ -254,28 +265,46 @@ function useMeasuredHeight<T extends HTMLElement>() {
   return [ref, height] as const;
 }
 
-function useIsMacShortcutPlatform() {
-  const [isMac, setIsMac] = useState(false);
+type ShortcutPlatform = "mac" | "other" | "touch";
+
+function useShortcutPlatform() {
+  const [platform, setPlatform] = useState<ShortcutPlatform>("other");
 
   useLayoutEffect(() => {
-    setIsMac(
-      isMacShortcutPlatformValue(navigator.platform, navigator.userAgent),
+    setPlatform(
+      shortcutPlatformValue(
+        navigator.platform,
+        navigator.userAgent,
+        navigator.maxTouchPoints,
+      ),
     );
   }, []);
 
-  return isMac;
+  return platform;
 }
 
 export function isMacShortcutPlatformValue(
   platform: string | undefined,
   userAgent: string | undefined,
+  maxTouchPoints?: number,
 ) {
+  return shortcutPlatformValue(platform, userAgent, maxTouchPoints) === "mac";
+}
+
+export function shortcutPlatformValue(
+  platform: string | undefined,
+  userAgent: string | undefined,
+  maxTouchPoints = 0,
+): ShortcutPlatform {
   const platformText = platform ?? "";
   const userAgentText = userAgent ?? "";
 
-  if (/iPhone|iPad|iPod/i.test(`${platformText} ${userAgentText}`)) {
-    return false;
+  if (
+    /iPhone|iPad|iPod|Android/i.test(`${platformText} ${userAgentText}`) ||
+    (/Mac/i.test(platformText) && maxTouchPoints > 1)
+  ) {
+    return "touch";
   }
 
-  return /Mac/i.test(platformText || userAgentText);
+  return /Mac/i.test(platformText || userAgentText) ? "mac" : "other";
 }

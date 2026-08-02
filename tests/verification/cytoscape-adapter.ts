@@ -1,8 +1,10 @@
 import cytoscape, { type Core } from "cytoscape";
 
 import {
+  createGraphCanvasStylesheet,
   graphModelToCytoscapeElements,
   syncCytoscapeEdgeRoutingData,
+  type GraphCanvasPalette,
   type CytoscapeElementOptions,
 } from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
@@ -21,6 +23,7 @@ import { createVerification } from "./harness";
 const { expect, finish } = createVerification("Cytoscape adapter");
 
 verifyElementMapping();
+verifyNodeLabelVisibility();
 verifyNodeMappingDoesNotUseIsolatedState();
 verifyDiffSyncPreservesTransientClasses();
 verifyDiffSyncCanSkipDraggedNodePositions();
@@ -31,6 +34,7 @@ verifyEdgeRoutingSyncPreservesModelData();
 verifyEdgeRoutingSyncCanRestorePreviewData();
 verifyViewportRescuePointDetection();
 verifyButtonZoomLevels();
+verifyArrowScaleStyles();
 verifyEdgeHitboxPaths();
 verifyNodeDragGridSnapping();
 
@@ -50,6 +54,10 @@ function verifyElementMapping() {
     nodeA?.position?.x === 0 && nodeA.position.y === 0,
     "node position should be preserved",
   );
+  expect(
+    nodeA?.data?.displayLabel === "A",
+    "visible node labels should map to rendered label data",
+  );
   expect(edgeAb?.group === "edges", "edge should map to a Cytoscape edge");
   expect(
     String(edgeAb?.classes).includes("directed"),
@@ -67,6 +75,20 @@ function verifyElementMapping() {
     Array.isArray(edgeAb?.data?.controlPointDistances) &&
       Array.isArray(edgeAb.data.controlPointWeights),
     "edge routing should map control-point arrays into Cytoscape data",
+  );
+}
+
+function verifyNodeLabelVisibility() {
+  const graph = graphFixture();
+  const elements = graphModelToCytoscapeElements({
+    ...graph,
+    settings: { ...graph.settings, showNodeLabels: false },
+  });
+  const nodeA = elements.find((element) => element.data?.id === "a");
+
+  expect(
+    nodeA?.data?.label === "A" && nodeA.data.displayLabel === "",
+    "hidden node labels should preserve their value while rendering empty text",
   );
 }
 
@@ -335,6 +357,60 @@ function verifyButtonZoomLevels() {
   expect(
     nextCanvasButtonZoomLevel(MAX_CANVAS_ZOOM, 1) === MAX_CANVAS_ZOOM,
     "zoom-in should clamp to maximum zoom",
+  );
+}
+
+function verifyArrowScaleStyles() {
+  const palette = {
+    selectionBoxBorder: "#000",
+    selectionBoxFill: "#000",
+    node: "#000",
+    nodeBorder: "#000",
+    nodeText: "#000",
+    nodeWhite: "#000",
+    nodeBlack: "#000",
+    nodeRed: "#000",
+    nodeYellow: "#000",
+    nodeBlue: "#000",
+    nodeGreen: "#000",
+    nodePink: "#000",
+    edge: "#000",
+    edgeWhite: "#000",
+    edgeBlack: "#000",
+    edgeRed: "#000",
+    edgeYellow: "#000",
+    edgeBlue: "#000",
+    edgeGreen: "#000",
+    edgePink: "#000",
+    labelBg: "#000",
+    labelBorder: "#000",
+    active: "#000",
+    activeOpacity: 0.4,
+    fontFamily: "sans-serif",
+    nodeSize: 48,
+    nodeFontSize: 16,
+    edgeFontSize: 14,
+    labelPadding: 4,
+  } satisfies GraphCanvasPalette;
+  const stylesheet = createGraphCanvasStylesheet(palette, 1.5) as Array<{
+    selector: string;
+    style: Record<string, unknown>;
+  }>;
+
+  expect(
+    stylesheet.find((rule) => rule.selector === "edge")?.style[
+      "arrow-scale"
+    ] === 1.5,
+    "large arrow setting should scale directed edge arrowheads",
+  );
+  const selectedArrowScale = Number(
+    stylesheet.find((rule) => rule.selector === "edge:selected")?.style[
+      "arrow-scale"
+    ],
+  );
+  expect(
+    Math.abs(selectedArrowScale - 1.2) < Number.EPSILON * 2,
+    "selected edges should preserve the configured arrowhead size",
   );
 }
 

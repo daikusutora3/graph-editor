@@ -87,6 +87,7 @@ type Messages = {
     arrowNormal: string;
     arrowLarge: string;
     snapToGrid: string;
+    showNodeLabels: string;
     reverseAllEdges: string;
     language: string;
   };
@@ -160,6 +161,7 @@ type Messages = {
     zoomIn: string;
     nodePlacementLayer: string;
     editNodeLabel: string;
+    nodeLabelPlaceholder: string;
     editEdgeWeight: string;
     editEdgeLabel: string;
     adjustEdgeCurve: string;
@@ -441,11 +443,12 @@ const ja = {
     unweighted: "重みなし",
     weighted: "重みあり",
     indexBase: "番号",
-    arrowSize: "矢印",
+    arrowSize: "矢印の大きさ",
     arrowSmall: "小",
     arrowNormal: "標準",
     arrowLarge: "大",
     snapToGrid: "ドラッグをグリッドに吸着",
+    showNodeLabels: "頂点ラベルを表示",
     reverseAllEdges: "全辺を反転",
     language: "言語",
   },
@@ -540,6 +543,7 @@ const ja = {
     zoomIn: "表示を拡大",
     nodePlacementLayer: "頂点追加レイヤー",
     editNodeLabel: "頂点ラベルを編集",
+    nodeLabelPlaceholder: "空欄でラベルなし",
     editEdgeWeight: "辺の重みを編集",
     editEdgeLabel: "辺ラベルを編集",
     adjustEdgeCurve: "辺の曲がりを調整",
@@ -768,11 +772,12 @@ const en: Messages = {
     unweighted: "Unweighted",
     weighted: "Weighted",
     indexBase: "Index",
-    arrowSize: "Arrows",
+    arrowSize: "Arrow size",
     arrowSmall: "Small",
     arrowNormal: "Normal",
     arrowLarge: "Large",
     snapToGrid: "Snap drags to grid",
+    showNodeLabels: "Show node labels",
     reverseAllEdges: "Reverse all edges",
     language: "Language",
   },
@@ -867,6 +872,7 @@ const en: Messages = {
     zoomIn: "Zoom in",
     nodePlacementLayer: "Node placement layer",
     editNodeLabel: "Edit node label",
+    nodeLabelPlaceholder: "Leave blank for no label",
     editEdgeWeight: "Edit edge weight",
     editEdgeLabel: "Edit edge label",
     adjustEdgeCurve: "Adjust edge curve",
@@ -1095,11 +1101,12 @@ const zhHans: Messages = {
     unweighted: "无权",
     weighted: "有权",
     indexBase: "编号",
-    arrowSize: "箭头",
+    arrowSize: "箭头大小",
     arrowSmall: "小",
     arrowNormal: "标准",
     arrowLarge: "大",
     snapToGrid: "拖动吸附到网格",
+    showNodeLabels: "显示顶点标签",
     reverseAllEdges: "反转全部边",
     language: "语言",
   },
@@ -1194,6 +1201,7 @@ const zhHans: Messages = {
     zoomIn: "放大",
     nodePlacementLayer: "顶点添加层",
     editNodeLabel: "编辑顶点标签",
+    nodeLabelPlaceholder: "留空则不显示标签",
     editEdgeWeight: "编辑边权值",
     editEdgeLabel: "编辑边标签",
     adjustEdgeCurve: "调整边的弯曲",

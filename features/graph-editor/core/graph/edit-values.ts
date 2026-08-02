@@ -1,9 +1,7 @@
 import type { WeightKind } from "./model";
 
 export function normalizeNodeLabelInput(value: string) {
-  const label = value.trim();
-
-  return label === "" ? null : label;
+  return value.trim();
 }
 
 export function normalizeEdgeLabelInput(value: string) {

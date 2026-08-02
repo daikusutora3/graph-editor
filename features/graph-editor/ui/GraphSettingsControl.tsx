@@ -76,22 +76,30 @@ export function GraphSettingsControl({
           { label: "1-indexed", value: "1" },
         ]}
       />
-      <SettingSegment
-        label={messages.settings.arrowSize}
-        value={arrowScaleToSettingValue(settings.arrowScale)}
-        onChange={(value) =>
-          updateSettings({ arrowScale: arrowScaleFromSettingValue(value) })
-        }
-        options={[
-          { label: messages.settings.arrowSmall, value: "small" },
-          { label: messages.settings.arrowNormal, value: "normal" },
-          { label: messages.settings.arrowLarge, value: "large" },
-        ]}
-      />
+      {settings.directed ? (
+        <SettingSegment
+          label={messages.settings.arrowSize}
+          showLabel
+          value={arrowScaleToSettingValue(settings.arrowScale)}
+          onChange={(value) =>
+            updateSettings({ arrowScale: arrowScaleFromSettingValue(value) })
+          }
+          options={[
+            { label: messages.settings.arrowSmall, value: "small" },
+            { label: messages.settings.arrowNormal, value: "normal" },
+            { label: messages.settings.arrowLarge, value: "large" },
+          ]}
+        />
+      ) : null}
       <SettingCheckbox
         label={messages.settings.snapToGrid}
         checked={settings.snapToGrid}
         onChange={(checked) => updateSettings({ snapToGrid: checked })}
+      />
+      <SettingCheckbox
+        label={messages.settings.showNodeLabels}
+        checked={settings.showNodeLabels}
+        onChange={(checked) => updateSettings({ showNodeLabels: checked })}
       />
       <SettingSelect
         label={messages.settings.language}
@@ -211,17 +219,24 @@ function SettingSelect({
 
 function SettingSegment({
   label,
+  showLabel = false,
   value,
   onChange,
   options,
 }: {
   label: string;
+  showLabel?: boolean;
   value: string;
   onChange: (value: string) => void;
   options: readonly { label: string; value: string }[];
 }) {
   return (
     <div className="min-w-0">
+      {showLabel ? (
+        <div className="mb-1 px-1 text-[length:var(--app-text-micro)] leading-none font-semibold text-[var(--text-mute)]">
+          {label}
+        </div>
+      ) : null}
       <div className="gv-segment" role="radiogroup" aria-label={label}>
         {options.map((option) => {
           const selected = option.value === value;

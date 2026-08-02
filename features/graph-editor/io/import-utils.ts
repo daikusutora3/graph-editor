@@ -77,6 +77,7 @@ export function readImportSettings(
     allowMultiEdges: options.allowMultiEdges ?? true,
     autoEdgeRouting: options.autoEdgeRouting ?? true,
     snapToGrid: options.snapToGrid ?? false,
+    showNodeLabels: options.showNodeLabels ?? true,
     arrowScale: options.arrowScale ?? 1,
     weightKind: options.weightKind ?? "number",
   };

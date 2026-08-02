@@ -78,6 +78,17 @@ const parallelEdgeModel: GraphModel = {
   ],
 };
 
+const flexibleLabelModel: GraphModel = {
+  ...plainUndirectedModel,
+  nodes: [
+    { id: "n0", label: "", order: 0, x: 0, y: 0 },
+    { id: "n1", label: "始点", order: 1, x: 120, y: 0 },
+    { id: "n2", label: "α 🧭", order: 2, x: 240, y: 0 },
+  ],
+  edges: [{ id: "e0", source: "n0", target: "n1" }],
+  settings: { ...plainUndirectedModel.settings, showNodeLabels: false },
+};
+
 for (const format of [
   "edge-list",
   "adjacency-list",
@@ -108,6 +119,11 @@ expect(
   exportGraph(relabeledUndirectedModel, "adjacency-matrix") ===
     "0 0 1\n0 0 0\n1 0 0",
   "adjacency-matrix export should order rows and columns by numeric node labels",
+);
+
+expect(
+  exportGraph(flexibleLabelModel, "edge-list") === "3 1\n0 1",
+  "blank, free-text, and hidden node labels should export by stable node order",
 );
 
 const weightedAdjacencyList = importGraphInput("0: 1(5)\n1: 2(-3)\n2:", {

@@ -73,7 +73,9 @@ function verifyGraphStorageBootstrap() {
 
 function verifyStoredGraphSettingsCompatibility() {
   const legacyGraph = graphFixture();
-  const { snapToGrid: _snapToGrid, ...legacySettings } = legacyGraph.settings;
+  const legacySettings = { ...legacyGraph.settings } as Record<string, unknown>;
+  delete legacySettings.snapToGrid;
+  delete legacySettings.showNodeLabels;
 
   const parsed = parseStoredGraph(
     JSON.stringify({ ...legacyGraph, settings: legacySettings }),
@@ -82,6 +84,23 @@ function verifyStoredGraphSettingsCompatibility() {
   expect(
     parsed?.settings.snapToGrid === false,
     "storage parser should default missing snap-to-grid settings for legacy graphs",
+  );
+  expect(
+    parsed?.settings.showNodeLabels === true,
+    "storage parser should show node labels for legacy graphs",
+  );
+
+  const flexibleGraph = graphFixture();
+  flexibleGraph.nodes[0] = { ...flexibleGraph.nodes[0], label: "" };
+  flexibleGraph.nodes[1] = { ...flexibleGraph.nodes[1], label: "始点 α 🧭" };
+  flexibleGraph.settings.showNodeLabels = false;
+  const restoredFlexibleGraph = parseStoredGraph(JSON.stringify(flexibleGraph));
+
+  expect(
+    restoredFlexibleGraph?.settings.showNodeLabels === false &&
+      restoredFlexibleGraph.nodes[0]?.label === "" &&
+      restoredFlexibleGraph.nodes[1]?.label === "始点 α 🧭",
+    "storage parser should preserve hidden, blank, and free-text node labels",
   );
 }
 

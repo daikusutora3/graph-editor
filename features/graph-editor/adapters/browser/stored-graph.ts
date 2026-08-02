@@ -300,6 +300,10 @@ function normalizeSettings(value: unknown): GraphSettings {
       typeof value.snapToGrid === "boolean"
         ? value.snapToGrid
         : defaults.snapToGrid,
+    showNodeLabels:
+      typeof value.showNodeLabels === "boolean"
+        ? value.showNodeLabels
+        : defaults.showNodeLabels,
     arrowScale:
       typeof value.arrowScale === "number" &&
       Number.isFinite(value.arrowScale) &&

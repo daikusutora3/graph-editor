@@ -17,9 +17,10 @@ type CompactToolbarLayerProps = {
   historyDisabled: boolean;
   isGraphEmpty: boolean;
   mode: EditorMode;
-  redoShortcut: string;
+  redoShortcut?: string;
+  showShortcutHints: boolean;
   sidebarCollapsed: boolean;
-  undoShortcut: string;
+  undoShortcut?: string;
   onClearEditor: () => void;
   onModeChange: (mode: EditorMode) => void;
   onRedo: () => void;
@@ -36,6 +37,7 @@ export function CompactToolbarLayer({
   isGraphEmpty,
   mode,
   redoShortcut,
+  showShortcutHints,
   sidebarCollapsed,
   undoShortcut,
   onClearEditor,
@@ -75,8 +77,14 @@ export function CompactToolbarLayer({
           {toolbarModes.map(({ mode: itemMode, keyHint, icon: Icon }) => (
             <CompactToolbarButton
               key={itemMode}
-              label={`${messages.toolbar.modes[itemMode].label} (${keyHint})`}
-              title={`${messages.toolbar.modes[itemMode].tooltip} (${keyHint})`}
+              label={withShortcutHint(
+                messages.toolbar.modes[itemMode].label,
+                showShortcutHints ? keyHint : undefined,
+              )}
+              title={withShortcutHint(
+                messages.toolbar.modes[itemMode].tooltip,
+                showShortcutHints ? keyHint : undefined,
+              )}
               active={mode === itemMode}
               onClick={() => onModeChange(itemMode)}
             >
@@ -86,16 +94,22 @@ export function CompactToolbarLayer({
         </CompactToolbarGroup>
         <CompactToolbarGroup>
           <CompactToolbarButton
-            label={`${messages.toolbar.undo.label} (${undoShortcut})`}
-            title={`${messages.toolbar.undo.tooltip} (${undoShortcut})`}
+            label={withShortcutHint(messages.toolbar.undo.label, undoShortcut)}
+            title={withShortcutHint(
+              messages.toolbar.undo.tooltip,
+              undoShortcut,
+            )}
             disabled={historyDisabled}
             onClick={onUndo}
           >
             <Undo2 className="size-4" />
           </CompactToolbarButton>
           <CompactToolbarButton
-            label={`${messages.toolbar.redo.label} (${redoShortcut})`}
-            title={`${messages.toolbar.redo.tooltip} (${redoShortcut})`}
+            label={withShortcutHint(messages.toolbar.redo.label, redoShortcut)}
+            title={withShortcutHint(
+              messages.toolbar.redo.tooltip,
+              redoShortcut,
+            )}
             disabled={futureDisabled}
             onClick={onRedo}
           >
@@ -136,6 +150,10 @@ export function CompactToolbarLayer({
 
 function CompactToolbarGroup({ children }: { children: ReactNode }) {
   return <div className="flex flex-col items-center gap-1">{children}</div>;
+}
+
+function withShortcutHint(label: string, shortcut: string | undefined) {
+  return shortcut ? `${label} (${shortcut})` : label;
 }
 
 function CompactToolbarButton({
