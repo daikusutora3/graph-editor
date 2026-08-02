@@ -288,6 +288,11 @@ export function InlineEditForm({
               : messages.canvas.editEdgeLabel
         }
         aria-invalid={Boolean(edit.error)}
+        placeholder={
+          edit.kind === "node-label"
+            ? messages.canvas.nodeLabelPlaceholder
+            : undefined
+        }
         autoComplete="off"
         inputMode={edit.kind === "edge-weight" ? "decimal" : "text"}
         onChange={(event) => onValueChange(event.target.value)}

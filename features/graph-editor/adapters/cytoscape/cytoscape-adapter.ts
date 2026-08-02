@@ -19,6 +19,7 @@ import type {
 type CytoscapeNodeData = {
   id: NodeId;
   label: string;
+  displayLabel: string;
   order: number;
   color: GraphColor;
 };
@@ -99,7 +100,9 @@ export function graphModelToCytoscapeElements(
     computeCytoscapeEdgeRoutingMeta(model, options.edgeRoutingOptions);
 
   return [
-    ...model.nodes.map((node) => nodeToCytoscapeElement(node)),
+    ...model.nodes.map((node) =>
+      nodeToCytoscapeElement(node, model.settings.showNodeLabels),
+    ),
     ...model.edges.map((edge) =>
       edgeToCytoscapeElement(
         edge,
@@ -254,13 +257,17 @@ function edgeRoutingDataChanged(
   );
 }
 
-function nodeToCytoscapeElement(node: GraphNode): ElementDefinition {
+function nodeToCytoscapeElement(
+  node: GraphNode,
+  showNodeLabels: boolean,
+): ElementDefinition {
   return {
     group: "nodes",
     classes: [nodeColorClass(node.color)].filter(Boolean).join(" "),
     data: {
       id: node.id,
       label: node.label,
+      displayLabel: showNodeLabels ? node.label : "",
       order: node.order,
       color: node.color ?? "paper",
     } satisfies CytoscapeNodeData,
@@ -337,7 +344,7 @@ export function createGraphCanvasStylesheet(
         "border-color": palette.nodeBorder,
         "border-width": 2.2,
         color: palette.nodeText,
-        content: "data(label)",
+        content: "data(displayLabel)",
         "box-selection": "contain",
         "font-family": palette.fontFamily,
         "font-size": palette.nodeFontSize,

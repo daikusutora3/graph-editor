@@ -44,6 +44,7 @@ export function inlineEditCssProperties({
       : `max(calc(1.5rem * var(--gv-inline-edit-zoom)), calc(${textUnits}ch + 0.875rem))`;
 
   return {
+    maxWidth: "calc(100vw - 2rem)",
     width,
     "--gv-inline-edit-zoom": String(zoom),
   } as CSSProperties;

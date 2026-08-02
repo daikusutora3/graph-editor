@@ -1,0 +1,11 @@
+[features]
+hooks = true
+
+[[hooks.PreToolUse]]
+matcher = "^.*$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = '/usr/bin/python3 "$(git rev-parse --show-toplevel)/.codex/hooks/block_github_issues.py"'
+timeout = 5
+statusMessage = "Enforcing repository GitHub Issue ban"

@@ -201,6 +201,45 @@ expect(
   "changed inline node label should create a command that updates the node",
 );
 
+const freeTextInlineLabel = resolveInlineEditCommit(
+  {
+    kind: "node-label",
+    nodeId: "a",
+    value: "始点 α 🧭",
+    fallbackPosition: { x: 0, y: 0 },
+  },
+  changedModel,
+);
+const freeTextLabelModel =
+  freeTextInlineLabel.kind === "close" && freeTextInlineLabel.command
+    ? applyInlineEditIntent(changedModel, freeTextInlineLabel.command)
+    : changedModel;
+
+expect(
+  freeTextLabelModel.nodes.find((node) => node.id === "a")?.label ===
+    "始点 α 🧭",
+  "inline node labels should preserve arbitrary Unicode text",
+);
+
+const blankInlineLabel = resolveInlineEditCommit(
+  {
+    kind: "node-label",
+    nodeId: "a",
+    value: "   ",
+    fallbackPosition: { x: 0, y: 0 },
+  },
+  freeTextLabelModel,
+);
+const blankLabelModel =
+  blankInlineLabel.kind === "close" && blankInlineLabel.command
+    ? applyInlineEditIntent(freeTextLabelModel, blankInlineLabel.command)
+    : freeTextLabelModel;
+
+expect(
+  blankLabelModel.nodes.find((node) => node.id === "a")?.label === "",
+  "blank inline node labels should create an unlabeled node",
+);
+
 const oneBasedModel = applyIntent(
   {
     version: 1,

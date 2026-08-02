@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { EdgeId, NodeId } from "../core/graph/model";
 import { useI18n } from "../i18n/I18nProvider";
+import type { Locale } from "../i18n/locale";
 
 import {
   edgeLabelHitboxWidth,
@@ -49,6 +50,7 @@ export function EdgeNodeHitboxes({
     <>
       {nodes.map((node) => {
         const isSource = sourceNodeId === node.id;
+        const nodeName = accessibleNodeName(node.label, locale);
 
         return (
           <button
@@ -59,15 +61,15 @@ export function EdgeNodeHitboxes({
             aria-label={
               isSource
                 ? locale === "ja"
-                  ? `${node.label} を始点に選択中`
+                  ? `${nodeName}を始点に選択中`
                   : locale === "zh-Hans"
-                    ? `${node.label} 已选为起点`
-                    : `${node.label} selected as source`
+                    ? `${nodeName}已选为起点`
+                    : `${nodeName} selected as source`
                 : locale === "ja"
-                  ? `${node.label} に辺を接続`
+                  ? `${nodeName}に辺を接続`
                   : locale === "zh-Hans"
-                    ? `连接到 ${node.label}`
-                    : `Connect edge to ${node.label}`
+                    ? `连接到${nodeName}`
+                    : `Connect edge to ${nodeName}`
             }
             className="group absolute z-20 size-14 -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
             style={{ left: node.x, top: node.y }}
@@ -608,10 +610,10 @@ export function SelectNodeHitboxes({
           data-graph-shortcut-target="true"
           aria-label={
             locale === "ja"
-              ? `頂点 ${node.label} を選択`
+              ? `${accessibleNodeName(node.label, locale)}を選択`
               : locale === "zh-Hans"
-                ? `选择顶点 ${node.label}`
-                : `Select node ${node.label}`
+                ? `选择${accessibleNodeName(node.label, locale)}`
+                : `Select ${accessibleNodeName(node.label, locale)}`
           }
           className="absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none active:cursor-grabbing"
           inert={rangeSelectionActive}
@@ -651,4 +653,20 @@ export function SelectNodeHitboxes({
       ))}
     </>
   );
+}
+
+function accessibleNodeName(label: string, locale: Locale) {
+  if (label) {
+    return locale === "ja"
+      ? `頂点 ${label} `
+      : locale === "zh-Hans"
+        ? `顶点 ${label}`
+        : `node ${label}`;
+  }
+
+  return locale === "ja"
+    ? "ラベルなしの頂点"
+    : locale === "zh-Hans"
+      ? "无标签顶点"
+      : "unlabeled node";
 }

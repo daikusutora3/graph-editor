@@ -29,10 +29,11 @@ type ExpandedToolbarLayerProps = {
   graph: GraphModel;
   isGraphEmpty: boolean;
   mode: EditorMode;
-  redoShortcut: string;
+  redoShortcut?: string;
+  showShortcutHints: boolean;
   showAllLayouts: boolean;
   sidebarCollapsed: boolean;
-  undoShortcut: string;
+  undoShortcut?: string;
   historyDisabled: boolean;
   onApplyLayout: (kind: LayoutKind) => void;
   onClearEditor: () => void;
@@ -61,6 +62,7 @@ export function ExpandedToolbarLayer({
   isGraphEmpty,
   mode,
   redoShortcut,
+  showShortcutHints,
   showAllLayouts,
   sidebarCollapsed,
   undoShortcut,
@@ -139,7 +141,7 @@ export function ExpandedToolbarLayer({
                   key={itemMode}
                   label={messages.toolbar.modes[itemMode].label}
                   tooltip={messages.toolbar.modes[itemMode].tooltip}
-                  keyHint={keyHint}
+                  keyHint={showShortcutHints ? keyHint : undefined}
                   accent={accent}
                   active={mode === itemMode}
                   onClick={() => onModeChange(itemMode)}

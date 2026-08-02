@@ -34,7 +34,7 @@ export function resolveInlineEditCommit(
     const node = graph.nodes.find((item) => item.id === edit.nodeId);
     const nextLabel = normalizeNodeLabelInput(edit.value);
 
-    if (node && nextLabel != null && nextLabel !== node.label) {
+    if (node && nextLabel !== node.label) {
       return {
         kind: "close",
         command: updateNodeCommand(node.id, { label: nextLabel }),
