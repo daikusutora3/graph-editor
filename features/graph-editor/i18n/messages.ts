@@ -198,6 +198,91 @@ type Messages = {
   > & {
     disabled: Record<LayoutDisabledReason, string>;
   };
+  chrome: {
+    openStarter: string;
+    toolbar: string;
+    layouts: string;
+    settings: string;
+    menu: string;
+    export: string;
+    png: string;
+    pngShort: string;
+    theme: string;
+    shortcuts: string;
+    applyHint: string;
+    directedOnlyNote: string;
+    offsetEdges: string;
+    graphType: string;
+    display: string;
+    links: string;
+    clear: string;
+    clearArmed: string;
+    clearHint: string;
+    clearArmedHint: string;
+    saveTxt: string;
+    copy: string;
+    copied: string;
+    copyFailed: string;
+    pngScopeFull: string;
+    pngScopeView: string;
+    pngTransparent: string;
+    pngSize: string;
+    pngPadding: string;
+    pngSave: string;
+    pngSaving: string;
+    pngCopy: string;
+    pngCopying: string;
+    pngCopied: string;
+    pngSaved: string;
+    pngFailed: string;
+    starterTitle: string;
+    starterHelp: string;
+    starterWaiting: string;
+    starterMeta: (nodeCount: number, edgeCount: number) => string;
+    starterUseSample: string;
+    starterBackToPaste: string;
+    starterApply: string;
+    starterSamplesTitle: string;
+    emptyTagline: string;
+    emptyCards: Record<
+      "paste" | "sample" | "draw",
+      { title: string; body: string }
+    >;
+    recentSamples: string;
+    edgeHintStart: string;
+    edgeHintTarget: (label: string) => string;
+    selection: {
+      node: (label: string) => string;
+      nodes: (count: number) => string;
+      edge: (source: string, target: string) => string;
+      edges: (count: number) => string;
+      mixed: (nodeCount: number, edgeCount: number) => string;
+      label: string;
+    };
+    shortcutGroups: Record<"modes" | "edit" | "view", string>;
+    shortcutItems: Record<
+      | "select"
+      | "node"
+      | "edge"
+      | "escape"
+      | "delete"
+      | "undo"
+      | "redo"
+      | "selectAll"
+      | "copy"
+      | "cut"
+      | "paste"
+      | "color"
+      | "nudge"
+      | "editLabel"
+      | "fit"
+      | "resetZoom"
+      | "layouts"
+      | "settings"
+      | "shortcuts",
+      string
+    >;
+  };
   samples: {
     searchPlaceholder: string;
     searchAria: string;
@@ -437,8 +522,8 @@ const ja = {
   },
   settings: {
     direction: "向き",
-    undirected: "無向グラフ",
-    directed: "有向グラフ",
+    undirected: "無向",
+    directed: "有向",
     weight: "重み",
     unweighted: "重みなし",
     weighted: "重みあり",
@@ -606,7 +691,7 @@ const ja = {
       tooltip: "次数の高い頂点を内側に置き、外側へ広げます",
     },
     dagLayer: {
-      label: "DAG層",
+      label: "DAG",
       subtitle: "有向辺の流れ",
       tooltip: "DAGの有向辺の向きに沿って層状に並べます",
     },
@@ -643,6 +728,100 @@ const ja = {
       notDag: "DAGではないためSCCを先に確認してください",
       notBipartite: "二部グラフではありません",
       sccRequiresDirected: "有向グラフで強連結成分を確認します",
+    },
+  },
+  chrome: {
+    openStarter: "グラフを読み込む",
+    toolbar: "ツールバー",
+    layouts: "配置",
+    settings: "設定",
+    menu: "メニュー",
+    export: "書き出し",
+    png: "PNG 画像",
+    pngShort: "PNG",
+    theme: "テーマ",
+    shortcuts: "キーボードショートカット",
+    applyHint: "押すとすぐ適用",
+    directedOnlyNote: "DAG・SCC は有向グラフのときに使えます",
+    offsetEdges: "辺をずらして重なりを避ける",
+    graphType: "グラフの種類",
+    display: "表示",
+    links: "リンク",
+    clear: "グラフをクリア",
+    clearArmed: "本当にクリアする",
+    clearHint: "2 回押して確定",
+    clearArmedHint: "もう一度押す",
+    saveTxt: ".txt で保存",
+    copy: "コピー",
+    copied: "コピーしました",
+    copyFailed: "コピーできません",
+    pngScopeFull: "全体",
+    pngScopeView: "表示範囲",
+    pngTransparent: "透過",
+    pngSize: "長辺サイズ",
+    pngPadding: "余白",
+    pngSave: "保存",
+    pngSaving: "保存中…",
+    pngCopy: "コピー",
+    pngCopying: "コピー中…",
+    pngCopied: "コピーしました",
+    pngSaved: "保存しました",
+    pngFailed: "失敗",
+    starterTitle: "グラフを読み込む",
+    starterHelp: "辺リスト（先頭に N M 可）か隣接リスト（a: b c）を貼り付け",
+    starterWaiting: "入力待ち",
+    starterMeta: (nodeCount: number, edgeCount: number) =>
+      `N=${nodeCount} M=${edgeCount}`,
+    starterUseSample: "サンプルを使う",
+    starterBackToPaste: "貼り付けに戻る",
+    starterApply: "グラフに反映",
+    starterSamplesTitle: "サンプル",
+    emptyTagline: "辺リストを貼るか、サンプルから始めるか、直接描くか。",
+    emptyCards: {
+      paste: {
+        title: "貼り付け",
+        body: "辺リスト・隣接リスト。形式は自動判定。",
+      },
+      sample: { title: "サンプル", body: "閉路・木・格子などから選ぶ。" },
+      draw: {
+        title: "手で描く",
+        body: "頂点モードでタップ。辺モードで 2 点を結ぶ。",
+      },
+    },
+    recentSamples: "よく使うサンプル",
+    edgeHintStart: "始点の頂点をクリック",
+    edgeHintTarget: (label: string) =>
+      `頂点 ${label} → 終点をクリック（Esc で解除）`,
+    selection: {
+      node: (label: string) => `頂点 ${label}`,
+      nodes: (count: number) => `${count} 頂点`,
+      edge: (source: string, target: string) => `辺 ${source}–${target}`,
+      edges: (count: number) => `${count} 辺`,
+      mixed: (nodeCount: number, edgeCount: number) =>
+        `${nodeCount} 頂点 · ${edgeCount} 辺`,
+      label: "ラベル",
+    },
+    shortcutGroups: { modes: "モード", edit: "編集", view: "表示・パネル" },
+    shortcutItems: {
+      select: "選択",
+      node: "頂点を置く",
+      edge: "辺を結ぶ",
+      escape: "解除",
+      delete: "削除",
+      undo: "戻す",
+      redo: "進む",
+      selectAll: "すべて選択",
+      copy: "コピー",
+      cut: "切り取り",
+      paste: "貼り付け",
+      color: "色を切り替え",
+      nudge: "選択を移動",
+      editLabel: "ラベルを編集",
+      fit: "全体表示",
+      resetZoom: "100% に戻す",
+      layouts: "配置",
+      settings: "設定",
+      shortcuts: "この一覧",
     },
   },
   samples: {
@@ -935,7 +1114,7 @@ const en: Messages = {
       tooltip: "Place high-degree nodes near the center",
     },
     dagLayer: {
-      label: "DAG layers",
+      label: "DAG",
       subtitle: "Directed flow",
       tooltip: "Layer nodes along the directed edges of a DAG",
     },
@@ -973,6 +1152,101 @@ const en: Messages = {
       notDag: "This graph is not a DAG. Check SCCs first.",
       notBipartite: "This graph is not bipartite.",
       sccRequiresDirected: "SCCs require a directed graph.",
+    },
+  },
+  chrome: {
+    openStarter: "Load a graph",
+    toolbar: "Toolbar",
+    layouts: "Layout",
+    settings: "Settings",
+    menu: "Menu",
+    export: "Export",
+    png: "PNG image",
+    pngShort: "PNG",
+    theme: "Theme",
+    shortcuts: "Keyboard shortcuts",
+    applyHint: "Applies immediately",
+    directedOnlyNote: "DAG layers and SCC need a directed graph",
+    offsetEdges: "Offset overlapping edges",
+    graphType: "Graph type",
+    display: "Display",
+    links: "Links",
+    clear: "Clear graph",
+    clearArmed: "Really clear",
+    clearHint: "Press twice to confirm",
+    clearArmedHint: "Press again",
+    saveTxt: "Save as .txt",
+    copy: "Copy",
+    copied: "Copied",
+    copyFailed: "Could not copy",
+    pngScopeFull: "Full",
+    pngScopeView: "Viewport",
+    pngTransparent: "Clear",
+    pngSize: "Long edge",
+    pngPadding: "Padding",
+    pngSave: "Save",
+    pngSaving: "Saving…",
+    pngCopy: "Copy",
+    pngCopying: "Copying…",
+    pngCopied: "Copied",
+    pngSaved: "Saved",
+    pngFailed: "Failed",
+    starterTitle: "Load a graph",
+    starterHelp:
+      "Paste an edge list (N M header optional) or an adjacency list (a: b c)",
+    starterWaiting: "Waiting for input",
+    starterMeta: (nodeCount: number, edgeCount: number) =>
+      `N=${nodeCount} M=${edgeCount}`,
+    starterUseSample: "Use a sample",
+    starterBackToPaste: "Back to paste",
+    starterApply: "Apply to graph",
+    starterSamplesTitle: "Samples",
+    emptyTagline: "Paste an edge list, start from a sample, or draw directly.",
+    emptyCards: {
+      paste: {
+        title: "Paste",
+        body: "Edge list or adjacency list. Format is auto-detected.",
+      },
+      sample: { title: "Sample", body: "Pick a cycle, tree, grid, and more." },
+      draw: {
+        title: "Draw",
+        body: "Tap in node mode. Connect two nodes in edge mode.",
+      },
+    },
+    recentSamples: "Popular samples",
+    edgeHintStart: "Click the source node",
+    edgeHintTarget: (label: string) =>
+      `Node ${label} → click the target (Esc to cancel)`,
+    selection: {
+      node: (label: string) => `Node ${label}`,
+      nodes: (count: number) => `${count} nodes`,
+      edge: (source: string, target: string) => `Edge ${source}–${target}`,
+      edges: (count: number) => `${count} edges`,
+      mixed: (nodeCount: number, edgeCount: number) =>
+        `${nodeCount} nodes · ${edgeCount} edges`,
+      label: "Label",
+    },
+    shortcutGroups: { modes: "Modes", edit: "Edit", view: "View & panels" },
+    shortcutItems: {
+      select: "Select",
+      node: "Place node",
+      edge: "Connect edge",
+      escape: "Cancel",
+      delete: "Delete",
+      undo: "Undo",
+      redo: "Redo",
+      selectAll: "Select all",
+      copy: "Copy",
+      cut: "Cut",
+      paste: "Paste",
+      color: "Cycle color",
+      nudge: "Nudge selection",
+      editLabel: "Edit label",
+      fit: "Fit to view",
+      resetZoom: "Reset to 100%",
+      layouts: "Layout",
+      settings: "Settings",
+      shortcuts: "This list",
     },
   },
   samples: {
@@ -1095,8 +1369,8 @@ const zhHans: Messages = {
   },
   settings: {
     direction: "方向",
-    undirected: "无向图",
-    directed: "有向图",
+    undirected: "无向",
+    directed: "有向",
     weight: "权值",
     unweighted: "无权",
     weighted: "有权",
@@ -1261,7 +1535,7 @@ const zhHans: Messages = {
       tooltip: "将度数较高的顶点放在中心附近",
     },
     dagLayer: {
-      label: "DAG 分层",
+      label: "DAG",
       subtitle: "按有向边",
       tooltip: "沿 DAG 的有向边方向分层",
     },
@@ -1298,6 +1572,93 @@ const zhHans: Messages = {
       notDag: "此图不是 DAG。请先检查 SCC。",
       notBipartite: "此图不是二分图。",
       sccRequiresDirected: "SCC 需要有向图。",
+    },
+  },
+  chrome: {
+    openStarter: "加载图",
+    toolbar: "工具栏",
+    layouts: "布局",
+    settings: "设置",
+    menu: "菜单",
+    export: "导出",
+    png: "PNG 图像",
+    pngShort: "PNG",
+    theme: "主题",
+    shortcuts: "键盘快捷键",
+    applyHint: "点击即应用",
+    directedOnlyNote: "DAG 分层和 SCC 需要有向图",
+    offsetEdges: "错开重叠的边",
+    graphType: "图类型",
+    display: "显示",
+    links: "链接",
+    clear: "清空图",
+    clearArmed: "确认清空",
+    clearHint: "点击两次确认",
+    clearArmedHint: "再次点击",
+    saveTxt: "保存为 .txt",
+    copy: "复制",
+    copied: "已复制",
+    copyFailed: "无法复制",
+    pngScopeFull: "整图",
+    pngScopeView: "视图",
+    pngTransparent: "透明",
+    pngSize: "长边尺寸",
+    pngPadding: "留白",
+    pngSave: "保存",
+    pngSaving: "保存中…",
+    pngCopy: "复制",
+    pngCopying: "复制中…",
+    pngCopied: "已复制",
+    pngSaved: "已保存",
+    pngFailed: "失败",
+    starterTitle: "加载图",
+    starterHelp: "粘贴边列表（可带 N M 首行）或邻接表（a: b c）",
+    starterWaiting: "等待输入",
+    starterMeta: (nodeCount: number, edgeCount: number) =>
+      `N=${nodeCount} M=${edgeCount}`,
+    starterUseSample: "使用示例",
+    starterBackToPaste: "返回粘贴",
+    starterApply: "应用到图",
+    starterSamplesTitle: "示例",
+    emptyTagline: "粘贴边列表、从示例开始，或直接绘制。",
+    emptyCards: {
+      paste: { title: "粘贴", body: "边列表或邻接表，格式自动检测。" },
+      sample: { title: "示例", body: "从环、树、网格等中选择。" },
+      draw: { title: "手绘", body: "顶点模式下点击。边模式下连接两点。" },
+    },
+    recentSamples: "常用示例",
+    edgeHintStart: "点击起点顶点",
+    edgeHintTarget: (label: string) => `顶点 ${label} → 点击终点（Esc 取消）`,
+    selection: {
+      node: (label: string) => `顶点 ${label}`,
+      nodes: (count: number) => `${count} 个顶点`,
+      edge: (source: string, target: string) => `边 ${source}–${target}`,
+      edges: (count: number) => `${count} 条边`,
+      mixed: (nodeCount: number, edgeCount: number) =>
+        `${nodeCount} 个顶点 · ${edgeCount} 条边`,
+      label: "标签",
+    },
+    shortcutGroups: { modes: "模式", edit: "编辑", view: "视图与面板" },
+    shortcutItems: {
+      select: "选择",
+      node: "放置顶点",
+      edge: "连接边",
+      escape: "取消",
+      delete: "删除",
+      undo: "撤销",
+      redo: "重做",
+      selectAll: "全选",
+      copy: "复制",
+      cut: "剪切",
+      paste: "粘贴",
+      color: "切换颜色",
+      nudge: "移动选区",
+      editLabel: "编辑标签",
+      fit: "适应视图",
+      resetZoom: "重置为 100%",
+      layouts: "布局",
+      settings: "设置",
+      shortcuts: "此列表",
     },
   },
   samples: {

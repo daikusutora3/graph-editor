@@ -1,4 +1,4 @@
-import type { ThemeMode } from "./theme";
+import type { ThemeMode } from "../theme/theme";
 import type {
   PngExportBackground,
   PngExportLongEdgePreset,

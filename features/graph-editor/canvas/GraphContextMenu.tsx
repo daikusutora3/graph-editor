@@ -1,6 +1,5 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -13,6 +12,7 @@ import type {
   GraphContextMenuTarget,
   RenderedPoint,
 } from "./graph-canvas-types";
+import { resolveSelectionActions } from "./selection-actions";
 
 export type { GraphContextMenuTarget } from "./graph-canvas-types";
 
@@ -20,24 +20,26 @@ export type GraphContextMenuProps = {
   target: GraphContextMenuTarget;
   graph: GraphModel;
   panelState?: "open" | "closing";
-  sidebarCollapsed: boolean;
   selection: SelectionState;
   onClose: () => void;
   onEditNodeLabel: (nodeId: NodeId, position: RenderedPoint) => void;
   onEditEdgeValue: (edgeId: EdgeId, position: RenderedPoint) => void;
   onDeleteSelection: (selection: SelectionState) => void;
+  onReverseEdges: (edgeIds: EdgeId[]) => void;
+  onResetEdgeCurve: (edgeId: EdgeId) => void;
 };
 
 export function GraphContextMenu({
   target,
   graph,
   panelState = "open",
-  sidebarCollapsed,
   selection,
   onClose,
   onEditNodeLabel,
   onEditEdgeValue,
   onDeleteSelection,
+  onReverseEdges,
+  onResetEdgeCurve,
 }: GraphContextMenuProps) {
   const { messages } = useI18n();
   const node =
@@ -50,10 +52,7 @@ export function GraphContextMenu({
       : null;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuPosition, setMenuPosition] = useState(() =>
-    getContextMenuPosition(target, DEFAULT_MENU_SIZE, {
-      ...DEFAULT_CANVAS_SIZE,
-      leftInset: defaultLeftInset(sidebarCollapsed),
-    }),
+    getContextMenuPosition(target, DEFAULT_MENU_SIZE, DEFAULT_CANVAS_SIZE),
   );
 
   useLayoutEffect(() => {
@@ -73,7 +72,7 @@ export function GraphContextMenu({
       {
         width: canvas.clientWidth || DEFAULT_CANVAS_SIZE.width,
         height: canvas.clientHeight || DEFAULT_CANVAS_SIZE.height,
-        leftInset: readSidebarLeftInset(sidebarCollapsed),
+        leftInset: MENU_PADDING,
       },
     );
 
@@ -82,18 +81,43 @@ export function GraphContextMenu({
         ? current
         : nextPosition,
     );
-  }, [sidebarCollapsed, target]);
+  }, [target]);
 
   const deleteSelection = useMemo(
     () => selectionForTarget(target, selection),
     [target, selection],
   );
+  const actions = resolveSelectionActions(graph, deleteSelection, messages);
+  const runAction = (id: (typeof actions)[number]["id"]) => {
+    switch (id) {
+      case "edit":
+        if (target.kind === "node" && node) {
+          onEditNodeLabel(node.id, { x: target.x, y: target.y });
+        } else if (target.kind === "edge" && edge) {
+          onEditEdgeValue(edge.id, { x: target.x, y: target.y });
+        }
+        return;
+      case "reverse":
+        onReverseEdges(deleteSelection.edgeIds);
+        onClose();
+        return;
+      case "reset-curve":
+        if (deleteSelection.edgeIds[0]) {
+          onResetEdgeCurve(deleteSelection.edgeIds[0]);
+        }
+        onClose();
+        return;
+      case "delete":
+        onDeleteSelection(deleteSelection);
+        onClose();
+    }
+  };
 
   return (
     <div
       ref={menuRef}
       data-panel-state={panelState}
-      className="gv-context-menu pointer-events-auto absolute z-40 max-h-[calc(100%-1rem)] w-[min(15rem,calc(100%-1rem))] overflow-y-auto rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] p-[var(--app-space-2)] text-[length:var(--app-text-xs)] text-[var(--text)] backdrop-blur-md"
+      className="ge-panel ge-context-menu pointer-events-auto absolute z-40 flex max-h-[calc(100%-1rem)] w-[min(14rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto rounded-xl p-1.5 text-[13px] text-[var(--text)] backdrop-blur-[12px]"
       style={{
         left: menuPosition.left,
         top: menuPosition.top,
@@ -112,62 +136,28 @@ export function GraphContextMenu({
         }
       }}
     >
-      {target.kind === "node" && node ? (
-        <div className="flex flex-col gap-[var(--app-space-2)]">
-          <MenuButton
-            icon={<Pencil className="size-4" />}
-            label={messages.contextMenu.editNodeLabel}
-            onClick={() =>
-              onEditNodeLabel(node.id, { x: target.x, y: target.y })
-            }
-          />
-          <MenuButton
-            danger
-            icon={<Trash2 className="size-4" />}
-            label={messages.common.delete}
-            onClick={() => {
-              onDeleteSelection(deleteSelection);
-              onClose();
-            }}
-          />
-        </div>
-      ) : null}
-
-      {target.kind === "edge" && edge ? (
-        <div className="flex flex-col gap-[var(--app-space-2)]">
-          <MenuButton
-            icon={<Pencil className="size-4" />}
-            label={
-              graph.settings.weighted
-                ? messages.contextMenu.editWeight
-                : messages.contextMenu.editEdgeLabel
-            }
-            onClick={() =>
-              onEditEdgeValue(edge.id, { x: target.x, y: target.y })
-            }
-          />
-          <Divider />
-          <MenuButton
-            danger
-            icon={<Trash2 className="size-4" />}
-            label={messages.common.delete}
-            onClick={() => {
-              onDeleteSelection(deleteSelection);
-              onClose();
-            }}
-          />
-        </div>
-      ) : null}
+      {(target.kind === "node" && node) || (target.kind === "edge" && edge)
+        ? actions.map(({ id, icon: Icon, label, kbd, danger }, index) => (
+            <MenuButton
+              key={id}
+              danger={danger}
+              divider={danger && index > 0}
+              icon={<Icon className="size-[15px]" aria-hidden="true" />}
+              kbd={kbd}
+              label={label}
+              onClick={() => runAction(id)}
+            />
+          ))
+        : null}
     </div>
   );
 }
 
 const DEFAULT_MENU_SIZE = { width: 240, height: 112 };
-const DEFAULT_CANVAS_SIZE = { width: 1058, height: 994, leftInset: 308 };
+const DEFAULT_CANVAS_SIZE = { width: 1058, height: 994, leftInset: 8 };
 const HITBOX_MENU_GAP = 8;
 const MENU_PADDING = 8;
 const POINTER_MENU_OFFSET = 10;
-const COMPACT_TOOLBAR_WIDTH = 56;
 
 function getContextMenuPosition(
   target: GraphContextMenuTarget,
@@ -234,40 +224,6 @@ function getPointerContextMenuPosition(
   };
 }
 
-function readSidebarLeftInset(sidebarCollapsed: boolean) {
-  const styles = getComputedStyle(document.documentElement);
-  const space3 = cssPx(styles, "--app-space-3", 12);
-  const space5 = cssPx(styles, "--app-space-5", 24);
-  const toolbarWidth = cssPx(styles, "--app-toolbar-width", 272);
-  const sidebarWidth = sidebarCollapsed ? COMPACT_TOOLBAR_WIDTH : toolbarWidth;
-
-  return space3 + sidebarWidth + space5;
-}
-
-function defaultLeftInset(sidebarCollapsed: boolean) {
-  return sidebarCollapsed ? 12 + COMPACT_TOOLBAR_WIDTH + 24 : 308;
-}
-
-function cssPx(styles: CSSStyleDeclaration, name: string, fallback: number) {
-  const value = styles.getPropertyValue(name).trim();
-
-  if (!value) {
-    return fallback;
-  }
-
-  if (value.endsWith("rem")) {
-    return Number.parseFloat(value) * 16;
-  }
-
-  if (value.endsWith("px")) {
-    return Number.parseFloat(value);
-  }
-
-  const parsed = Number.parseFloat(value);
-
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max));
 }
@@ -275,34 +231,54 @@ function clamp(value: number, min: number, max: number) {
 function MenuButton({
   icon,
   label,
+  kbd,
   danger,
+  divider,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
+  kbd?: string;
   danger?: boolean;
+  divider?: boolean;
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={cn(
-        "gv-menu-item",
-        danger ? "text-[var(--err)]" : "text-[var(--text)]",
-      )}
-    >
-      <span className="grid size-5 shrink-0 place-items-center">{icon}</span>
-      <span className="min-w-0 flex-1 leading-tight break-words whitespace-normal">
-        {label}
-      </span>
-    </button>
+    <>
+      {divider ? (
+        <div className="my-1 h-px bg-[var(--hair)]" aria-hidden="true" />
+      ) : null}
+      <button
+        type="button"
+        role="menuitem"
+        onClick={onClick}
+        className={cn(
+          "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none",
+          danger
+            ? "text-[var(--danger)] hover:bg-[var(--danger-fill)]"
+            : "text-[var(--text-2)] hover:bg-[var(--fill)]",
+        )}
+      >
+        <span className="grid size-5 shrink-0 place-items-center">{icon}</span>
+        <span className="min-w-0 flex-1 leading-tight break-words whitespace-normal">
+          {label}
+        </span>
+        {kbd ? (
+          <kbd
+            aria-hidden="true"
+            className={cn(
+              "grid h-5 min-w-[22px] place-items-center rounded-[5px] px-[5px] font-mono text-xs font-semibold",
+              danger
+                ? "bg-[var(--danger-fill)]"
+                : "bg-[var(--fill)] text-[var(--muted)]",
+            )}
+          >
+            {kbd}
+          </kbd>
+        ) : null}
+      </button>
+    </>
   );
-}
-
-function Divider() {
-  return <div className="h-px bg-[var(--divider)]" />;
 }
 
 function selectionForTarget(

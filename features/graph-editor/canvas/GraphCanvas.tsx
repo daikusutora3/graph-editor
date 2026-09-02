@@ -16,6 +16,7 @@ import { resolveEdgeCreation } from "./graph-canvas-edge-creation";
 import type { NodeId } from "../core/graph/model";
 import {
   edgeDraftAtom,
+  editorLayoutAtom,
   editorModeAtom,
   selectionAtom,
 } from "../shell/state/editor-atoms";
@@ -47,7 +48,7 @@ import { useRangeSelectionPointerForwarding } from "./graph-canvas-range-selecti
 import { useRangeSelectionPreview } from "./graph-canvas-range-selection-preview";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
-import { useAnimatedNullableState } from "../ui/use-panel-presence";
+import { useAnimatedNullableState } from "../ui/hooks/use-panel-presence";
 import {
   EdgeNodeHitboxes,
   EdgeBendHandle,
@@ -57,7 +58,6 @@ import {
 import {
   EdgeDraftLine,
   EditFeedbackNodes,
-  FitGraphButton,
   InlineEditForm,
   InteractionLayers,
   ZoomControls,
@@ -68,11 +68,7 @@ type CanvasPointer = {
   clientX: number;
   clientY: number;
 };
-type GraphCanvasProps = {
-  sidebarCollapsed: boolean;
-};
-
-export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
+export function GraphCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const draggingNodeIdsRef = useRef<ReadonlySet<NodeId>>(new Set());
@@ -89,6 +85,7 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
   } = useAnimatedNullableState<GraphContextMenuTarget>();
 
   const graph = useAtomValue(graphAtom);
+  const layout = useAtomValue(editorLayoutAtom);
   const mode = useAtomValue(editorModeAtom);
   const [edgeDraft, setEdgeDraft] = useAtom(edgeDraftAtom);
   const selection = useAtomValue(selectionAtom);
@@ -99,10 +96,7 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
 
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
-  const chrome = useMemo<GraphCanvasChrome>(
-    () => ({ sidebarCollapsed }),
-    [sidebarCollapsed],
-  );
+  const chrome = useMemo<GraphCanvasChrome>(() => ({ layout }), [layout]);
 
   const exportPng = useGraphImageExport({
     cyRef,
@@ -116,7 +110,9 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
     isGraphOutOfView,
     nodeHitboxes,
     updateRenderedHitboxes,
-  } = useRenderedHitboxes({ graph, mode, sidebarCollapsed });
+  } = useRenderedHitboxes({ chrome, graph, mode });
+  const isGraphOutOfViewRef = useRef(isGraphOutOfView);
+  isGraphOutOfViewRef.current = isGraphOutOfView;
 
   const { edgeRoutingMeta, edgeRoutingOptions } = useEdgeRoutingMeta(graph);
 
@@ -296,23 +292,64 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
       setZoomPercent: updateZoomPercent,
     });
 
+  const editSelectedNode = useCallback(() => {
+    const nodeId = selectionRef.current.nodeIds[0];
+    const hitbox = nodeHitboxes.find((node) => node.id === nodeId);
+
+    if (nodeId && hitbox) {
+      openNodeLabelEdit(nodeId, { x: hitbox.x, y: hitbox.y });
+    }
+  }, [nodeHitboxes, openNodeLabelEdit]);
+  const editSelectedEdge = useCallback(() => {
+    const edgeId = selectionRef.current.edgeIds[0];
+    const hitbox = edgeLabelHitboxes.find((edge) => edge.id === edgeId);
+
+    if (edgeId && hitbox) {
+      openEdgeInlineEdit(edgeId, { x: hitbox.x, y: hitbox.y });
+    }
+  }, [edgeLabelHitboxes, openEdgeInlineEdit]);
+  const editSelection = useCallback(() => {
+    const current = selectionRef.current;
+
+    if (current.nodeIds.length === 1 && current.edgeIds.length === 0) {
+      editSelectedNode();
+      return true;
+    }
+
+    if (current.edgeIds.length === 1 && current.nodeIds.length === 0) {
+      editSelectedEdge();
+      return true;
+    }
+
+    return false;
+  }, [editSelectedEdge, editSelectedNode]);
+
   useEffect(() => {
     registerGraphCanvasApi({
+      editSelection,
       fitView,
       fitAfterNextGraphRender: () => {
         pendingFitAfterUpdateRef.current = true;
       },
       exportPng,
+      resetZoom: resetCanvasZoom,
+      isGraphOutOfView: () => isGraphOutOfViewRef.current,
     });
 
     return () => registerGraphCanvasApi(null);
-  }, [exportPng, fitView, registerGraphCanvasApi]);
+  }, [
+    editSelection,
+    exportPng,
+    fitView,
+    registerGraphCanvasApi,
+    resetCanvasZoom,
+  ]);
 
   useGraphCanvasLifecycle({
     containerRef,
     cyRef,
     elements,
-    sidebarCollapsed,
+    chrome,
     edgeRoutingOptions,
     graph,
     mode,
@@ -469,7 +506,7 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
   return (
     <div
       className={[
-        "relative h-full min-h-[420px] w-full overflow-hidden bg-[var(--bg-deep)]",
+        "relative h-full min-h-0 w-full overflow-hidden bg-[var(--bg)]",
         mode === "edge" ? "cursor-crosshair" : "",
       ].join(" ")}
       onClick={handleCanvasClick}
@@ -477,23 +514,20 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
       onPointerLeave={handleCanvasPointerLeave}
       onPointerMove={handleCanvasPointerMove}
     >
-      <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle,var(--canvas-grid)_1px,transparent_1.4px)] [background-size:24px_24px] opacity-[0.75]" />
+      <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:24px_24px]" />
       <div
         ref={containerRef}
         className="relative z-10 h-full w-full"
         onPointerDownCapture={previewRangeSelectionPointerDown}
       />
-      <FitGraphButton
-        visible={isGraphOutOfView}
-        chrome={chrome}
-        onFitView={fitView}
-      />
       <ZoomControls
         disabled={!graphHasElements}
         minZoom={minZoom}
         maxZoom={maxZoom}
+        offsetForMobile={layout === "mobile"}
         zoomPercent={zoomPercent}
         zoomStep={zoomStep}
+        onFitView={fitView}
         onZoom={zoomCanvas}
         onResetZoom={resetCanvasZoom}
       />
@@ -533,22 +567,8 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
           onResetEdgeCurve={(edgeId) =>
             executeCommand(updateEdgeCommand(edgeId, { routing: undefined }))
           }
-          onEditSelectedNode={() => {
-            const nodeId = selection.nodeIds[0];
-            const hitbox = nodeHitboxes.find((node) => node.id === nodeId);
-
-            if (nodeId && hitbox) {
-              openNodeLabelEdit(nodeId, { x: hitbox.x, y: hitbox.y });
-            }
-          }}
-          onEditSelectedEdge={() => {
-            const edgeId = selection.edgeIds[0];
-            const hitbox = edgeLabelHitboxes.find((edge) => edge.id === edgeId);
-
-            if (edgeId && hitbox) {
-              openEdgeInlineEdit(edgeId, { x: hitbox.x, y: hitbox.y });
-            }
-          }}
+          onEditSelectedNode={editSelectedNode}
+          onEditSelectedEdge={editSelectedEdge}
           onDeleteSelection={() => deleteSelection(selection)}
         />
       ) : null}
@@ -653,12 +673,15 @@ export function GraphCanvas({ sidebarCollapsed }: GraphCanvasProps) {
           target={contextMenuPresence.value}
           graph={graph}
           panelState={contextMenuPresence.state}
-          sidebarCollapsed={sidebarCollapsed}
           selection={selection}
           onClose={() => setContextMenuTarget(null)}
           onEditNodeLabel={openNodeLabelEdit}
           onEditEdgeValue={openEdgeInlineEdit}
           onDeleteSelection={deleteContextSelection}
+          onReverseEdges={reverseSelectionEdges}
+          onResetEdgeCurve={(edgeId) =>
+            executeCommand(updateEdgeCommand(edgeId, { routing: undefined }))
+          }
         />
       ) : null}
     </div>

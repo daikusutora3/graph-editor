@@ -14,30 +14,27 @@ import type { ImportEvaluation } from "../../io/import-types";
 import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
 import { graphAtom } from "../../shell/state/graph-atoms";
-import { useAnimatedNullableState } from "../../ui/use-panel-presence";
-import { useDebouncedValue } from "../../ui/use-debounced-value";
+import { useDebouncedValue } from "../../ui/hooks/use-debounced-value";
 
 import { useApplyGraphModel } from "./use-apply-graph-model";
 
 export type StarterTab = "paste" | "sample";
 
 type GraphStarterStateOptions = {
+  open: boolean;
+  onClose: () => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 };
 
 export function useGraphStarterState({
+  open,
+  onClose,
   textareaRef,
 }: GraphStarterStateOptions) {
   const graph = useAtomValue(graphAtom);
   const applyGraphModel = useApplyGraphModel();
   const [inputText, setInputText] = useState("");
   const [issues, setIssues] = useState<string[]>([]);
-  const {
-    openValue,
-    panelPresence,
-    setValue: setOpenValue,
-  } = useAnimatedNullableState<"starter">();
-  const open = openValue !== null;
   const [tab, setTab] = useState<StarterTab>("paste");
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const importOptions = useMemo<ImportOptions>(
@@ -75,15 +72,7 @@ export function useGraphStarterState({
       : (preview?.warnings ?? []);
 
   const close = () => {
-    setOpenValue(null);
-  };
-
-  const openPaste = () => {
-    setInputText("");
-    setIssues([]);
-    setImportFormat("auto");
-    setOpenValue("starter");
-    setTab("paste");
+    onClose();
   };
 
   useEffect(() => {
@@ -91,17 +80,9 @@ export function useGraphStarterState({
       return;
     }
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        close();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
+    setInputText("");
+    setIssues([]);
+    setImportFormat("auto");
   }, [open]);
 
   useEffect(() => {
@@ -161,8 +142,6 @@ export function useGraphStarterState({
     importFormat,
     issues,
     open,
-    panelPresence,
-    openPaste,
     preview,
     setImportFormat: selectImportFormat,
     visibleIssues: issues.length > 0 ? issues : previewWarnings,

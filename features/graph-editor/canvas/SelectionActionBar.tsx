@@ -1,8 +1,5 @@
 "use client";
 
-import { ArrowLeftRight, Pencil, RotateCcw, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
-
 import { useI18n } from "../i18n/I18nProvider";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
 import {
@@ -16,6 +13,14 @@ import type {
   NodeId,
 } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
+import { Button, Kbd } from "../ui/primitives";
+import { cn } from "@/lib/utils";
+
+import {
+  describeSelection,
+  resolveSelectionActions,
+  type SelectionActionId,
+} from "./selection-actions";
 
 type SelectionActionBarProps = {
   graph: GraphModel;
@@ -49,288 +54,196 @@ export function SelectionActionBar({
   const selectedEdges = graph.edges.filter((edge) =>
     selection.edgeIds.includes(edge.id),
   );
-  const selectedNodeColors = new Set(
+  const nodeColors = new Set(
     selectedNodes.map((node) => node.color ?? "paper"),
   );
-  const selectedEdgeColors = new Set(
+  const edgeColors = new Set(
     selectedEdges.map((edge) => edge.color ?? "paper"),
   );
-  const selectedNodeColor =
-    selectedNodes.length > 0 && selectedNodeColors.size === 1
-      ? ([...selectedNodeColors][0] as GraphColor)
-      : null;
-  const selectedEdgeColor =
-    selectedEdges.length > 0 && selectedEdgeColors.size === 1
-      ? ([...selectedEdgeColors][0] as GraphColor)
-      : null;
-  const mixedSelection =
-    selection.nodeIds.length > 0 && selection.edgeIds.length > 0;
-  const selectedElementColors = new Set([
-    ...selectedNodeColors,
-    ...selectedEdgeColors,
-  ]);
-  const selectedElementColor =
-    mixedSelection && selectedElementColors.size === 1
-      ? ([...selectedElementColors][0] as GraphColor)
-      : null;
-  const canReverseSelectedEdges =
-    graph.settings.directed &&
-    selectedEdges.some((edge) => edge.source !== edge.target);
-  const canEditSelectedNode =
-    selection.nodeIds.length === 1 && selection.edgeIds.length === 0;
-  const canEditSelectedEdge =
-    selection.edgeIds.length === 1 && selection.nodeIds.length === 0;
-  const manuallyRoutedEdge =
-    canEditSelectedEdge && selectedEdges[0]?.routing?.bowPx != null
-      ? selectedEdges[0]
-      : null;
+  const mixedSelection = selectedNodes.length > 0 && selectedEdges.length > 0;
+  const swatchKind =
+    mixedSelection || selectedNodes.length > 0 ? "node" : "edge";
+  const activeColor = (() => {
+    const colors = mixedSelection
+      ? new Set([...nodeColors, ...edgeColors])
+      : swatchKind === "node"
+        ? nodeColors
+        : edgeColors;
+    return colors.size === 1 ? ([...colors][0] as GraphColor) : null;
+  })();
+  const description = describeSelection(graph, selection, messages);
+  const actions = resolveSelectionActions(graph, selection, messages);
+  const runAction = (id: SelectionActionId) => {
+    switch (id) {
+      case "edit":
+        if (selection.nodeIds.length === 1 && selection.edgeIds.length === 0) {
+          onEditSelectedNode();
+        } else {
+          onEditSelectedEdge();
+        }
+        return;
+      case "reverse":
+        onReverseEdges(selection.edgeIds);
+        return;
+      case "reset-curve":
+        if (selection.edgeIds[0]) {
+          onResetEdgeCurve(selection.edgeIds[0]);
+        }
+        return;
+      case "delete":
+        onDeleteSelection();
+    }
+  };
 
   return (
     <div
-      className={[
-        "pointer-events-none absolute right-[calc(var(--app-space-3)+3.5rem+var(--app-space-5))] bottom-[var(--app-space-5)] z-30 flex justify-center px-[var(--app-space-4)] transition-[left,right,bottom] duration-[var(--app-duration-base)] ease-[var(--app-ease)] motion-reduce:transition-none max-md:right-[var(--app-space-3)] max-md:bottom-[calc(var(--app-space-5)+3rem)] max-md:left-[var(--app-space-3)] max-md:z-50",
-        chrome.sidebarCollapsed
-          ? "left-[calc(var(--app-space-3)+3.5rem+var(--app-space-5))]"
-          : "left-[calc(var(--app-space-3)+var(--app-toolbar-width)+var(--app-space-5))]",
-      ].join(" ")}
+      className={cn(
+        "pointer-events-none absolute right-3 left-3 z-30 flex justify-center",
+        chrome.layout === "mobile" ? "bottom-[92px]" : "bottom-6",
+      )}
     >
-      <div className="pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] px-2 py-1.5 backdrop-blur-md">
-        {mixedSelection ? (
-          <GraphColorPicker
-            kind="selection"
-            selectedColor={selectedElementColor}
-            onPick={(color) => {
-              onSetNodeColor(selection.nodeIds, color);
-              onSetEdgeColor(selection.edgeIds, color);
-            }}
-          />
-        ) : selection.nodeIds.length > 0 ? (
-          <GraphColorPicker
-            kind="node"
-            selectedColor={selectedNodeColor}
-            onPick={(color) => onSetNodeColor(selection.nodeIds, color)}
-          />
-        ) : null}
-        {!mixedSelection && selection.edgeIds.length > 0 ? (
-          <GraphColorPicker
-            kind="edge"
-            selectedColor={selectedEdgeColor}
-            onPick={(color) => onSetEdgeColor(selection.edgeIds, color)}
-          />
-        ) : null}
-        {canReverseSelectedEdges ? (
-          <>
-            <SelectionActionDivider />
-            <SelectionActionButton
-              label={messages.canvas.reverseEdges}
-              title={messages.canvas.reverseEdgesTitle}
-              icon={<ArrowLeftRight className="size-4" />}
-              onClick={() => onReverseEdges(selection.edgeIds)}
+      <div
+        role="toolbar"
+        aria-label={description}
+        className="ge-panel ge-pop pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pr-1.5 pl-3 backdrop-blur-[12px]"
+      >
+        <span className="pr-2.5 text-xs font-semibold whitespace-nowrap text-[var(--muted)]">
+          {description}
+        </span>
+        <span
+          role="radiogroup"
+          aria-label={
+            swatchKind === "node"
+              ? messages.canvas.nodeColor
+              : messages.canvas.edgeColor
+          }
+          className="flex items-center gap-1.5 border-x border-[var(--line)] px-2.5 py-1"
+        >
+          {(swatchKind === "node"
+            ? SELECTABLE_NODE_COLORS
+            : SELECTABLE_EDGE_COLORS
+          ).map((color) => (
+            <ColorSwatch
+              key={color}
+              color={color}
+              kind={swatchKind}
+              active={activeColor === color}
+              label={messages.canvas.colorFor(
+                swatchKind,
+                messages.canvas.colors[color],
+              )}
+              onPick={() => {
+                if (mixedSelection) {
+                  onSetNodeColor(selection.nodeIds, color);
+                  onSetEdgeColor(selection.edgeIds, color);
+                } else if (swatchKind === "node") {
+                  onSetNodeColor(selection.nodeIds, color);
+                } else {
+                  onSetEdgeColor(selection.edgeIds, color);
+                }
+              }}
             />
-          </>
-        ) : null}
-        {canEditSelectedNode || canEditSelectedEdge ? (
-          <>
-            <SelectionActionDivider />
-            <SelectionActionButton
-              label={
-                canEditSelectedNode
-                  ? messages.contextMenu.editNodeLabel
-                  : graph.settings.weighted
-                    ? messages.canvas.editEdgeWeight
-                    : messages.contextMenu.editEdgeLabel
-              }
-              icon={<Pencil className="size-4" />}
-              onClick={
-                canEditSelectedNode ? onEditSelectedNode : onEditSelectedEdge
-              }
-            />
-          </>
-        ) : null}
-        {manuallyRoutedEdge ? (
-          <>
-            <SelectionActionDivider />
-            <SelectionActionButton
-              label={messages.canvas.resetEdgeCurve}
-              icon={<RotateCcw className="size-4" />}
-              onClick={() => onResetEdgeCurve(manuallyRoutedEdge.id)}
-            />
-          </>
-        ) : null}
-        <SelectionActionDivider />
-        <SelectionActionButton
-          label={messages.common.delete}
-          icon={<Trash2 className="size-4" />}
-          onClick={onDeleteSelection}
-        />
+          ))}
+        </span>
+        {actions.map(({ id, icon: Icon, label, kbd, danger }) => (
+          <Button
+            key={id}
+            aria-label={label}
+            title={label}
+            variant={danger ? "danger" : "ghost"}
+            className="rounded-lg"
+            onClick={() => runAction(id)}
+          >
+            <Icon className="size-[15px]" aria-hidden="true" />
+            {label}
+            {kbd ? (
+              <Kbd
+                size="md"
+                className={danger ? "bg-[var(--danger-fill)] text-inherit" : ""}
+              >
+                {kbd}
+              </Kbd>
+            ) : null}
+          </Button>
+        ))}
       </div>
     </div>
   );
 }
 
-function SelectionActionDivider() {
-  return (
-    <div className="mx-0.5 h-5 w-px shrink-0 bg-[var(--divider)]" aria-hidden />
-  );
-}
-
-function SelectionActionButton({
-  icon,
+function ColorSwatch({
+  active,
+  color,
+  kind,
   label,
-  title = label,
-  onClick,
+  onPick,
 }: {
-  icon: ReactNode;
+  active: boolean;
+  color: GraphColor;
+  kind: "node" | "edge";
   label: string;
-  title?: string;
-  onClick: () => void;
+  onPick: () => void;
 }) {
+  const fill = kind === "node" ? swatchFill(color) : swatchStroke(color);
+  const stroke = swatchStroke(color);
+
   return (
     <button
       type="button"
-      aria-label={title}
-      title={title}
-      onClick={onClick}
-      className="inline-grid size-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)] bg-transparent text-[var(--text-dim)] transition-colors hover:bg-[var(--state-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
-    >
-      {icon}
-      <span className="sr-only">{label}</span>
-    </button>
-  );
-}
-
-function GraphColorPicker({
-  kind,
-  selectedColor,
-  onPick,
-}: {
-  kind: "node" | "edge" | "selection";
-  selectedColor: GraphColor | null;
-  onPick: (color: GraphColor) => void;
-}) {
-  const { messages } = useI18n();
-  const label =
-    kind === "node"
-      ? messages.canvas.nodeColor
-      : kind === "edge"
-        ? messages.canvas.edgeColor
-        : `${messages.canvas.nodeColor} / ${messages.canvas.edgeColor}`;
-  const title =
-    kind === "node"
-      ? messages.canvas.nodeColorTitle
-      : kind === "edge"
-        ? messages.canvas.edgeColorTitle
-        : `${messages.canvas.nodeColorTitle} / ${messages.canvas.edgeColorTitle}`;
-  const colors =
-    kind === "node" ? SELECTABLE_NODE_COLORS : SELECTABLE_EDGE_COLORS;
-
-  return (
-    <div
-      role="radiogroup"
+      role="radio"
+      aria-checked={active}
       aria-label={label}
-      className="flex flex-wrap items-center justify-center gap-1"
-      title={title}
-    >
-      {colors.map((color) => {
-        const active = selectedColor === color;
-        const colorLabel = messages.canvas.colors[color];
-
-        return (
-          <button
-            key={color}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={
-              kind === "selection"
-                ? `${label}: ${colorLabel}`
-                : messages.canvas.colorFor(kind, colorLabel)
-            }
-            title={colorLabel}
-            onClick={() => onPick(color)}
-            className={[
-              [
-                "grid size-8 place-items-center bg-transparent transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none",
-                kind === "node"
-                  ? "rounded-full border border-[var(--canvas-node-border)]"
-                  : kind === "edge"
-                    ? "rounded-[var(--app-radius-sm)]"
-                    : "rounded-full border border-[var(--canvas-node-border)]",
-              ].join(" "),
-              active && kind !== "edge"
-                ? "shadow-[0_0_0_2px_var(--bg),0_0_0_3.5px_var(--accent-ring)]"
-                : "",
-              active && kind === "edge" ? "bg-[var(--state-selected-bg)]" : "",
-            ].join(" ")}
-            style={
-              kind !== "edge"
-                ? { backgroundColor: graphColorFill(color) }
-                : undefined
-            }
-          >
-            {kind === "edge" ? (
-              <svg
-                width="26"
-                height="14"
-                viewBox="0 0 26 14"
-                aria-hidden="true"
-              >
-                <line
-                  x1="4"
-                  y1="7"
-                  x2="22"
-                  y2="7"
-                  stroke={edgeColorStroke(color)}
-                  strokeWidth={active ? 5 : 4}
-                  strokeLinecap="round"
-                />
-              </svg>
-            ) : null}
-          </button>
-        );
-      })}
-    </div>
+      title={label}
+      onClick={onPick}
+      className={cn(
+        "size-[22px] shrink-0 rounded-full p-0 transition-shadow focus-visible:outline-none",
+        active
+          ? "shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent)]"
+          : "shadow-[0_0_0_1px_var(--hair)] hover:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--fill-2)] focus-visible:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent-ring)]",
+      )}
+      style={{ background: fill, border: `1.5px solid ${stroke}` }}
+    />
   );
 }
 
-function graphColorFill(color: GraphColor) {
+export function swatchFill(color: GraphColor) {
   switch (color) {
-    case "yellow":
-      return "var(--graph-swatch-yellow)";
     case "white":
-      return "var(--graph-swatch-white)";
+      return "var(--canvas-node-white)";
     case "black":
-      return "var(--graph-swatch-black)";
+      return "var(--canvas-node-black)";
     case "red":
-      return "var(--graph-swatch-red)";
+      return "var(--canvas-node-red)";
+    case "yellow":
+      return "var(--canvas-node-yellow)";
     case "blue":
-      return "var(--graph-swatch-blue)";
+      return "var(--canvas-node-blue)";
     case "green":
-      return "var(--graph-swatch-green)";
+      return "var(--canvas-node-green)";
     case "pink":
-      return "var(--graph-swatch-pink)";
+      return "var(--canvas-node-pink)";
     default:
-      return "var(--graph-swatch-paper)";
+      return "var(--canvas-node)";
   }
 }
 
-function edgeColorStroke(color: GraphColor) {
+export function swatchStroke(color: GraphColor) {
   switch (color) {
-    case "yellow":
-      return "var(--graph-swatch-yellow)";
     case "white":
-      return "var(--graph-swatch-white)";
+      return "var(--canvas-node-black)";
     case "black":
-      return "var(--graph-swatch-black)";
+      return "var(--canvas-edge-black)";
     case "red":
-      return "var(--graph-swatch-red)";
+      return "var(--canvas-edge-red)";
+    case "yellow":
+      return "var(--canvas-edge-yellow)";
     case "blue":
-      return "var(--graph-swatch-blue)";
+      return "var(--canvas-edge-blue)";
     case "green":
-      return "var(--graph-swatch-green)";
+      return "var(--canvas-edge-green)";
     case "pink":
-      return "var(--graph-swatch-pink)";
+      return "var(--canvas-edge-pink)";
     default:
-      return "var(--graph-swatch-edge)";
+      return "var(--canvas-node-border)";
   }
 }

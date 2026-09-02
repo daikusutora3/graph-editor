@@ -12,9 +12,12 @@ import {
 import type { GraphCanvasExportOptions } from "./graph-canvas-types";
 
 type GraphCanvasApi = {
+  editSelection: () => boolean;
   fitView: () => void;
   fitAfterNextGraphRender: () => void;
   exportPng: (detail: GraphCanvasExportOptions) => Promise<Blob>;
+  isGraphOutOfView: () => boolean;
+  resetZoom: () => void;
 };
 
 type GraphCanvasApiContextValue = GraphCanvasApi & {
@@ -22,9 +25,12 @@ type GraphCanvasApiContextValue = GraphCanvasApi & {
 };
 
 const missingCanvasApi: GraphCanvasApi = {
+  editSelection: () => false,
   fitView: () => {},
   fitAfterNextGraphRender: () => {},
   exportPng: () => Promise.reject(new Error("Graph canvas is not ready")),
+  isGraphOutOfView: () => false,
+  resetZoom: () => {},
 };
 
 const GraphCanvasApiContext = createContext<GraphCanvasApiContextValue | null>(
@@ -42,7 +48,10 @@ export function GraphCanvasProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<GraphCanvasApiContextValue>(
     () => ({
+      editSelection: () => callApi((api) => api.editSelection()),
       fitView: () => callApi((api) => api.fitView()),
+      isGraphOutOfView: () => callApi((api) => api.isGraphOutOfView()),
+      resetZoom: () => callApi((api) => api.resetZoom()),
       fitAfterNextGraphRender: () =>
         callApi((api) => api.fitAfterNextGraphRender()),
       exportPng: (detail) => callApi((api) => api.exportPng(detail)),

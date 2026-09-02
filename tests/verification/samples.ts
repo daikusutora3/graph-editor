@@ -17,7 +17,7 @@ import {
   isBipartite,
   isDirectedAcyclic,
 } from "../../features/graph-editor/core/graph/graph-analysis";
-import { createPreviewEdgePath } from "../../features/graph-editor/ui/SampleGraphPreview";
+import { createPreviewEdgePath } from "../../features/graph-editor/ui/samples/SampleGraphPreview";
 import { createVerification } from "./harness";
 
 type IndexedGraph = {

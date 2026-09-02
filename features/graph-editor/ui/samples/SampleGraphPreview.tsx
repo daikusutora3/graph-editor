@@ -1,9 +1,9 @@
 import { useId } from "react";
 
-import type { SampleGraphKind } from "../samples/sample-graphs";
-import type { EdgeId, GraphModel } from "../core/graph/model";
-import { computeEdgeRouting } from "../core/layout/edge-routing";
-import { edgeCurveSvgPath } from "../core/layout/edge-route-geometry";
+import type { SampleGraphKind } from "../../samples/sample-graphs";
+import type { EdgeId, GraphModel } from "../../core/graph/model";
+import { computeEdgeRouting } from "../../core/layout/edge-routing";
+import { edgeCurveSvgPath } from "../../core/layout/edge-route-geometry";
 import { cn } from "@/lib/utils";
 
 type SampleGraphPreviewProps = {
@@ -156,9 +156,9 @@ export function SampleGraphPreview({
                 fill="var(--canvas-node-text)"
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontFamily="var(--app-font-ui)"
+                fontFamily="var(--font-ui)"
                 fontSize={Math.max(8, radius * 0.92)}
-                fontWeight={800}
+                fontWeight={600}
               >
                 {node.label}
               </text>

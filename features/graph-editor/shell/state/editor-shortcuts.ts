@@ -1,3 +1,4 @@
+import type { EditorPanel } from "./editor-layout";
 import type { EditorMode } from "./editor-state";
 
 type EditorShortcutEvent = {
@@ -18,6 +19,10 @@ export type GraphEditorShortcut =
   | { type: "cycle-selection-color" }
   | { type: "clear-interaction" }
   | { type: "delete-selection" }
+  | { type: "edit-selection" }
+  | { type: "toggle-panel"; panel: EditorPanel }
+  | { type: "fit-view" }
+  | { type: "reset-zoom" }
   | { type: "nudge-selection"; dx: number; dy: number };
 
 const ARROW_KEY_TO_DELTA: Record<string, { dx: number; dy: number }> = {
@@ -31,6 +36,12 @@ const MODE_KEY_TO_MODE: Record<string, EditorMode> = {
   e: "edge",
   n: "node",
   v: "select",
+};
+
+const PANEL_KEY_TO_PANEL: Record<string, EditorPanel> = {
+  l: "layouts",
+  ",": "settings",
+  "?": "shortcuts",
 };
 
 export function resolveGraphEditorShortcut(
@@ -63,7 +74,20 @@ export function resolveGraphEditorShortcut(
       return { type: "paste-clipboard" };
     }
 
+    if (key === "0") {
+      return { type: "reset-zoom" };
+    }
+
     return null;
+  }
+
+  if (event.key === "!" || (event.key === "1" && event.shiftKey)) {
+    return { type: "fit-view" };
+  }
+
+  const panel = PANEL_KEY_TO_PANEL[event.key === "?" ? "?" : key];
+  if (panel) {
+    return { type: "toggle-panel", panel };
   }
 
   const mode = MODE_KEY_TO_MODE[key];
@@ -81,6 +105,10 @@ export function resolveGraphEditorShortcut(
 
   if (event.key === "Delete" || event.key === "Backspace") {
     return { type: "delete-selection" };
+  }
+
+  if (event.key === "Enter") {
+    return { type: "edit-selection" };
   }
 
   const arrowDelta = ARROW_KEY_TO_DELTA[event.key];
@@ -105,11 +133,16 @@ export function shouldPreventDefaultForGraphEditorShortcut(
     case "redo":
     case "select-all":
       return true;
+    case "reset-zoom":
+      return true;
     case "copy-selection":
     case "cut-selection":
     case "paste-clipboard":
     case "cycle-selection-color":
     case "nudge-selection":
+    case "edit-selection":
+    case "fit-view":
+    case "toggle-panel":
       return consumed;
     case "set-mode":
     case "clear-interaction":

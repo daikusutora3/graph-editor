@@ -63,6 +63,8 @@ export type GraphCanvasPalette = {
   labelBg: string;
   labelBorder: string;
   active: string;
+  selectedNode: string;
+  selectedNodeText: string;
   activeOpacity: number;
   fontFamily: string;
   nodeSize: number;
@@ -76,8 +78,8 @@ export type CytoscapeElementOptions = {
   edgeRoutingOptions?: EdgeRoutingOptions;
 };
 
-const EDGE_WIDTH = 3.2;
-const SELECTED_EDGE_WIDTH = 4;
+const EDGE_WIDTH = 2.5;
+const SELECTED_EDGE_WIDTH = 3.5;
 const SELECTED_EDGE_ARROW_SCALE = EDGE_WIDTH / SELECTED_EDGE_WIDTH;
 const MULTI_EDGE_WIDTH = EDGE_WIDTH;
 const SELECTED_EDGE_SELECTORS = [
@@ -342,17 +344,17 @@ export function createGraphCanvasStylesheet(
         "background-color": palette.node,
         "background-opacity": 1,
         "border-color": palette.nodeBorder,
-        "border-width": 2.2,
+        "border-width": 2,
         color: palette.nodeText,
         content: "data(displayLabel)",
         "box-selection": "contain",
         "font-family": palette.fontFamily,
         "font-size": palette.nodeFontSize,
-        "font-weight": 800,
+        "font-weight": 600,
         "text-halign": "center",
         "text-valign": "center",
         "text-outline-color": palette.node,
-        "text-outline-width": 1,
+        "text-outline-width": 0,
         "underlay-shape": "ellipse",
       }),
     },
@@ -541,9 +543,13 @@ export function createGraphCanvasStylesheet(
     {
       selector: "node:selected",
       style: cytoscapeStyle({
+        "background-color": palette.selectedNode,
+        "border-color": palette.active,
+        color: palette.selectedNodeText,
+        "text-outline-color": palette.selectedNode,
         "underlay-color": palette.active,
         "underlay-opacity": palette.activeOpacity,
-        "underlay-padding": 8,
+        "underlay-padding": 5,
       }),
     },
     ...SELECTED_EDGE_SELECTORS.map((selector) => ({
@@ -551,19 +557,20 @@ export function createGraphCanvasStylesheet(
       style: cytoscapeStyle({
         width: SELECTED_EDGE_WIDTH,
         "arrow-scale": selectedArrowScale,
+        "line-color": palette.active,
         "line-outline-width": 0,
-        "underlay-color": palette.active,
-        "underlay-opacity": palette.activeOpacity,
-        "underlay-padding": 9,
+        "target-arrow-color": palette.active,
+        "underlay-opacity": 0,
         "z-index": 20,
       }),
     })),
     {
       selector: ".edge-source",
       style: cytoscapeStyle({
+        "border-color": palette.active,
         "underlay-color": palette.active,
         "underlay-opacity": palette.activeOpacity,
-        "underlay-padding": 8,
+        "underlay-padding": 5,
       }),
     },
   ];

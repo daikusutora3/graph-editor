@@ -1,7 +1,11 @@
 "use client";
 
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
+
+import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
+import { editorPanelAtom } from "../../shell/state/editor-atoms";
+import { toggleEditorPanel } from "../../shell/state/editor-layout";
 
 import { isEditorShortcutBlockedTarget } from "../../adapters/browser/shortcut-targets";
 import {
@@ -46,6 +50,9 @@ export function useGraphEditorShortcuts() {
   const deleteSelection = useSetAtom(deleteSelectionAtom);
   const undo = useSetAtom(undoAtom);
   const redo = useSetAtom(redoAtom);
+  const panel = useAtomValue(editorPanelAtom);
+  const setPanel = useSetAtom(editorPanelAtom);
+  const canvas = useGraphCanvasApi();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -84,15 +91,36 @@ export function useGraphEditorShortcuts() {
           return pasteGraphClipboard();
         case "set-mode":
           setMode(shortcut.mode);
+          if (shortcut.mode !== "select" && panel !== null) {
+            setPanel(null);
+          }
           return false;
         case "cycle-selection-color":
           return cycleSelectionColor();
         case "clear-interaction":
+          if (panel !== null) {
+            setPanel(null);
+            return false;
+          }
           clearInteractionState();
           return false;
         case "delete-selection":
           deleteSelection();
           return false;
+        case "edit-selection":
+          if (panel !== null) {
+            return false;
+          }
+          return canvas.editSelection();
+        case "toggle-panel":
+          setPanel(toggleEditorPanel(panel, shortcut.panel));
+          return true;
+        case "fit-view":
+          canvas.fitView();
+          return true;
+        case "reset-zoom":
+          canvas.resetZoom();
+          return true;
         case "nudge-selection":
           return nudgeSelectedNodes({ dx: shortcut.dx, dy: shortcut.dy });
       }
@@ -102,16 +130,19 @@ export function useGraphEditorShortcuts() {
 
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
+    canvas,
     clearInteractionState,
     copyGraphSelection,
     cutGraphSelection,
     cycleSelectionColor,
     deleteSelection,
     nudgeSelectedNodes,
+    panel,
     pasteGraphClipboard,
     redo,
     selectAllGraph,
     setMode,
+    setPanel,
     undo,
   ]);
 }
