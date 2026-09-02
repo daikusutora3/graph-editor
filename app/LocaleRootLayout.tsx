@@ -6,7 +6,7 @@ import {
   DEFAULT_THEME,
   SUPPORTED_THEME_MODES,
   THEME_STORAGE_KEY,
-} from "@/features/graph-editor/ui/theme-constants";
+} from "@/features/graph-editor/ui/theme/theme-constants";
 
 const themeInitScript = `
 (() => {

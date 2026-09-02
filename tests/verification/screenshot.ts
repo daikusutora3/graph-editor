@@ -1,7 +1,7 @@
 import {
   MAX_LONG_EDGE_PX,
   PNG_EXPORT_LONG_EDGE_PRESETS,
-} from "../../features/graph-editor/ui/graph-io-types";
+} from "../../features/graph-editor/ui/io/graph-io-types";
 import {
   clampLongEdgePx,
   clampPaddingPx,
@@ -12,7 +12,7 @@ import {
   resolveLongEdgePx,
   resolvePaddingPx,
   shouldAcceptScreenshotPreviewRequest,
-} from "../../features/graph-editor/ui/graph-io-screenshot-state";
+} from "../../features/graph-editor/ui/io/graph-io-screenshot-state";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Screenshot");
@@ -169,7 +169,7 @@ function verifyPreviewStateHelpers() {
 
 function verifyScreenshotSizingHelpers() {
   expect(
-    resolveLongEdgePx(1024, 1600) === 1024 &&
+    resolveLongEdgePx(1920, 1600) === 1920 &&
       resolveLongEdgePx("custom", 1600) === 1600,
     "long-edge presets should resolve custom values only for custom mode",
   );
@@ -178,20 +178,20 @@ function verifyScreenshotSizingHelpers() {
     "padding presets should resolve custom values only for custom mode",
   );
   expect(
-    clampLongEdgePx(Number.NaN) === 640 &&
-      clampLongEdgePx(1) === 320 &&
+    clampLongEdgePx(Number.NaN) === 1920 &&
+      clampLongEdgePx(1) === 480 &&
       clampLongEdgePx(10_000) === MAX_LONG_EDGE_PX,
     "long-edge values should clamp to supported bounds",
   );
   expect(
-    PNG_EXPORT_LONG_EDGE_PRESETS.length === 3 &&
-      PNG_EXPORT_LONG_EDGE_PRESETS.includes(1024),
+    PNG_EXPORT_LONG_EDGE_PRESETS.length === 4 &&
+      PNG_EXPORT_LONG_EDGE_PRESETS.includes(3840),
     "long-edge presets should stay compact while keeping a large option",
   );
   expect(
     clampPaddingPx(Number.NaN) === 24 &&
       clampPaddingPx(-1) === 0 &&
-      clampPaddingPx(999) === 320,
+      clampPaddingPx(999) === 160,
     "padding values should clamp to supported bounds",
   );
   expect(

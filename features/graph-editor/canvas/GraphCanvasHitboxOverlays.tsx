@@ -172,7 +172,7 @@ export function SelectEdgeHitboxes({
                     : `Edit edge label ${edge.label}`
                 : messages.canvas.editEdgeLabel
           }
-          className="absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-text rounded-[var(--app-radius-sm)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+          className="absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-text rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
           inert={rangeSelectionActive}
           style={{
             left: edge.x,
@@ -324,9 +324,9 @@ export function EdgeBendHandle({
       aria-label={handleLabel}
       title={handleLabel}
       className={[
-        "absolute z-[24] size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full border-2 shadow-[var(--app-shadow-card)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none active:cursor-grabbing",
+        "absolute z-[24] size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full border-2 shadow-[var(--shadow)] focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none active:cursor-grabbing",
         showsManualRouting
-          ? "border-[var(--canvas-overlay-bg)] bg-[var(--accent)]"
+          ? "border-[var(--panel-solid)] bg-[var(--accent)]"
           : "border-[var(--accent)] bg-white",
       ].join(" ")}
       style={{ left: position.x, top: position.y }}

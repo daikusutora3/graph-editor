@@ -33,7 +33,7 @@ import {
 import {
   isMacShortcutPlatformValue,
   shortcutPlatformValue,
-} from "../../features/graph-editor/ui/ModeToolbar";
+} from "../../features/graph-editor/ui/hooks/shortcut-platform";
 import {
   edgeDraftAtom,
   editorModeAtom,

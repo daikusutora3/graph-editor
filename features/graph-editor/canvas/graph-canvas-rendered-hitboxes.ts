@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { GraphModel } from "../core/graph/model";
 import type { EditorMode } from "../shell/state/editor-state";
+import type { GraphCanvasChrome } from "./graph-canvas-types";
 
 import {
   readEdgeLabelHitboxes,
@@ -17,13 +18,13 @@ import { readGraphOutOfView } from "../adapters/cytoscape/graph-canvas-viewport"
 type UseRenderedHitboxesOptions = {
   graph: GraphModel;
   mode: EditorMode;
-  sidebarCollapsed: boolean;
+  chrome: GraphCanvasChrome;
 };
 
 export function useRenderedHitboxes({
   graph,
   mode,
-  sidebarCollapsed,
+  chrome,
 }: UseRenderedHitboxesOptions) {
   const pendingHitboxCyRef = useRef<Core | null>(null);
   const hitboxFrameRef = useRef<number | null>(null);
@@ -38,9 +39,7 @@ export function useRenderedHitboxes({
       const nextNodeHitboxes = readNodeHitboxes(cy, graph);
       const nextEdgeLabelHitboxes =
         mode === "select" ? readEdgeLabelHitboxes(cy, graph) : [];
-      const nextGraphOutOfView = readGraphOutOfView(cy, {
-        sidebarCollapsed,
-      });
+      const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
 
       setNodeHitboxes((current) =>
         sameNodeHitboxes(current, nextNodeHitboxes)
@@ -56,7 +55,7 @@ export function useRenderedHitboxes({
         current === nextGraphOutOfView ? current : nextGraphOutOfView,
       );
     },
-    [graph, mode, sidebarCollapsed],
+    [chrome, graph, mode],
   );
 
   const updateRenderedHitboxes = useCallback(

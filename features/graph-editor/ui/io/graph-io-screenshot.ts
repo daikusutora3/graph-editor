@@ -3,13 +3,13 @@
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useGraphCanvasApi } from "../canvas/GraphCanvasProvider";
+import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
 import {
   downloadBlob,
   ensurePngBlob,
   formatTimestamp,
-} from "../adapters/browser/file-actions";
-import { useI18n } from "../i18n/I18nProvider";
+} from "../../adapters/browser/file-actions";
+import { useI18n } from "../../i18n/I18nProvider";
 import type {
   PngExportBackground,
   PngExportLongEdgePreset,
@@ -31,8 +31,8 @@ import {
   resolvePaddingPx,
   shouldAcceptScreenshotPreviewRequest,
 } from "./graph-io-screenshot-state";
-import type { ThemeMode } from "./theme";
-import { useDebouncedValue } from "./use-debounced-value";
+import type { ThemeMode } from "../theme/theme";
+import { useDebouncedValue } from "../hooks/use-debounced-value";
 
 type GraphIOScreenshotOptions = {
   graphRevision: number;

@@ -40,13 +40,13 @@ export function inlineEditCssProperties({
   );
   const width =
     edit.kind === "node-label"
-      ? `max(calc(var(--app-canvas-node-size) * var(--gv-inline-edit-zoom) - 0.625rem), calc(${textUnits}ch + 0.75rem))`
-      : `max(calc(1.5rem * var(--gv-inline-edit-zoom)), calc(${textUnits}ch + 0.875rem))`;
+      ? `max(calc(var(--canvas-node-size) * var(--ge-inline-edit-zoom) - 0.625rem), calc(${textUnits}ch + 0.75rem))`
+      : `max(calc(1.5rem * var(--ge-inline-edit-zoom)), calc(${textUnits}ch + 0.875rem))`;
 
   return {
     maxWidth: "calc(100vw - 2rem)",
     width,
-    "--gv-inline-edit-zoom": String(zoom),
+    "--ge-inline-edit-zoom": String(zoom),
   } as CSSProperties;
 }
 

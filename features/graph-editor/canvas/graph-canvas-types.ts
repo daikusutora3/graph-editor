@@ -1,4 +1,5 @@
 import type { EdgeId, NodeId } from "../core/graph/model";
+import type { EditorLayout } from "../shell/state/editor-layout";
 
 export type ContextMenuAnchorRect = {
   height: number;
@@ -29,7 +30,7 @@ export type RenderedPoint = {
 };
 
 export type GraphCanvasChrome = {
-  sidebarCollapsed: boolean;
+  layout: EditorLayout;
 };
 
 export type GraphCanvasExportOptions = {

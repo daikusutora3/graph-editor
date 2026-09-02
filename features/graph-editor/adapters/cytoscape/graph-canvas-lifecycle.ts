@@ -16,17 +16,14 @@ import type {
   EditorMode,
   SelectionState,
 } from "../../shell/state/editor-state";
+import type { GraphCanvasChrome } from "../../canvas/graph-canvas-types";
 
 import {
-  APP_ANIMATION_DURATION_MS,
-  APP_ANIMATION_EASING,
   centerGraphOrigin,
   fitGraphToAvailableViewport,
   MAX_CANVAS_ZOOM,
   MIN_CANVAS_ZOOM,
-  prefersReducedMotion,
   readCanvasPalette,
-  readGraphViewportCenterX,
   readZoomPercent,
   syncCytoscapeSelection,
 } from "./graph-canvas-viewport";
@@ -36,7 +33,7 @@ type UseGraphCanvasLifecycleOptions = {
   containerRef: RefObject<HTMLDivElement | null>;
   cyRef: MutableRefObject<Core | null>;
   elements: ReturnType<typeof graphModelToCytoscapeElements>;
-  sidebarCollapsed: boolean;
+  chrome: GraphCanvasChrome;
   edgeRoutingOptions: EdgeRoutingOptions;
   graph: GraphModel;
   mode: EditorMode;
@@ -54,7 +51,7 @@ export function useGraphCanvasLifecycle({
   containerRef,
   cyRef,
   elements,
-  sidebarCollapsed,
+  chrome,
   edgeRoutingOptions,
   graph,
   mode,
@@ -67,16 +64,15 @@ export function useGraphCanvasLifecycle({
   suppressSelectionSyncRef,
   updateRenderedHitboxes,
 }: UseGraphCanvasLifecycleOptions) {
-  const previousSidebarCollapsedRef = useRef<boolean | null>(null);
   const arrowScaleRef = useRef(graph.settings.arrowScale);
   const flushRenderedHitboxesRef = useRef(flushRenderedHitboxes);
   const setZoomPercentRef = useRef(setZoomPercent);
-  const sidebarCollapsedRef = useRef(sidebarCollapsed);
+  const chromeRef = useRef(chrome);
   const updateRenderedHitboxesRef = useRef(updateRenderedHitboxes);
   arrowScaleRef.current = graph.settings.arrowScale;
   flushRenderedHitboxesRef.current = flushRenderedHitboxes;
   setZoomPercentRef.current = setZoomPercent;
-  sidebarCollapsedRef.current = sidebarCollapsed;
+  chromeRef.current = chrome;
   updateRenderedHitboxesRef.current = updateRenderedHitboxes;
 
   useEffect(() => {
@@ -106,9 +102,12 @@ export function useGraphCanvasLifecycle({
         return;
       }
 
-      centerGraphOrigin(cy, {
-        sidebarCollapsed: sidebarCollapsedRef.current,
-      });
+      if (cy.elements().length > 0) {
+        fitGraphToAvailableViewport(cy, chromeRef.current);
+      } else {
+        centerGraphOrigin(cy, chromeRef.current);
+      }
+      updateRenderedHitboxesRef.current(cy);
       setZoomPercentRef.current(readZoomPercent(cy));
     });
 
@@ -200,13 +199,9 @@ export function useGraphCanvasLifecycle({
       cy.resize();
 
       if (cy.elements().length > 0) {
-        fitGraphToAvailableViewport(cy, {
-          sidebarCollapsed: sidebarCollapsedRef.current,
-        });
+        fitGraphToAvailableViewport(cy, chromeRef.current);
       } else {
-        centerGraphOrigin(cy, {
-          sidebarCollapsed: sidebarCollapsedRef.current,
-        });
+        centerGraphOrigin(cy, chromeRef.current);
       }
 
       updateRenderedHitboxesRef.current(cy);
@@ -236,9 +231,7 @@ export function useGraphCanvasLifecycle({
 
     if (elements.length === 0) {
       pendingFitAfterUpdateRef.current = false;
-      centerGraphOrigin(cy, {
-        sidebarCollapsed: sidebarCollapsedRef.current,
-      });
+      centerGraphOrigin(cy, chromeRef.current);
       flushRenderedHitboxesRef.current(cy);
       setZoomPercentRef.current(readZoomPercent(cy));
       return;
@@ -269,50 +262,9 @@ export function useGraphCanvasLifecycle({
     }
 
     cy.resize();
-
-    const previousSidebarCollapsed = previousSidebarCollapsedRef.current;
-    previousSidebarCollapsedRef.current = sidebarCollapsed;
-
-    if (
-      previousSidebarCollapsed !== null &&
-      previousSidebarCollapsed !== sidebarCollapsed
-    ) {
-      const previousCenter = readGraphViewportCenterX(cy, {
-        sidebarCollapsed: previousSidebarCollapsed,
-      });
-      const nextCenter = readGraphViewportCenterX(cy, {
-        sidebarCollapsed,
-      });
-
-      if (previousCenter !== null && nextCenter !== null) {
-        const pan = cy.pan();
-        const nextPan = { x: pan.x + nextCenter - previousCenter, y: pan.y };
-
-        if (!prefersReducedMotion()) {
-          cy.stop(true, false);
-          cy.animate(
-            { pan: nextPan },
-            {
-              duration: APP_ANIMATION_DURATION_MS,
-              easing: APP_ANIMATION_EASING,
-            },
-          );
-
-          const timeoutId = window.setTimeout(() => {
-            flushRenderedHitboxesRef.current(cy);
-            setZoomPercentRef.current(readZoomPercent(cy));
-          }, APP_ANIMATION_DURATION_MS + 40);
-
-          return () => window.clearTimeout(timeoutId);
-        }
-
-        cy.pan(nextPan);
-      }
-    }
-
     flushRenderedHitboxesRef.current(cy);
     setZoomPercentRef.current(readZoomPercent(cy));
-  }, [cyRef, sidebarCollapsed]);
+  }, [cyRef, chrome]);
 
   useEffect(() => {
     const cy = cyRef.current;

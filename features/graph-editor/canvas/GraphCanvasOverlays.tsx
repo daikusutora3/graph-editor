@@ -4,55 +4,18 @@ import { Maximize2, Minus, Plus } from "lucide-react";
 import type { CSSProperties, MutableRefObject, RefObject } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
-import type { GraphCanvasChrome } from "./graph-canvas-types";
+import { IconButton, focusRing } from "../ui/primitives";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { InlineEditTarget, RenderedPoint } from "./graph-canvas-types";
-
-type FitGraphButtonProps = {
-  visible: boolean;
-  chrome: GraphCanvasChrome;
-  onFitView: () => void;
-};
-
-export function FitGraphButton({
-  visible,
-  chrome,
-  onFitView,
-}: FitGraphButtonProps) {
-  const { messages } = useI18n();
-
-  if (!visible) {
-    return null;
-  }
-
-  return (
-    <div
-      className={[
-        "pointer-events-none absolute top-[var(--app-space-5)] right-[calc(var(--app-space-3)+3.5rem+var(--app-space-5))] z-30 flex justify-center transition-[left,right] duration-[var(--app-duration-base)] ease-[var(--app-ease)] motion-reduce:transition-none",
-        chrome.sidebarCollapsed
-          ? "left-[calc(var(--app-space-3)+3.5rem+var(--app-space-5))]"
-          : "left-[calc(var(--app-space-3)+var(--app-toolbar-width)+var(--app-space-5))]",
-      ].join(" ")}
-    >
-      <button
-        type="button"
-        aria-label={messages.canvas.fitGraph}
-        onClick={onFitView}
-        className="pointer-events-auto inline-flex min-h-10 max-w-full items-center gap-2 rounded-[var(--app-radius-md)] border border-[var(--border)] bg-[var(--canvas-overlay-bg)] px-[var(--app-space-4)] py-2 text-[length:var(--app-text-sm)] leading-tight font-semibold text-[var(--text)] shadow-[var(--app-shadow-card)] backdrop-blur-md transition-colors hover:bg-[var(--state-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
-      >
-        <Maximize2 className="size-4" />
-        <span>{messages.canvas.fitGraphTitle}</span>
-      </button>
-    </div>
-  );
-}
 
 type ZoomControlsProps = {
   disabled: boolean;
   maxZoom: number;
   minZoom: number;
+  offsetForMobile: boolean;
   zoomPercent: number;
   zoomStep: number;
+  onFitView: () => void;
   onResetZoom: () => void;
   onZoom: (delta: number) => void;
 };
@@ -66,75 +29,69 @@ export function ZoomControls({
   disabled,
   maxZoom,
   minZoom,
+  offsetForMobile,
   zoomPercent,
   zoomStep,
+  onFitView,
   onResetZoom,
   onZoom,
 }: ZoomControlsProps) {
   const { messages } = useI18n();
   const minZoomPercent = Math.round(minZoom * 100);
   const maxZoomPercent = Math.round(maxZoom * 100);
-  const zoomOutDisabled = zoomPercent <= minZoomPercent;
-  const zoomInDisabled = zoomPercent >= maxZoomPercent;
+  const zoomOutDisabled = disabled || zoomPercent <= minZoomPercent;
+  const zoomInDisabled = disabled || zoomPercent >= maxZoomPercent;
 
   return (
     <div
-      className="absolute right-[var(--app-space-5)] bottom-[var(--app-space-5)] z-40 flex h-9 items-center gap-[var(--app-space-2)]"
+      className={[
+        "ge-panel absolute right-6 z-40 flex h-9 items-center gap-0.5 rounded-[10px] px-[3px] backdrop-blur-[12px]",
+        offsetForMobile ? "bottom-[92px]" : "bottom-6",
+      ].join(" ")}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="flex h-9 items-center overflow-hidden rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] backdrop-blur-md">
-        <button
-          type="button"
-          aria-label={messages.canvas.zoomOut}
-          aria-disabled={disabled || zoomOutDisabled}
-          title={messages.canvas.zoomOut}
-          disabled={disabled}
-          onClick={() => {
-            if (!zoomOutDisabled) {
-              onZoom(-zoomStep);
-            }
-          }}
-          className={[
-            "gv-icon-button h-full w-8 rounded-none bg-transparent",
-            zoomOutDisabled
-              ? "cursor-not-allowed opacity-[var(--state-disabled-opacity)]"
-              : "",
-          ].join(" ")}
-        >
-          <Minus className="size-4" />
-        </button>
-        <button
-          type="button"
-          aria-label={messages.canvas.resetZoom(zoomPercent)}
-          title={messages.canvas.resetZoom(zoomPercent)}
-          disabled={disabled}
-          onClick={onResetZoom}
-          className="grid h-full min-w-12 place-items-center border-x border-[var(--divider)] bg-transparent px-[var(--app-space-2)] font-mono text-[length:var(--app-text-xs)] leading-none font-bold text-[var(--text-dim)] transition-colors hover:bg-[var(--state-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none focus-visible:ring-inset disabled:opacity-[var(--state-disabled-opacity)]"
-        >
-          {zoomPercent}%
-        </button>
-        <button
-          type="button"
-          aria-label={messages.canvas.zoomIn}
-          aria-disabled={disabled || zoomInDisabled}
-          title={messages.canvas.zoomIn}
-          disabled={disabled}
-          onClick={() => {
-            if (!zoomInDisabled) {
-              onZoom(zoomStep);
-            }
-          }}
-          className={[
-            "gv-icon-button h-full w-8 rounded-none bg-transparent",
-            zoomInDisabled
-              ? "cursor-not-allowed opacity-[var(--state-disabled-opacity)]"
-              : "",
-          ].join(" ")}
-        >
-          <Plus className="size-4" />
-        </button>
-      </div>
+      <IconButton
+        disabled={zoomOutDisabled}
+        label={messages.canvas.zoomOut}
+        size={30}
+        onClick={() => onZoom(-zoomStep)}
+      >
+        <Minus className="size-[15px]" />
+      </IconButton>
+      <button
+        type="button"
+        aria-label={messages.canvas.resetZoom(zoomPercent)}
+        title={messages.canvas.resetZoom(zoomPercent)}
+        disabled={disabled}
+        onClick={onResetZoom}
+        className={[
+          "grid h-[30px] min-w-[52px] place-items-center rounded-[7px] bg-transparent px-1.5 font-mono text-xs font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--disabled)] disabled:hover:bg-transparent",
+          focusRing,
+        ].join(" ")}
+      >
+        {zoomPercent}%
+      </button>
+      <IconButton
+        disabled={zoomInDisabled}
+        label={messages.canvas.zoomIn}
+        size={30}
+        onClick={() => onZoom(zoomStep)}
+      >
+        <Plus className="size-[15px]" />
+      </IconButton>
+      <span
+        aria-hidden="true"
+        className="mx-0.5 h-[18px] w-px bg-[var(--line)]"
+      />
+      <IconButton
+        disabled={disabled}
+        label={messages.canvas.fitGraphTitle}
+        size={30}
+        onClick={onFitView}
+      >
+        <Maximize2 className="size-[15px]" />
+      </IconButton>
     </div>
   );
 }
@@ -185,7 +142,7 @@ export function EdgeDraftLine({
         y1={segment.source.y}
         x2={segment.target.x}
         y2={segment.target.y}
-        stroke={hasError ? "var(--err)" : "var(--accent-2-strong)"}
+        stroke={hasError ? "var(--danger)" : "var(--accent)"}
         strokeWidth="2.5"
         strokeDasharray="8 7"
         strokeLinecap="round"
@@ -195,8 +152,8 @@ export function EdgeDraftLine({
           cx={segment.target.x}
           cy={segment.target.y}
           r="5"
-          fill={hasError ? "var(--err-soft)" : "var(--accent-2-soft)"}
-          stroke={hasError ? "var(--err)" : "var(--accent-2-strong)"}
+          fill={hasError ? "var(--danger-fill)" : "var(--accent-fill)"}
+          stroke={hasError ? "var(--danger)" : "var(--accent)"}
           strokeWidth="1.5"
         />
       ) : null}
@@ -216,7 +173,7 @@ export function EditFeedbackNodes({
       {nodes.map((node) => (
         <span
           key={`${feedbackId}:${node.id}`}
-          className="gv-edit-feedback-node pointer-events-none absolute z-[18] size-16 rounded-full border-2"
+          className="ge-edit-feedback-node pointer-events-none absolute z-[18] size-16 rounded-full border-2"
           style={{ left: node.x, top: node.y }}
         />
       ))}
@@ -256,10 +213,10 @@ export function InlineEditForm({
   return (
     <form
       className={[
-        "gv-inline-edit-form pointer-events-auto absolute z-40 -translate-x-1/2 -translate-y-1/2",
+        "ge-inline-edit-form pointer-events-auto absolute z-40 -translate-x-1/2 -translate-y-1/2",
         edit.kind === "node-label"
-          ? "gv-inline-edit-form-node"
-          : "gv-inline-edit-form-edge",
+          ? "ge-inline-edit-form-node"
+          : "ge-inline-edit-form-edge",
       ].join(" ")}
       style={{
         left: position.x,
@@ -330,19 +287,19 @@ export function InlineEditForm({
           }
         }}
         className={[
-          "gv-inline-edit-input",
+          "ge-inline-edit-input",
           edit.kind === "node-label"
-            ? "gv-inline-edit-input-node"
-            : "gv-inline-edit-input-edge",
+            ? "ge-inline-edit-input-node"
+            : "ge-inline-edit-input-edge",
           edit.error
-            ? "gv-inline-edit-input-error"
-            : "gv-inline-edit-input-valid",
+            ? "ge-inline-edit-input-error"
+            : "ge-inline-edit-input-valid",
         ].join(" ")}
       />
       {edit.error ? (
         <div
           role="alert"
-          className="gv-inline-edit-error absolute top-full left-1/2 mt-1 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 text-center"
+          className="ge-inline-edit-error absolute top-full left-1/2 mt-1 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 text-center"
         >
           {edit.error}
         </div>

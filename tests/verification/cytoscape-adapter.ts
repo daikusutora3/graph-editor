@@ -385,6 +385,8 @@ function verifyArrowScaleStyles() {
     labelBg: "#000",
     labelBorder: "#000",
     active: "#000",
+    selectedNode: "#000",
+    selectedNodeText: "#000",
     activeOpacity: 0.4,
     fontFamily: "sans-serif",
     nodeSize: 48,
@@ -408,8 +410,12 @@ function verifyArrowScaleStyles() {
       "arrow-scale"
     ],
   );
+  // Selected edges widen from 2.5px to 3.5px, so the arrowhead scale is
+  // reduced by the same ratio to keep the rendered arrowhead size.
+  const expectedSelectedArrowScale = 1.5 * (2.5 / 3.5);
   expect(
-    Math.abs(selectedArrowScale - 1.2) < Number.EPSILON * 2,
+    Math.abs(selectedArrowScale - expectedSelectedArrowScale) <
+      Number.EPSILON * 2,
     "selected edges should preserve the configured arrowhead size",
   );
 }

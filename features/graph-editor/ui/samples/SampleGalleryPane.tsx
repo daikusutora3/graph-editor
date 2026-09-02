@@ -6,8 +6,8 @@ import { type FocusEvent, useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import type { GraphModel } from "../core/graph/model";
-import { useI18n } from "../i18n/I18nProvider";
+import type { GraphModel } from "../../core/graph/model";
+import { useI18n } from "../../i18n/I18nProvider";
 import {
   clampSizedSampleNodeCount,
   createSampleGraph,
@@ -18,22 +18,25 @@ import {
   type SampleGraphKind,
   type SizedKnightMoveKind,
   type SizedSampleGraphKind,
-} from "../samples/sample-graphs";
+} from "../../samples/sample-graphs";
 import {
   sampleGraphCount,
   sampleGraphGroups,
   type SampleGraphItem,
-} from "../samples/registry";
-import { graphAtom } from "../shell/state/graph-atoms";
-import { useApplyGraphModel } from "../workflows/starter/use-apply-graph-model";
-import { SelectControl } from "./SelectControl";
-
-import { SampleGraphPreview } from "./SampleGraphPreview";
+} from "../../samples/registry";
+import { graphAtom } from "../../shell/state/graph-atoms";
+import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
 import {
-  SAMPLE_CARD_LAYOUT_CLASS,
-  SAMPLE_GALLERY_GRID_CLASS,
-  SAMPLE_PREVIEW_FRAME_CLASS,
-} from "./sample-gallery-layout";
+  Button,
+  SectionLabel,
+  Select,
+  TextInput,
+  focusRing,
+} from "../primitives";
+import { SampleGraphPreview } from "./SampleGraphPreview";
+
+export const SAMPLE_GALLERY_GRID_CLASS =
+  "grid grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))] gap-2.5";
 
 type SampleGalleryPaneProps = {
   onSampleApplied: () => void;
@@ -60,6 +63,10 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
       .map((group) => ({
         ...group,
         samples: group.samples.filter((sample) => {
+          if (!query) {
+            return true;
+          }
+
           const groupCopy = messages.samples.group[group.key];
           const sampleCopy = messages.samples.item[sample.kind];
           const sampleTitle = sampleCopy?.title ?? sample.label;
@@ -68,12 +75,9 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
             (locale === "ja"
               ? sample.subtitle
               : humanizeSampleKind(sample.kind));
-          if (!query) {
-            return true;
-          }
-
           const haystack =
             `${groupCopy.label} ${groupCopy.note} ${sample.kind} ${sampleTitle} ${sampleSubtitle}`.toLowerCase();
+
           return haystack.includes(query);
         }),
       }))
@@ -84,8 +88,7 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
     0,
   );
 
-  const generateSample = (kind: SampleGraphKind) => {
-    const model = createSampleGraph(kind, graph.settings);
+  const applyModel = (model: GraphModel) => {
     applyGraphModel(model, {
       clearEdgeDraft: true,
       clearSelection: true,
@@ -93,42 +96,38 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
       selectMode: true,
     });
     onSampleApplied();
+  };
+  const generateSample = (kind: SampleGraphKind) => {
+    applyModel(createSampleGraph(kind, graph.settings));
   };
   const generateSizedSample = (
     kind: SizedSampleGraphKind,
     values: SizedSampleValues,
   ) => {
     const usesGridDimensions = kind === "grid" || kind === "knight";
-    const parsedNodeCount = usesGridDimensions
-      ? values.rows * values.columns
-      : values.nodeCount;
-    const normalizedNodeCount = clampSizedSampleNodeCount(
+    const nodeCount = clampSizedSampleNodeCount(
       kind,
-      parsedNodeCount,
+      usesGridDimensions ? values.rows * values.columns : values.nodeCount,
     );
-    const model = createSizedSampleGraph(
-      kind,
-      normalizedNodeCount,
-      graph.settings,
-      usesGridDimensions
-        ? {
-            columns: values.columns,
-            knightMove: values.knightMove,
-            rows: values.rows,
-          }
-        : undefined,
+
+    applyModel(
+      createSizedSampleGraph(
+        kind,
+        nodeCount,
+        graph.settings,
+        usesGridDimensions
+          ? {
+              columns: values.columns,
+              knightMove: values.knightMove,
+              rows: values.rows,
+            }
+          : undefined,
+      ),
     );
-    applyGraphModel(model, {
-      clearEdgeDraft: true,
-      clearSelection: true,
-      fitAfterUpdate: true,
-      selectMode: true,
-    });
-    onSampleApplied();
   };
 
   return (
-    <div className="gv-sample-gallery flex min-h-0 flex-1 flex-col">
+    <div className="ge-fade-in flex min-h-0 flex-1 flex-col">
       <SampleGalleryFilter
         query={sampleQuery}
         total={sampleGraphCount}
@@ -136,20 +135,20 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
         onQueryChange={setSampleQuery}
       />
 
-      <div className="gv-scrollbar flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto px-[var(--app-space-3)] pt-[var(--app-space-2)] pb-[var(--app-space-3)]">
+      <div className="ge-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4">
         {filteredSampleGroups.length > 0 ? (
           filteredSampleGroups.map((group) => (
-            <section key={group.label} className="gv-sample-group space-y-2">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-[var(--app-space-3)] px-1">
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <div className="gv-section-label">
+            <section key={group.key} className="flex flex-col gap-2.5">
+              <div className="flex items-start justify-between gap-3 px-0.5">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <SectionLabel>
                     {messages.samples.group[group.key].label}
-                  </div>
-                  <div className="text-[length:var(--app-text-micro)] leading-tight font-semibold break-words whitespace-normal text-[var(--text-mute)]">
+                  </SectionLabel>
+                  <div className="text-[11.5px] leading-snug text-[var(--faint)]">
                     {messages.samples.group[group.key].note}
                   </div>
                 </div>
-                <div className="font-mono text-[length:var(--app-text-micro)] font-extrabold text-[var(--text-mute)]">
+                <div className="font-mono text-[11px] font-semibold text-[var(--faint)] tabular-nums">
                   {group.samples.length}
                 </div>
               </div>
@@ -167,32 +166,18 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
             </section>
           ))
         ) : (
-          <div className="rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--canvas-overlay-bg)] px-[var(--app-space-5)] py-[var(--app-space-7)] text-center shadow-[var(--app-shadow-card)] backdrop-blur-md">
-            <div className="[font-family:var(--app-font-display)] text-[length:var(--app-text-title)] font-extrabold text-[var(--text)]">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] px-5 py-8 text-center">
+            <div className="text-sm font-bold text-[var(--text)]">
               {messages.samples.empty}
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSampleQuery("");
-              }}
-              className="gv-control mt-[var(--app-space-4)] h-8 px-[var(--app-space-4)] text-[length:var(--app-text-xs)]"
-            >
+            <Button variant="fill" onClick={() => setSampleQuery("")}>
               {messages.samples.clearSearch}
-            </button>
+            </Button>
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function clampPositiveInteger(value: number, fallback: number) {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-
-  return Math.max(1, Math.min(100, Math.round(value)));
 }
 
 function SampleGalleryFilter({
@@ -209,8 +194,8 @@ function SampleGalleryFilter({
   const { messages } = useI18n();
 
   return (
-    <div className="flex flex-wrap items-center gap-[var(--app-space-2)] px-[var(--app-space-3)] pt-[var(--app-space-2)] pb-[var(--app-space-3)]">
-      <label className="flex h-8 min-w-[200px] flex-[1_1_220px] items-center gap-[var(--app-space-2)] rounded-[var(--app-radius-sm)] bg-[var(--state-control-bg)] px-[var(--app-space-3)] text-[var(--text-mute)] focus-within:ring-2 focus-within:ring-[var(--state-focus-ring)]">
+    <div className="flex items-center gap-3 px-4 pt-3.5 pb-3">
+      <label className="ge-focus flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
         <Search className="size-3.5 shrink-0" aria-hidden="true" />
         <input
           type="search"
@@ -220,20 +205,23 @@ function SampleGalleryFilter({
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={messages.samples.searchPlaceholder}
           aria-label={messages.samples.searchAria}
-          className="min-w-0 flex-1 bg-transparent text-[length:var(--app-text-sm)] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--text-mute)]"
+          className="min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--faint)]"
         />
         {query ? (
           <button
             type="button"
             aria-label={messages.samples.clearSearch}
             onClick={() => onQueryChange("")}
-            className="grid size-5 place-items-center rounded-full text-[var(--text-mute)] hover:bg-[var(--state-hover-bg)] hover:text-[var(--state-hover-text)] focus-visible:ring-2 focus-visible:ring-[var(--state-focus-ring)] focus-visible:outline-none"
+            className={cn(
+              "grid size-5 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]",
+              focusRing,
+            )}
           >
             <X className="size-3" aria-hidden="true" />
           </button>
         ) : null}
       </label>
-      <div className="ml-auto shrink-0 font-mono text-[length:var(--app-text-micro)] font-extrabold text-[var(--text-mute)]">
+      <div className="shrink-0 font-mono text-[11px] font-semibold text-[var(--faint)] tabular-nums">
         {shown} / {total}
       </div>
     </div>
@@ -269,65 +257,59 @@ function SampleCard({
   const sizedKind = isSizedSampleGraphKind(sample.kind) ? sample.kind : null;
   const usesGridDimensions = sizedKind === "grid" || sizedKind === "knight";
 
-  const sampleSummary = (
-    <>
-      <span className={cn(SAMPLE_PREVIEW_FRAME_CLASS, "bg-[var(--bg-deep)]")}>
-        <SampleGraphPreview
-          model={model}
-          sampleKind={sample.kind}
-          width={106}
-          height={80}
-        />
-      </span>
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="max-w-full min-w-0 py-px [font-family:var(--app-font-display)] text-[15px] leading-[1.15] font-extrabold break-words whitespace-normal text-[var(--text)]">
-          {title}
-        </span>
-        <span className="min-w-0 text-[13px] leading-tight font-semibold [overflow-wrap:anywhere] break-words whitespace-normal text-[var(--text-mute)]">
-          {subtitle}
-        </span>
-      </span>
-    </>
-  );
-
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-[var(--app-radius-md)] border border-[var(--divider)] bg-[var(--surface)]",
-      )}
+    <form
+      noValidate
+      className="flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] shadow-[var(--shadow)]"
+      onSubmit={(event) => {
+        event.preventDefault();
+
+        if (!sizedKind) {
+          onApply();
+          return;
+        }
+
+        const normalizedRows = clampPositiveInteger(Number(rows), 4);
+        const normalizedColumns = clampPositiveInteger(Number(columns), 4);
+        const normalizedNodeCount = clampSizedSampleNodeCount(
+          sizedKind,
+          Number(nodeCount),
+        );
+
+        setNodeCount(String(normalizedNodeCount));
+        setRows(String(normalizedRows));
+        setColumns(String(normalizedColumns));
+        onApplySized(sizedKind, {
+          columns: normalizedColumns,
+          knightMove,
+          nodeCount: normalizedNodeCount,
+          rows: normalizedRows,
+        });
+      }}
     >
-      <div className={SAMPLE_CARD_LAYOUT_CLASS}>{sampleSummary}</div>
-      <form
+      <div className="grid grid-cols-[106px_minmax(0,1fr)] items-center gap-3 p-3">
+        <span className="grid h-[88px] w-[106px] place-items-center overflow-hidden rounded-lg bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:12px_12px]">
+          <SampleGraphPreview
+            model={model}
+            sampleKind={sample.kind}
+            width={98}
+            height={76}
+          />
+        </span>
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="text-[14px] leading-tight font-bold break-words text-[var(--text)]">
+            {title}
+          </span>
+          <span className="text-xs leading-snug font-medium [overflow-wrap:anywhere] text-[var(--muted)]">
+            {subtitle}
+          </span>
+        </span>
+      </div>
+      <div
         className={cn(
-          "flex min-h-14 flex-wrap gap-[var(--app-space-2)] border-t border-[var(--divider)] px-[var(--app-space-3)] py-[var(--app-space-2)]",
+          "flex flex-wrap gap-2 border-t border-[var(--hair)] px-3 py-2.5",
           sizedKind ? "items-end" : "items-center",
         )}
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-
-          if (!sizedKind) {
-            onApply();
-            return;
-          }
-
-          const normalizedRows = clampPositiveInteger(Number(rows), 4);
-          const normalizedColumns = clampPositiveInteger(Number(columns), 4);
-          const normalizedNodeCount = clampSizedSampleNodeCount(
-            sizedKind,
-            Number(nodeCount),
-          );
-
-          setNodeCount(String(normalizedNodeCount));
-          setRows(String(normalizedRows));
-          setColumns(String(normalizedColumns));
-          onApplySized(sizedKind, {
-            columns: normalizedColumns,
-            knightMove,
-            nodeCount: normalizedNodeCount,
-            rows: normalizedRows,
-          });
-        }}
       >
         {sizedKind ? (
           usesGridDimensions ? (
@@ -343,24 +325,23 @@ function SampleCard({
                 onChange={setColumns}
               />
               {sizedKind === "knight" ? (
-                <label className="flex min-w-[130px] flex-[1_1_130px] flex-col gap-1">
-                  <span className="gv-section-label">
+                <label className="flex min-w-[120px] flex-[1_1_120px] flex-col gap-1">
+                  <SectionLabel>
                     {messages.samples.sizedKnightMoveLabel}
-                  </span>
-                  <SelectControl
+                  </SectionLabel>
+                  <Select
                     value={knightMove}
                     aria-label={messages.samples.sizedKnightMoveLabel}
                     onChange={(event) =>
                       setKnightMove(event.target.value as SizedKnightMoveKind)
                     }
-                    className="h-8"
                   >
                     {sizedKnightMoveKinds.map((move) => (
                       <option key={move} value={move}>
                         {messages.samples.sizedKnightMoves[move]}
                       </option>
                     ))}
-                  </SelectControl>
+                  </Select>
                 </label>
               ) : null}
             </>
@@ -373,16 +354,18 @@ function SampleCard({
             />
           )
         ) : null}
-        <button
+        <Button
           type="submit"
           aria-label={`${title}: ${messages.samples.sizedCreate}`}
           title={`${title} (${subtitle})`}
-          className="gv-control gv-control-primary ml-auto h-8 px-[var(--app-space-3)] text-[length:var(--app-text-xs)]"
+          size="sm"
+          variant="primary"
+          className="ml-auto px-3"
         >
           {messages.samples.sizedCreate}
-        </button>
-      </form>
-    </div>
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -398,9 +381,9 @@ function CardNumberInput({
   value: string;
 }) {
   return (
-    <label className="flex min-w-[76px] flex-[1_1_76px] flex-col gap-1">
-      <span className="gv-section-label">{label}</span>
-      <input
+    <label className="flex min-w-[68px] flex-[1_1_68px] flex-col gap-1">
+      <SectionLabel>{label}</SectionLabel>
+      <TextInput
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
@@ -414,10 +397,18 @@ function CardNumberInput({
             onChange(nextValue);
           }
         }}
-        className="gv-control gv-card-number-input h-8 w-full px-[var(--app-space-2)] text-[length:var(--app-text-xs)]"
+        className="font-mono tabular-nums"
       />
     </label>
   );
+}
+
+function clampPositiveInteger(value: number, fallback: number) {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.min(100, Math.round(value)));
 }
 
 function selectInputValueOnFocus(event: FocusEvent<HTMLInputElement>) {

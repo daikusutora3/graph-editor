@@ -65,3 +65,32 @@ export function useAnimatedNullableState<T>(initialValue: T | null = null) {
     setValue,
   } as const;
 }
+
+export function usePresence<T>(
+  value: T | null,
+  exitDurationMs = PANEL_EXIT_DURATION_MS,
+) {
+  const [presentValue, setPresentValue] = useState<T | null>(value);
+
+  useEffect(() => {
+    if (value !== null) {
+      setPresentValue(value);
+      return;
+    }
+
+    const timeout = window.setTimeout(
+      () => setPresentValue(null),
+      exitDurationMs,
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [exitDurationMs, value]);
+
+  const visibleValue = value ?? presentValue;
+
+  return {
+    mounted: visibleValue !== null,
+    state: value === null && presentValue !== null ? "closing" : "open",
+    value: visibleValue,
+  } as const;
+}

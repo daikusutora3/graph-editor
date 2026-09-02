@@ -1,0 +1,484 @@
+"use client";
+
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
+import type { GraphModel } from "../../core/graph/model";
+import {
+  copyTextToClipboard,
+  downloadBlob,
+  formatTimestamp,
+} from "../../adapters/browser/file-actions";
+import { useI18n } from "../../i18n/I18nProvider";
+import {
+  exportGraph,
+  hasLossyAdjacencyExport,
+  type GraphExportFormat,
+} from "../../io/export-graph";
+import type { LayoutKind } from "../../layouts";
+import {
+  applyManualLayoutAtom,
+  clearGraphAtom,
+  reverseAllDirectedEdgesAtom,
+  setEditorModeAtom,
+  updateGraphSettingsAtom,
+} from "../../shell/state/editor-actions";
+import {
+  editorLayoutAtom,
+  editorModeAtom,
+} from "../../shell/state/editor-atoms";
+import type { EditorMode } from "../../shell/state/editor-state";
+import {
+  graphAtom,
+  graphIsEmptyAtom,
+  graphRevisionAtom,
+} from "../../shell/state/graph-atoms";
+import {
+  futureAtom,
+  historyAtom,
+  redoAtom,
+  undoAtom,
+} from "../../shell/state/history-atoms";
+import { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
+import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
+import { useEditorPanel } from "./editor-chrome-state";
+import { EdgeModeHint } from "./EdgeModeHint";
+import { EditorPanelShell } from "./EditorPanelShell";
+import {
+  BrandPill,
+  DesktopRightRail,
+  DesktopToolbar,
+  MobileBottomBar,
+  MobileTopRail,
+} from "./EditorToolbar";
+import { EmptyState } from "./EmptyState";
+import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
+import type { CopyState } from "../io/graph-io-types";
+import { useGraphIOScreenshot } from "../io/graph-io-screenshot";
+import { LayoutsPanel } from "../panels/LayoutsPanel";
+import { PngPanelBody, PngPanelFooter } from "../panels/PngPanel";
+import { SettingsPanel } from "../panels/SettingsPanel";
+import {
+  formatModifierShortcut,
+  useShortcutPlatform,
+} from "../hooks/shortcut-platform";
+import { ShortcutsPanel } from "../panels/ShortcutsPanel";
+import {
+  loadSampleGalleryPane,
+  StarterPasteBody,
+  StarterPasteFooter,
+  StarterSampleBody,
+  StarterSampleFooter,
+} from "../panels/StarterPanel";
+import { useThemeMode } from "../theme/theme";
+
+type StarterView = "paste" | "sample";
+
+export function EditorChrome() {
+  const { messages } = useI18n();
+  const layout = useAtomValue(editorLayoutAtom);
+  const mobile = layout === "mobile";
+  const wide = layout === "desktop";
+  const graph = useAtomValue(graphAtom);
+  const graphRevision = useAtomValue(graphRevisionAtom);
+  const graphIsEmpty = useAtomValue(graphIsEmptyAtom);
+  const mode = useAtomValue(editorModeAtom);
+  const history = useAtomValue(historyAtom);
+  const future = useAtomValue(futureAtom);
+  const setMode = useSetAtom(setEditorModeAtom);
+  const undo = useSetAtom(undoAtom);
+  const redo = useSetAtom(redoAtom);
+  const applyManualLayout = useSetAtom(applyManualLayoutAtom);
+  const updateGraphSettings = useSetAtom(updateGraphSettingsAtom);
+  const reverseAllDirectedEdges = useSetAtom(reverseAllDirectedEdgesAtom);
+  const clearGraph = useSetAtom(clearGraphAtom);
+  const { fitAfterNextGraphRender } = useGraphCanvasApi();
+  const applyGraphModel = useApplyGraphModel();
+  const { close, open, panel, presence, toggle } = useEditorPanel();
+  const { theme, setTheme } = useThemeMode();
+  const shortcutPlatform = useShortcutPlatform();
+  const showShortcutHints = shortcutPlatform !== "touch";
+  const undoShortcut = showShortcutHints
+    ? formatModifierShortcut(shortcutPlatform, "Z")
+    : undefined;
+  const redoShortcut = showShortcutHints
+    ? formatModifierShortcut(shortcutPlatform, "Z", { shift: true })
+    : undefined;
+
+  const [exportFormat, setExportFormat] =
+    useState<GraphExportFormat>("edge-list");
+  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const copyResetRef = useRef<number | null>(null);
+  const [clearArmed, setClearArmed] = useState(false);
+  const [starterView, setStarterView] = useState<StarterView>("paste");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const isGraphEmpty = graph.nodes.length === 0;
+  const visiblePanel = presence.value;
+  const exportVisible = panel === "export" || visiblePanel === "export";
+  const exportText = useMemo(
+    () => (exportVisible ? exportGraph(graph, exportFormat) : ""),
+    [exportFormat, exportVisible, graph],
+  );
+  const screenshot = useGraphIOScreenshot({
+    graphRevision,
+    isGraphEmpty,
+    previewEnabled: panel === "png" || visiblePanel === "png",
+    theme,
+  });
+  const starter = useGraphStarterState({
+    open: panel === "starter",
+    onClose: close,
+    textareaRef,
+  });
+
+  useEffect(() => {
+    if (panel !== "starter" || starterView !== "paste") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => textareaRef.current?.focus(), 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [panel, starterView]);
+
+  useEffect(() => {
+    if (panel === "starter") {
+      void loadSampleGalleryPane();
+    }
+  }, [panel]);
+
+  useEffect(() => {
+    if (!clearArmed) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setClearArmed(false), 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [clearArmed]);
+
+  useEffect(() => {
+    if (panel !== "settings" && panel !== "menu") {
+      setClearArmed(false);
+    }
+
+    if (panel !== "export") {
+      setCopyState("idle");
+    }
+  }, [panel]);
+
+  useEffect(
+    () => () => {
+      if (copyResetRef.current !== null) {
+        window.clearTimeout(copyResetRef.current);
+      }
+    },
+    [],
+  );
+
+  const handleModeChange = useCallback(
+    (nextMode: EditorMode) => {
+      setMode(nextMode);
+
+      if (nextMode !== "select" || panel === "starter") {
+        close();
+      }
+    },
+    [close, panel, setMode],
+  );
+
+  const openStarter = useCallback(
+    (view: StarterView) => {
+      setStarterView(view);
+      open("starter");
+    },
+    [open],
+  );
+
+  const applyLayout = useCallback(
+    (kind: LayoutKind) => {
+      applyManualLayout(kind);
+      fitAfterNextGraphRender();
+    },
+    [applyManualLayout, fitAfterNextGraphRender],
+  );
+
+  const toggleOffsetEdges = useCallback(() => {
+    updateGraphSettings({ autoEdgeRouting: !graph.settings.autoEdgeRouting });
+  }, [graph.settings.autoEdgeRouting, updateGraphSettings]);
+
+  const handleClear = useCallback(() => {
+    if (isGraphEmpty && graph.edges.length === 0) {
+      setClearArmed(false);
+      return;
+    }
+
+    if (!clearArmed) {
+      setClearArmed(true);
+      return;
+    }
+
+    clearGraph();
+    setClearArmed(false);
+    close();
+  }, [clearArmed, clearGraph, close, graph.edges.length, isGraphEmpty]);
+
+  const copyExport = useCallback(async () => {
+    const copied = await copyTextToClipboard(exportGraph(graph, exportFormat));
+    setCopyState(copied ? "copied" : "blocked");
+
+    if (copyResetRef.current !== null) {
+      window.clearTimeout(copyResetRef.current);
+    }
+
+    copyResetRef.current = window.setTimeout(() => setCopyState("idle"), 1500);
+  }, [exportFormat, graph]);
+
+  const saveExportTxt = useCallback(() => {
+    downloadBlob(
+      new Blob([exportGraph(graph, exportFormat)], {
+        type: "text/plain;charset=utf-8",
+      }),
+      `graph-editor-${formatTimestamp(new Date())}.txt`,
+    );
+  }, [exportFormat, graph]);
+
+  const loadSampleModel = useCallback(
+    (model: GraphModel) => {
+      applyGraphModel(model, {
+        clearEdgeDraft: true,
+        clearSelection: true,
+        fitAfterUpdate: true,
+        selectMode: true,
+      });
+      close();
+    },
+    [applyGraphModel, close],
+  );
+
+  const nodeEdgeMeta = `N=${graph.nodes.length} M=${graph.edges.length}`;
+  const toolbarProps = {
+    canRedo: future.length > 0,
+    canUndo: history.length > 0,
+    mode,
+    panel,
+    redoShortcut,
+    undoShortcut,
+    onModeChange: handleModeChange,
+    onRedo: redo,
+    onTogglePanel: toggle,
+    onUndo: undo,
+  };
+
+  const renderPanel = () => {
+    if (!visiblePanel) {
+      return null;
+    }
+
+    const shellProps = {
+      layout,
+      onClose: close,
+      panel: visiblePanel,
+      state: presence.state,
+    };
+
+    switch (visiblePanel) {
+      case "layouts":
+        return (
+          <EditorPanelShell {...shellProps} title={messages.chrome.layouts}>
+            <LayoutsPanel
+              graph={graph}
+              onApplyLayout={applyLayout}
+              onToggleOffsetEdges={toggleOffsetEdges}
+            />
+          </EditorPanelShell>
+        );
+      case "settings":
+        return (
+          <EditorPanelShell {...shellProps} title={messages.chrome.settings}>
+            <SettingsPanel
+              clearArmed={clearArmed}
+              graph={graph}
+              mobile={mobile}
+              onClear={handleClear}
+              onReverseAllEdges={() => reverseAllDirectedEdges()}
+              onUpdateSettings={updateGraphSettings}
+            />
+          </EditorPanelShell>
+        );
+      case "menu":
+        return (
+          <EditorPanelShell {...shellProps} title={messages.chrome.menu}>
+            <LayoutsPanel
+              graph={graph}
+              onApplyLayout={applyLayout}
+              onToggleOffsetEdges={toggleOffsetEdges}
+            />
+            <SettingsPanel
+              clearArmed={clearArmed}
+              graph={graph}
+              mobile={mobile}
+              onClear={handleClear}
+              onReverseAllEdges={() => reverseAllDirectedEdges()}
+              onUpdateSettings={updateGraphSettings}
+            />
+          </EditorPanelShell>
+        );
+      case "export":
+        return (
+          <EditorPanelShell
+            {...shellProps}
+            meta={nodeEdgeMeta}
+            title={messages.chrome.export}
+            footer={
+              <ExportPanelFooter
+                copyState={copyState}
+                disabled={!exportText}
+                onCopy={() => void copyExport()}
+                onSaveTxt={saveExportTxt}
+              />
+            }
+          >
+            <ExportPanelBody
+              exportFormat={exportFormat}
+              exportText={exportText}
+              exportWarning={
+                hasLossyAdjacencyExport(graph, exportFormat)
+                  ? messages.exportPanel.adjacencyLossWarning
+                  : undefined
+              }
+              mobile={mobile}
+              onExportFormatChange={(format) => {
+                setExportFormat(format);
+                setCopyState("idle");
+              }}
+            />
+          </EditorPanelShell>
+        );
+      case "png":
+        return (
+          <EditorPanelShell
+            {...shellProps}
+            meta={nodeEdgeMeta}
+            title={messages.chrome.png}
+            footer={
+              <PngPanelFooter
+                copyState={screenshot.copyState}
+                downloadState={screenshot.downloadState}
+                isGraphEmpty={isGraphEmpty}
+                onCopy={screenshot.copy}
+                onDownload={screenshot.download}
+              />
+            }
+          >
+            <PngPanelBody
+              background={screenshot.effectiveBackground}
+              longEdgePx={
+                screenshot.longEdgePreset === "custom"
+                  ? screenshot.customLongEdgePx
+                  : screenshot.longEdgePreset
+              }
+              mobile={mobile}
+              notice={screenshot.copyMessage || screenshot.downloadMessage}
+              paddingPx={
+                screenshot.paddingPreset === "custom"
+                  ? screenshot.customPaddingPx
+                  : screenshot.paddingPreset
+              }
+              preview={screenshot.preview}
+              scope={screenshot.scope}
+              solidBackground={screenshot.solidBackground}
+              theme={theme}
+              onBackgroundChange={screenshot.setBackground}
+              onLongEdgeChange={screenshot.setCustomLongEdgePx}
+              onPaddingChange={screenshot.setCustomPaddingPx}
+              onScopeChange={screenshot.setScope}
+            />
+          </EditorPanelShell>
+        );
+      case "starter":
+        return starterView === "paste" ? (
+          <EditorPanelShell
+            {...shellProps}
+            title={messages.chrome.starterTitle}
+            footer={
+              <StarterPasteFooter
+                starter={starter}
+                onUseSample={() => setStarterView("sample")}
+              />
+            }
+          >
+            <StarterPasteBody starter={starter} textareaRef={textareaRef} />
+          </EditorPanelShell>
+        ) : (
+          <EditorPanelShell
+            {...shellProps}
+            bodyClassName="gap-0"
+            title={messages.chrome.starterSamplesTitle}
+            width={680}
+            footer={
+              <StarterSampleFooter
+                onBackToPaste={() => setStarterView("paste")}
+              />
+            }
+          >
+            <StarterSampleBody onSampleApplied={close} />
+          </EditorPanelShell>
+        );
+      case "shortcuts":
+        return (
+          <EditorPanelShell {...shellProps} title={messages.chrome.shortcuts}>
+            <ShortcutsPanel platform={shortcutPlatform} />
+          </EditorPanelShell>
+        );
+    }
+  };
+
+  return (
+    <>
+      {graphIsEmpty && !visiblePanel ? (
+        <EmptyState
+          graph={graph}
+          mobile={mobile}
+          onDraw={() => handleModeChange("node")}
+          onLoadSample={loadSampleModel}
+          onOpenPaste={() => openStarter("paste")}
+          onOpenSamples={() => openStarter("sample")}
+        />
+      ) : null}
+
+      <BrandPill
+        mobile={mobile}
+        wide={wide}
+        onClick={() => openStarter("paste")}
+      />
+      {mobile ? (
+        <>
+          <MobileTopRail
+            panel={panel}
+            theme={theme}
+            onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onTogglePanel={toggle}
+          />
+          <MobileBottomBar {...toolbarProps} />
+        </>
+      ) : (
+        <>
+          <DesktopToolbar {...toolbarProps} wide={wide} />
+          <DesktopRightRail
+            panel={panel}
+            theme={theme}
+            wide={wide}
+            onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onTogglePanel={toggle}
+          />
+        </>
+      )}
+
+      <EdgeModeHint mobile={mobile} visible={!visiblePanel} />
+
+      {renderPanel()}
+    </>
+  );
+}

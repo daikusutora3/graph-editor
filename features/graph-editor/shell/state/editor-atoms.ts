@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 
 import type { GraphClipboardPayload } from "../../io/clipboard";
+import type { EditorLayout, EditorPanel } from "./editor-layout";
 import {
   createEmptyEdgeDraft,
   createEmptySelection,
@@ -18,3 +19,7 @@ export const edgeDraftAtom = atom<EdgeDraft>(createEmptyEdgeDraft());
 export const graphClipboardAtom = atom<GraphClipboardPayload | null>(null);
 
 export const graphPasteCountAtom = atom(0);
+
+export const editorLayoutAtom = atom<EditorLayout>("desktop");
+
+export const editorPanelAtom = atom<EditorPanel | null>(null);

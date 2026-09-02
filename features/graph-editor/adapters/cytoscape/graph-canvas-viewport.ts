@@ -10,8 +10,12 @@ import type {
 export const MIN_CANVAS_ZOOM = 0.04;
 export const MAX_CANVAS_ZOOM = 1.5;
 export const ZOOM_STEP = 0.1;
-const CANVAS_FIT_PADDING = 80;
-const COMPACT_OVERLAY_RAIL_WIDTH = 56;
+const CANVAS_FIT_PADDING = 48;
+const CHROME_INSETS = {
+  desktop: { left: 16, right: 16, top: 76, bottom: 60 },
+  compact: { left: 16, right: 16, top: 76, bottom: 60 },
+  mobile: { left: 12, right: 12, top: 64, bottom: 88 },
+} as const;
 const VIEWPORT_RESCUE_TOLERANCE_PX = 8;
 export const APP_ANIMATION_DURATION_MS = 180;
 export const APP_ANIMATION_EASING =
@@ -50,12 +54,12 @@ export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
   }
 
   const rect = container.getBoundingClientRect();
-  const insets = graphViewportInsets(rect.width, chrome);
+  const insets = graphViewportInsets(rect, chrome);
   const visibleBounds = {
     x1: insets.left,
-    y1: 0,
+    y1: insets.top,
     x2: rect.width - insets.right,
-    y2: rect.height,
+    y2: rect.height - insets.bottom,
   };
   return !cy
     .nodes()
@@ -126,15 +130,23 @@ export function fitGraphToAvailableViewport(
   }
 
   const rect = container.getBoundingClientRect();
-  const insets = graphViewportInsets(rect.width, chrome);
+
+  if (!hasRenderableSize(rect)) {
+    return;
+  }
+
+  const insets = graphViewportInsets(rect, chrome);
   const availableWidth = Math.max(
     1,
     rect.width - insets.left - insets.right - CANVAS_FIT_PADDING * 2,
   );
-  const availableHeight = Math.max(1, rect.height - CANVAS_FIT_PADDING * 2);
+  const availableHeight = Math.max(
+    1,
+    rect.height - insets.top - insets.bottom - CANVAS_FIT_PADDING * 2,
+  );
   const availableCenter = {
     x: insets.left + CANVAS_FIT_PADDING + availableWidth / 2,
-    y: CANVAS_FIT_PADDING + availableHeight / 2,
+    y: insets.top + CANVAS_FIT_PADDING + availableHeight / 2,
   };
   const bounds = elements.boundingBox({ includeLabels: true });
   const graphWidth = Math.max(bounds.w, 1);
@@ -166,31 +178,30 @@ export function centerGraphOrigin(cy: Core, chrome: GraphCanvasChrome) {
   }
 
   const rect = container.getBoundingClientRect();
-  const insets = graphViewportInsets(rect.width, chrome);
+
+  if (!hasRenderableSize(rect)) {
+    return;
+  }
+
+  const insets = graphViewportInsets(rect, chrome);
   const availableWidth = Math.max(1, rect.width - insets.left - insets.right);
+  const availableHeight = Math.max(1, rect.height - insets.top - insets.bottom);
 
   applyViewport(cy, {
-    pan: { x: insets.left + availableWidth / 2, y: rect.height / 2 },
+    pan: {
+      x: insets.left + availableWidth / 2,
+      y: insets.top + availableHeight / 2,
+    },
     zoom: 1,
   });
 }
 
-export function prefersReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function hasRenderableSize(rect: { width: number; height: number }) {
+  return rect.width >= 2 && rect.height >= 2;
 }
 
-export function readGraphViewportCenterX(cy: Core, chrome: GraphCanvasChrome) {
-  const container = cy.container();
-
-  if (!container) {
-    return null;
-  }
-
-  const rect = container.getBoundingClientRect();
-  const insets = graphViewportInsets(rect.width, chrome);
-  const availableWidth = Math.max(1, rect.width - insets.left - insets.right);
-
-  return insets.left + availableWidth / 2;
+export function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 export function nextAnimationFrame() {
@@ -246,15 +257,14 @@ export function readCanvasPalette(): GraphCanvasPalette {
     labelBg: cssVar("--canvas-label-bg", "#ffffff"),
     labelBorder: cssVar("--canvas-label-border", "#d4d4d8"),
     active: cssVar("--canvas-active", "#2563eb"),
+    selectedNode: cssVar("--canvas-selected-node", "#dbe6fd"),
+    selectedNodeText: cssVar("--canvas-selected-node-text", "#1d4ed8"),
     activeOpacity: cssNumber("--canvas-active-opacity", 0.24),
-    fontFamily: cssVar(
-      "--app-font-code",
-      "JetBrains Mono, IBM Plex Mono, monospace",
-    ),
-    nodeSize: cssPx("--app-canvas-node-size", 48),
-    nodeFontSize: cssPx("--app-canvas-node-font", 14),
-    edgeFontSize: cssPx("--app-canvas-edge-font", 12),
-    labelPadding: cssPx("--app-canvas-label-padding", 4),
+    fontFamily: cssVar("--canvas-font", "system-ui, sans-serif"),
+    nodeSize: cssPx("--canvas-node-size", 48),
+    nodeFontSize: cssPx("--canvas-node-font", 14),
+    edgeFontSize: cssPx("--canvas-edge-font", 12),
+    labelPadding: cssPx("--canvas-label-padding", 4),
   };
 }
 
@@ -277,28 +287,28 @@ function applyViewport(
   cy.pan(pan);
 }
 
-function graphViewportInsets(viewportWidth: number, chrome: GraphCanvasChrome) {
-  const leftInset = chrome.sidebarCollapsed
-    ? cssPx("--app-space-3", 8) +
-      COMPACT_OVERLAY_RAIL_WIDTH +
-      cssPx("--app-space-5", 16)
-    : cssPx("--app-space-3", 8) +
-      cssPx("--app-toolbar-width", 256) +
-      cssPx("--app-space-5", 16);
-  const rightInset =
-    cssPx("--app-space-3", 8) +
-    COMPACT_OVERLAY_RAIL_WIDTH +
-    cssPx("--app-space-5", 16);
-  const maxTotalInset = Math.max(0, viewportWidth - CANVAS_FIT_PADDING * 2);
-  const totalInset = leftInset + rightInset;
+function graphViewportInsets(
+  rect: { width: number; height: number },
+  chrome: GraphCanvasChrome,
+) {
+  const base = CHROME_INSETS[chrome.layout];
+  const maxHorizontal = Math.max(0, rect.width - CANVAS_FIT_PADDING * 2);
+  const maxVertical = Math.max(0, rect.height - CANVAS_FIT_PADDING * 2);
+  const horizontal = base.left + base.right;
+  const vertical = base.top + base.bottom;
+  const horizontalScale =
+    horizontal <= maxHorizontal || horizontal === 0
+      ? 1
+      : maxHorizontal / horizontal;
+  const verticalScale =
+    vertical <= maxVertical || vertical === 0 ? 1 : maxVertical / vertical;
 
-  if (totalInset <= maxTotalInset) {
-    return { left: leftInset, right: rightInset };
-  }
-
-  const scale = totalInset > 0 ? maxTotalInset / totalInset : 0;
-
-  return { left: leftInset * scale, right: rightInset * scale };
+  return {
+    left: base.left * horizontalScale,
+    right: base.right * horizontalScale,
+    top: base.top * verticalScale,
+    bottom: base.bottom * verticalScale,
+  };
 }
 
 function cssVar(name: string, fallback: string) {
