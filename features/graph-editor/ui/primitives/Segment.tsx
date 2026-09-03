@@ -30,7 +30,7 @@ export function Segment<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="grid min-w-0 auto-cols-[minmax(0,1fr)] grid-flow-col overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] shadow-[0_1px_2px_rgb(0_0_0/0.06)]"
+      className="grid min-w-0 shrink-0 auto-cols-[minmax(0,1fr)] grid-flow-col overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] shadow-[0_1px_2px_rgb(0_0_0/0.06)]"
     >
       {options.map((option, index) => {
         const selected = option.value === value;

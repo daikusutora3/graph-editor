@@ -7,7 +7,8 @@ export type ImportFormatKind =
   | "weighted-parent-list"
   | "edge-pairs"
   | "adjacency-list"
-  | "adjacency-matrix";
+  | "adjacency-matrix"
+  | "json";
 
 export type ImportResult = {
   model: GraphModel;
@@ -38,7 +39,8 @@ export type ImportDetectionEvidence =
   | "parent-row"
   | "weighted-parent-rows"
   | "tree-edge-rows"
-  | "edge-rows";
+  | "edge-rows"
+  | "json-document";
 
 export type ImportCandidate = {
   formatKind: ImportFormatKind;

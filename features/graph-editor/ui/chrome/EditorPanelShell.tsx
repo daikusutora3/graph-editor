@@ -282,7 +282,9 @@ export function EditorPanelShell({
           </div>
           <div
             className={cn(
-              "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 pb-4",
+              // Children keep their natural height; long content scrolls instead of
+              // squeezing controls above it.
+              "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 pb-4 [&>*]:shrink-0",
               bodyClassName,
             )}
           >

@@ -19,6 +19,10 @@ import {
   splitTokens,
 } from "./import-utils";
 import { analyzeGraphInput } from "./import-analysis";
+import {
+  looksLikeGraphJson,
+  parseGraphModelJson,
+} from "../core/graph/graph-json";
 import type {
   ImportAnalysis,
   ImportCandidate,
@@ -54,6 +58,11 @@ export function evaluateGraphInput(
       analysis: analyzeGraphInput(input, options),
       result,
     };
+  }
+
+  if (looksLikeGraphJson(input)) {
+    const result = importGraphJson(input, options);
+    return { analysis: analyzeGraphInput(input, options), result };
   }
 
   const lines = readLines(input);
@@ -108,6 +117,10 @@ function parseRequestedFormat(
   options: ImportOptions,
 ): ImportResult {
   const formatOptions = { ...options, format: requestedFormat };
+
+  if (requestedFormat === "json") {
+    return importGraphJson(input, formatOptions);
+  }
 
   if (requestedFormat === "adjacency-matrix") {
     return (
@@ -223,6 +236,7 @@ function evidenceForFormat(format: ImportFormatKind) {
       "weighted-parent-list": "weighted-parent-rows",
       "tree-edge-list": "tree-edge-rows",
       "edge-pairs": "edge-rows",
+      json: "json-document",
     }[format],
   ] as ImportCandidate["evidence"];
 }
@@ -254,4 +268,17 @@ function detectStructuredEdgeListOptions(
     ...options,
     weighted: hasWeightedEdgeRow,
   };
+}
+
+function importGraphJson(input: string, options: ImportOptions): ImportResult {
+  const model = parseGraphModelJson(input);
+
+  if (!model) {
+    return importFailure("Input is not a valid Graph Editor JSON document.", {
+      ...options,
+      format: "json",
+    });
+  }
+
+  return { model, warnings: [], formatKind: "json", format: "JSON" };
 }

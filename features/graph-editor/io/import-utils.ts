@@ -15,7 +15,8 @@ export type ImportFormat =
   | "weighted-parent-list"
   | "edge-pairs"
   | "adjacency-list"
-  | "adjacency-matrix";
+  | "adjacency-matrix"
+  | "json";
 
 export type ImportOptions = Partial<GraphSettings> & {
   format?: ImportFormat;

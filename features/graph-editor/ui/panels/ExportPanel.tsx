@@ -40,6 +40,11 @@ export function ExportPanelBody({
         onChange={onExportFormatChange}
       />
       {exportWarning ? <Notice>{exportWarning}</Notice> : null}
+      {exportFormat === "json" ? (
+        <p className="shrink-0 text-xs leading-[1.5] text-[var(--muted)]">
+          {messages.exportPanel.jsonNote}
+        </p>
+      ) : null}
       <div className="grid min-h-[200px] grid-cols-[28px_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
         <div
           aria-hidden="true"
@@ -67,11 +72,13 @@ export function ExportPanelBody({
 export function ExportPanelFooter({
   copyState,
   disabled,
+  extension,
   onCopy,
   onSaveTxt,
 }: {
   copyState: CopyState;
   disabled: boolean;
+  extension: string;
   onCopy: () => void;
   onSaveTxt: () => void;
 }) {
@@ -86,7 +93,7 @@ export function ExportPanelFooter({
         onClick={onSaveTxt}
       >
         <Download className="size-[15px]" aria-hidden="true" />
-        {messages.chrome.saveTxt}
+        {messages.chrome.saveAs(extension)}
       </Button>
       <Button
         disabled={disabled}

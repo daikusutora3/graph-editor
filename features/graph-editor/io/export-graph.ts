@@ -1,20 +1,45 @@
 import { exportEdgeList } from "./export-edge-list";
 import type { GraphModel } from "../core/graph/model";
 import { getExportNodeEntries } from "./export-node-labels";
+import { serializeGraphModel } from "../core/graph/graph-json";
 
 export type GraphExportFormat =
   | "edge-list"
   | "adjacency-list"
-  | "adjacency-matrix";
+  | "adjacency-matrix"
+  | "json";
 
 export const GRAPH_EXPORT_FORMATS: Array<{
   value: GraphExportFormat;
   label: string;
-  extension: "txt";
+  extension: "txt" | "json";
+  mimeType: string;
 }> = [
-  { value: "edge-list", label: "辺リスト", extension: "txt" },
-  { value: "adjacency-list", label: "隣接リスト", extension: "txt" },
-  { value: "adjacency-matrix", label: "隣接行列", extension: "txt" },
+  {
+    value: "edge-list",
+    label: "辺リスト",
+    extension: "txt",
+    mimeType: "text/plain;charset=utf-8",
+  },
+  {
+    value: "adjacency-list",
+    label: "隣接リスト",
+    extension: "txt",
+    mimeType: "text/plain;charset=utf-8",
+  },
+  {
+    value: "adjacency-matrix",
+    label: "隣接行列",
+    extension: "txt",
+    mimeType: "text/plain;charset=utf-8",
+  },
+  // Lossless: keeps positions, colours and manual bends.
+  {
+    value: "json",
+    label: "JSON",
+    extension: "json",
+    mimeType: "application/json",
+  },
 ];
 
 export function exportGraph(
@@ -22,6 +47,8 @@ export function exportGraph(
   format: GraphExportFormat,
 ): string {
   switch (format) {
+    case "json":
+      return serializeGraphModel(model);
     case "adjacency-list":
       return exportAdjacencyList(model);
     case "adjacency-matrix":
@@ -35,7 +62,7 @@ export function hasLossyAdjacencyExport(
   model: GraphModel,
   format: GraphExportFormat,
 ) {
-  if (format === "edge-list") {
+  if (format === "edge-list" || format === "json") {
     return false;
   }
 
