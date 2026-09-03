@@ -1,4 +1,9 @@
 import type { GraphNode } from "../graph/model";
+import {
+  estimateNodeWidth,
+  NODE_SIZE_PX,
+  pillExtentTowards,
+} from "../graph/node-size";
 
 export type EdgeCurveGeometry = {
   controlPointDistancesPx: readonly number[];
@@ -283,9 +288,15 @@ export function minimumCurveDistanceToNode(
   node: GraphNode,
 ) {
   let minimum = Number.POSITIVE_INFINITY;
+  const halfWidth = estimateNodeWidth(node.label) / 2;
+  const halfHeight = NODE_SIZE_PX / 2;
 
   for (const point of sampleEdgeCurve(source, target, curve, 16)) {
-    minimum = Math.min(minimum, Math.hypot(node.x - point.x, node.y - point.y));
+    const dx = point.x - node.x;
+    const dy = point.y - node.y;
+    // Measure from the pill boundary as if it were a circle of NODE_SIZE_PX.
+    const reach = pillExtentTowards(halfWidth, halfHeight, dx, dy) - halfHeight;
+    minimum = Math.min(minimum, Math.hypot(dx, dy) - reach);
   }
 
   return minimum;

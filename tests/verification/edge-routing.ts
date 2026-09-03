@@ -1,7 +1,6 @@
 import {
   edgeBendFromRenderedPointer,
   edgeBendHandlePosition,
-  edgeBowPxFromRenderedPointer,
 } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { createStore } from "jotai/vanilla";
 
@@ -284,13 +283,13 @@ expect(
   "label collision scoring should use the curved edge midpoint instead of its endpoint midpoint",
 );
 
-const pointerBow = edgeBowPxFromRenderedPointer(
+const pointerBow = edgeBendFromRenderedPointer(
   { sourceX: 0, sourceY: 0, targetX: 200, targetY: 0 },
   { x: 100, y: 60 },
   2,
 );
 expect(
-  pointerBow === 60,
+  pointerBow.bowPx === 60,
   "bend handle pointer distance should account for zoom and the quadratic midpoint",
 );
 const pointerBend = edgeBendFromRenderedPointer(
@@ -318,6 +317,9 @@ const renderedMidpoint = edgeBendHandlePosition(
     sourceY: 0,
     targetX: 200,
     targetY: 0,
+    sourceWidth: 48,
+    targetWidth: 48,
+    nodeHeight: 48,
     x: 94,
     y: 63,
     bowPx: 100,

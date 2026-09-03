@@ -1,5 +1,12 @@
 import type { NodeId } from "../core/graph/model";
 
+import type { GraphNode } from "../core/graph/model";
+import {
+  estimateNodeWidth,
+  NODE_SIZE_PX,
+  pillExtentTowards,
+} from "../core/graph/node-size";
+
 export const LAYOUT_NODE_CLEARANCE = 104;
 export const LAYOUT_COMPONENT_GAP = 180;
 export const LAYOUT_CIRCLE_MIN_RADIUS = 120;
@@ -238,6 +245,56 @@ export function ensureMinimumNodeDistance(
   }
 
   return scalePositions(positions, LAYOUT_NODE_CLEARANCE / nearestDistance);
+}
+
+/**
+ * Like ensureMinimumNodeDistance, but measures each pair from the boundary of
+ * its pill-shaped nodes, so wide labels get the same gap as plain circles.
+ */
+export function ensureNodeClearance(
+  positions: Record<NodeId, { x: number; y: number }>,
+  nodes: readonly Pick<GraphNode, "id" | "label">[],
+) {
+  const halfHeight = NODE_SIZE_PX / 2;
+  const gap = LAYOUT_NODE_CLEARANCE - NODE_SIZE_PX;
+  const halfWidths = new Map(
+    nodes.map((node) => [node.id, estimateNodeWidth(node.label) / 2]),
+  );
+  const entries = Object.entries(positions);
+  let scale = 1;
+
+  for (let i = 0; i < entries.length; i += 1) {
+    const [idA, a] = entries[i]!;
+
+    for (let j = i + 1; j < entries.length; j += 1) {
+      const [idB, b] = entries[j]!;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distance = Math.hypot(dx, dy);
+
+      if (distance === 0) {
+        continue;
+      }
+
+      const required =
+        pillExtentTowards(
+          halfWidths.get(idA) ?? halfHeight,
+          halfHeight,
+          dx,
+          dy,
+        ) +
+        pillExtentTowards(
+          halfWidths.get(idB) ?? halfHeight,
+          halfHeight,
+          -dx,
+          -dy,
+        ) +
+        gap;
+      scale = Math.max(scale, required / distance);
+    }
+  }
+
+  return scale > 1 ? scalePositions(positions, scale) : positions;
 }
 
 function positionBounds(positions: Record<NodeId, { x: number; y: number }>) {

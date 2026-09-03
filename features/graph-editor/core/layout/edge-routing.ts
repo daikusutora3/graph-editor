@@ -17,6 +17,11 @@ import {
   singleBowCurve,
   type EdgeCurveGeometry,
 } from "./edge-route-geometry";
+import {
+  estimateNodeWidth,
+  NODE_SIZE_PX,
+  pillExtentTowards,
+} from "../graph/node-size";
 
 export type EdgeRoutingMeta = EdgeCurveGeometry & {
   bowPx: number;
@@ -513,7 +518,7 @@ function projectedEdgeObstacles(
   source: GraphNode,
   target: GraphNode,
   nodes: GraphNode[],
-  clearancePx: number,
+  baseClearancePx: number,
 ) {
   const dx = target.x - source.x;
   const dy = target.y - source.y;
@@ -527,12 +532,24 @@ function projectedEdgeObstacles(
   const unitY = dy / length;
   const normalX = -unitY;
   const normalY = unitX;
-  const extentWeight = Math.min(0.22, clearancePx / length);
   const obstacles = nodes
     .filter((node) => node.id !== edge.source && node.id !== edge.target)
     .map((node) => {
       const relativeX = node.x - source.x;
       const relativeY = node.y - source.y;
+      // Wide pills extend further than a circle; measure their reach along
+      // and across the edge so the clearance hugs the actual shape.
+      const halfWidth = estimateNodeWidth(node.label) / 2;
+      const halfHeight = NODE_SIZE_PX / 2;
+      const acrossExtra =
+        pillExtentTowards(halfWidth, halfHeight, normalX, normalY) - halfHeight;
+      const alongExtra =
+        pillExtentTowards(halfWidth, halfHeight, unitX, unitY) - halfHeight;
+      const clearancePx = baseClearancePx + acrossExtra;
+      const extentWeight = Math.min(
+        0.22,
+        (baseClearancePx + alongExtra) / length,
+      );
 
       return {
         endWeight: clamp(
@@ -552,12 +569,13 @@ function projectedEdgeObstacles(
         perpendicularDistance: Math.abs(
           relativeX * normalX + relativeY * normalY,
         ),
+        clearancePx,
       };
     })
     .filter(
       (obstacle) =>
         obstacle.startWeight < obstacle.endWeight &&
-        obstacle.perpendicularDistance < clearancePx * 1.8,
+        obstacle.perpendicularDistance < obstacle.clearancePx * 1.8,
     )
     .toSorted((a, b) => a.startWeight - b.startWeight);
   const clusters: ProjectedObstacleCluster[] = [];

@@ -8,6 +8,7 @@ import type {
 import { useRef } from "react";
 
 import type { EdgeId, NodeId } from "../core/graph/model";
+import { pillExtentTowards } from "../core/graph/node-size";
 import { useI18n } from "../i18n/I18nProvider";
 import type { Locale } from "../i18n/locale";
 
@@ -164,7 +165,6 @@ export function SelectEdgeHitboxes({
       edge,
       { x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) },
       zoom,
-      renderedNodeRadius(zoom),
     );
   };
 
@@ -372,22 +372,27 @@ export type EdgeBend = {
 
 type Point = { x: number; y: number };
 
-/** Rendered radius of a default node including its border, for endpoint math. */
-function renderedNodeRadius(zoom: number) {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue("--canvas-node-size")
-    .trim();
-  const size = raw.endsWith("rem") ? parseFloat(raw) * 16 : parseFloat(raw);
+type BendEndpoints = Pick<
+  EdgeLabelHitbox,
+  "sourceX" | "sourceY" | "targetX" | "targetY"
+> &
+  Partial<Pick<EdgeLabelHitbox, "sourceWidth" | "targetWidth" | "nodeHeight">>;
 
-  return ((Number.isFinite(size) ? size : 48) / 2 + 1) * zoom;
-}
-
-function towards(from: Point, to: Point, radius: number): Point {
-  const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+/** Moves `from` to its pill boundary in the direction of `to`. */
+function boundaryTowards(
+  from: Point,
+  to: Point,
+  widthPx: number,
+  heightPx: number,
+): Point {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const reach = pillExtentTowards(widthPx / 2, heightPx / 2, dx, dy);
 
   return {
-    x: from.x + ((to.x - from.x) / length) * radius,
-    y: from.y + ((to.y - from.y) / length) * radius,
+    x: from.x + (dx / length) * reach,
+    y: from.y + (dy / length) * reach,
   };
 }
 
@@ -399,10 +404,9 @@ function towards(from: Point, to: Point, radius: number): Point {
  * the centre-to-centre chord (which is what the routing data stores).
  */
 export function edgeBendFromRenderedPointer(
-  edge: Pick<EdgeLabelHitbox, "sourceX" | "sourceY" | "targetX" | "targetY">,
+  edge: BendEndpoints,
   pointer: RenderedPoint,
   zoom: number,
-  nodeRadiusPx = 0,
 ): EdgeBend {
   const source = { x: edge.sourceX, y: edge.sourceY };
   const target = { x: edge.targetX, y: edge.targetY };
@@ -412,12 +416,26 @@ export function edgeBendFromRenderedPointer(
   }
 
   let control = quadraticControlThroughPoint(source, target, pointer);
+  const height = edge.nodeHeight ?? 0;
 
-  if (nodeRadiusPx > 0) {
+  if (height > 0) {
+    // Include the border so the refined endpoints sit on the drawn outline.
+    const border = 2 * zoom;
+
     for (let step = 0; step < 4; step += 1) {
       control = quadraticControlThroughPoint(
-        towards(source, control, nodeRadiusPx),
-        towards(target, control, nodeRadiusPx),
+        boundaryTowards(
+          source,
+          control,
+          (edge.sourceWidth ?? height) + border,
+          height + border,
+        ),
+        boundaryTowards(
+          target,
+          control,
+          (edge.targetWidth ?? height) + border,
+          height + border,
+        ),
         pointer,
       );
     }
@@ -433,15 +451,6 @@ export function edgeBendFromRenderedPointer(
       Math.round(clampBow(curve.controlPointDistancesPx[0] / zoom) * 10) / 10,
     bowT: Math.round(curve.controlPointWeights[0] * 1000) / 1000,
   };
-}
-
-/** Perpendicular bend only; kept for callers that ignore the bend position. */
-export function edgeBowPxFromRenderedPointer(
-  edge: Pick<EdgeLabelHitbox, "sourceX" | "sourceY" | "targetX" | "targetY">,
-  pointer: RenderedPoint,
-  zoom: number,
-) {
-  return edgeBendFromRenderedPointer(edge, pointer, zoom).bowPx;
 }
 
 export function edgeBendHandlePosition(

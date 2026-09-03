@@ -23,6 +23,10 @@ export type EdgeLabelHitbox = {
   sourceY: number;
   targetX: number;
   targetY: number;
+  /** Rendered outer sizes of the endpoints (pills are wider than tall). */
+  sourceWidth: number;
+  targetWidth: number;
+  nodeHeight: number;
   x: number;
   y: number;
   bowPx: number;
@@ -82,6 +86,9 @@ export function readEdgeLabelHitboxes(
       sourceY: source.y,
       targetX: target.x,
       targetY: target.y,
+      sourceWidth: edge.source().renderedOuterWidth(),
+      targetWidth: edge.target().renderedOuterWidth(),
+      nodeHeight: edge.source().renderedOuterHeight(),
       x: position.x,
       y: position.y,
       bowPx: readNumericEdgeData(edge, "bow", 0),

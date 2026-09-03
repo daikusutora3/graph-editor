@@ -12,6 +12,10 @@ import {
   type EdgeRoutingMeta,
   type EdgeRoutingOptions,
 } from "../../core/layout/edge-routing";
+import {
+  estimateLabelWidth,
+  NODE_LABEL_PADDING_PX,
+} from "../../core/graph/node-size";
 import { minimumCurveDistanceToNode } from "../../core/layout/edge-route-geometry";
 import type {
   EdgeId,
@@ -84,8 +88,7 @@ export type CytoscapeElementOptions = {
 };
 
 const EDGE_WIDTH = 2.5;
-/** Horizontal padding between a node label and the node border. */
-const NODE_LABEL_PADDING = 14;
+const NODE_LABEL_PADDING = NODE_LABEL_PADDING_PX;
 
 type TextMeasure = (text: string) => number;
 
@@ -98,14 +101,7 @@ function createTextMeasure(palette: GraphCanvasPalette): TextMeasure {
       : document.createElement("canvas").getContext("2d");
 
   if (!context) {
-    return (text) =>
-      [...text].reduce(
-        (width, char) =>
-          width +
-          palette.nodeFontSize *
-            (/[\u3000-\u9fff\uff00-\uffef]/.test(char) ? 1 : 0.62),
-        0,
-      );
+    return (text) => estimateLabelWidth(text, palette.nodeFontSize);
   }
 
   return (text) => {
