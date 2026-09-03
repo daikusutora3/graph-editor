@@ -1,4 +1,5 @@
 import { createMoveNodesCommand } from "../core/graph/graph-intents";
+import { estimateNodeWidth, NODE_SIZE_PX } from "../core/graph/node-size";
 import type { GraphModel, NodeId } from "../core/graph/model";
 import {
   componentOrder,
@@ -16,7 +17,7 @@ import {
 } from "../core/graph/graph-analysis";
 import {
   circleRadiusForSpacing,
-  ensureMinimumNodeDistance,
+  ensureNodeClearance,
   layoutCircle,
   layoutCircleRadius,
   LAYOUT_CIRCLE_MIN_RADIUS,
@@ -162,7 +163,15 @@ function createLayoutPositions(
 ) {
   const positions = getLayoutRuntime(kind).positions(model, rootNodeId);
 
-  return kind === "force" ? positions : ensureMinimumNodeDistance(positions);
+  // Force layouts space circles themselves; wide pills still need the pass.
+  if (
+    kind === "force" &&
+    model.nodes.every((node) => estimateNodeWidth(node.label) <= NODE_SIZE_PX)
+  ) {
+    return positions;
+  }
+
+  return ensureNodeClearance(positions, model.nodes);
 }
 
 export function manualLayoutDisabledReasonCode(
