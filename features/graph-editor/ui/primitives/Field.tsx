@@ -6,7 +6,7 @@ import type { InputHTMLAttributes, SelectHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const fieldBase =
-  "ge-focus h-8 w-full min-w-0 rounded-lg touch:h-11 touch:text-sm border border-[var(--line)] bg-[var(--fill)] px-2.5 text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--faint)]";
+  "ge-focus h-8 w-full min-w-0 rounded-lg touch:h-11 touch:text-sm border border-[var(--line)] bg-[var(--fill)] px-2.5 text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]";
 
 export function Select({
   children,

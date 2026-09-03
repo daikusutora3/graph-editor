@@ -512,7 +512,7 @@ export function SelectNodeHitboxes({
             left: node.x,
             pointerEvents: rangeSelectionActive ? "none" : undefined,
             top: node.y,
-            width: NODE_HITBOX_SIZE,
+            width: node.width,
           }}
           onPointerDown={(event) => {
             if (onRangeSelectionPointerDown(event)) {

@@ -569,7 +569,6 @@ export function GraphCanvas() {
         style={inlineEditStyle}
         onCancel={inlineEditActions.onCancel}
         onCommit={inlineEditActions.onCommit}
-        onCompositionTextChange={inlineEditActions.onCompositionTextChange}
         onValueChange={inlineEditActions.onValueChange}
       />
       {mode === "edge" ? (

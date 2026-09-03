@@ -215,7 +215,6 @@ type InlineEditFormProps = {
   style?: CSSProperties;
   onCancel: () => void;
   onCommit: () => void;
-  onCompositionTextChange: (text: string) => void;
   onValueChange: (value: string) => void;
 };
 
@@ -227,7 +226,6 @@ export function InlineEditForm({
   style,
   onCancel,
   onCommit,
-  onCompositionTextChange,
   onValueChange,
 }: InlineEditFormProps) {
   const { messages } = useI18n();
@@ -283,12 +281,8 @@ export function InlineEditForm({
         onCompositionStart={() => {
           isComposingRef.current = true;
         }}
-        onCompositionUpdate={(event) => {
-          onCompositionTextChange(event.data);
-        }}
         onCompositionEnd={() => {
           isComposingRef.current = false;
-          onCompositionTextChange("");
         }}
         onKeyDown={(event) => {
           event.stopPropagation();

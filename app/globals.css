@@ -64,8 +64,7 @@
   --canvas-active: #2563eb;
   --canvas-active-opacity: 0.22;
   --canvas-selection-border: #2563eb;
-  --canvas-label-bg: #27272a;
-  --canvas-label-border: #52525b;
+  --canvas-label-bg: #17171a;
   --canvas-node-white: #ffffff;
   --canvas-node-black: #111827;
   --canvas-node-red: #7f1d1d;
@@ -92,8 +91,8 @@
   --canvas-font: var(--font-ui);
   --canvas-node-size: 3rem;
   --canvas-node-font: 1rem;
-  --canvas-edge-font: 0.875rem;
-  --canvas-label-padding: 0.25rem;
+  --canvas-edge-font: 0.75rem;
+  --canvas-label-padding: 0.3125rem;
 }
 
 :root[data-theme="light"] {
@@ -140,8 +139,7 @@
   --canvas-edge: #374151;
   --canvas-selected-node: #dbe6fd;
   --canvas-selected-node-text: #1d4ed8;
-  --canvas-label-bg: #ffffff;
-  --canvas-label-border: #d1d5db;
+  --canvas-label-bg: #f9fafb;
   --canvas-node-red: #fee2e2;
   --canvas-node-yellow: #fef3c7;
   --canvas-node-blue: #dbeafe;
@@ -477,6 +475,17 @@
 
 .ge-inline-edit-form {
   --ge-inline-edit-zoom: 1;
+  /* The form carries the input's font so its ch-based width tracks the zoomed text. */
+  font-family: var(--canvas-font);
+  font-weight: 600;
+}
+
+.ge-inline-edit-form-node {
+  font-size: calc(var(--canvas-node-font) * var(--ge-inline-edit-zoom));
+}
+
+.ge-inline-edit-form-edge {
+  font-size: calc(var(--canvas-edge-font) * var(--ge-inline-edit-zoom));
 }
 
 .ge-inline-edit-input {
@@ -500,39 +509,35 @@
 }
 
 .ge-inline-edit-input-node {
-  height: calc(var(--canvas-node-font) * var(--ge-inline-edit-zoom) * 1.7);
-  border-radius: 0.5rem;
-  background: transparent;
+  /* Same box as the rendered node: pill, node fill, 2px border. */
+  height: calc(var(--canvas-node-size) * var(--ge-inline-edit-zoom));
+  border-radius: 9999px;
+  background: var(--ge-edit-bg, var(--canvas-node));
+  box-shadow: 0 0 0 2px var(--ge-edit-border, var(--canvas-node-border)) !important;
+  padding-inline: var(--ge-inline-edit-padding);
+  color: var(--ge-edit-text, var(--canvas-node-text));
   font-size: calc(var(--canvas-node-font) * var(--ge-inline-edit-zoom));
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1;
 }
 
 .ge-inline-edit-input-edge {
+  /* Same chip as the rendered edge label: canvas fill, no border. */
   height: calc(
-    var(--canvas-edge-font) * var(--ge-inline-edit-zoom) * 1.45 +
-      var(--canvas-label-padding) * var(--ge-inline-edit-zoom) * 2
+    (var(--canvas-edge-font) + var(--canvas-label-padding) * 2) *
+      var(--ge-inline-edit-zoom)
   );
-  border-radius: 0;
-  background: color-mix(in srgb, var(--canvas-label-bg) 92%, transparent);
-  padding-inline: calc(
-    var(--canvas-label-padding) * var(--ge-inline-edit-zoom)
-  );
+  border-radius: calc(4px * var(--ge-inline-edit-zoom));
+  background: var(--canvas-label-bg);
+  padding-inline: var(--ge-inline-edit-padding);
   font-size: calc(var(--canvas-edge-font) * var(--ge-inline-edit-zoom));
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
 }
 
 .ge-inline-edit-input-error {
   color: var(--danger);
-}
-
-.ge-inline-edit-input:focus-visible {
-  box-shadow: 0 0 0 2px var(--accent-ring) !important;
-}
-
-.ge-inline-edit-input-error:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 55%, transparent) !important;
+  box-shadow: 0 0 0 2px var(--danger) !important;
 }
 
 .ge-inline-edit-error {

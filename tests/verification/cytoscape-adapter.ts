@@ -383,7 +383,6 @@ function verifyArrowScaleStyles() {
     edgeGreen: "#000",
     edgePink: "#000",
     labelBg: "#000",
-    labelBorder: "#000",
     active: "#000",
     selectedNode: "#000",
     selectedNodeText: "#000",

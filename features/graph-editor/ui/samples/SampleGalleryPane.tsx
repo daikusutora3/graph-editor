@@ -266,7 +266,7 @@ function SampleGalleryFilter({
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={messages.samples.searchPlaceholder}
           aria-label={messages.samples.searchAria}
-          className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--faint)]"
+          className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
         />
         {query ? (
           <button

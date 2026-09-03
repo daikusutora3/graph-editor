@@ -130,7 +130,8 @@ function sameNodeHitboxes(a: NodeHitbox[], b: NodeHitbox[]) {
         item.id === next.id &&
         item.label === next.label &&
         item.x === next.x &&
-        item.y === next.y
+        item.y === next.y &&
+        item.width === next.width
       );
     })
   );
