@@ -494,6 +494,9 @@ export function createGraphCanvasStylesheet(
       style: cytoscapeStyle({
         width: EDGE_WIDTH,
         "curve-style": "unbundled-bezier",
+        // Control points are measured from node centres, matching the routing
+        // and manual-bend math, instead of from the node border intersections.
+        "edge-distances": "node-position",
         "control-point-distances": "data(controlPointDistances)",
         "control-point-weights": "data(controlPointWeights)",
         "loop-direction": "data(loopDirection)",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,11 +13,22 @@ import {
 } from "../../shell/state/editor-atoms";
 import { graphAtom } from "../../shell/state/graph-atoms";
 
-const SELECT_HINT_STORAGE_KEY = "graph-editor-select-hint-dismissed";
-const SELECT_HINT_DURATION_MS = 9000;
+const HINT_STORAGE_PREFIX = "graph-editor-hint-learned:";
+/** How long the user has to sit still before a hint offers help. */
+const HINT_IDLE_MS = 2500;
 
-/** Contextual guidance pill under the toolbar: edge-mode progress, or a
- * one-time explanation of select-mode gestures. */
+type HintId =
+  | "place-node"
+  | "connect"
+  | "edge-start"
+  | "edge-target"
+  | "select";
+
+/**
+ * Quiet guidance pill under the toolbar. Hints stay hidden while the user is
+ * acting; one appears only after a pause in a state where the next step is not
+ * obvious, and never again once that step has been performed.
+ */
 export function CanvasHint({
   mobile,
   visible,
@@ -30,27 +41,57 @@ export function CanvasHint({
   const edgeDraft = useAtomValue(edgeDraftAtom);
   const selection = useAtomValue(selectionAtom);
   const graph = useAtomValue(graphAtom);
-  const showSelectHint = useSelectHint({
-    active: mode === "select" && graph.nodes.length > 0,
-    dismissWhen: selection.nodeIds.length > 0 || selection.edgeIds.length > 0,
+  const hasNodes = graph.nodes.length > 0;
+  const hasEdges = graph.edges.length > 0;
+  const hasSelection =
+    selection.nodeIds.length > 0 || selection.edgeIds.length > 0;
+  const sourceNode = edgeDraft.sourceNodeId
+    ? graph.nodes.find((node) => node.id === edgeDraft.sourceNodeId)
+    : null;
+
+  const idle = useIdle(HINT_IDLE_MS);
+  const showPlaceNode = useStuckHint({
+    id: "place-node",
+    active: visible && mode === "node" && !hasNodes,
+    done: hasNodes,
+  });
+  const showConnect = useStuckHint({
+    id: "connect",
+    active: visible && mode === "node" && hasNodes && !hasEdges,
+    done: hasEdges,
+  });
+  const showEdgeStart = useStuckHint({
+    id: "edge-start",
+    active: visible && mode === "edge" && !sourceNode,
+    done: Boolean(sourceNode) || hasEdges,
+  });
+  const showEdgeTarget = useStuckHint({
+    id: "edge-target",
+    active: visible && mode === "edge" && Boolean(sourceNode),
+    done: hasEdges,
+  });
+  const showSelect = useStuckHint({
+    id: "select",
+    active:
+      visible && !mobile && mode === "select" && hasNodes && !hasSelection,
+    done: hasSelection,
   });
 
-  if (!visible) {
+  if (!visible || !idle) {
     return null;
   }
 
-  let text: string | null = null;
-
-  if (mode === "edge") {
-    const sourceNode = edgeDraft.sourceNodeId
-      ? graph.nodes.find((node) => node.id === edgeDraft.sourceNodeId)
-      : null;
-    text = sourceNode
-      ? messages.chrome.edgeHintTarget(sourceNode.label)
-      : messages.chrome.edgeHintStart;
-  } else if (mode === "select" && showSelectHint && !mobile) {
-    text = messages.chrome.selectHint;
-  }
+  const text = showPlaceNode
+    ? messages.chrome.nodeHintEmpty
+    : showConnect
+      ? messages.chrome.nodeHintConnect
+      : showEdgeStart
+        ? messages.chrome.edgeHintStart
+        : showEdgeTarget && sourceNode
+          ? messages.chrome.edgeHintTarget(sourceNode.label)
+          : showSelect
+            ? messages.chrome.selectHint
+            : null;
 
   if (!text) {
     return null;
@@ -59,6 +100,78 @@ export function CanvasHint({
   return (
     <HintPill position={mobile ? "top-[68px]" : "top-[84px]"} text={text} />
   );
+}
+
+/** True once the user has not touched pointer or keyboard for `delayMs`. */
+function useIdle(delayMs: number) {
+  const [idle, setIdle] = useState(false);
+
+  useEffect(() => {
+    let timeoutId = window.setTimeout(() => setIdle(true), delayMs);
+    const reset = () => {
+      setIdle(false);
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => setIdle(true), delayMs);
+    };
+    const events = ["pointerdown", "pointermove", "keydown", "wheel"] as const;
+
+    for (const event of events) {
+      window.addEventListener(event, reset, { passive: true });
+    }
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      for (const event of events) {
+        window.removeEventListener(event, reset);
+      }
+    };
+  }, [delayMs]);
+
+  return idle;
+}
+
+/**
+ * A hint is offered while `active`. Once the user performs the step (`done`)
+ * after the hint was armed, it is remembered as learned and never shown again.
+ */
+function useStuckHint({
+  id,
+  active,
+  done,
+}: {
+  id: HintId;
+  active: boolean;
+  done: boolean;
+}) {
+  const storageKey = `${HINT_STORAGE_PREFIX}${id}`;
+  const [learned, setLearned] = useState(true);
+  const armedRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      setLearned(window.localStorage.getItem(storageKey) === "1");
+    } catch {
+      setLearned(false);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (active) {
+      armedRef.current = true;
+      return;
+    }
+
+    if (done && armedRef.current && !learned) {
+      setLearned(true);
+      try {
+        window.localStorage.setItem(storageKey, "1");
+      } catch {
+        // Remembering the hint is a convenience only.
+      }
+    }
+  }, [active, done, learned, storageKey]);
+
+  return active && !learned;
 }
 
 export function Toast({
@@ -112,50 +225,4 @@ function HintPill({
       </span>
     </div>
   );
-}
-
-function useSelectHint({
-  active,
-  dismissWhen,
-}: {
-  active: boolean;
-  dismissWhen: boolean;
-}) {
-  const [dismissed, setDismissed] = useState(true);
-
-  useEffect(() => {
-    try {
-      setDismissed(
-        window.localStorage.getItem(SELECT_HINT_STORAGE_KEY) === "1",
-      );
-    } catch {
-      setDismissed(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (dismissed || !active) {
-      return;
-    }
-
-    const dismiss = () => {
-      setDismissed(true);
-      try {
-        window.localStorage.setItem(SELECT_HINT_STORAGE_KEY, "1");
-      } catch {
-        // Persisting the dismissal is a convenience only.
-      }
-    };
-
-    if (dismissWhen) {
-      dismiss();
-      return;
-    }
-
-    const timeoutId = window.setTimeout(dismiss, SELECT_HINT_DURATION_MS);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [active, dismissWhen, dismissed]);
-
-  return active && !dismissed;
 }

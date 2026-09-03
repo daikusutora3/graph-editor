@@ -1,4 +1,5 @@
 import {
+  edgeBendFromRenderedPointer,
   edgeBendHandlePosition,
   edgeBowPxFromRenderedPointer,
 } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
@@ -291,6 +292,23 @@ const pointerBow = edgeBowPxFromRenderedPointer(
 expect(
   pointerBow === 60,
   "bend handle pointer distance should account for zoom and the quadratic midpoint",
+);
+const pointerBend = edgeBendFromRenderedPointer(
+  { sourceX: 0, sourceY: 0, targetX: 200, targetY: 0 },
+  { x: 120, y: 60 },
+  2,
+);
+expect(
+  pointerBend.bowPx === 60.6 && pointerBend.bowT === 0.6,
+  "bend control point should sit above the pointer and pass through it",
+);
+expect(
+  edgeBendFromRenderedPointer(
+    { sourceX: 0, sourceY: 0, targetX: 200, targetY: 0 },
+    { x: 10, y: 20 },
+    1,
+  ).bowT === 0.05,
+  "bend position should be clamped near the endpoints",
 );
 const renderedMidpoint = edgeBendHandlePosition(
   {

@@ -1,6 +1,8 @@
 import type { EdgeRoutingOverride } from "./model";
 
 const MAX_BOW_PX = 180;
+const MIN_BOW_T = 0.05;
+const MAX_BOW_T = 0.95;
 const MAX_ROUTING_LOOP_DIRECTION_DEG = 360;
 const MIN_ROUTING_LOOP_SWEEP_DEG = 20;
 const MAX_ROUTING_LOOP_SWEEP_DEG = 180;
@@ -14,11 +16,16 @@ export function normalizeEdgeRoutingOverride(
 
   const routing: EdgeRoutingOverride = {};
   const bowPx = finiteNumber(value.bowPx);
+  const bowT = finiteNumber(value.bowT);
   const loopDirectionDeg = finiteNumber(value.loopDirectionDeg);
   const loopSweepDeg = finiteNumber(value.loopSweepDeg);
 
   if (bowPx != null) {
     routing.bowPx = clamp(bowPx, -MAX_BOW_PX, MAX_BOW_PX);
+
+    if (bowT != null) {
+      routing.bowT = clamp(bowT, MIN_BOW_T, MAX_BOW_T);
+    }
   }
 
   if (loopDirectionDeg != null) {

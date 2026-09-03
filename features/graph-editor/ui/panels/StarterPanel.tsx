@@ -13,6 +13,18 @@ import type {
   ImportFormatKind,
 } from "../../io/import-types";
 import type { ImportFormat } from "../../io/import-utils";
+
+/** One short valid example per format, shown while the paste area is empty. */
+const IMPORT_FORMAT_EXAMPLES: Record<ImportFormat, string> = {
+  auto: "4 4\n1 2\n2 3\n2 4\n3 4",
+  "contest-edge-list": "4 4\n1 2\n2 3\n2 4\n3 4",
+  "tree-edge-list": "4\n1 2\n1 3\n3 4",
+  "parent-list": "4\n1 1 3",
+  "weighted-parent-list": "4\n1 5\n1 3\n3 2",
+  "edge-pairs": "1 2\n2 3\n2 4\n3 4",
+  "adjacency-list": "1: 2 3\n2: 4\n3: 4",
+  "adjacency-matrix": "0 1 1\n1 0 1\n1 1 0",
+};
 import type { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
 import { Button, Select, focusRing, raisedControl } from "../primitives";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/SampleGalleryPane";
@@ -123,6 +135,7 @@ export function StarterPasteBody({
           name="graph-input"
           value={inputText}
           aria-label={`${messages.starter.paste}: ${messages.chrome.starterHelp}`}
+          placeholder={IMPORT_FORMAT_EXAMPLES[importFormat]}
           autoComplete="off"
           spellCheck={false}
           onChange={(event) => starter.setInput(event.target.value)}
@@ -134,7 +147,7 @@ export function StarterPasteBody({
               }
             }
           }}
-          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-4 py-3.5 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none"
+          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-4 py-3.5 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
         />
         <div
           aria-label={messages.starter.preview}

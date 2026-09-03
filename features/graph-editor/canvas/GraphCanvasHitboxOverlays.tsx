@@ -18,8 +18,11 @@ import {
   type NodeHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import {
+  clampBow,
+  curveFromControlPoint,
   edgeCurveMidpoint,
   edgeCurveSvgPath,
+  quadraticControlThroughPoint,
 } from "../core/layout/edge-route-geometry";
 import type { RenderedPoint } from "./graph-canvas-types";
 
@@ -112,8 +115,8 @@ type SelectEdgeHitboxesProps = {
   /** Drag-to-bend: preview while dragging, commit on release, cancel on
    * escape/pointer cancel. `zoom` converts rendered px to graph px. */
   zoom: number;
-  onBendPreview: (edgeId: EdgeId, bowPx: number) => RenderedPoint | null;
-  onBendCommit: (edgeId: EdgeId, bowPx: number) => void;
+  onBendPreview: (edgeId: EdgeId, bend: EdgeBend) => RenderedPoint | null;
+  onBendCommit: (edgeId: EdgeId, bend: EdgeBend) => void;
   onBendCancel: (edgeId: EdgeId) => void;
   onEdit: (edgeId: EdgeId, position: RenderedPoint) => void;
   onRangeSelectionPointerDown: (event: ReactPointerEvent<Element>) => boolean;
@@ -140,7 +143,7 @@ export function SelectEdgeHitboxes({
     startX: number;
     startY: number;
     moved: boolean;
-    bowPx: number | null;
+    bend: EdgeBend | null;
   } | null>(null);
   const suppressClickRef = useRef(false);
 
@@ -157,10 +160,11 @@ export function SelectEdgeHitboxes({
   ) => {
     const bounds = containerBounds(element);
 
-    return edgeBowPxFromRenderedPointer(
+    return edgeBendFromRenderedPointer(
       edge,
       { x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) },
       zoom,
+      renderedNodeRadius(zoom),
     );
   };
 
@@ -182,7 +186,7 @@ export function SelectEdgeHitboxes({
         startX: event.clientX,
         startY: event.clientY,
         moved: false,
-        bowPx: null,
+        bend: null,
       };
       try {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -210,13 +214,13 @@ export function SelectEdgeHitboxes({
         onSelect(edge.id, false);
       }
 
-      bend.bowPx = bendFromPointer(
+      bend.bend = bendFromPointer(
         edge,
         event.currentTarget,
         event.clientX,
         event.clientY,
       );
-      onBendPreview(edge.id, bend.bowPx);
+      onBendPreview(edge.id, bend.bend);
     },
     onPointerUp: (event: ReactPointerEvent<Element>) => {
       const bend = bendRef.current;
@@ -232,9 +236,9 @@ export function SelectEdgeHitboxes({
         // Capture may already be gone.
       }
 
-      if (bend.moved && bend.bowPx !== null) {
+      if (bend.moved && bend.bend !== null) {
         suppressClickRef.current = true;
-        onBendCommit(edge.id, bend.bowPx);
+        onBendCommit(edge.id, bend.bend);
       }
     },
     onPointerCancel: (event: ReactPointerEvent<Element>) => {
@@ -359,38 +363,93 @@ export function SelectEdgeHitboxes({
   );
 }
 
+export type EdgeBend = {
+  /** Perpendicular control-point offset in graph px (sign = side). */
+  bowPx: number;
+  /** Control-point position along the edge, 0 = source, 1 = target. */
+  bowT: number;
+};
+
+type Point = { x: number; y: number };
+
+/** Rendered radius of a default node including its border, for endpoint math. */
+function renderedNodeRadius(zoom: number) {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue("--canvas-node-size")
+    .trim();
+  const size = raw.endsWith("rem") ? parseFloat(raw) * 16 : parseFloat(raw);
+
+  return ((Number.isFinite(size) ? size : 48) / 2 + 1) * zoom;
+}
+
+function towards(from: Point, to: Point, radius: number): Point {
+  const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+
+  return {
+    x: from.x + ((to.x - from.x) / length) * radius,
+    y: from.y + ((to.y - from.y) / length) * radius,
+  };
+}
+
+/**
+ * Converts a pointer position into a manual bend so the drawn curve passes
+ * through the pointer. Cytoscape starts the curve where the line from the
+ * control point meets each node's border, so the control point is refined a
+ * few times against those border points before being expressed relative to
+ * the centre-to-centre chord (which is what the routing data stores).
+ */
+export function edgeBendFromRenderedPointer(
+  edge: Pick<EdgeLabelHitbox, "sourceX" | "sourceY" | "targetX" | "targetY">,
+  pointer: RenderedPoint,
+  zoom: number,
+  nodeRadiusPx = 0,
+): EdgeBend {
+  const source = { x: edge.sourceX, y: edge.sourceY };
+  const target = { x: edge.targetX, y: edge.targetY };
+
+  if (Math.hypot(target.x - source.x, target.y - source.y) === 0 || zoom <= 0) {
+    return { bowPx: 0, bowT: 0.5 };
+  }
+
+  let control = quadraticControlThroughPoint(source, target, pointer);
+
+  if (nodeRadiusPx > 0) {
+    for (let step = 0; step < 4; step += 1) {
+      control = quadraticControlThroughPoint(
+        towards(source, control, nodeRadiusPx),
+        towards(target, control, nodeRadiusPx),
+        pointer,
+      );
+    }
+  }
+
+  // Distances are stored in graph px; weights are zoom-independent.
+  const curve = curveFromControlPoint(source, target, control, {
+    limitBow: false,
+  });
+
+  return {
+    bowPx:
+      Math.round(clampBow(curve.controlPointDistancesPx[0] / zoom) * 10) / 10,
+    bowT: Math.round(curve.controlPointWeights[0] * 1000) / 1000,
+  };
+}
+
+/** Perpendicular bend only; kept for callers that ignore the bend position. */
 export function edgeBowPxFromRenderedPointer(
   edge: Pick<EdgeLabelHitbox, "sourceX" | "sourceY" | "targetX" | "targetY">,
   pointer: RenderedPoint,
   zoom: number,
 ) {
-  const sourceX = edge.sourceX;
-  const sourceY = edge.sourceY;
-  const targetX = edge.targetX;
-  const targetY = edge.targetY;
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
-  const length = Math.hypot(dx, dy);
-
-  if (length === 0 || zoom <= 0) {
-    return 0;
-  }
-
-  const midpointX = (sourceX + targetX) / 2;
-  const midpointY = (sourceY + targetY) / 2;
-  const renderedBowPx =
-    (pointer.x - midpointX) * (-dy / length) +
-    (pointer.y - midpointY) * (dx / length);
-
-  return Math.round(Math.max(-180, Math.min(180, (renderedBowPx * 2) / zoom)));
+  return edgeBendFromRenderedPointer(edge, pointer, zoom).bowPx;
 }
 
 export function edgeBendHandlePosition(
   edge: EdgeLabelHitbox,
-  previewBowPx: number | null,
+  preview: EdgeBend | null,
   zoom: number,
 ) {
-  if (previewBowPx == null) {
+  if (preview == null) {
     return { x: edge.x, y: edge.y };
   }
 
@@ -398,8 +457,8 @@ export function edgeBendHandlePosition(
     { x: edge.sourceX, y: edge.sourceY },
     { x: edge.targetX, y: edge.targetY },
     {
-      controlPointDistancesPx: [previewBowPx * zoom],
-      controlPointWeights: [0.5],
+      controlPointDistancesPx: [preview.bowPx * zoom],
+      controlPointWeights: [preview.bowT],
     },
   );
 }

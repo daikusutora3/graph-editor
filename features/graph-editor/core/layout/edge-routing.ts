@@ -8,6 +8,7 @@ import type {
 import { normalizeEdgeRoutingOverride } from "../graph/edge-routing-overrides";
 import {
   approximateCurveLength,
+  curveThroughChordOffset,
   edgeCurveMidpoint,
   minimumCurveDistanceToNode,
   offsetEdgeCurve,
@@ -374,7 +375,7 @@ export function createEdgeRoutingCacheKey(
   const edgeSignature = model.edges
     .map(
       (edge) =>
-        `${edge.id}:${edge.source}:${edge.target}:${edge.routing?.bowPx ?? ""}:${
+        `${edge.id}:${edge.source}:${edge.target}:${edge.routing?.bowPx ?? ""}:${edge.routing?.bowT ?? ""}:${
           edge.routing?.loopDirectionDeg ?? ""
         }:${edge.routing?.loopSweepDeg ?? ""}`,
     )
@@ -404,7 +405,7 @@ function applyRoutingOverride(
   if (routing.bowPx != null) {
     return {
       ...meta,
-      ...singleBowCurve(routing.bowPx),
+      ...singleBowCurve(routing.bowPx, routing.bowT ?? 0.5),
       bowPx: routing.bowPx,
     };
   }
@@ -443,14 +444,14 @@ function chooseEdgeCurve(
     options.nodeClearancePx,
   );
 
-  const candidates = edgeBowCandidates(0, options.candidateBowPx).map(
-    singleBowCurve,
+  const candidates = edgeBowCandidates(0, options.candidateBowPx).map((bowPx) =>
+    singleBowCurve(bowPx),
   );
 
   if (obstacles.length > 0) {
     candidates.push(
-      createObstacleAvoidingCurve(obstacles, 1),
-      createObstacleAvoidingCurve(obstacles, -1),
+      ...createObstacleAvoidingCurves(source, target, obstacles, 1),
+      ...createObstacleAvoidingCurves(source, target, obstacles, -1),
     );
   }
   const previous = options.previousMeta.get(edge.id);
@@ -603,22 +604,45 @@ function projectedEdgeObstacles(
   ];
 }
 
-function createObstacleAvoidingCurve(
+/**
+ * Single-control curves that clear the obstacles on one side. Each cluster
+ * yields a curve passing over its centre with the required offset, and the
+ * strictest cluster yields one more so a single bend can clear several nodes.
+ * Every candidate is a plain quadratic bend, so it is exactly what a manual
+ * drag can produce and stays within the manual bend limits.
+ */
+function createObstacleAvoidingCurves(
+  source: GraphNode,
+  target: GraphNode,
   obstacles: ProjectedObstacleCluster[],
   side: 1 | -1,
-): EdgeCurveGeometry {
-  return {
-    controlPointDistancesPx: obstacles.flatMap((obstacle) => {
-      const distance =
-        side > 0 ? obstacle.positiveDistancePx : obstacle.negativeDistancePx;
+): EdgeCurveGeometry[] {
+  const p0 = { x: source.x, y: source.y };
+  const p2 = { x: target.x, y: target.y };
+  const offsetOf = (obstacle: ProjectedObstacleCluster) =>
+    side > 0 ? obstacle.positiveDistancePx : obstacle.negativeDistancePx;
+  const centerOf = (obstacle: ProjectedObstacleCluster) =>
+    (obstacle.startWeight + obstacle.endWeight) / 2;
+  const curves = obstacles.map((obstacle) =>
+    curveThroughChordOffset(p0, p2, centerOf(obstacle), offsetOf(obstacle)),
+  );
 
-      return [distance, distance];
-    }),
-    controlPointWeights: obstacles.flatMap((obstacle) => [
-      obstacle.startWeight,
-      obstacle.endWeight,
-    ]),
-  };
+  if (obstacles.length > 1) {
+    const strictest = obstacles.reduce((best, obstacle) =>
+      Math.abs(offsetOf(obstacle)) > Math.abs(offsetOf(best)) ? obstacle : best,
+    );
+    curves.push(
+      curveThroughChordOffset(p0, p2, 0.5, offsetOf(strictest)),
+      curveThroughChordOffset(
+        p0,
+        p2,
+        centerOf(strictest),
+        offsetOf(strictest) * 1.25,
+      ),
+    );
+  }
+
+  return curves;
 }
 
 function scoreCandidateCurve(

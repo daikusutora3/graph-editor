@@ -31,7 +31,10 @@ export type GraphEdge = {
 };
 
 export type EdgeRoutingOverride = {
+  /** Perpendicular offset of the bend control point, in graph px. */
   bowPx?: number;
+  /** Where along the edge the bend sits, 0 = source, 1 = target (default 0.5). */
+  bowT?: number;
   loopDirectionDeg?: number;
   loopSweepDeg?: number;
 };
