@@ -12,12 +12,12 @@ import {
 } from "../core/layout/edge-routing-continuity";
 
 export function useEdgeRoutingMeta(graph: GraphModel) {
-  // Edges stay straight; the setting only fans out parallel edges so they
-  // do not overlap. Node avoidance is intentionally never used.
+  // Edges stay straight unless the setting is on; then parallel edges fan
+  // out and edges bend just enough to clear nodes sitting on their path.
   const mode = graph.settings.autoEdgeRouting;
   const edgeRoutingOptions = useMemo(
     () => ({
-      mode: mode ? ("parallel" as const) : ("simple" as const),
+      mode: mode ? ("quality" as const) : ("simple" as const),
     }),
     [mode],
   );

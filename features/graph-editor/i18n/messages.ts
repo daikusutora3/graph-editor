@@ -245,6 +245,8 @@ type Messages = {
       { title: string; body: string }
     >;
     recentSamples: string;
+    nodeHintEmpty: string;
+    nodeHintConnect: string;
     edgeHintStart: string;
     edgeHintTarget: (label: string) => string;
     selectHint: string;
@@ -763,7 +765,7 @@ const ja = {
     pngSaved: "保存しました",
     pngFailed: "失敗",
     starterTitle: "グラフを読み込む",
-    starterHelp: "辺リスト（先頭に N M 可）か隣接リスト（a: b c）を貼り付け",
+    starterHelp: "グラフのテキストを貼り付け。形式は自動判定か右で選択",
     starterWaiting: "入力待ち",
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
@@ -780,10 +782,12 @@ const ja = {
       sample: { title: "サンプル", body: "閉路・木・格子などから選ぶ。" },
       draw: {
         title: "手で描く",
-        body: "頂点モードでタップ。辺モードで 2 点を結ぶ。",
+        body: "タップで頂点を置き、辺モードで 2 点を結ぶ。",
       },
     },
     recentSamples: "よく使うサンプル",
+    nodeHintEmpty: "空いている場所をタップして頂点を追加",
+    nodeHintConnect: "辺モード（E）で頂点同士を結べます",
     edgeHintStart: "始点の頂点をクリック",
     edgeHintTarget: (label: string) =>
       `頂点 ${label} → 終点をクリック（Esc で解除）`,
@@ -1188,8 +1192,7 @@ const en: Messages = {
     pngSaved: "Saved",
     pngFailed: "Failed",
     starterTitle: "Load a graph",
-    starterHelp:
-      "Paste an edge list (N M header optional) or an adjacency list (a: b c)",
+    starterHelp: "Paste graph text. Format is detected or picked on the right",
     starterWaiting: "Waiting for input",
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
@@ -1206,10 +1209,12 @@ const en: Messages = {
       sample: { title: "Sample", body: "Pick a cycle, tree, grid, and more." },
       draw: {
         title: "Draw",
-        body: "Tap in node mode. Connect two nodes in edge mode.",
+        body: "Tap to place nodes, then connect them in edge mode.",
       },
     },
     recentSamples: "Popular samples",
+    nodeHintEmpty: "Tap an empty spot to add a node",
+    nodeHintConnect: "Switch to edge mode (E) to connect nodes",
     edgeHintStart: "Click the source node",
     edgeHintTarget: (label: string) =>
       `Node ${label} → click the target (Esc to cancel)`,
@@ -1608,7 +1613,7 @@ const zhHans: Messages = {
     pngSaved: "已保存",
     pngFailed: "失败",
     starterTitle: "加载图",
-    starterHelp: "粘贴边列表（可带 N M 首行）或邻接表（a: b c）",
+    starterHelp: "粘贴图的文本。格式自动识别或在右侧选择",
     starterWaiting: "等待输入",
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
@@ -1620,9 +1625,11 @@ const zhHans: Messages = {
     emptyCards: {
       paste: { title: "粘贴", body: "边列表或邻接表，格式自动检测。" },
       sample: { title: "示例", body: "从环、树、网格等中选择。" },
-      draw: { title: "手绘", body: "顶点模式下点击。边模式下连接两点。" },
+      draw: { title: "手绘", body: "点击放置顶点，再在边模式下连接两点。" },
     },
     recentSamples: "常用示例",
+    nodeHintEmpty: "点击空白处添加顶点",
+    nodeHintConnect: "切换到边模式（E）连接顶点",
     edgeHintStart: "点击起点顶点",
     edgeHintTarget: (label: string) => `顶点 ${label} → 点击终点（Esc 取消）`,
     selectHint: "拖动移动 · 双击编辑标签 · 右键打开菜单 · Shift+拖动框选",

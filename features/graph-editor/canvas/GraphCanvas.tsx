@@ -51,6 +51,7 @@ import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/hooks/use-panel-presence";
 import {
+  type EdgeBend,
   EdgeNodeHitboxes,
   SelectEdgeHitboxes,
   SelectNodeHitboxes,
@@ -389,7 +390,7 @@ export function GraphCanvas() {
   const rangeSelectionActive =
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
   const previewEdgeBow = useCallback(
-    (edgeId: string, bowPx: number) => {
+    (edgeId: string, bend: EdgeBend) => {
       const edge = cyRef.current?.getElementById(edgeId);
 
       if (!edge || edge.empty() || !edge.isEdge()) {
@@ -397,9 +398,9 @@ export function GraphCanvas() {
       }
 
       edge.data({
-        bow: bowPx,
-        controlPointDistances: [bowPx],
-        controlPointWeights: [0.5],
+        bow: bend.bowPx,
+        controlPointDistances: [bend.bowPx],
+        controlPointWeights: [bend.bowT],
       });
 
       const midpoint = edge.renderedMidpoint();
@@ -601,8 +602,12 @@ export function GraphCanvas() {
             onEdit={openEdgeInlineEdit}
             zoom={zoomPercent / 100}
             onBendPreview={previewEdgeBow}
-            onBendCommit={(edgeId, bowPx) =>
-              executeCommand(updateEdgeCommand(edgeId, { routing: { bowPx } }))
+            onBendCommit={(edgeId, bend) =>
+              executeCommand(
+                updateEdgeCommand(edgeId, {
+                  routing: { bowPx: bend.bowPx, bowT: bend.bowT },
+                }),
+              )
             }
             onBendCancel={restoreEdgeRouting}
             onRangeSelectionPointerDown={handleRangeSelectionPointerDown}

@@ -483,8 +483,9 @@ const simpleAdaptiveCurve = computeEdgeRouting(adaptiveCurveGraph, {
 }).get("ab");
 
 expect(
-  adaptiveCurve?.controlPointWeights.length === 4,
-  "separated obstacles should produce a local multi-control-point route",
+  adaptiveCurve?.controlPointWeights.length === 1 &&
+    Math.abs(adaptiveCurve.controlPointDistancesPx[0]) <= 180,
+  "obstacle avoidance should stay a single bounded bend, the same shape a manual drag produces",
 );
 expect(
   simpleAdaptiveCurve?.controlPointWeights.length === 1 &&

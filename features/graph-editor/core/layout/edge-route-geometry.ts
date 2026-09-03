@@ -16,10 +16,97 @@ export type QuadraticCurveSegment = {
   end: EdgeCurvePoint;
 };
 
-export function singleBowCurve(bowPx: number): EdgeCurveGeometry {
+/** Manual and automatic bends share these limits so every curve is draggable. */
+export const MAX_BOW_PX = 180;
+export const MIN_BOW_WEIGHT = 0.05;
+export const MAX_BOW_WEIGHT = 0.95;
+
+/**
+ * Finds the single quadratic control point, placed straight above `point` in
+ * the chord frame, so that the curve p0 → control → p2 passes through `point`.
+ * With B(u) = (1-u)²p0 + 2u(1-u)C + u²p2 the along-axis equation
+ * u²(1-2w) + 2uw - w = 0 gives the parameter u under the point, and the
+ * offset there is 2u(1-u)·d, hence d = perpendicular / (2u(1-u)).
+ */
+export function quadraticControlThroughPoint(
+  p0: EdgeCurvePoint,
+  p2: EdgeCurvePoint,
+  point: EdgeCurvePoint,
+): EdgeCurvePoint {
+  const dx = p2.x - p0.x;
+  const dy = p2.y - p0.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const px = point.x - p0.x;
+  const py = point.y - p0.y;
+  const along = (px * dx + py * dy) / length;
+  const perpendicular = (px * -dy + py * dx) / length;
+  const weight = clampWeight(along / length);
+  const u =
+    Math.abs(1 - 2 * weight) < 1e-6
+      ? 0.5
+      : (-weight + Math.sqrt(weight - weight * weight)) / (1 - 2 * weight);
+  const distance = perpendicular / (2 * u * (1 - u));
+
+  return {
+    x: p0.x + (dx / length) * weight * length + (-dy / length) * distance,
+    y: p0.y + (dy / length) * weight * length + (dx / length) * distance,
+  };
+}
+
+/** Expresses an absolute control point as (distance, weight) on the p0 → p2 chord. */
+export function curveFromControlPoint(
+  p0: EdgeCurvePoint,
+  p2: EdgeCurvePoint,
+  control: EdgeCurvePoint,
+  { limitBow = true }: { limitBow?: boolean } = {},
+): EdgeCurveGeometry {
+  const dx = p2.x - p0.x;
+  const dy = p2.y - p0.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const cx = control.x - p0.x;
+  const cy = control.y - p0.y;
+  const distance = (cx * -dy + cy * dx) / length;
+
+  return {
+    controlPointDistancesPx: [limitBow ? clampBow(distance) : distance],
+    controlPointWeights: [clampWeight((cx * dx + cy * dy) / (length * length))],
+  };
+}
+
+/** Single-control curve through a point given by chord weight and offset. */
+export function curveThroughChordOffset(
+  p0: EdgeCurvePoint,
+  p2: EdgeCurvePoint,
+  weight: number,
+  offsetPx: number,
+): EdgeCurveGeometry {
+  const dx = p2.x - p0.x;
+  const dy = p2.y - p0.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const point = {
+    x: p0.x + dx * weight + (-dy / length) * offsetPx,
+    y: p0.y + dy * weight + (dx / length) * offsetPx,
+  };
+
+  return curveFromControlPoint(
+    p0,
+    p2,
+    quadraticControlThroughPoint(p0, p2, point),
+  );
+}
+
+export function clampBow(bowPx: number) {
+  return Math.max(-MAX_BOW_PX, Math.min(MAX_BOW_PX, bowPx));
+}
+
+export function clampWeight(weight: number) {
+  return Math.max(MIN_BOW_WEIGHT, Math.min(MAX_BOW_WEIGHT, weight));
+}
+
+export function singleBowCurve(bowPx: number, weight = 0.5): EdgeCurveGeometry {
   return {
     controlPointDistancesPx: [bowPx],
-    controlPointWeights: [0.5],
+    controlPointWeights: [weight],
   };
 }
 

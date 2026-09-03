@@ -465,7 +465,7 @@ export function EditorChrome() {
 
   return (
     <>
-      {graphIsEmpty && !visiblePanel ? (
+      {graphIsEmpty && !visiblePanel && mode === "select" ? (
         <EmptyState
           graph={graph}
           mobile={mobile}
