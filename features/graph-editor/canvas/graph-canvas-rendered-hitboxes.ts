@@ -66,14 +66,20 @@ export function useRenderedHitboxes({
         return;
       }
 
+      // Two frames: Cytoscape recomputes edge geometry (control points,
+      // midpoints) during its own render frame, so reading rendered
+      // positions one frame later avoids picking up stale midpoints right
+      // after a routing change.
       hitboxFrameRef.current = window.requestAnimationFrame(() => {
-        hitboxFrameRef.current = null;
-        const pendingCy = pendingHitboxCyRef.current;
-        pendingHitboxCyRef.current = null;
+        hitboxFrameRef.current = window.requestAnimationFrame(() => {
+          hitboxFrameRef.current = null;
+          const pendingCy = pendingHitboxCyRef.current;
+          pendingHitboxCyRef.current = null;
 
-        if (pendingCy && !pendingCy.destroyed()) {
-          updateRenderedHitboxesNow(pendingCy);
-        }
+          if (pendingCy && !pendingCy.destroyed()) {
+            updateRenderedHitboxesNow(pendingCy);
+          }
+        });
       });
     },
     [updateRenderedHitboxesNow],

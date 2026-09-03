@@ -4,6 +4,7 @@ import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
+import { EXPORT_BACKGROUND_COLORS } from "../../adapters/cytoscape/graph-canvas-viewport";
 import {
   downloadBlob,
   ensurePngBlob,
@@ -570,5 +571,5 @@ function escapeHtmlAttribute(value: string) {
 function readPaddedPngBackground(
   background: Exclude<PngExportBackground, "transparent">,
 ) {
-  return background === "black" ? "#020617" : "#ffffff";
+  return EXPORT_BACKGROUND_COLORS[background];
 }

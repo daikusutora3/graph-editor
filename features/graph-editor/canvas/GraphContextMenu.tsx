@@ -12,6 +12,7 @@ import type {
   GraphContextMenuTarget,
   RenderedPoint,
 } from "./graph-canvas-types";
+import { Kbd } from "../ui/primitives";
 import { resolveSelectionActions } from "./selection-actions";
 
 export type { GraphContextMenuTarget } from "./graph-canvas-types";
@@ -62,6 +63,10 @@ export function GraphContextMenu({
     if (!menu || !canvas) {
       return;
     }
+
+    menu.querySelector<HTMLElement>("[role='menuitem']")?.focus({
+      preventScroll: true,
+    });
 
     const nextPosition = getContextMenuPosition(
       target,
@@ -133,7 +138,10 @@ export function GraphContextMenu({
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           onClose();
+          return;
         }
+
+        moveMenuFocus(event, menuRef.current);
       }}
     >
       {(target.kind === "node" && node) || (target.kind === "edge" && edge)
@@ -253,7 +261,7 @@ function MenuButton({
         role="menuitem"
         onClick={onClick}
         className={cn(
-          "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none",
+          "touch:min-h-11 flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none",
           danger
             ? "text-[var(--danger)] hover:bg-[var(--danger-fill)]"
             : "text-[var(--text-2)] hover:bg-[var(--fill)]",
@@ -264,21 +272,48 @@ function MenuButton({
           {label}
         </span>
         {kbd ? (
-          <kbd
-            aria-hidden="true"
-            className={cn(
-              "grid h-5 min-w-[22px] place-items-center rounded-[5px] px-[5px] font-mono text-xs font-semibold",
-              danger
-                ? "bg-[var(--danger-fill)]"
-                : "bg-[var(--fill)] text-[var(--muted)]",
-            )}
-          >
+          <Kbd size="md" tone={danger ? "danger" : "neutral"}>
             {kbd}
-          </kbd>
+          </Kbd>
         ) : null}
       </button>
     </>
   );
+}
+
+/** Roving focus for menu items: arrows wrap, Home/End jump. */
+function moveMenuFocus(
+  event: React.KeyboardEvent,
+  menu: HTMLDivElement | null,
+) {
+  if (!menu) {
+    return;
+  }
+
+  const items = [...menu.querySelectorAll<HTMLElement>("[role='menuitem']")];
+
+  if (items.length === 0) {
+    return;
+  }
+
+  const index = items.indexOf(document.activeElement as HTMLElement);
+  let next: number | null = null;
+
+  if (event.key === "ArrowDown") {
+    next = index < 0 ? 0 : (index + 1) % items.length;
+  } else if (event.key === "ArrowUp") {
+    next =
+      index < 0 ? items.length - 1 : (index - 1 + items.length) % items.length;
+  } else if (event.key === "Home") {
+    next = 0;
+  } else if (event.key === "End") {
+    next = items.length - 1;
+  }
+
+  if (next !== null) {
+    event.preventDefault();
+    items[next].focus();
+  }
 }
 
 function selectionForTarget(

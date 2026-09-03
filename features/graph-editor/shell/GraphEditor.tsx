@@ -3,6 +3,7 @@
 import { useAtomValue } from "jotai";
 import { useRef } from "react";
 
+import { editorLayoutAtom } from "./state/editor-atoms";
 import { graphStorageReadyAtom } from "./state/graph-atoms";
 
 import { GraphCanvas } from "../canvas/GraphCanvas";
@@ -28,6 +29,7 @@ export function GraphEditor({ initialLocale }: { initialLocale?: Locale }) {
 
 function GraphEditorContent() {
   const graphStorageReady = useAtomValue(graphStorageReadyAtom);
+  const layout = useAtomValue(editorLayoutAtom);
   const rootRef = useRef<HTMLElement | null>(null);
 
   useEditorLayoutObserver(rootRef);
@@ -37,7 +39,8 @@ function GraphEditorContent() {
   return (
     <main
       ref={rootRef}
-      className="relative h-dvh min-h-0 w-full overflow-hidden bg-[var(--bg)] text-[var(--text)]"
+      data-layout={layout}
+      className="@container/editor relative h-dvh min-h-0 w-full overflow-hidden bg-[var(--bg)] text-[var(--text)]"
     >
       {graphStorageReady ? (
         <>

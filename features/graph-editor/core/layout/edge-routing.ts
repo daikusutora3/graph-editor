@@ -24,7 +24,7 @@ export type EdgeRoutingMeta = EdgeCurveGeometry & {
   loopSweepDeg: number;
 };
 
-export type EdgeRoutingMode = "simple" | "quality";
+export type EdgeRoutingMode = "simple" | "parallel" | "quality";
 
 export type EdgeRoutingOptions = {
   mode?: EdgeRoutingMode;
@@ -332,7 +332,11 @@ function resolveEdgeRoutingOptions(
   model: GraphModel,
   options: EdgeRoutingOptions,
 ): ResolvedEdgeRoutingOptions {
-  const mode = resolveRoutingMode(model, options.mode ?? "quality");
+  const requestedMode = options.mode ?? "quality";
+  const mode =
+    requestedMode === "parallel"
+      ? "parallel"
+      : resolveRoutingMode(model, requestedMode);
 
   return {
     ...defaultEdgeRoutingOptions,

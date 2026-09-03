@@ -4,6 +4,7 @@ import { ClipboardCopy, Download } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+import { EXPORT_BACKGROUND_COLORS } from "../../adapters/cytoscape/graph-canvas-viewport";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   MAX_LONG_EDGE_PX,
@@ -145,16 +146,14 @@ export function PngPanelBody({
             height: previewHeight,
             background: transparent
               ? undefined
-              : solidBackground === "black"
-                ? "#000000"
-                : "#ffffff",
+              : EXPORT_BACKGROUND_COLORS[solidBackground],
           }}
         >
           {ready && preview.url ? (
             <img
               src={preview.url}
               alt={messages.screenshot.previewAlt}
-              className="h-full w-full object-contain"
+              className="absolute inset-0 h-full w-full object-contain"
               draggable={false}
             />
           ) : (
@@ -212,7 +211,7 @@ export function PngPanelFooter({
         aria-busy={downloadState === "saving"}
         disabled={isGraphEmpty || downloadState === "saving"}
         size="lg"
-        variant={isGraphEmpty ? "disabled" : "fill"}
+        variant={isGraphEmpty ? "disabled" : "secondary"}
         onClick={onDownload}
       >
         <Download className="size-[15px]" aria-hidden="true" />

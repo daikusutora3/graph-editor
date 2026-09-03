@@ -18,8 +18,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#f7fbff",
-    theme_color: "#0f172a",
+    background_color: "#f9fafb",
+    theme_color: "#111827",
     icons: [
       {
         src: APPLE_TOUCH_ICON,

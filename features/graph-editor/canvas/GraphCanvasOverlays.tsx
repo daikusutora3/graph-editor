@@ -2,6 +2,7 @@
 
 import { Maximize2, Minus, Plus } from "lucide-react";
 import type { CSSProperties, MutableRefObject, RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import { IconButton, focusRing } from "../ui/primitives";
@@ -12,7 +13,6 @@ type ZoomControlsProps = {
   disabled: boolean;
   maxZoom: number;
   minZoom: number;
-  offsetForMobile: boolean;
   zoomPercent: number;
   zoomStep: number;
   onFitView: () => void;
@@ -20,16 +20,10 @@ type ZoomControlsProps = {
   onZoom: (delta: number) => void;
 };
 
-type CanvasPointer = {
-  clientX: number;
-  clientY: number;
-};
-
 export function ZoomControls({
   disabled,
   maxZoom,
   minZoom,
-  offsetForMobile,
   zoomPercent,
   zoomStep,
   onFitView,
@@ -44,17 +38,15 @@ export function ZoomControls({
 
   return (
     <div
-      className={[
-        "ge-panel absolute right-6 z-40 flex h-9 items-center gap-0.5 rounded-[10px] px-[3px] backdrop-blur-[12px]",
-        offsetForMobile ? "bottom-[92px]" : "bottom-6",
-      ].join(" ")}
+      className="ge-panel touch:h-[52px] touch:gap-1 touch:rounded-[14px] pointer-events-auto relative z-40 flex h-12 items-center gap-0.5 rounded-xl px-1 backdrop-blur-[12px]"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
       <IconButton
         disabled={zoomOutDisabled}
         label={messages.canvas.zoomOut}
-        size={30}
+        size={40}
+        tooltipSide="top"
         onClick={() => onZoom(-zoomStep)}
       >
         <Minus className="size-[15px]" />
@@ -62,11 +54,12 @@ export function ZoomControls({
       <button
         type="button"
         aria-label={messages.canvas.resetZoom(zoomPercent)}
-        title={messages.canvas.resetZoom(zoomPercent)}
+        data-tooltip={messages.canvas.resetZoom(zoomPercent)}
+        data-tooltip-side="top"
         disabled={disabled}
         onClick={onResetZoom}
         className={[
-          "grid h-[30px] min-w-[52px] place-items-center rounded-[7px] bg-transparent px-1.5 font-mono text-xs font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--disabled)] disabled:hover:bg-transparent",
+          "touch:h-11 touch:min-w-14 touch:rounded-lg grid h-10 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono text-[13px] font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
           focusRing,
         ].join(" ")}
       >
@@ -75,19 +68,18 @@ export function ZoomControls({
       <IconButton
         disabled={zoomInDisabled}
         label={messages.canvas.zoomIn}
-        size={30}
+        size={40}
+        tooltipSide="top"
         onClick={() => onZoom(zoomStep)}
       >
         <Plus className="size-[15px]" />
       </IconButton>
-      <span
-        aria-hidden="true"
-        className="mx-0.5 h-[18px] w-px bg-[var(--line)]"
-      />
+      <span aria-hidden="true" className="mx-1 h-6 w-px bg-[var(--line)]" />
       <IconButton
         disabled={disabled}
         label={messages.canvas.fitGraphTitle}
-        size={30}
+        size={40}
+        tooltipSide="top"
         onClick={onFitView}
       >
         <Maximize2 className="size-[15px]" />
@@ -96,24 +88,58 @@ export function ZoomControls({
   );
 }
 
-type InteractionLayersProps = {
-  mode: "select" | "node" | "edge";
-  onAddNode: (event: CanvasPointer) => void;
-};
-
-export function InteractionLayers({ mode, onAddNode }: InteractionLayersProps) {
+export function FitToViewButton({ onFitView }: { onFitView: () => void }) {
   const { messages } = useI18n();
 
   return (
-    <>
-      {mode === "node" ? (
-        <div
-          aria-label={messages.canvas.nodePlacementLayer}
-          className="absolute inset-0 z-10 cursor-crosshair"
-          onClick={onAddNode}
-        />
-      ) : null}
-    </>
+    <IconButton
+      className="ge-panel ge-pop pointer-events-auto rounded-[14px] backdrop-blur-[12px]"
+      label={messages.canvas.fitGraphTitle}
+      tooltipSide="top"
+      onClick={onFitView}
+    >
+      <Maximize2 className="size-[18px]" aria-hidden="true" />
+    </IconButton>
+  );
+}
+
+/** Transient zoom readout for touch devices, where there is no zoom pill. */
+export function ZoomBadge({
+  visible,
+  zoomPercent,
+}: {
+  visible: boolean;
+  zoomPercent: number;
+}) {
+  const [shown, setShown] = useState(false);
+  const initialZoomRef = useRef(zoomPercent);
+
+  useEffect(() => {
+    if (!visible || zoomPercent === initialZoomRef.current) {
+      return;
+    }
+
+    initialZoomRef.current = zoomPercent;
+    setShown(true);
+    const timeoutId = window.setTimeout(() => setShown(false), 1200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [visible, zoomPercent]);
+
+  if (!visible || !shown) {
+    return null;
+  }
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-[68px] z-[60] flex justify-center">
+      <span
+        role="status"
+        aria-live="polite"
+        className="ge-pop inline-flex h-[30px] items-center rounded-full bg-[var(--primary)] px-3 font-mono text-xs font-semibold text-[var(--primary-text)] tabular-nums shadow-[var(--shadow)]"
+      >
+        {zoomPercent}%
+      </span>
+    </div>
   );
 }
 

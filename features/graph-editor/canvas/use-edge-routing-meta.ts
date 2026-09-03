@@ -4,10 +4,7 @@ import { useMemo, useRef } from "react";
 
 import { computeCytoscapeEdgeRoutingMeta } from "../adapters/cytoscape/cytoscape-adapter";
 import type { GraphModel } from "../core/graph/model";
-import {
-  createEdgeRoutingCacheKey,
-  shouldAvoidNodesForEdgeRouting,
-} from "../core/layout/edge-routing";
+import { createEdgeRoutingCacheKey } from "../core/layout/edge-routing";
 import {
   emptyEdgeRoutingContinuitySnapshot,
   readPreviousAutomaticRoutingMeta,
@@ -15,11 +12,12 @@ import {
 } from "../core/layout/edge-routing-continuity";
 
 export function useEdgeRoutingMeta(graph: GraphModel) {
-  const mode =
-    graph.settings.autoEdgeRouting && shouldAvoidNodesForEdgeRouting(graph);
+  // Edges stay straight; the setting only fans out parallel edges so they
+  // do not overlap. Node avoidance is intentionally never used.
+  const mode = graph.settings.autoEdgeRouting;
   const edgeRoutingOptions = useMemo(
     () => ({
-      mode: mode ? ("quality" as const) : ("simple" as const),
+      mode: mode ? ("parallel" as const) : ("simple" as const),
     }),
     [mode],
   );

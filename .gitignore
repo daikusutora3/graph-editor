@@ -15,3 +15,4 @@ skills-lock.json
 tsconfig.tsbuildinfo
 .envrc
 .local-bin/
+.claude/launch.json

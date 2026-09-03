@@ -29,9 +29,24 @@ export function useThemeMode() {
       applyThemeMode(nextTheme);
     };
 
-    window.addEventListener("storage", onStorage);
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onSystemChange = () => {
+      if (readStoredTheme()) {
+        return;
+      }
 
-    return () => window.removeEventListener("storage", onStorage);
+      const nextTheme = readPreferredTheme();
+      setTheme(nextTheme);
+      applyThemeMode(nextTheme);
+    };
+
+    window.addEventListener("storage", onStorage);
+    media.addEventListener("change", onSystemChange);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      media.removeEventListener("change", onSystemChange);
+    };
   }, []);
 
   const updateTheme = useCallback((nextTheme: ThemeMode) => {
@@ -44,14 +59,13 @@ export function useThemeMode() {
 }
 
 function readPreferredTheme(): ThemeMode {
-  const datasetTheme = toThemeMode(document.documentElement.dataset.theme);
-  if (datasetTheme) {
-    return datasetTheme;
-  }
-
   const storedTheme = readStoredTheme();
   if (storedTheme) {
     return storedTheme;
+  }
+
+  if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    return "dark";
   }
 
   return DEFAULT_THEME;

@@ -14,8 +14,9 @@ import type {
 } from "../../io/import-types";
 import type { ImportFormat } from "../../io/import-utils";
 import type { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
-import { Button, Select, focusRing } from "../primitives";
+import { Button, Select, focusRing, raisedControl } from "../primitives";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/SampleGalleryPane";
+import { SampleGraphPreview } from "../samples/SampleGraphPreview";
 
 export const loadSampleGalleryPane = () =>
   import("../samples/SampleGalleryPane").then((module) => ({
@@ -69,8 +70,9 @@ export function StarterPasteBody({
     analysis?.status === "invalid" || analysis?.status === "limit"
       ? "error"
       : "warning";
+  // Empty input is already announced by the preview pane; keep the header quiet.
   const meta = !inputText.trim()
-    ? messages.chrome.starterWaiting
+    ? ""
     : canApply && previewModel && !hasIssues
       ? `${messages.chrome.starterMeta(previewModel.nodes.length, previewModel.edges.length)}${
           previewModel.settings.indexBase === 0 ? " · 0-indexed" : ""
@@ -108,32 +110,53 @@ export function StarterPasteBody({
               "font-mono text-[11px] font-semibold whitespace-nowrap",
               hasIssues && inputText.trim()
                 ? "text-[var(--danger)]"
-                : "text-[var(--faint)]",
+                : "text-[var(--muted)]",
             )}
           >
             {meta}
           </span>
         </div>
       </div>
-      <textarea
-        ref={textareaRef}
-        name="graph-input"
-        value={inputText}
-        aria-label={`${messages.starter.paste}: ${messages.chrome.starterHelp}`}
-        autoComplete="off"
-        spellCheck={false}
-        placeholder={"4 4\n1 2\n2 3\n2 4\n3 4"}
-        onChange={(event) => starter.setInput(event.target.value)}
-        onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-            event.preventDefault();
-            if (canApply) {
-              starter.applyText();
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_176px]">
+        <textarea
+          ref={textareaRef}
+          name="graph-input"
+          value={inputText}
+          aria-label={`${messages.starter.paste}: ${messages.chrome.starterHelp}`}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={"4 4\n1 2\n2 3\n2 4\n3 4"}
+          onChange={(event) => starter.setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+              event.preventDefault();
+              if (canApply) {
+                starter.applyText();
+              }
             }
-          }
-        }}
-        className="ge-focus ge-scrollbar min-h-[220px] flex-1 resize-none rounded-[10px] border border-[var(--line)] bg-[var(--fill)] px-4 py-3.5 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none placeholder:text-[var(--faint)]"
-      />
+          }}
+          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-4 py-3.5 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none placeholder:text-[var(--faint)]"
+        />
+        <div
+          aria-label={messages.starter.preview}
+          className="grid min-h-[120px] place-items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:16px_16px] sm:min-h-0"
+        >
+          {canApply && previewModel ? (
+            <SampleGraphPreview
+              model={previewModel}
+              variant="editor"
+              width={160}
+              height={150}
+            />
+          ) : (
+            <span className="px-3 text-center text-xs font-semibold text-[var(--muted)]">
+              {inputText.trim() && hasIssues
+                ? messages.starter.needsReview
+                : messages.starter.previewEmpty}
+            </span>
+          )}
+        </div>
+      </div>
       {analysis?.status === "ambiguous" ? (
         <AmbiguousFormatChoices
           analysis={analysis}
@@ -181,7 +204,7 @@ export function StarterPasteFooter({
 
   return (
     <div className="flex w-full items-center gap-2">
-      <Button size="lg" variant="fill" onClick={onUseSample}>
+      <Button size="lg" variant="secondary" onClick={onUseSample}>
         {messages.chrome.starterUseSample}
       </Button>
       <span className="flex-1" />
@@ -222,7 +245,7 @@ export function StarterSampleFooter({
 
   return (
     <div className="flex w-full items-center gap-2">
-      <Button size="lg" variant="fill" onClick={onBackToPaste}>
+      <Button size="lg" variant="secondary" onClick={onBackToPaste}>
         {messages.chrome.starterBackToPaste}
       </Button>
     </div>
@@ -276,7 +299,8 @@ function AmbiguousFormatChoice({
       type="button"
       onClick={() => onSelect(candidate.formatKind)}
       className={cn(
-        "flex min-h-10 flex-1 items-center justify-between gap-3 rounded-lg bg-[var(--panel-solid)] px-3 text-left text-xs shadow-[0_1px_2px_rgb(0_0_0/0.08)] transition-colors hover:text-[var(--accent-text)]",
+        "touch:min-h-11 flex min-h-10 flex-1 items-center justify-between gap-3 rounded-lg px-3 text-left text-xs",
+        raisedControl,
         focusRing,
       )}
     >

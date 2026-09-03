@@ -1,7 +1,11 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  ReactNode,
+} from "react";
 import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
@@ -27,6 +31,53 @@ type EditorPanelShellProps = {
 };
 
 const CHROME_CONTROL_SELECTOR = "[data-editor-chrome-control='true']";
+const FOCUSABLE_SELECTOR = [
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "a[href]",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
+function focusableElements(root: HTMLElement | null) {
+  return root
+    ? [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
+        (element) => element.offsetParent !== null,
+      )
+    : [];
+}
+
+function firstFocusable(root: HTMLElement | null) {
+  const elements = focusableElements(root);
+  // Prefer the first control after the close button so keyboard users land
+  // on the panel's own content.
+  return (
+    elements.find((element) => element.dataset.panelClose !== "true") ??
+    elements[0] ??
+    null
+  );
+}
+
+function trapTab(event: ReactKeyboardEvent, root: HTMLElement | null) {
+  const elements = focusableElements(root);
+
+  if (elements.length === 0) {
+    return;
+  }
+
+  const first = elements[0];
+  const last = elements[elements.length - 1];
+  const active = document.activeElement;
+
+  if (event.shiftKey && (active === first || active === root)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 
 export function EditorPanelShell({
   bodyClassName,
@@ -45,6 +96,35 @@ export function EditorPanelShell({
   const mobile = layout === "mobile";
   const fullscreen = mobile && panel === "starter";
   const modal = panel === "starter" || panel === "shortcuts";
+
+  useEffect(() => {
+    if (state !== "open") {
+      return;
+    }
+
+    const section = sectionRef.current;
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const focusTimeout = window.setTimeout(() => {
+      const first = firstFocusable(section);
+      (first ?? section)?.focus({ preventScroll: true });
+    }, 30);
+
+    return () => {
+      window.clearTimeout(focusTimeout);
+
+      if (
+        previouslyFocused &&
+        previouslyFocused.isConnected &&
+        (document.activeElement === document.body ||
+          section?.contains(document.activeElement))
+      ) {
+        previouslyFocused.focus({ preventScroll: true });
+      }
+    };
+  }, [panel, state]);
 
   useEffect(() => {
     if (state !== "open") {
@@ -81,6 +161,10 @@ export function EditorPanelShell({
       return undefined;
     }
 
+    if (panel === "app") {
+      return { top: 76, left: 16, width: width ?? 264 };
+    }
+
     if (panel === "layouts" || panel === "menu") {
       return {
         top: 76,
@@ -113,11 +197,14 @@ export function EditorPanelShell({
 
   return (
     <>
-      {mobile ? (
+      {mobile || modal ? (
         <div
           aria-hidden="true"
           data-panel-state={state}
-          className="ge-scrim absolute inset-0 z-[80] bg-[var(--scrim)]"
+          className={cn(
+            "ge-scrim absolute inset-0 z-[80] bg-[var(--scrim)]",
+            !mobile && "opacity-60",
+          )}
           onClick={onClose}
         />
       ) : null}
@@ -152,10 +239,16 @@ export function EditorPanelShell({
                     : "max-h-[calc(100dvh-100px)]",
                 ),
           )}
+          tabIndex={-1}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.stopPropagation();
               onClose();
+              return;
+            }
+
+            if (event.key === "Tab" && (modal || mobile)) {
+              trapTab(event, sectionRef.current);
             }
           }}
         >
@@ -176,9 +269,11 @@ export function EditorPanelShell({
               ) : null}
             </span>
             <IconButton
+              data-panel-close="true"
               label={messages.common.close}
               size={36}
-              title={`${messages.common.close} (Esc)`}
+              tooltip={`${messages.common.close} (Esc)`}
+              tooltipSide="bottom-end"
               className="text-[var(--muted)] hover:text-[var(--text)]"
               onClick={onClose}
             >
