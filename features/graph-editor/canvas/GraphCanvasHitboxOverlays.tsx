@@ -4,7 +4,8 @@ import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useEffect, useRef, useState } from "react";
+
+import { useRef } from "react";
 
 import type { EdgeId, NodeId } from "../core/graph/model";
 import { useI18n } from "../i18n/I18nProvider";
@@ -84,7 +85,19 @@ export function EdgeNodeHitboxes({
               event.stopPropagation();
               onContextMenu(node, event);
             }}
-          />
+          >
+            {isSource ? (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-[-1px] rounded-full border-[1.5px] border-dashed border-[var(--accent)]"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-[-1px] rounded-full border-[1.5px] border-[var(--accent)] opacity-0 transition-opacity duration-150 group-hover:opacity-60"
+              />
+            )}
+          </button>
         );
       })}
     </>
@@ -96,6 +109,12 @@ type SelectEdgeHitboxesProps = {
   rangeSelectionActive: boolean;
   weighted: boolean;
   onContextMenu: (edge: EdgeLabelHitbox, event: CanvasPointer) => void;
+  /** Drag-to-bend: preview while dragging, commit on release, cancel on
+   * escape/pointer cancel. `zoom` converts rendered px to graph px. */
+  zoom: number;
+  onBendPreview: (edgeId: EdgeId, bowPx: number) => RenderedPoint | null;
+  onBendCommit: (edgeId: EdgeId, bowPx: number) => void;
+  onBendCancel: (edgeId: EdgeId) => void;
   onEdit: (edgeId: EdgeId, position: RenderedPoint) => void;
   onRangeSelectionPointerDown: (event: ReactPointerEvent<Element>) => boolean;
   onSelect: (edgeId: EdgeId, additive: boolean) => void;
@@ -107,10 +126,132 @@ export function SelectEdgeHitboxes({
   weighted,
   onContextMenu,
   onEdit,
+  onBendCancel,
+  onBendCommit,
+  onBendPreview,
   onRangeSelectionPointerDown,
   onSelect,
+  zoom,
 }: SelectEdgeHitboxesProps) {
   const { messages, locale } = useI18n();
+  const bendRef = useRef<{
+    edge: EdgeLabelHitbox;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+    bowPx: number | null;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  const containerBounds = (element: Element) =>
+    (
+      element.closest("svg") ?? element
+    ).parentElement?.getBoundingClientRect() ?? null;
+
+  const bendFromPointer = (
+    edge: EdgeLabelHitbox,
+    element: Element,
+    clientX: number,
+    clientY: number,
+  ) => {
+    const bounds = containerBounds(element);
+
+    return edgeBowPxFromRenderedPointer(
+      edge,
+      { x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) },
+      zoom,
+    );
+  };
+
+  const bendHandlers = (edge: EdgeLabelHitbox) => ({
+    onPointerDown: (event: ReactPointerEvent<Element>) => {
+      if (
+        event.button !== 0 ||
+        event.shiftKey ||
+        event.metaKey ||
+        event.ctrlKey ||
+        rangeSelectionActive
+      ) {
+        return;
+      }
+
+      bendRef.current = {
+        edge,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+        bowPx: null,
+      };
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Synthetic or already-released pointers cannot be captured; the
+        // drag still works while the pointer stays over the element.
+      }
+    },
+    onPointerMove: (event: ReactPointerEvent<Element>) => {
+      const bend = bendRef.current;
+
+      if (!bend || bend.pointerId !== event.pointerId) {
+        return;
+      }
+
+      if (
+        !bend.moved &&
+        Math.hypot(event.clientX - bend.startX, event.clientY - bend.startY) < 4
+      ) {
+        return;
+      }
+
+      if (!bend.moved) {
+        bend.moved = true;
+        onSelect(edge.id, false);
+      }
+
+      bend.bowPx = bendFromPointer(
+        edge,
+        event.currentTarget,
+        event.clientX,
+        event.clientY,
+      );
+      onBendPreview(edge.id, bend.bowPx);
+    },
+    onPointerUp: (event: ReactPointerEvent<Element>) => {
+      const bend = bendRef.current;
+
+      if (!bend || bend.pointerId !== event.pointerId) {
+        return;
+      }
+
+      bendRef.current = null;
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Capture may already be gone.
+      }
+
+      if (bend.moved && bend.bowPx !== null) {
+        suppressClickRef.current = true;
+        onBendCommit(edge.id, bend.bowPx);
+      }
+    },
+    onPointerCancel: (event: ReactPointerEvent<Element>) => {
+      const bend = bendRef.current;
+
+      if (!bend || bend.pointerId !== event.pointerId) {
+        return;
+      }
+
+      bendRef.current = null;
+
+      if (bend.moved) {
+        suppressClickRef.current = true;
+        onBendCancel(edge.id);
+      }
+    },
+  });
 
   return (
     <>
@@ -124,14 +265,19 @@ export function SelectEdgeHitboxes({
             d={createEdgeHitboxPath(edge)}
             fill="none"
             pointerEvents={rangeSelectionActive ? "none" : "stroke"}
-            className="cursor-pointer stroke-transparent"
+            className="cursor-pointer touch-none stroke-transparent"
             strokeWidth="18"
             strokeLinecap="round"
             onPointerDownCapture={(event) => {
               onRangeSelectionPointerDown(event);
             }}
+            {...bendHandlers(edge)}
             onClick={(event) => {
               event.stopPropagation();
+              if (suppressClickRef.current) {
+                suppressClickRef.current = false;
+                return;
+              }
               if (event.detail >= 2) {
                 onEdit(edge.id, { x: edge.x, y: edge.y });
                 return;
@@ -172,7 +318,7 @@ export function SelectEdgeHitboxes({
                     : `Edit edge label ${edge.label}`
                 : messages.canvas.editEdgeLabel
           }
-          className="absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-text rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+          className="touch:h-11 absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
           inert={rangeSelectionActive}
           style={{
             left: edge.x,
@@ -180,8 +326,13 @@ export function SelectEdgeHitboxes({
             top: edge.y,
             width: edgeLabelHitboxWidth(edge.label),
           }}
+          {...bendHandlers(edge)}
           onClick={(event) => {
             event.stopPropagation();
+            if (suppressClickRef.current) {
+              suppressClickRef.current = false;
+              return;
+            }
             if (event.detail >= 2) {
               onEdit(edge.id, { x: edge.x, y: edge.y });
               return;
@@ -206,267 +357,6 @@ export function SelectEdgeHitboxes({
       ))}
     </>
   );
-}
-
-type EdgeBendHandleProps = {
-  canReset: boolean;
-  edge: EdgeLabelHitbox;
-  zoom: number;
-  onCancel: () => void;
-  onCommit: (bowPx: number) => void;
-  onPreview: (bowPx: number) => RenderedPoint | null;
-  onReset: () => void;
-};
-
-export function EdgeBendHandle({
-  canReset,
-  edge,
-  zoom,
-  onCancel,
-  onCommit,
-  onPreview,
-  onReset,
-}: EdgeBendHandleProps) {
-  const { messages } = useI18n();
-  const [preview, setPreview] = useState<{
-    bowPx: number;
-    position: RenderedPoint;
-  } | null>(null);
-  const pendingBowRef = useRef<number | null>(null);
-  const frameRef = useRef<number | null>(null);
-  const cancelDragRef = useRef<(() => void) | null>(null);
-  const draggingRef = useRef(false);
-  const suppressResetClickUntilRef = useRef(0);
-  const showsManualRouting = canReset || preview != null;
-  const position = preview?.position ?? { x: edge.x, y: edge.y };
-  const handleLabel = canReset
-    ? `${messages.canvas.adjustEdgeCurve} / ${messages.canvas.resetEdgeCurve}`
-    : messages.canvas.adjustEdgeCurve;
-
-  useEffect(() => {
-    return () => {
-      cancelDragRef.current?.();
-
-      if (frameRef.current != null) {
-        cancelAnimationFrame(frameRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (
-      canReset &&
-      !draggingRef.current &&
-      preview != null &&
-      Math.abs(edge.bowPx - preview.bowPx) < 0.01
-    ) {
-      setPreview(null);
-    }
-  }, [canReset, edge.bowPx, preview]);
-
-  const applyPreview = (bowPx: number) => {
-    setPreview({
-      bowPx,
-      position: onPreview(bowPx) ?? edgeBendHandlePosition(edge, bowPx, zoom),
-    });
-  };
-
-  const flushPreview = () => {
-    if (frameRef.current != null) {
-      cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-
-    const pendingBow = pendingBowRef.current;
-    pendingBowRef.current = null;
-
-    if (pendingBow != null) {
-      applyPreview(pendingBow);
-    }
-  };
-
-  const updateFromPointer = (
-    button: HTMLButtonElement,
-    clientX: number,
-    clientY: number,
-  ) => {
-    const bounds = button.offsetParent?.getBoundingClientRect();
-    const nextBowPx = edgeBowPxFromRenderedPointer(
-      edge,
-      {
-        x: clientX - (bounds?.left ?? 0),
-        y: clientY - (bounds?.top ?? 0),
-      },
-      zoom,
-    );
-    pendingBowRef.current = nextBowPx;
-
-    if (frameRef.current == null) {
-      frameRef.current = requestAnimationFrame(() => {
-        frameRef.current = null;
-        const pendingBow = pendingBowRef.current;
-        pendingBowRef.current = null;
-
-        if (pendingBow != null) {
-          applyPreview(pendingBow);
-        }
-      });
-    }
-
-    return nextBowPx;
-  };
-
-  return (
-    <button
-      type="button"
-      data-edge-bend-handle="true"
-      data-edge-routing-mode={showsManualRouting ? "manual" : "automatic"}
-      aria-label={handleLabel}
-      title={handleLabel}
-      className={[
-        "absolute z-[24] size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full border-2 shadow-[var(--shadow)] focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none active:cursor-grabbing",
-        showsManualRouting
-          ? "border-[var(--panel-solid)] bg-[var(--accent)]"
-          : "border-[var(--accent)] bg-white",
-      ].join(" ")}
-      style={{ left: position.x, top: position.y }}
-      onClick={(event) => {
-        event.stopPropagation();
-
-        if (
-          canReset &&
-          performance.now() >= suppressResetClickUntilRef.current
-        ) {
-          onReset();
-        }
-      }}
-      onPointerDown={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        cancelDragRef.current?.();
-
-        const button = event.currentTarget;
-        const pointerId = event.pointerId;
-        const startClientX = event.clientX;
-        const startClientY = event.clientY;
-        let active = true;
-        let moved = false;
-        draggingRef.current = true;
-
-        const cleanup = () => {
-          if (!active) {
-            return;
-          }
-
-          active = false;
-          draggingRef.current = false;
-          window.removeEventListener("pointermove", handlePointerMove, true);
-          window.removeEventListener("pointerup", handlePointerUp, true);
-          window.removeEventListener(
-            "pointercancel",
-            handlePointerCancel,
-            true,
-          );
-          window.removeEventListener("blur", handleWindowBlur);
-          cancelDragRef.current = null;
-        };
-        const releasePointerCapture = () => {
-          if (button.hasPointerCapture(pointerId)) {
-            button.releasePointerCapture(pointerId);
-          }
-        };
-        const cancelDrag = () => {
-          if (!active) {
-            return;
-          }
-
-          cleanup();
-          releasePointerCapture();
-
-          if (frameRef.current != null) {
-            cancelAnimationFrame(frameRef.current);
-            frameRef.current = null;
-          }
-
-          pendingBowRef.current = null;
-          setPreview(null);
-          onCancel();
-        };
-        function handlePointerMove(pointerEvent: PointerEvent) {
-          if (!active || pointerEvent.pointerId !== pointerId) {
-            return;
-          }
-
-          pointerEvent.preventDefault();
-          moved ||= pointerMoved(
-            startClientX,
-            startClientY,
-            pointerEvent.clientX,
-            pointerEvent.clientY,
-          );
-
-          if (!moved) {
-            return;
-          }
-
-          updateFromPointer(button, pointerEvent.clientX, pointerEvent.clientY);
-        }
-        function handlePointerUp(pointerEvent: PointerEvent) {
-          if (!active || pointerEvent.pointerId !== pointerId) {
-            return;
-          }
-
-          pointerEvent.preventDefault();
-          moved ||= pointerMoved(
-            startClientX,
-            startClientY,
-            pointerEvent.clientX,
-            pointerEvent.clientY,
-          );
-
-          if (!moved) {
-            cancelDrag();
-            return;
-          }
-
-          const nextBowPx = updateFromPointer(
-            button,
-            pointerEvent.clientX,
-            pointerEvent.clientY,
-          );
-          flushPreview();
-          cleanup();
-          releasePointerCapture();
-          suppressResetClickUntilRef.current = performance.now() + 300;
-          onCommit(nextBowPx);
-        }
-        function handlePointerCancel(pointerEvent: PointerEvent) {
-          if (pointerEvent.pointerId === pointerId) {
-            cancelDrag();
-          }
-        }
-        function handleWindowBlur() {
-          cancelDrag();
-        }
-
-        cancelDragRef.current = cancelDrag;
-        window.addEventListener("pointermove", handlePointerMove, true);
-        window.addEventListener("pointerup", handlePointerUp, true);
-        window.addEventListener("pointercancel", handlePointerCancel, true);
-        window.addEventListener("blur", handleWindowBlur);
-        button.setPointerCapture(pointerId);
-      }}
-    />
-  );
-}
-
-function pointerMoved(
-  startClientX: number,
-  startClientY: number,
-  clientX: number,
-  clientY: number,
-) {
-  return Math.hypot(clientX - startClientX, clientY - startClientY) > 2;
 }
 
 export function edgeBowPxFromRenderedPointer(

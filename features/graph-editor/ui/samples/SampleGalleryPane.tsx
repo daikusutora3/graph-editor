@@ -2,7 +2,14 @@
 
 import { useAtomValue } from "jotai";
 import { Search, X } from "lucide-react";
-import { type FocusEvent, useMemo, useState } from "react";
+import {
+  type FocusEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -144,25 +151,30 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
                   <SectionLabel>
                     {messages.samples.group[group.key].label}
                   </SectionLabel>
-                  <div className="text-[11.5px] leading-snug text-[var(--faint)]">
+                  <div className="text-xs leading-snug text-[var(--muted)]">
                     {messages.samples.group[group.key].note}
                   </div>
                 </div>
-                <div className="font-mono text-[11px] font-semibold text-[var(--faint)] tabular-nums">
+                <div className="font-mono text-[11px] font-semibold text-[var(--muted)] tabular-nums">
                   {group.samples.length}
                 </div>
               </div>
-              <div className={SAMPLE_GALLERY_GRID_CLASS}>
-                {group.samples.map((sample) => (
-                  <SampleCard
-                    key={sample.kind}
-                    sample={sample}
-                    settings={graph.settings}
-                    onApply={() => generateSample(sample.kind)}
-                    onApplySized={generateSizedSample}
-                  />
-                ))}
-              </div>
+              <LazyGroup
+                count={group.samples.length}
+                eager={filteredSampleGroups.indexOf(group) === 0}
+              >
+                <div className={SAMPLE_GALLERY_GRID_CLASS}>
+                  {group.samples.map((sample) => (
+                    <SampleCard
+                      key={sample.kind}
+                      sample={sample}
+                      settings={graph.settings}
+                      onApply={() => generateSample(sample.kind)}
+                      onApplySized={generateSizedSample}
+                    />
+                  ))}
+                </div>
+              </LazyGroup>
             </section>
           ))
         ) : (
@@ -170,12 +182,61 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
             <div className="text-sm font-bold text-[var(--text)]">
               {messages.samples.empty}
             </div>
-            <Button variant="fill" onClick={() => setSampleQuery("")}>
+            <Button variant="secondary" onClick={() => setSampleQuery("")}>
               {messages.samples.clearSearch}
             </Button>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Renders a group's cards only once it approaches the viewport. Sixty-plus
+ * SVG previews with edge routing are too heavy to paint in one go. */
+function LazyGroup({
+  children,
+  count,
+  eager,
+}: {
+  children: ReactNode;
+  count: number;
+  eager: boolean;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [rendered, setRendered] = useState(eager);
+
+  useEffect(() => {
+    if (rendered) {
+      return;
+    }
+
+    const element = ref.current;
+
+    if (!element || typeof IntersectionObserver === "undefined") {
+      setRendered(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setRendered(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "320px 0px" },
+    );
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [rendered]);
+
+  const rows = Math.ceil(count / 2);
+
+  return (
+    <div ref={ref} style={rendered ? undefined : { minHeight: rows * 172 }}>
+      {rendered ? children : null}
     </div>
   );
 }
@@ -195,7 +256,7 @@ function SampleGalleryFilter({
 
   return (
     <div className="flex items-center gap-3 px-4 pt-3.5 pb-3">
-      <label className="ge-focus flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
+      <label className="ge-focus touch:h-11 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
         <Search className="size-3.5 shrink-0" aria-hidden="true" />
         <input
           type="search"
@@ -205,7 +266,7 @@ function SampleGalleryFilter({
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={messages.samples.searchPlaceholder}
           aria-label={messages.samples.searchAria}
-          className="min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--faint)]"
+          className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--faint)]"
         />
         {query ? (
           <button
@@ -213,7 +274,7 @@ function SampleGalleryFilter({
             aria-label={messages.samples.clearSearch}
             onClick={() => onQueryChange("")}
             className={cn(
-              "grid size-5 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]",
+              "touch:size-9 grid size-5 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]",
               focusRing,
             )}
           >
@@ -221,7 +282,7 @@ function SampleGalleryFilter({
           </button>
         ) : null}
       </label>
-      <div className="shrink-0 font-mono text-[11px] font-semibold text-[var(--faint)] tabular-nums">
+      <div className="shrink-0 font-mono text-[11px] font-semibold text-[var(--muted)] tabular-nums">
         {shown} / {total}
       </div>
     </div>
@@ -297,7 +358,7 @@ function SampleCard({
           />
         </span>
         <span className="flex min-w-0 flex-col gap-1">
-          <span className="text-[14px] leading-tight font-bold break-words text-[var(--text)]">
+          <span className="text-sm leading-tight font-bold break-words text-[var(--text)]">
             {title}
           </span>
           <span className="text-xs leading-snug font-medium [overflow-wrap:anywhere] text-[var(--muted)]">
@@ -359,7 +420,7 @@ function SampleCard({
           aria-label={`${title}: ${messages.samples.sizedCreate}`}
           title={`${title} (${subtitle})`}
           size="sm"
-          variant="primary"
+          variant="secondary"
           className="ml-auto px-3"
         >
           {messages.samples.sizedCreate}

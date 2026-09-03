@@ -1,8 +1,8 @@
 import {
   ArrowLeftRight,
   Pencil,
-  RotateCcw,
   Trash2,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 
@@ -79,11 +79,10 @@ export function resolveSelectionActions(
     actions.push({
       id: "edit",
       icon: Pencil,
-      label: canEditNode
-        ? messages.chrome.selection.label
-        : graph.settings.weighted
-          ? messages.canvas.editEdgeWeight
-          : messages.contextMenu.editEdgeLabel,
+      label:
+        !canEditNode && graph.settings.weighted
+          ? messages.chrome.selection.weight
+          : messages.chrome.selection.label,
       kbd: "↵",
     });
   }

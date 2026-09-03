@@ -8,19 +8,24 @@ export function Kbd({
   children,
   className,
   size = "sm",
+  tone = "neutral",
 }: {
   children: ReactNode;
   className?: string;
   size?: "sm" | "md";
+  tone?: "neutral" | "danger" | "inherit";
 }) {
   return (
     <kbd
       aria-hidden="true"
       className={cn(
-        "grid place-items-center bg-[var(--fill)] font-mono font-semibold text-[var(--muted)]",
+        "touch:hidden grid place-items-center rounded-md font-mono font-semibold",
         size === "sm"
-          ? "h-[18px] min-w-5 rounded px-1 text-[10.5px]"
-          : "h-5 min-w-[22px] rounded-[5px] px-[5px] text-[13px]",
+          ? "h-[22px] min-w-6 px-1.5 text-xs"
+          : "h-7 min-w-7 px-1.5 text-sm",
+        tone === "neutral" && "bg-[var(--fill)] text-[var(--muted)]",
+        tone === "danger" && "bg-[var(--danger-fill)] text-[var(--danger)]",
+        tone === "inherit" && "bg-[var(--fill)] text-inherit",
         className,
       )}
     >
@@ -44,7 +49,9 @@ export function SectionLabel({
         {children}
       </span>
       {trailing ? (
-        <span className="text-[11.5px] text-[var(--faint)]">{trailing}</span>
+        <span className="text-xs font-medium text-[var(--muted)]">
+          {trailing}
+        </span>
       ) : null}
     </div>
   );

@@ -4,6 +4,7 @@ import {
   Camera,
   ChevronDown,
   Download,
+  FileInput,
   LayoutGrid,
   Moon,
   Redo2,
@@ -37,15 +38,78 @@ type ToolbarSharedProps = {
   onUndo: () => void;
 };
 
-const floating =
-  "ge-panel absolute z-[70] flex items-center rounded-xl backdrop-blur-[16px]";
+type ThemeProps = {
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+};
 
-export function BrandPill({
+/** Every bar in the top row shares this height so they read as one group. */
+const TOP_BAR_HEIGHT = "h-[52px]";
+
+const floating =
+  "ge-panel pointer-events-auto flex items-center rounded-[14px] backdrop-blur-[16px]";
+
+/**
+ * Top row of the desktop chrome. A three-column grid keeps the brand pill,
+ * toolbar, and right rail from ever overlapping: the outer columns never
+ * shrink below their content, so the toolbar is centered when there is room
+ * and simply shifts when there is not.
+ */
+export function DesktopTopRow({
+  onOpenStarter,
+  wide,
+  ...props
+}: ToolbarSharedProps &
+  ThemeProps & { onOpenStarter: () => void; wide: boolean }) {
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-x-4 top-4 z-[70] grid items-start gap-3",
+        // Symmetric columns keep the toolbar centred when there is room; compact
+        // widths let the toolbar float between the brand pill and the rail.
+        wide
+          ? "grid-cols-[1fr_auto_1fr]"
+          : "grid-cols-[auto_minmax(0,1fr)_auto]",
+      )}
+    >
+      <BrandPill
+        mobile={false}
+        open={props.panel === "app"}
+        wide={wide}
+        onClick={() => props.onTogglePanel("app")}
+      />
+      <DesktopToolbar {...props} wide={wide} />
+      <DesktopRightRail {...props} wide={wide} onOpenStarter={onOpenStarter} />
+    </div>
+  );
+}
+
+export function MobileTopRow({
+  onOpenStarter,
+  ...props
+}: Pick<ToolbarSharedProps, "panel" | "onTogglePanel"> &
+  ThemeProps & { onOpenStarter: () => void }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-3 top-3 z-[70] flex items-start justify-between gap-3">
+      <BrandPill
+        mobile
+        open={props.panel === "app"}
+        wide={false}
+        onClick={() => props.onTogglePanel("app")}
+      />
+      <MobileTopRail {...props} onOpenStarter={onOpenStarter} />
+    </div>
+  );
+}
+
+function BrandPill({
   mobile,
+  open,
   onClick,
   wide,
 }: {
   mobile: boolean;
+  open: boolean;
   onClick: () => void;
   wide: boolean;
 }) {
@@ -55,33 +119,40 @@ export function BrandPill({
     <button
       type="button"
       data-editor-chrome-control="true"
-      aria-label={messages.chrome.openStarter}
-      title={messages.chrome.openStarter}
+      aria-label={messages.appMenu.open}
+      aria-expanded={open}
+      aria-haspopup="menu"
+      data-tooltip={messages.appMenu.label}
       onClick={onClick}
       className={cn(
         floating,
         focusRing,
-        "h-11 gap-2 pr-3 pl-2.5 text-[var(--text)] transition-colors hover:border-[var(--faint)]",
-        mobile ? "top-3 left-3" : "top-4 left-4",
+        "gap-2 justify-self-start pr-3 pl-2.5 text-[var(--text)] transition-colors hover:border-[var(--faint)]",
+        TOP_BAR_HEIGHT,
+        open && "border-[var(--accent)]",
       )}
     >
       <BrandLogo size={22} />
       {wide || mobile ? (
-        <span translate="no" className="text-sm font-bold whitespace-nowrap">
+        <span
+          translate="no"
+          className="text-sm font-bold whitespace-nowrap @max-[399px]/editor:hidden"
+        >
           {messages.app.title}
         </span>
       ) : null}
-      {!mobile ? (
-        <ChevronDown
-          className="size-[13px] text-[var(--muted)]"
-          aria-hidden="true"
-        />
-      ) : null}
+      <ChevronDown
+        className={cn(
+          "size-[13px] text-[var(--muted)] transition-transform",
+          open && "rotate-180",
+        )}
+        aria-hidden="true"
+      />
     </button>
   );
 }
 
-export function DesktopToolbar({
+function DesktopToolbar({
   canRedo,
   canUndo,
   mode,
@@ -96,7 +167,7 @@ export function DesktopToolbar({
 }: ToolbarSharedProps & { wide: boolean }) {
   const { messages } = useI18n();
   const modeButtonClass = cn(
-    "h-10 text-[13.5px]",
+    "h-10 text-[13px]",
     wide ? "gap-2 pr-2.5 pl-3" : "gap-1.5 px-2.5",
   );
 
@@ -107,7 +178,8 @@ export function DesktopToolbar({
       data-editor-chrome-control="true"
       className={cn(
         floating,
-        "top-4 left-1/2 h-[52px] -translate-x-1/2 gap-0.5 rounded-[14px] px-1.5 backdrop-blur-[24px]",
+        TOP_BAR_HEIGHT,
+        "gap-0.5 justify-self-center px-1.5 backdrop-blur-[24px]",
       )}
     >
       {editorModes.map(({ mode: itemMode, keyHint, icon: Icon }) => (
@@ -117,12 +189,14 @@ export function DesktopToolbar({
           aria-label={messages.toolbar.modes[itemMode].label}
           aria-pressed={mode === itemMode}
           data-graph-shortcut-target="true"
-          title={`${messages.toolbar.modes[itemMode].tooltip} (${keyHint})`}
+          tooltip={`${messages.toolbar.modes[itemMode].tooltip} (${keyHint})`}
           className={modeButtonClass}
           onClick={() => onModeChange(itemMode)}
         >
           <Icon className="size-4" aria-hidden="true" />
-          {messages.toolbar.modes[itemMode].label}
+          <span className={wide ? undefined : "@max-[959px]/editor:hidden"}>
+            {messages.toolbar.modes[itemMode].label}
+          </span>
           {wide ? <Kbd>{keyHint}</Kbd> : null}
         </Button>
       ))}
@@ -131,7 +205,7 @@ export function DesktopToolbar({
         data-graph-shortcut-target="true"
         disabled={!canUndo}
         label={messages.toolbar.undo.label}
-        title={withShortcut(messages.toolbar.undo.tooltip, undoShortcut)}
+        tooltip={withShortcut(messages.toolbar.undo.tooltip, undoShortcut)}
         onClick={onUndo}
       >
         <Undo2 className="size-4" aria-hidden="true" />
@@ -140,7 +214,7 @@ export function DesktopToolbar({
         data-graph-shortcut-target="true"
         disabled={!canRedo}
         label={messages.toolbar.redo.label}
-        title={withShortcut(messages.toolbar.redo.tooltip, redoShortcut)}
+        tooltip={withShortcut(messages.toolbar.redo.tooltip, redoShortcut)}
         onClick={onRedo}
       >
         <Redo2 className="size-4" aria-hidden="true" />
@@ -151,7 +225,7 @@ export function DesktopToolbar({
         aria-expanded={panel === "layouts"}
         aria-label={messages.chrome.layouts}
         data-graph-shortcut-target="true"
-        title={`${messages.chrome.layouts} (L)`}
+        tooltip={`${messages.chrome.layouts} (L)`}
         className={modeButtonClass}
         onClick={() => onTogglePanel("layouts")}
       >
@@ -164,7 +238,7 @@ export function DesktopToolbar({
         aria-expanded={panel === "settings"}
         aria-label={messages.chrome.settings}
         data-graph-shortcut-target="true"
-        title={`${messages.chrome.settings} (,)`}
+        tooltip={`${messages.chrome.settings} (,)`}
         className={modeButtonClass}
         onClick={() => onTogglePanel("settings")}
       >
@@ -176,30 +250,35 @@ export function DesktopToolbar({
   );
 }
 
-export function DesktopRightRail({
+function DesktopRightRail({
   panel,
   theme,
   wide,
+  onOpenStarter,
   onToggleTheme,
   onTogglePanel,
-}: {
-  panel: EditorPanel | null;
-  theme: ThemeMode;
-  wide: boolean;
-  onToggleTheme: () => void;
-  onTogglePanel: (panel: EditorPanel) => void;
-}) {
+}: Pick<ToolbarSharedProps, "panel" | "onTogglePanel"> &
+  ThemeProps & { onOpenStarter: () => void; wide: boolean }) {
   const { messages } = useI18n();
 
   return (
     <div
       data-editor-chrome-control="true"
-      className={cn(floating, "top-4 right-4 h-11 gap-0.5 px-[3px]")}
+      className={cn(
+        floating,
+        TOP_BAR_HEIGHT,
+        "gap-0.5 justify-self-end px-1.5",
+      )}
     >
       <ThemeButton theme={theme} onClick={onToggleTheme} />
-      <span
-        aria-hidden="true"
-        className="mx-[3px] h-[22px] w-px bg-[var(--line)]"
+      <Divider />
+      <RailButton
+        active={panel === "starter"}
+        icon={FileInput}
+        label={messages.chrome.openStarter}
+        shortLabel={messages.chrome.load}
+        wide={wide}
+        onClick={onOpenStarter}
       />
       <RailButton
         active={panel === "export"}
@@ -220,31 +299,38 @@ export function DesktopRightRail({
   );
 }
 
-export function MobileTopRail({
+function MobileTopRail({
   panel,
   theme,
+  onOpenStarter,
   onToggleTheme,
   onTogglePanel,
-}: {
-  panel: EditorPanel | null;
-  theme: ThemeMode;
-  onToggleTheme: () => void;
-  onTogglePanel: (panel: EditorPanel) => void;
-}) {
+}: Pick<ToolbarSharedProps, "panel" | "onTogglePanel"> &
+  ThemeProps & { onOpenStarter: () => void }) {
   const { messages } = useI18n();
 
   return (
     <div
       data-editor-chrome-control="true"
-      className={cn(floating, "top-3 right-3 h-11 gap-0.5 px-[3px]")}
+      className={cn(floating, TOP_BAR_HEIGHT, "gap-0.5 px-1")}
     >
       <ThemeButton theme={theme} iconSize={17} onClick={onToggleTheme} />
+      <IconButton
+        active={panel === "starter"}
+        aria-expanded={panel === "starter"}
+        data-graph-shortcut-target="true"
+        label={messages.chrome.openStarter}
+        tooltipSide="bottom-end"
+        onClick={onOpenStarter}
+      >
+        <FileInput className="size-[17px]" aria-hidden="true" />
+      </IconButton>
       <IconButton
         active={panel === "export"}
         aria-expanded={panel === "export"}
         data-graph-shortcut-target="true"
         label={messages.chrome.export}
-        size={38}
+        tooltipSide="bottom-end"
         onClick={() => onTogglePanel("export")}
       >
         <Download className="size-[17px]" aria-hidden="true" />
@@ -254,7 +340,7 @@ export function MobileTopRail({
         aria-expanded={panel === "png"}
         data-graph-shortcut-target="true"
         label={messages.chrome.png}
-        size={38}
+        tooltipSide="bottom-end"
         onClick={() => onTogglePanel("png")}
       >
         <Camera className="size-[17px]" aria-hidden="true" />
@@ -282,7 +368,7 @@ export function MobileBottomBar({
       data-editor-chrome-control="true"
       className={cn(
         floating,
-        "right-3 bottom-4 left-3 h-16 gap-0.5 rounded-2xl px-1.5 backdrop-blur-[24px]",
+        "absolute right-3 bottom-4 left-3 z-[70] h-16 gap-0.5 rounded-2xl px-1.5 backdrop-blur-[24px]",
       )}
     >
       {editorModes.map(({ mode: itemMode, icon: Icon }) => (
@@ -295,7 +381,7 @@ export function MobileBottomBar({
           onClick={() => onModeChange(itemMode)}
         >
           <Icon className="size-[18px]" aria-hidden="true" />
-          <span className="text-[10.5px] leading-none">
+          <span className="text-[11px] leading-none">
             {messages.toolbar.modes[itemMode].label}
           </span>
         </MobileBarButton>
@@ -330,10 +416,12 @@ export function MobileBottomBar({
 
 function ThemeButton({
   iconSize = 16,
+  size = 40,
   theme,
   onClick,
 }: {
   iconSize?: number;
+  size?: 40;
   theme: ThemeMode;
   onClick: () => void;
 }) {
@@ -348,7 +436,8 @@ function ThemeButton({
           ? messages.common.switchLightMode
           : messages.common.switchDarkMode
       }
-      size={38}
+      size={size}
+      tooltipSide="bottom-end"
       onClick={onClick}
     >
       <Icon style={{ width: iconSize, height: iconSize }} aria-hidden="true" />
@@ -377,10 +466,11 @@ function RailButton({
       aria-expanded={active}
       aria-label={label}
       data-graph-shortcut-target="true"
-      title={label}
+      tooltip={label}
+      tooltipSide="bottom-end"
       className={cn(
-        "h-[38px] gap-[7px]",
-        wide ? "pr-3 pl-2.5" : "w-[38px] px-0",
+        "h-10 gap-[7px] text-[13px]",
+        wide ? "pr-3 pl-2.5" : "w-10 px-0",
       )}
       onClick={onClick}
     >
@@ -418,8 +508,8 @@ function MobileBarButton({
       data-graph-shortcut-target="true"
       disabled={disabled}
       className={cn(
-        "h-[52px] flex-col gap-[3px] rounded-[10px] px-0",
-        wide ? "min-w-0 flex-1" : "w-[46px]",
+        "h-[52px] flex-col gap-[3px] rounded-lg px-0",
+        wide ? "min-w-0 flex-1" : "w-11",
       )}
       onClick={onClick}
     >

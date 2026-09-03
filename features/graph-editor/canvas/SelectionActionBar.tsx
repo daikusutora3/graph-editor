@@ -96,16 +96,11 @@ export function SelectionActionBar({
   };
 
   return (
-    <div
-      className={cn(
-        "pointer-events-none absolute right-3 left-3 z-30 flex justify-center",
-        chrome.layout === "mobile" ? "bottom-[92px]" : "bottom-6",
-      )}
-    >
+    <div className="pointer-events-none relative z-30 flex max-w-full justify-center">
       <div
         role="toolbar"
         aria-label={description}
-        className="ge-panel ge-pop pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pr-1.5 pl-3 backdrop-blur-[12px]"
+        className="ge-panel ge-pop touch:rounded-2xl touch:py-1.5 pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pr-1.5 pl-3 backdrop-blur-[12px]"
       >
         <span className="pr-2.5 text-xs font-semibold whitespace-nowrap text-[var(--muted)]">
           {description}
@@ -117,7 +112,10 @@ export function SelectionActionBar({
               ? messages.canvas.nodeColor
               : messages.canvas.edgeColor
           }
-          className="flex items-center gap-1.5 border-x border-[var(--line)] px-2.5 py-1"
+          className={cn(
+            "flex items-center border-x border-[var(--line)] px-2.5 py-1",
+            chrome.layout === "mobile" ? "gap-0 px-1" : "gap-0 px-1.5",
+          )}
         >
           {(swatchKind === "node"
             ? SELECTABLE_NODE_COLORS
@@ -127,6 +125,7 @@ export function SelectionActionBar({
               key={color}
               color={color}
               kind={swatchKind}
+              large={chrome.layout === "mobile"}
               active={activeColor === color}
               label={messages.canvas.colorFor(
                 swatchKind,
@@ -149,7 +148,6 @@ export function SelectionActionBar({
           <Button
             key={id}
             aria-label={label}
-            title={label}
             variant={danger ? "danger" : "ghost"}
             className="rounded-lg"
             onClick={() => runAction(id)}
@@ -157,10 +155,7 @@ export function SelectionActionBar({
             <Icon className="size-[15px]" aria-hidden="true" />
             {label}
             {kbd ? (
-              <Kbd
-                size="md"
-                className={danger ? "bg-[var(--danger-fill)] text-inherit" : ""}
-              >
+              <Kbd size="md" tone={danger ? "danger" : "neutral"}>
                 {kbd}
               </Kbd>
             ) : null}
@@ -176,12 +171,14 @@ function ColorSwatch({
   color,
   kind,
   label,
+  large,
   onPick,
 }: {
   active: boolean;
   color: GraphColor;
   kind: "node" | "edge";
   label: string;
+  large: boolean;
   onPick: () => void;
 }) {
   const fill = kind === "node" ? swatchFill(color) : swatchStroke(color);
@@ -193,16 +190,25 @@ function ColorSwatch({
       role="radio"
       aria-checked={active}
       aria-label={label}
-      title={label}
+      data-tooltip={label}
+      data-tooltip-side="top"
       onClick={onPick}
       className={cn(
-        "size-[22px] shrink-0 rounded-full p-0 transition-shadow focus-visible:outline-none",
-        active
-          ? "shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent)]"
-          : "shadow-[0_0_0_1px_var(--hair)] hover:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--fill-2)] focus-visible:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent-ring)]",
+        "group grid shrink-0 place-items-center rounded-full bg-transparent p-0 focus-visible:outline-none",
+        large ? "size-11" : "size-[30px]",
       )}
-      style={{ background: fill, border: `1.5px solid ${stroke}` }}
-    />
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "block size-[22px] rounded-full transition-shadow",
+          active
+            ? "shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent)]"
+            : "shadow-[0_0_0_1px_var(--hair)] group-hover:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--fill-2)] group-focus-visible:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent-ring)]",
+        )}
+        style={{ background: fill, border: `1.5px solid ${stroke}` }}
+      />
+    </button>
   );
 }
 

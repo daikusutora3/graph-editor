@@ -16,7 +16,9 @@ const themeInitScript = `
     const theme =
       supportedThemes.has(stored)
         ? stored
-        : ${JSON.stringify(DEFAULT_THEME)};
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : ${JSON.stringify(DEFAULT_THEME)};
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
   } catch {

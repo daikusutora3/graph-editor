@@ -1,11 +1,18 @@
 "use client";
 
+import { Check } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 import { focusRing } from "./styles";
 
 export type SegmentOption<T extends string> = { label: string; value: T };
 
+/**
+ * Segmented choice: one raised group of joined buttons. The selected option
+ * is tinted with the accent fill and carries a check mark so the state reads
+ * without relying on color alone.
+ */
 export function Segment<T extends string>({
   label,
   onChange,
@@ -23,9 +30,9 @@ export function Segment<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="grid min-w-0 auto-cols-[minmax(0,1fr)] grid-flow-col gap-[3px] rounded-lg bg-[var(--fill)] p-[3px]"
+      className="grid min-w-0 auto-cols-[minmax(0,1fr)] grid-flow-col overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] shadow-[0_1px_2px_rgb(0_0_0/0.06)]"
     >
-      {options.map((option) => {
+      {options.map((option, index) => {
         const selected = option.value === value;
 
         return (
@@ -37,15 +44,21 @@ export function Segment<T extends string>({
             aria-label={`${label}: ${option.label}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              "grid min-w-0 place-items-center truncate rounded-md px-1.5 text-[12.5px] whitespace-nowrap transition-[background-color,color,box-shadow] duration-150",
+              "flex min-w-0 items-center justify-center gap-1.5 px-2 text-[13px] whitespace-nowrap transition-colors",
+              "focus-visible:relative focus-visible:z-10",
               focusRing,
               size === "md" ? "min-h-9" : "min-h-[30px]",
+              "touch:min-h-11",
+              index > 0 && "border-l border-[var(--line)]",
               selected
-                ? "bg-[var(--panel-solid)] font-[650] text-[var(--accent-text)] shadow-[0_1px_2px_rgb(0_0_0/0.08)]"
-                : "font-semibold text-[var(--text-2)] hover:text-[var(--text)]",
+                ? "bg-[var(--accent-fill-soft)] font-bold text-[var(--accent-text)]"
+                : "font-semibold text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
             )}
           >
-            {option.label}
+            {selected ? (
+              <Check className="size-3.5 shrink-0" aria-hidden="true" />
+            ) : null}
+            <span className="truncate">{option.label}</span>
           </button>
         );
       })}

@@ -159,12 +159,10 @@ type Messages = {
     zoomOut: string;
     resetZoom: (zoomPercent: number) => string;
     zoomIn: string;
-    nodePlacementLayer: string;
     editNodeLabel: string;
     nodeLabelPlaceholder: string;
     editEdgeWeight: string;
     editEdgeLabel: string;
-    adjustEdgeCurve: string;
     resetEdgeCurve: string;
     reverseEdges: string;
     reverseEdgesTitle: string;
@@ -200,6 +198,7 @@ type Messages = {
   };
   chrome: {
     openStarter: string;
+    load: string;
     toolbar: string;
     layouts: string;
     settings: string;
@@ -209,12 +208,9 @@ type Messages = {
     pngShort: string;
     theme: string;
     shortcuts: string;
-    applyHint: string;
-    directedOnlyNote: string;
     offsetEdges: string;
     graphType: string;
     display: string;
-    links: string;
     clear: string;
     clearArmed: string;
     clearHint: string;
@@ -251,6 +247,8 @@ type Messages = {
     recentSamples: string;
     edgeHintStart: string;
     edgeHintTarget: (label: string) => string;
+    selectHint: string;
+    clearedToast: (shortcut: string) => string;
     selection: {
       node: (label: string) => string;
       nodes: (count: number) => string;
@@ -258,6 +256,7 @@ type Messages = {
       edges: (count: number) => string;
       mixed: (nodeCount: number, edgeCount: number) => string;
       label: string;
+      weight: string;
     };
     shortcutGroups: Record<"modes" | "edit" | "view", string>;
     shortcutItems: Record<
@@ -626,12 +625,10 @@ const ja = {
     resetZoom: (zoomPercent: number) =>
       `表示倍率を100%に戻す。現在 ${zoomPercent}%`,
     zoomIn: "表示を拡大",
-    nodePlacementLayer: "頂点追加レイヤー",
     editNodeLabel: "頂点ラベルを編集",
     nodeLabelPlaceholder: "空欄でラベルなし",
     editEdgeWeight: "辺の重みを編集",
     editEdgeLabel: "辺ラベルを編集",
-    adjustEdgeCurve: "辺の曲がりを調整",
     resetEdgeCurve: "自動配置に戻す",
     reverseEdges: "向き反転",
     reverseEdgesTitle: "始点と終点を入れ替え",
@@ -732,6 +729,7 @@ const ja = {
   },
   chrome: {
     openStarter: "グラフを読み込む",
+    load: "読み込み",
     toolbar: "ツールバー",
     layouts: "配置",
     settings: "設定",
@@ -741,12 +739,9 @@ const ja = {
     pngShort: "PNG",
     theme: "テーマ",
     shortcuts: "キーボードショートカット",
-    applyHint: "押すとすぐ適用",
-    directedOnlyNote: "DAG・SCC は有向グラフのときに使えます",
     offsetEdges: "辺をずらして重なりを避ける",
     graphType: "グラフの種類",
     display: "表示",
-    links: "リンク",
     clear: "グラフをクリア",
     clearArmed: "本当にクリアする",
     clearHint: "2 回押して確定",
@@ -792,6 +787,10 @@ const ja = {
     edgeHintStart: "始点の頂点をクリック",
     edgeHintTarget: (label: string) =>
       `頂点 ${label} → 終点をクリック（Esc で解除）`,
+    selectHint:
+      "ドラッグで移動 · ダブルクリックでラベル · 右クリックでメニュー · Shift+ドラッグで範囲選択",
+    clearedToast: (shortcut: string) =>
+      `グラフをクリアしました（${shortcut} で戻す）`,
     selection: {
       node: (label: string) => `頂点 ${label}`,
       nodes: (count: number) => `${count} 頂点`,
@@ -800,6 +799,7 @@ const ja = {
       mixed: (nodeCount: number, edgeCount: number) =>
         `${nodeCount} 頂点 · ${edgeCount} 辺`,
       label: "ラベル",
+      weight: "重み",
     },
     shortcutGroups: { modes: "モード", edit: "編集", view: "表示・パネル" },
     shortcutItems: {
@@ -1049,12 +1049,10 @@ const en: Messages = {
     resetZoom: (zoomPercent: number) =>
       `Reset zoom to 100%. Current zoom is ${zoomPercent}%.`,
     zoomIn: "Zoom in",
-    nodePlacementLayer: "Node placement layer",
     editNodeLabel: "Edit node label",
     nodeLabelPlaceholder: "Leave blank for no label",
     editEdgeWeight: "Edit edge weight",
     editEdgeLabel: "Edit edge label",
-    adjustEdgeCurve: "Adjust edge curve",
     resetEdgeCurve: "Return to automatic routing",
     reverseEdges: "Reverse",
     reverseEdgesTitle: "Swap source and target",
@@ -1156,6 +1154,7 @@ const en: Messages = {
   },
   chrome: {
     openStarter: "Load a graph",
+    load: "Load",
     toolbar: "Toolbar",
     layouts: "Layout",
     settings: "Settings",
@@ -1165,12 +1164,9 @@ const en: Messages = {
     pngShort: "PNG",
     theme: "Theme",
     shortcuts: "Keyboard shortcuts",
-    applyHint: "Applies immediately",
-    directedOnlyNote: "DAG layers and SCC need a directed graph",
     offsetEdges: "Offset overlapping edges",
     graphType: "Graph type",
     display: "Display",
-    links: "Links",
     clear: "Clear graph",
     clearArmed: "Really clear",
     clearHint: "Press twice to confirm",
@@ -1217,6 +1213,9 @@ const en: Messages = {
     edgeHintStart: "Click the source node",
     edgeHintTarget: (label: string) =>
       `Node ${label} → click the target (Esc to cancel)`,
+    selectHint:
+      "Drag to move · Double-click to edit the label · Right-click for the menu · Shift+drag to select many",
+    clearedToast: (shortcut: string) => `Graph cleared (${shortcut} to undo)`,
     selection: {
       node: (label: string) => `Node ${label}`,
       nodes: (count: number) => `${count} nodes`,
@@ -1225,6 +1224,7 @@ const en: Messages = {
       mixed: (nodeCount: number, edgeCount: number) =>
         `${nodeCount} nodes · ${edgeCount} edges`,
       label: "Label",
+      weight: "Weight",
     },
     shortcutGroups: { modes: "Modes", edit: "Edit", view: "View & panels" },
     shortcutItems: {
@@ -1473,12 +1473,10 @@ const zhHans: Messages = {
     zoomOut: "缩小",
     resetZoom: (zoomPercent: number) => `重置为 100%。当前为 ${zoomPercent}%。`,
     zoomIn: "放大",
-    nodePlacementLayer: "顶点添加层",
     editNodeLabel: "编辑顶点标签",
     nodeLabelPlaceholder: "留空则不显示标签",
     editEdgeWeight: "编辑边权值",
     editEdgeLabel: "编辑边标签",
-    adjustEdgeCurve: "调整边的弯曲",
     resetEdgeCurve: "恢复自动布线",
     reverseEdges: "反向",
     reverseEdgesTitle: "交换起点和终点",
@@ -1576,6 +1574,7 @@ const zhHans: Messages = {
   },
   chrome: {
     openStarter: "加载图",
+    load: "加载",
     toolbar: "工具栏",
     layouts: "布局",
     settings: "设置",
@@ -1585,12 +1584,9 @@ const zhHans: Messages = {
     pngShort: "PNG",
     theme: "主题",
     shortcuts: "键盘快捷键",
-    applyHint: "点击即应用",
-    directedOnlyNote: "DAG 分层和 SCC 需要有向图",
     offsetEdges: "错开重叠的边",
     graphType: "图类型",
     display: "显示",
-    links: "链接",
     clear: "清空图",
     clearArmed: "确认清空",
     clearHint: "点击两次确认",
@@ -1629,6 +1625,8 @@ const zhHans: Messages = {
     recentSamples: "常用示例",
     edgeHintStart: "点击起点顶点",
     edgeHintTarget: (label: string) => `顶点 ${label} → 点击终点（Esc 取消）`,
+    selectHint: "拖动移动 · 双击编辑标签 · 右键打开菜单 · Shift+拖动框选",
+    clearedToast: (shortcut: string) => `已清空图（${shortcut} 撤销）`,
     selection: {
       node: (label: string) => `顶点 ${label}`,
       nodes: (count: number) => `${count} 个顶点`,
@@ -1637,6 +1635,7 @@ const zhHans: Messages = {
       mixed: (nodeCount: number, edgeCount: number) =>
         `${nodeCount} 个顶点 · ${edgeCount} 条边`,
       label: "标签",
+      weight: "权值",
     },
     shortcutGroups: { modes: "模式", edit: "编辑", view: "视图与面板" },
     shortcutItems: {

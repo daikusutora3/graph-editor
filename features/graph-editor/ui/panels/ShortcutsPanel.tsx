@@ -58,7 +58,7 @@ export function ShortcutsPanel({ platform }: { platform: ShortcutPlatform }) {
               className="flex h-[30px] items-center justify-between text-[13px] text-[var(--text-2)]"
             >
               <span>{label}</span>
-              <kbd className="grid h-[22px] min-w-6 place-items-center rounded-[5px] bg-[var(--fill)] px-1.5 font-mono text-[11.5px] font-semibold text-[var(--text-2)]">
+              <kbd className="grid h-6 min-w-[26px] place-items-center rounded-md bg-[var(--fill)] px-1.5 font-mono text-[13px] font-semibold text-[var(--text-2)]">
                 {key}
               </kbd>
             </div>

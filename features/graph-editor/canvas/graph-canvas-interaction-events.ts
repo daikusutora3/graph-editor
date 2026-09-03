@@ -1,6 +1,6 @@
 "use client";
 
-import type { Core, EventObject } from "cytoscape";
+import type { Core, EventObject, Position } from "cytoscape";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef } from "react";
 
@@ -21,6 +21,10 @@ type AtomSetter<T> = (value: T | ((current: T) => T)) => void;
 type UseCytoscapeInteractionEventsOptions = {
   cyRef: MutableRefObject<Core | null>;
   mode: EditorMode;
+  /** Node mode: called with the graph position of a background tap. Reading
+   * the tap from Cytoscape (instead of an overlay div) keeps two-finger
+   * pinch and pan working on touch devices. */
+  onPlaceNode: (position: Position) => void;
   setContextMenuTarget: (target: GraphContextMenuTarget | null) => void;
   setEdgeDraft: AtomSetter<EdgeDraft>;
   setSelection: AtomSetter<SelectionState>;
@@ -29,11 +33,14 @@ type UseCytoscapeInteractionEventsOptions = {
 export function useCytoscapeInteractionEvents({
   cyRef,
   mode,
+  onPlaceNode,
   setContextMenuTarget,
   setEdgeDraft,
   setSelection,
 }: UseCytoscapeInteractionEventsOptions) {
   const lastBoxSelectionEndAtRef = useRef(0);
+  const onPlaceNodeRef = useRef(onPlaceNode);
+  onPlaceNodeRef.current = onPlaceNode;
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -50,6 +57,11 @@ export function useCytoscapeInteractionEvents({
       }
 
       setContextMenuTarget(null);
+
+      if (mode === "node") {
+        onPlaceNodeRef.current(event.position);
+        return;
+      }
 
       if (mode === "edge") {
         setEdgeDraft(createEmptyEdgeDraft());

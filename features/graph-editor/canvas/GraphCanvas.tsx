@@ -18,6 +18,7 @@ import {
   edgeDraftAtom,
   editorLayoutAtom,
   editorModeAtom,
+  editorPanelAtom,
   selectionAtom,
 } from "../shell/state/editor-atoms";
 import { graphAtom } from "../shell/state/graph-atoms";
@@ -51,23 +52,19 @@ import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useAnimatedNullableState } from "../ui/hooks/use-panel-presence";
 import {
   EdgeNodeHitboxes,
-  EdgeBendHandle,
   SelectEdgeHitboxes,
   SelectNodeHitboxes,
 } from "./GraphCanvasHitboxOverlays";
 import {
   EdgeDraftLine,
   EditFeedbackNodes,
+  FitToViewButton,
   InlineEditForm,
-  InteractionLayers,
+  ZoomBadge,
   ZoomControls,
 } from "./GraphCanvasOverlays";
 import { useGraphCanvasApi } from "./GraphCanvasProvider";
 
-type CanvasPointer = {
-  clientX: number;
-  clientY: number;
-};
 export function GraphCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
@@ -86,6 +83,7 @@ export function GraphCanvas() {
 
   const graph = useAtomValue(graphAtom);
   const layout = useAtomValue(editorLayoutAtom);
+  const panelOpen = useAtomValue(editorPanelAtom) !== null;
   const mode = useAtomValue(editorModeAtom);
   const [edgeDraft, setEdgeDraft] = useAtom(edgeDraftAtom);
   const selection = useAtomValue(selectionAtom);
@@ -165,23 +163,6 @@ export function GraphCanvas() {
     },
     [executeCommand, showEditFeedback],
   );
-
-  const addNodeAtPointer = (event: CanvasPointer) => {
-    const cy = cyRef.current;
-
-    if (!cy || !containerRef.current) {
-      return;
-    }
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const pan = cy.pan();
-    const zoom = cy.zoom();
-
-    addNodeAtGraphPosition({
-      x: (event.clientX - rect.left - pan.x) / zoom,
-      y: (event.clientY - rect.top - pan.y) / zoom,
-    });
-  };
 
   const drawEdgeFromNode = useCallback(
     (targetNodeId: NodeId, continueFromTarget = false) => {
@@ -389,6 +370,7 @@ export function GraphCanvas() {
   useCytoscapeInteractionEvents({
     cyRef,
     mode,
+    onPlaceNode: addNodeAtGraphPosition,
     setContextMenuTarget,
     setEdgeDraft,
     setSelection,
@@ -406,16 +388,6 @@ export function GraphCanvas() {
   });
   const rangeSelectionActive =
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
-  const selectedBendEdge =
-    selection.nodeIds.length === 0 && selection.edgeIds.length === 1
-      ? graph.edges.find(
-          (edge) =>
-            edge.id === selection.edgeIds[0] && edge.source !== edge.target,
-        )
-      : null;
-  const selectedBendHitbox = selectedBendEdge
-    ? edgeLabelHitboxes.find((edge) => edge.id === selectedBendEdge.id)
-    : null;
   const previewEdgeBow = useCallback(
     (edgeId: string, bowPx: number) => {
       const edge = cyRef.current?.getElementById(edgeId);
@@ -438,29 +410,23 @@ export function GraphCanvas() {
     },
     [cyRef],
   );
-  const restoreSelectedEdgeRouting = useCallback(() => {
-    if (!selectedBendEdge) {
-      return;
-    }
+  const restoreEdgeRouting = useCallback(
+    (edgeId: string) => {
+      const meta = edgeRoutingMeta.get(edgeId);
+      const edge = cyRef.current?.getElementById(edgeId);
 
-    const meta = edgeRoutingMeta.get(selectedBendEdge.id);
+      if (!meta || !edge || edge.empty() || !edge.isEdge()) {
+        return;
+      }
 
-    if (!meta) {
-      return;
-    }
-
-    const edge = cyRef.current?.getElementById(selectedBendEdge.id);
-
-    if (!edge || edge.empty() || !edge.isEdge()) {
-      return;
-    }
-
-    edge.data({
-      bow: meta.bowPx,
-      controlPointDistances: meta.controlPointDistancesPx,
-      controlPointWeights: meta.controlPointWeights,
-    });
-  }, [cyRef, edgeRoutingMeta, selectedBendEdge]);
+      edge.data({
+        bow: meta.bowPx,
+        controlPointDistances: meta.controlPointDistancesPx,
+        controlPointWeights: meta.controlPointWeights,
+      });
+    },
+    [cyRef, edgeRoutingMeta],
+  );
   const handleCanvasClick = useCallback(() => {
     setContextMenuTarget(null);
   }, [setContextMenuTarget]);
@@ -507,7 +473,8 @@ export function GraphCanvas() {
     <div
       className={[
         "relative h-full min-h-0 w-full overflow-hidden bg-[var(--bg)]",
-        mode === "edge" ? "cursor-crosshair" : "",
+        "touch-none",
+        mode === "edge" || mode === "node" ? "cursor-crosshair" : "",
       ].join(" ")}
       onClick={handleCanvasClick}
       onContextMenu={(event) => event.preventDefault()}
@@ -520,18 +487,67 @@ export function GraphCanvas() {
         className="relative z-10 h-full w-full"
         onPointerDownCapture={previewRangeSelectionPointerDown}
       />
-      <ZoomControls
-        disabled={!graphHasElements}
-        minZoom={minZoom}
-        maxZoom={maxZoom}
-        offsetForMobile={layout === "mobile"}
-        zoomPercent={zoomPercent}
-        zoomStep={zoomStep}
-        onFitView={fitView}
-        onZoom={zoomCanvas}
-        onResetZoom={resetCanvasZoom}
-      />
-      <InteractionLayers mode={mode} onAddNode={addNodeAtPointer} />
+      <ZoomBadge visible={layout === "mobile"} zoomPercent={zoomPercent} />
+      {(() => {
+        const selectionBar =
+          mode === "select" &&
+          viewState.showSelectionActionBar &&
+          !panelOpen ? (
+            <SelectionActionBar
+              graph={graph}
+              selection={selection}
+              chrome={chrome}
+              onSetNodeColor={setSelectionNodeColor}
+              onSetEdgeColor={setSelectionEdgeColor}
+              onReverseEdges={reverseSelectionEdges}
+              onResetEdgeCurve={(edgeId) =>
+                executeCommand(
+                  updateEdgeCommand(edgeId, { routing: undefined }),
+                )
+              }
+              onEditSelectedNode={editSelectedNode}
+              onEditSelectedEdge={editSelectedEdge}
+              onDeleteSelection={() => deleteSelection(selection)}
+            />
+          ) : null;
+
+        if (layout !== "mobile") {
+          // Desktop bottom row mirrors the top row: a three-column grid keeps
+          // the centered selection bar and the zoom pill from overlapping.
+          return (
+            <div className="pointer-events-none absolute inset-x-6 bottom-6 z-40 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+              <span />
+              <div className="flex justify-center">{selectionBar}</div>
+              <div className="flex justify-end">
+                <ZoomControls
+                  disabled={!graphHasElements}
+                  minZoom={minZoom}
+                  maxZoom={maxZoom}
+                  zoomPercent={zoomPercent}
+                  zoomStep={zoomStep}
+                  onFitView={fitView}
+                  onZoom={zoomCanvas}
+                  onResetZoom={resetCanvasZoom}
+                />
+              </div>
+            </div>
+          );
+        }
+
+        // Mobile: pinch handles zoom, so the pill is replaced by a rescue
+        // "fit" button that only appears when the graph is off-screen. The
+        // stack keeps it clear of the selection bar and the bottom toolbar.
+        return (
+          <div className="pointer-events-none absolute inset-x-3 bottom-[92px] z-40 flex flex-col items-stretch gap-2">
+            {isGraphOutOfView ? (
+              <div className="flex justify-end">
+                <FitToViewButton onFitView={fitView} />
+              </div>
+            ) : null}
+            {selectionBar}
+          </div>
+        );
+      })()}
       {mode === "edge" ? (
         <>
           <EdgeDraftLine
@@ -556,22 +572,6 @@ export function GraphCanvas() {
         onCompositionTextChange={inlineEditActions.onCompositionTextChange}
         onValueChange={inlineEditActions.onValueChange}
       />
-      {mode === "select" && viewState.showSelectionActionBar ? (
-        <SelectionActionBar
-          graph={graph}
-          selection={selection}
-          chrome={chrome}
-          onSetNodeColor={setSelectionNodeColor}
-          onSetEdgeColor={setSelectionEdgeColor}
-          onReverseEdges={reverseSelectionEdges}
-          onResetEdgeCurve={(edgeId) =>
-            executeCommand(updateEdgeCommand(edgeId, { routing: undefined }))
-          }
-          onEditSelectedNode={editSelectedNode}
-          onEditSelectedEdge={editSelectedEdge}
-          onDeleteSelection={() => deleteSelection(selection)}
-        />
-      ) : null}
       {mode === "edge" ? (
         <EdgeNodeHitboxes
           nodes={nodeHitboxes}
@@ -600,32 +600,15 @@ export function GraphCanvas() {
             weighted={graph.settings.weighted}
             onSelect={selectEdge}
             onEdit={openEdgeInlineEdit}
+            zoom={zoomPercent / 100}
+            onBendPreview={previewEdgeBow}
+            onBendCommit={(edgeId, bowPx) =>
+              executeCommand(updateEdgeCommand(edgeId, { routing: { bowPx } }))
+            }
+            onBendCancel={restoreEdgeRouting}
             onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
             onContextMenu={openEdgeContextMenu}
           />
-          {selectedBendEdge && selectedBendHitbox ? (
-            <EdgeBendHandle
-              canReset={selectedBendEdge.routing != null}
-              edge={selectedBendHitbox}
-              zoom={zoomPercent / 100}
-              onPreview={(bowPx) => previewEdgeBow(selectedBendEdge.id, bowPx)}
-              onCancel={restoreSelectedEdgeRouting}
-              onCommit={(bowPx) =>
-                executeCommand(
-                  updateEdgeCommand(selectedBendEdge.id, {
-                    routing: { bowPx },
-                  }),
-                )
-              }
-              onReset={() =>
-                executeCommand(
-                  updateEdgeCommand(selectedBendEdge.id, {
-                    routing: undefined,
-                  }),
-                )
-              }
-            />
-          ) : null}
           <SelectNodeHitboxes
             nodes={nodeHitboxes}
             rangeSelectionActive={rangeSelectionActive}

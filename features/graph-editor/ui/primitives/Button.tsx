@@ -4,11 +4,11 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { focusRing } from "./styles";
+import { disabledControl, focusRing, raisedControl } from "./styles";
 
 export type ButtonVariant =
   | "ghost"
-  | "fill"
+  | "secondary"
   | "primary"
   | "danger"
   | "success"
@@ -19,36 +19,57 @@ export type ButtonSize = "sm" | "md" | "lg";
 
 const variantClass: Record<ButtonVariant, string> = {
   ghost: "bg-transparent text-[var(--text-2)] hover:bg-[var(--fill)]",
-  fill: "bg-[var(--fill)] text-[var(--text)] hover:bg-[var(--fill-2)]",
+  secondary: raisedControl,
   primary:
-    "bg-[var(--primary)] text-[var(--primary-text)] hover:opacity-90 font-semibold",
+    "bg-[var(--primary)] text-[var(--primary-text)] shadow-[0_1px_2px_rgb(0_0_0/0.12)] hover:opacity-90 active:translate-y-px",
   danger: "bg-transparent text-[var(--danger)] hover:bg-[var(--danger-fill)]",
   success: "bg-[var(--success)] text-[var(--success-text)]",
   warning: "bg-[var(--warning)] text-[var(--warning-text)]",
-  disabled: "cursor-default bg-[var(--fill-2)] text-[var(--faint)]",
+  disabled: disabledControl,
 };
 
 const sizeClass: Record<ButtonSize, string> = {
-  sm: "h-8 gap-1.5 px-2.5 text-xs",
-  md: "h-9 gap-1.5 px-2.5 text-[12.5px]",
-  lg: "h-10 gap-2 px-3.5 text-[13px]",
+  sm: "h-8 gap-1.5 px-2.5 text-xs touch:h-11 touch:px-3",
+  md: "h-9 gap-1.5 px-2.5 text-[13px] touch:h-11 touch:px-3",
+  lg: "h-10 gap-2 px-3.5 text-[13px] touch:h-11",
+};
+
+export type TooltipSide = "bottom" | "bottom-end" | "top";
+
+type TooltipProps = {
+  /** Visible on hover/focus. Replaces the native `title` so pointer users
+   * get it instantly and keyboard users get it on focus. */
+  tooltip?: string;
+  tooltipSide?: TooltipSide;
 };
 
 export type ButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
   "type"
-> & {
-  active?: boolean;
-  size?: ButtonSize;
-  variant?: ButtonVariant;
-  type?: "button" | "submit";
-};
+> &
+  TooltipProps & {
+    active?: boolean;
+    size?: ButtonSize;
+    variant?: ButtonVariant;
+    type?: "button" | "submit";
+  };
+
+function tooltipAttributes(tooltip?: string, side?: TooltipSide) {
+  return tooltip
+    ? {
+        "data-tooltip": tooltip,
+        "data-tooltip-side": side === "bottom" ? undefined : side,
+      }
+    : {};
+}
 
 export function Button({
   active = false,
   children,
   className,
   size = "md",
+  tooltip,
+  tooltipSide,
   type = "button",
   variant = "ghost",
   ...props
@@ -56,9 +77,10 @@ export function Button({
   return (
     <button
       type={type}
+      {...tooltipAttributes(tooltip, tooltipSide)}
       {...props}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-[9px] font-semibold whitespace-nowrap transition-colors disabled:cursor-default disabled:text-[var(--disabled)] disabled:hover:bg-transparent",
+        "inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent font-semibold whitespace-nowrap transition-colors disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:text-[var(--faint)] disabled:shadow-none disabled:hover:bg-transparent",
         focusRing,
         sizeClass[size],
         active
@@ -84,6 +106,8 @@ export function IconButton({
   className,
   label,
   size = 40,
+  tooltip,
+  tooltipSide,
   variant = "ghost",
   ...props
 }: IconButtonProps) {
@@ -91,15 +115,16 @@ export function IconButton({
     <button
       type="button"
       aria-label={label}
-      title={props.title ?? label}
+      {...tooltipAttributes(tooltip ?? label, tooltipSide)}
       {...props}
       className={cn(
-        "grid shrink-0 place-items-center transition-colors disabled:cursor-default disabled:text-[var(--disabled)] disabled:hover:bg-transparent",
+        "grid shrink-0 place-items-center transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
         focusRing,
-        size === 30 && "size-[30px] rounded-[7px]",
-        size === 36 && "size-9 rounded-[9px]",
-        size === 38 && "size-[38px] rounded-[9px]",
-        size === 40 && "size-10 rounded-[9px]",
+        "touch:size-11 touch:rounded-lg",
+        size === 30 && "size-[30px] rounded-md",
+        size === 36 && "size-9 rounded-lg",
+        size === 38 && "size-[38px] rounded-lg",
+        size === 40 && "size-10 rounded-lg",
         active
           ? "bg-[var(--accent-fill)] text-[var(--accent-text)]"
           : variantClass[variant],

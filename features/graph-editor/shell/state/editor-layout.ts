@@ -16,6 +16,7 @@ export function resolveEditorLayout(width: number): EditorLayout {
 }
 
 export type EditorPanel =
+  | "app"
   | "layouts"
   | "settings"
   | "menu"

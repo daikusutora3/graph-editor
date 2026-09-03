@@ -43,16 +43,11 @@ import {
 import { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
 import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
 import { useEditorPanel } from "./editor-chrome-state";
-import { EdgeModeHint } from "./EdgeModeHint";
+import { CanvasHint, Toast } from "./CanvasHint";
 import { EditorPanelShell } from "./EditorPanelShell";
-import {
-  BrandPill,
-  DesktopRightRail,
-  DesktopToolbar,
-  MobileBottomBar,
-  MobileTopRail,
-} from "./EditorToolbar";
+import { DesktopTopRow, MobileBottomBar, MobileTopRow } from "./EditorToolbar";
 import { EmptyState } from "./EmptyState";
+import { AppMenuPanel } from "../panels/AppMenuPanel";
 import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
 import type { CopyState } from "../io/graph-io-types";
 import { useGraphIOScreenshot } from "../io/graph-io-screenshot";
@@ -111,6 +106,7 @@ export function EditorChrome() {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const copyResetRef = useRef<number | null>(null);
   const [clearArmed, setClearArmed] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [starterView, setStarterView] = useState<StarterView>("paste");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isGraphEmpty = graph.nodes.length === 0;
@@ -200,8 +196,14 @@ export function EditorChrome() {
     (kind: LayoutKind) => {
       applyManualLayout(kind);
       fitAfterNextGraphRender();
+
+      // A bottom sheet hides most of the canvas, so on mobile the result
+      // would be invisible until the sheet is dismissed.
+      if (mobile) {
+        close();
+      }
     },
-    [applyManualLayout, fitAfterNextGraphRender],
+    [applyManualLayout, close, fitAfterNextGraphRender, mobile],
   );
 
   const toggleOffsetEdges = useCallback(() => {
@@ -222,7 +224,26 @@ export function EditorChrome() {
     clearGraph();
     setClearArmed(false);
     close();
-  }, [clearArmed, clearGraph, close, graph.edges.length, isGraphEmpty]);
+    setToast(messages.chrome.clearedToast(undoShortcut ?? "Ctrl+Z"));
+  }, [
+    clearArmed,
+    clearGraph,
+    close,
+    graph.edges.length,
+    isGraphEmpty,
+    messages.chrome,
+    undoShortcut,
+  ]);
+
+  useEffect(() => {
+    if (toast === null) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setToast(null), 4000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
 
   const copyExport = useCallback(async () => {
     const copied = await copyTextToClipboard(exportGraph(graph, exportFormat));
@@ -284,6 +305,12 @@ export function EditorChrome() {
     };
 
     switch (visiblePanel) {
+      case "app":
+        return (
+          <EditorPanelShell {...shellProps} title={messages.appMenu.label}>
+            <AppMenuPanel onOpenShortcuts={() => open("shortcuts")} />
+          </EditorPanelShell>
+        );
       case "layouts":
         return (
           <EditorPanelShell {...shellProps} title={messages.chrome.layouts}>
@@ -312,6 +339,7 @@ export function EditorChrome() {
           <EditorPanelShell {...shellProps} title={messages.chrome.menu}>
             <LayoutsPanel
               graph={graph}
+              showTitle
               onApplyLayout={applyLayout}
               onToggleOffsetEdges={toggleOffsetEdges}
             />
@@ -448,35 +476,29 @@ export function EditorChrome() {
         />
       ) : null}
 
-      <BrandPill
-        mobile={mobile}
-        wide={wide}
-        onClick={() => openStarter("paste")}
-      />
       {mobile ? (
         <>
-          <MobileTopRail
+          <MobileTopRow
             panel={panel}
             theme={theme}
+            onOpenStarter={() => openStarter("paste")}
             onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
             onTogglePanel={toggle}
           />
           <MobileBottomBar {...toolbarProps} />
         </>
       ) : (
-        <>
-          <DesktopToolbar {...toolbarProps} wide={wide} />
-          <DesktopRightRail
-            panel={panel}
-            theme={theme}
-            wide={wide}
-            onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
-            onTogglePanel={toggle}
-          />
-        </>
+        <DesktopTopRow
+          {...toolbarProps}
+          theme={theme}
+          wide={wide}
+          onOpenStarter={() => openStarter("paste")}
+          onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+        />
       )}
 
-      <EdgeModeHint mobile={mobile} visible={!visiblePanel} />
+      <CanvasHint mobile={mobile} visible={!visiblePanel} />
+      <Toast message={toast} mobile={mobile} />
 
       {renderPanel()}
     </>

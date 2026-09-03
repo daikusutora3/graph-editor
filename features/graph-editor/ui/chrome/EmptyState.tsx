@@ -105,7 +105,7 @@ export function EmptyState({
               aria-label={messages.samples.applyAria(sample.label)}
               onClick={() => onLoadSample(sample.model)}
               className={cn(
-                "ge-panel inline-flex h-[34px] items-center gap-2 rounded-full pr-3 pl-2.5 text-[12.5px] font-semibold text-[var(--text)] transition-colors hover:border-[var(--faint)]",
+                "ge-panel touch:h-11 inline-flex h-[34px] items-center gap-2 rounded-full pr-3 pl-2.5 text-[13px] font-semibold text-[var(--text)] transition-colors hover:border-[var(--faint)]",
                 focusRing,
               )}
             >
@@ -114,7 +114,7 @@ export function EmptyState({
                 className="size-2 rounded-full border-[1.5px] border-[var(--text-2)]"
               />
               {sample.label}
-              <span className="font-mono font-medium text-[var(--faint)]">
+              <span className="font-mono font-medium text-[var(--muted)]">
                 N={sample.nodeCount}
               </span>
             </button>
@@ -145,13 +145,11 @@ function EmptyCard({
         focusRing,
       )}
     >
-      <span className="grid size-[34px] place-items-center rounded-[9px] bg-[var(--accent-fill)] text-[var(--accent-text)]">
+      <span className="grid size-[34px] place-items-center rounded-lg bg-[var(--accent-fill)] text-[var(--accent-text)]">
         {icon}
       </span>
       <span className="flex flex-col gap-[3px]">
-        <span className="text-[14.5px] font-bold text-[var(--text)]">
-          {title}
-        </span>
+        <span className="text-sm font-bold text-[var(--text)]">{title}</span>
         <span className="text-xs leading-[1.5] text-[var(--muted)]">
           {body}
         </span>

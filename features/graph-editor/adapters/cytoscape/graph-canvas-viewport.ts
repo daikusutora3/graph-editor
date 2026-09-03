@@ -208,6 +208,13 @@ export function nextAnimationFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
+/** Solid export backgrounds. Shared with the PNG panel preview so what the
+ * user sees is exactly what gets written to the file. */
+export const EXPORT_BACKGROUND_COLORS = {
+  black: "#000000",
+  white: "#ffffff",
+} as const;
+
 export function readExportBackground(
   background: GraphCanvasExportOptions["background"],
 ) {
@@ -215,13 +222,7 @@ export function readExportBackground(
     return undefined;
   }
 
-  if (background === "white") {
-    return "#ffffff";
-  }
-
-  if (background === "black") {
-    return "#020617";
-  }
+  return EXPORT_BACKGROUND_COLORS[background];
 }
 
 export function exportImageErrorMessage(error: unknown) {

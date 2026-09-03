@@ -43,7 +43,7 @@ export function ExportPanelBody({
       <div className="grid min-h-[200px] grid-cols-[28px_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
         <div
           aria-hidden="true"
-          className="pr-2 text-right font-mono text-[13px] leading-[1.6] whitespace-pre text-[var(--disabled)] tabular-nums select-none"
+          className="pr-2 text-right font-mono text-[13px] leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
         >
           {lineNumbers}
         </div>
@@ -82,7 +82,7 @@ export function ExportPanelFooter({
       <Button
         disabled={disabled}
         size="lg"
-        variant={disabled ? "disabled" : "fill"}
+        variant={disabled ? "disabled" : "secondary"}
         onClick={onSaveTxt}
       >
         <Download className="size-[15px]" aria-hidden="true" />

@@ -1,13 +1,13 @@
+import {
+  edgeBendHandlePosition,
+  edgeBowPxFromRenderedPointer,
+} from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { createStore } from "jotai/vanilla";
 
 import {
   parseStoredGraph,
   serializeStoredGraphForWrite,
 } from "../../features/graph-editor/adapters/browser/stored-graph";
-import {
-  edgeBendHandlePosition,
-  edgeBowPxFromRenderedPointer,
-} from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { defaultGraphSettings } from "../../features/graph-editor/core/graph/graph-factory";
 import { updateEdgeCommand } from "../../features/graph-editor/core/graph/graph-intents";
 import type {
