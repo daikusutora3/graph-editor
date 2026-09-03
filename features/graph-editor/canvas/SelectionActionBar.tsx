@@ -72,7 +72,9 @@ export function SelectionActionBar({
     return colors.size === 1 ? ([...colors][0] as GraphColor) : null;
   })();
   const description = describeSelection(graph, selection, messages);
-  const actions = resolveSelectionActions(graph, selection, messages);
+  const actions = resolveSelectionActions(graph, selection, messages).filter(
+    (action) => !action.menuOnly,
+  );
   const runAction = (id: SelectionActionId) => {
     switch (id) {
       case "edit":

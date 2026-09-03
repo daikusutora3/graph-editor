@@ -1,4 +1,6 @@
 import {
+  CornerLeftUp,
+  CornerRightUp,
   ArrowLeftRight,
   Pencil,
   Trash2,
@@ -10,7 +12,13 @@ import type { Messages } from "../i18n/messages";
 import type { GraphModel } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
 
-export type SelectionActionId = "edit" | "reverse" | "reset-curve" | "delete";
+export type SelectionActionId =
+  | "edit"
+  | "reverse"
+  | "bend-left"
+  | "bend-right"
+  | "reset-curve"
+  | "delete";
 
 export type SelectionActionDefinition = {
   id: SelectionActionId;
@@ -18,6 +26,8 @@ export type SelectionActionDefinition = {
   label: string;
   kbd?: string;
   danger?: boolean;
+  /** Shown in the context menu but not in the selection bar. */
+  menuOnly?: boolean;
 };
 
 export function describeSelection(
@@ -85,6 +95,25 @@ export function resolveSelectionActions(
           : messages.chrome.selection.label,
       kbd: "↵",
     });
+  }
+
+  if (canEditEdge && selectedEdges[0]?.source !== selectedEdges[0]?.target) {
+    // Keyboard/menu alternative to dragging the edge; menu only to keep the
+    // selection bar short.
+    actions.push(
+      {
+        id: "bend-left",
+        icon: CornerLeftUp,
+        label: messages.canvas.bendEdgeLeft,
+        menuOnly: true,
+      },
+      {
+        id: "bend-right",
+        icon: CornerRightUp,
+        label: messages.canvas.bendEdgeRight,
+        menuOnly: true,
+      },
+    );
   }
 
   if (manuallyRouted) {

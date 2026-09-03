@@ -12,8 +12,8 @@ import {
   selectionAtom,
 } from "../../shell/state/editor-atoms";
 import { graphAtom } from "../../shell/state/graph-atoms";
+import { HINT_STORAGE_PREFIX, HINTS_RESET_EVENT } from "./hint-storage";
 
-const HINT_STORAGE_PREFIX = "graph-editor-hint-learned:";
 /** How long the user has to sit still before a hint offers help. */
 const HINT_IDLE_MS = 2500;
 
@@ -148,11 +148,22 @@ function useStuckHint({
   const armedRef = useRef(false);
 
   useEffect(() => {
-    try {
-      setLearned(window.localStorage.getItem(storageKey) === "1");
-    } catch {
-      setLearned(false);
-    }
+    const read = () => {
+      try {
+        setLearned(window.localStorage.getItem(storageKey) === "1");
+      } catch {
+        setLearned(false);
+      }
+    };
+    const reset = () => {
+      armedRef.current = false;
+      read();
+    };
+
+    read();
+    window.addEventListener(HINTS_RESET_EVENT, reset);
+
+    return () => window.removeEventListener(HINTS_RESET_EVENT, reset);
   }, [storageKey]);
 
   useEffect(() => {

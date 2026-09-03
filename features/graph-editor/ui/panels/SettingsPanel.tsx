@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Lightbulb, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ export function SettingsPanel({
   graph,
   mobile,
   onClear,
+  onResetHints,
   onReverseAllEdges,
   onUpdateSettings,
 }: {
@@ -28,6 +29,7 @@ export function SettingsPanel({
   graph: GraphModel;
   mobile: boolean;
   onClear: () => void;
+  onResetHints: () => void;
   onReverseAllEdges: () => void;
   onUpdateSettings: (patch: Partial<GraphSettings>) => void;
 }) {
@@ -141,6 +143,17 @@ export function SettingsPanel({
 
       <div className="pt-1.5">
         <Hairline className="mb-1.5" />
+        <button
+          type="button"
+          onClick={onResetHints}
+          className={cn(
+            "touch:min-h-11 flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
+            focusRing,
+          )}
+        >
+          <Lightbulb className="size-[15px]" aria-hidden="true" />
+          <span className="flex-1">{messages.chrome.resetHints}</span>
+        </button>
         <button
           type="button"
           disabled={isGraphEmpty}

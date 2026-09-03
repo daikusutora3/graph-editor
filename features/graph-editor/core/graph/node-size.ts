@@ -6,12 +6,15 @@ export const NODE_SIZE_PX = 48;
 export const NODE_FONT_PX = 16;
 export const NODE_LABEL_PADDING_PX = 14;
 
-/** Rough label width without a DOM: CJK glyphs are 1em, others ~0.62em. */
+/**
+ * Rough label width without a DOM: CJK glyphs are 1em, others 0.68em. The
+ * Latin factor errs wide so layouts and routing never under-reserve space.
+ */
 export function estimateLabelWidth(label: string, fontPx = NODE_FONT_PX) {
   let width = 0;
 
   for (const char of label) {
-    width += fontPx * (/[\u3000-\u9fff\uff00-\uffef]/.test(char) ? 1 : 0.62);
+    width += fontPx * (/[\u3000-\u9fff\uff00-\uffef]/.test(char) ? 1 : 0.68);
   }
 
   return width;

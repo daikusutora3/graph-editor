@@ -49,6 +49,7 @@ import { useRangeSelectionPointerForwarding } from "./graph-canvas-range-selecti
 import { useRangeSelectionPreview } from "./graph-canvas-range-selection-preview";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
+import { clampBow } from "../core/layout/edge-route-geometry";
 import { useAnimatedNullableState } from "../ui/hooks/use-panel-presence";
 import {
   type EdgeBend,
@@ -65,6 +66,9 @@ import {
   ZoomControls,
 } from "./GraphCanvasOverlays";
 import { useGraphCanvasApi } from "./GraphCanvasProvider";
+
+/** Graph px added per "bend" menu action. */
+const BEND_STEP_PX = 48;
 
 export function GraphCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -428,6 +432,20 @@ export function GraphCanvas() {
     },
     [cyRef, edgeRoutingMeta],
   );
+  // Menu/keyboard bend: nudge the curve sideways, keeping its position.
+  const bendEdgeBy = useCallback(
+    (edgeId: string, direction: -1 | 1) => {
+      const current = graph.edges.find((edge) => edge.id === edgeId)?.routing;
+      const bowPx = clampBow((current?.bowPx ?? 0) + direction * BEND_STEP_PX);
+
+      executeCommand(
+        updateEdgeCommand(edgeId, {
+          routing: { bowPx, bowT: current?.bowT ?? 0.5 },
+        }),
+      );
+    },
+    [executeCommand, graph.edges],
+  );
   const handleCanvasClick = useCallback(() => {
     setContextMenuTarget(null);
   }, [setContextMenuTarget]);
@@ -669,6 +687,7 @@ export function GraphCanvas() {
           onResetEdgeCurve={(edgeId) =>
             executeCommand(updateEdgeCommand(edgeId, { routing: undefined }))
           }
+          onBendEdge={bendEdgeBy}
         />
       ) : null}
     </div>

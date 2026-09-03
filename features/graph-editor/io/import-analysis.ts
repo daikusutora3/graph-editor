@@ -1,3 +1,7 @@
+import {
+  looksLikeGraphJson,
+  parseGraphModelJson,
+} from "../core/graph/graph-json";
 import type {
   ImportAnalysis,
   ImportCandidate,
@@ -35,6 +39,7 @@ const compatibilityOrder: ImportFormatKind[] = [
   "contest-edge-list",
   "edge-pairs",
   "weighted-parent-list",
+  "json",
 ];
 
 export function analyzeGraphInput(
@@ -53,6 +58,37 @@ export function analyzeGraphInput(
         },
       ],
     };
+  }
+
+  if (looksLikeGraphJson(input)) {
+    const model = parseGraphModelJson(input);
+
+    return model
+      ? {
+          status: "detected",
+          recommendedFormat: "json",
+          candidates: [
+            {
+              formatKind: "json",
+              strength: "exact",
+              evidence: ["json-document"],
+              nodeCount: model.nodes.length,
+              edgeCount: model.edges.length,
+            },
+          ],
+          diagnostics: [],
+        }
+      : {
+          status: "invalid",
+          candidates: [],
+          diagnostics: [
+            {
+              code: "invalid-format",
+              severity: "error",
+              message: "Input is not a valid Graph Editor JSON document.",
+            },
+          ],
+        };
   }
 
   const lines = readLines(input);

@@ -15,6 +15,7 @@ import {
   exportGraph,
   hasLossyAdjacencyExport,
   type GraphExportFormat,
+  getGraphExportFormat,
 } from "../../io/export-graph";
 import type { LayoutKind } from "../../layouts";
 import {
@@ -47,6 +48,7 @@ import { CanvasHint, Toast } from "./CanvasHint";
 import { EditorPanelShell } from "./EditorPanelShell";
 import { DesktopTopRow, MobileBottomBar, MobileTopRow } from "./EditorToolbar";
 import { EmptyState } from "./EmptyState";
+import { resetLearnedHints } from "./hint-storage";
 import { AppMenuPanel } from "../panels/AppMenuPanel";
 import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
 import type { CopyState } from "../io/graph-io-types";
@@ -257,11 +259,11 @@ export function EditorChrome() {
   }, [exportFormat, graph]);
 
   const saveExportTxt = useCallback(() => {
+    const { extension, mimeType } = getGraphExportFormat(exportFormat);
+
     downloadBlob(
-      new Blob([exportGraph(graph, exportFormat)], {
-        type: "text/plain;charset=utf-8",
-      }),
-      `graph-editor-${formatTimestamp(new Date())}.txt`,
+      new Blob([exportGraph(graph, exportFormat)], { type: mimeType }),
+      `graph-editor-${formatTimestamp(new Date())}.${extension}`,
     );
   }, [exportFormat, graph]);
 
@@ -329,6 +331,7 @@ export function EditorChrome() {
               graph={graph}
               mobile={mobile}
               onClear={handleClear}
+              onResetHints={resetLearnedHints}
               onReverseAllEdges={() => reverseAllDirectedEdges()}
               onUpdateSettings={updateGraphSettings}
             />
@@ -348,6 +351,7 @@ export function EditorChrome() {
               graph={graph}
               mobile={mobile}
               onClear={handleClear}
+              onResetHints={resetLearnedHints}
               onReverseAllEdges={() => reverseAllDirectedEdges()}
               onUpdateSettings={updateGraphSettings}
             />
@@ -363,6 +367,7 @@ export function EditorChrome() {
               <ExportPanelFooter
                 copyState={copyState}
                 disabled={!exportText}
+                extension={getGraphExportFormat(exportFormat).extension}
                 onCopy={() => void copyExport()}
                 onSaveTxt={saveExportTxt}
               />

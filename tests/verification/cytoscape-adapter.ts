@@ -1,3 +1,8 @@
+import { readFileSync } from "node:fs";
+import {
+  NODE_FONT_PX,
+  NODE_SIZE_PX,
+} from "../../features/graph-editor/core/graph/node-size";
 import cytoscape, { type Core } from "cytoscape";
 
 import {
@@ -528,4 +533,22 @@ function selfLoopRoutingFixture(): GraphModel {
     ],
     edges: [{ id: "aa", source: "a", target: "a" }],
   };
+}
+
+// The CSS tokens and the TS node geometry must describe the same node.
+{
+  const css = readFileSync(
+    new URL("../../app/globals.css", import.meta.url),
+    "utf8",
+  );
+  const cssPx = (name: string) => {
+    const match = css.match(new RegExp(`${name}:\\s*([0-9.]+)(rem|px)`));
+    if (!match) return null;
+    return parseFloat(match[1]) * (match[2] === "rem" ? 16 : 1);
+  };
+  expect(
+    cssPx("--canvas-node-size") === NODE_SIZE_PX &&
+      cssPx("--canvas-node-font") === NODE_FONT_PX,
+    "globals.css --canvas-node-size/--canvas-node-font must match core/graph/node-size",
+  );
 }

@@ -8,7 +8,8 @@ import { appLocaleMetadata } from "@/lib/site-metadata";
 type GraphExportFormatLabel =
   | "edge-list"
   | "adjacency-list"
-  | "adjacency-matrix";
+  | "adjacency-matrix"
+  | "json";
 
 type Messages = {
   app: {
@@ -121,6 +122,7 @@ type Messages = {
     exportedAria: (label: string) => string;
     copyAria: (label: string, state: "idle" | "copied" | "blocked") => string;
     adjacencyLossWarning: string;
+    jsonNote: string;
     formats: Record<GraphExportFormatLabel, string>;
   };
   screenshot: {
@@ -164,6 +166,8 @@ type Messages = {
     editEdgeWeight: string;
     editEdgeLabel: string;
     resetEdgeCurve: string;
+    bendEdgeLeft: string;
+    bendEdgeRight: string;
     reverseEdges: string;
     reverseEdgesTitle: string;
     nodeColor: string;
@@ -212,10 +216,11 @@ type Messages = {
     graphType: string;
     display: string;
     clear: string;
+    resetHints: string;
     clearArmed: string;
     clearHint: string;
     clearArmedHint: string;
-    saveTxt: string;
+    saveAs: (extension: string) => string;
     copy: string;
     copied: string;
     copyFailed: string;
@@ -565,6 +570,7 @@ const ja = {
       "edge-pairs": "辺の組リスト",
       "adjacency-list": "隣接リスト",
       "adjacency-matrix": "隣接行列",
+      json: "JSON（位置・色・曲げを含む）",
     },
     preview: "プレビュー",
     previewEmpty: "入力待ち",
@@ -582,12 +588,15 @@ const ja = {
         : state === "blocked"
           ? `${label}をコピーできませんでした`
           : `${label}をコピー`,
+    jsonNote:
+      "位置・色・曲げも含めて保存します。読み込みで完全に復元できます。",
     adjacencyLossWarning:
       "多重辺は隣接リスト・隣接行列では完全に表現できない場合があります。完全な書き出しには辺リストを使ってください。",
     formats: {
       "edge-list": "辺リスト",
       "adjacency-list": "隣接リスト",
       "adjacency-matrix": "隣接行列",
+      json: "JSON",
     },
   },
   screenshot: {
@@ -632,6 +641,8 @@ const ja = {
     editEdgeWeight: "辺の重みを編集",
     editEdgeLabel: "辺ラベルを編集",
     resetEdgeCurve: "自動配置に戻す",
+    bendEdgeLeft: "左へ曲げる",
+    bendEdgeRight: "右へ曲げる",
     reverseEdges: "向き反転",
     reverseEdgesTitle: "始点と終点を入れ替え",
     nodeColor: "頂点の色",
@@ -744,11 +755,12 @@ const ja = {
     offsetEdges: "辺をずらして重なりを避ける",
     graphType: "グラフの種類",
     display: "表示",
+    resetHints: "ヒントをもう一度表示",
     clear: "グラフをクリア",
     clearArmed: "本当にクリアする",
     clearHint: "2 回押して確定",
     clearArmedHint: "もう一度押す",
-    saveTxt: ".txt で保存",
+    saveAs: (extension: string) => `.${extension} で保存`,
     copy: "コピー",
     copied: "コピーしました",
     copyFailed: "コピーできません",
@@ -991,6 +1003,7 @@ const en: Messages = {
       "edge-pairs": "edge pair list",
       "adjacency-list": "adjacency list",
       "adjacency-matrix": "adjacency matrix",
+      json: "JSON (positions, colours, bends)",
     },
     preview: "Preview",
     previewEmpty: "Waiting for input",
@@ -1008,12 +1021,15 @@ const en: Messages = {
         : state === "blocked"
           ? `Could not copy ${label}`
           : `Copy ${label}`,
+    jsonNote:
+      "Includes positions, colours and bends; importing restores the graph exactly.",
     adjacencyLossWarning:
       "Parallel edges may not be represented completely in adjacency lists or matrices. Use edge list for a lossless export.",
     formats: {
       "edge-list": "Edge list",
       "adjacency-list": "Adjacency list",
       "adjacency-matrix": "Adjacency matrix",
+      json: "JSON",
     },
   },
   screenshot: {
@@ -1058,6 +1074,8 @@ const en: Messages = {
     editEdgeWeight: "Edit edge weight",
     editEdgeLabel: "Edit edge label",
     resetEdgeCurve: "Return to automatic routing",
+    bendEdgeLeft: "Bend left",
+    bendEdgeRight: "Bend right",
     reverseEdges: "Reverse",
     reverseEdgesTitle: "Swap source and target",
     nodeColor: "Node color",
@@ -1171,11 +1189,12 @@ const en: Messages = {
     offsetEdges: "Offset overlapping edges",
     graphType: "Graph type",
     display: "Display",
+    resetHints: "Show hints again",
     clear: "Clear graph",
     clearArmed: "Really clear",
     clearHint: "Press twice to confirm",
     clearArmedHint: "Press again",
-    saveTxt: "Save as .txt",
+    saveAs: (extension: string) => `Save as .${extension}`,
     copy: "Copy",
     copied: "Copied",
     copyFailed: "Could not copy",
@@ -1416,6 +1435,7 @@ const zhHans: Messages = {
       "edge-pairs": "边对列表",
       "adjacency-list": "邻接表",
       "adjacency-matrix": "邻接矩阵",
+      json: "JSON（含位置、颜色、弯曲）",
     },
     preview: "预览",
     previewEmpty: "等待输入",
@@ -1433,12 +1453,14 @@ const zhHans: Messages = {
         : state === "blocked"
           ? `无法复制${label}`
           : `复制${label}`,
+    jsonNote: "包含位置、颜色和弯曲；导入后可完整还原。",
     adjacencyLossWarning:
       "多重边可能无法在邻接表或邻接矩阵中完整表示。请使用边列表进行无损导出。",
     formats: {
       "edge-list": "边列表",
       "adjacency-list": "邻接表",
       "adjacency-matrix": "邻接矩阵",
+      json: "JSON",
     },
   },
   screenshot: {
@@ -1483,6 +1505,8 @@ const zhHans: Messages = {
     editEdgeWeight: "编辑边权值",
     editEdgeLabel: "编辑边标签",
     resetEdgeCurve: "恢复自动布线",
+    bendEdgeLeft: "向左弯曲",
+    bendEdgeRight: "向右弯曲",
     reverseEdges: "反向",
     reverseEdgesTitle: "交换起点和终点",
     nodeColor: "顶点颜色",
@@ -1592,11 +1616,12 @@ const zhHans: Messages = {
     offsetEdges: "错开重叠的边",
     graphType: "图类型",
     display: "显示",
+    resetHints: "重新显示提示",
     clear: "清空图",
     clearArmed: "确认清空",
     clearHint: "点击两次确认",
     clearArmedHint: "再次点击",
-    saveTxt: "保存为 .txt",
+    saveAs: (extension: string) => `保存为 .${extension}`,
     copy: "复制",
     copied: "已复制",
     copyFailed: "无法复制",

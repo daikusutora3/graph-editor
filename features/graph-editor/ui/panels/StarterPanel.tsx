@@ -24,6 +24,7 @@ const IMPORT_FORMAT_EXAMPLES: Record<ImportFormat, string> = {
   "edge-pairs": "1 2\n2 3\n2 4\n3 4",
   "adjacency-list": "1: 2 3\n2: 4\n3: 4",
   "adjacency-matrix": "0 1 1\n1 0 1\n1 1 0",
+  json: '{ "version": 1, "nodes": [...], "edges": [...], "settings": {...} }',
 };
 import type { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
 import { Button, Select, focusRing, raisedControl } from "../primitives";
@@ -47,6 +48,7 @@ const importFormatOptions: ImportFormatKind[] = [
   "edge-pairs",
   "adjacency-list",
   "adjacency-matrix",
+  "json",
 ];
 
 function canApplyStarter(starter: StarterState) {

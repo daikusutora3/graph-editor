@@ -28,6 +28,7 @@ export type GraphContextMenuProps = {
   onDeleteSelection: (selection: SelectionState) => void;
   onReverseEdges: (edgeIds: EdgeId[]) => void;
   onResetEdgeCurve: (edgeId: EdgeId) => void;
+  onBendEdge: (edgeId: EdgeId, direction: -1 | 1) => void;
 };
 
 export function GraphContextMenu({
@@ -41,6 +42,7 @@ export function GraphContextMenu({
   onDeleteSelection,
   onReverseEdges,
   onResetEdgeCurve,
+  onBendEdge,
 }: GraphContextMenuProps) {
   const { messages } = useI18n();
   const node =
@@ -111,6 +113,12 @@ export function GraphContextMenu({
           onResetEdgeCurve(deleteSelection.edgeIds[0]);
         }
         onClose();
+        return;
+      case "bend-left":
+      case "bend-right":
+        if (deleteSelection.edgeIds[0]) {
+          onBendEdge(deleteSelection.edgeIds[0], id === "bend-left" ? -1 : 1);
+        }
         return;
       case "delete":
         onDeleteSelection(deleteSelection);
