@@ -12,6 +12,8 @@ export type NodeHitbox = {
   label: string;
   x: number;
   y: number;
+  /** Rendered hit area width; grows with pill-shaped nodes. */
+  width: number;
 };
 
 export type EdgeLabelHitbox = {
@@ -31,6 +33,7 @@ export type EdgeLabelHitbox = {
 };
 
 export const NODE_HITBOX_SIZE = 72;
+const NODE_HITBOX_MARGIN = 12;
 export const EDGE_LABEL_HITBOX_HEIGHT = 32;
 
 export function readNodeHitboxes(cy: Core, graph: GraphModel): NodeHitbox[] {
@@ -44,6 +47,10 @@ export function readNodeHitboxes(cy: Core, graph: GraphModel): NodeHitbox[] {
       label: labels.get(node.id()) ?? node.id(),
       x: position.x,
       y: position.y,
+      width: Math.max(
+        NODE_HITBOX_SIZE,
+        node.renderedOuterWidth() + NODE_HITBOX_MARGIN * 2,
+      ),
     };
   });
 }

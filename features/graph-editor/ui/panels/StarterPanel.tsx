@@ -125,7 +125,6 @@ export function StarterPasteBody({
           aria-label={`${messages.starter.paste}: ${messages.chrome.starterHelp}`}
           autoComplete="off"
           spellCheck={false}
-          placeholder={"4 4\n1 2\n2 3\n2 4\n3 4"}
           onChange={(event) => starter.setInput(event.target.value)}
           onKeyDown={(event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -135,7 +134,7 @@ export function StarterPasteBody({
               }
             }
           }}
-          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-4 py-3.5 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none placeholder:text-[var(--faint)]"
+          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-4 py-3.5 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none"
         />
         <div
           aria-label={messages.starter.preview}

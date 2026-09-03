@@ -64,7 +64,6 @@ export function useGraphInlineEdit({
   zoomPercent,
 }: UseGraphInlineEditOptions) {
   const [inlineEdit, setInlineEdit] = useState<InlineEditTarget | null>(null);
-  const [compositionText, setCompositionText] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const composingRef = useRef(false);
   const closingRef = useRef<"commit" | "cancel" | null>(null);
@@ -80,7 +79,6 @@ export function useGraphInlineEdit({
   useEffect(() => {
     if (!focusKey) {
       focusKeyRef.current = null;
-      setCompositionText("");
       return;
     }
 
@@ -148,7 +146,6 @@ export function useGraphInlineEdit({
   );
 
   const closeInlineEdit = useCallback(() => {
-    setCompositionText("");
     setInlineEdit(null);
     window.requestAnimationFrame(() => {
       closingRef.current = null;
@@ -285,8 +282,11 @@ export function useGraphInlineEdit({
         edit: inlineEdit,
         minZoom: MIN_CANVAS_ZOOM,
         maxZoom: MAX_CANVAS_ZOOM,
+        nodeColor:
+          inlineEdit.kind === "node-label"
+            ? graph.nodes.find((node) => node.id === inlineEdit.nodeId)?.color
+            : undefined,
         zoomPercent,
-        compositionText,
       })
     : undefined;
 
@@ -294,7 +294,6 @@ export function useGraphInlineEdit({
     () => ({
       onCancel: () => finishInlineEdit("cancel"),
       onCommit: () => finishInlineEdit("commit"),
-      onCompositionTextChange: setCompositionText,
       onValueChange: (value: string) =>
         setInlineEdit((current) =>
           current ? { ...current, value, error: undefined } : current,

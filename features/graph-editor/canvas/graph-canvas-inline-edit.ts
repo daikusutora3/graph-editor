@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import { isEditorShortcutBlockedTarget } from "../adapters/browser/shortcut-targets";
+import type { GraphColor } from "../core/graph/model";
 import type { InlineEditTarget } from "./graph-canvas-types";
 
 export function isInlineEditStartShortcut(event: KeyboardEvent) {
@@ -21,33 +22,112 @@ export function isInlineEditStartShortcut(event: KeyboardEvent) {
 
 export const isCanvasShortcutBlockedTarget = isEditorShortcutBlockedTarget;
 
+/** Horizontal padding of node pills; must match NODE_LABEL_PADDING in the adapter. */
+const NODE_LABEL_PADDING = 14;
+/** Room for the caret so the last glyph never touches the edge. */
+const CARET_ROOM = 4;
+
+let measureContext: CanvasRenderingContext2D | null | undefined;
+
+function measureInlineEditText(text: string, font: string): number {
+  if (measureContext === undefined) {
+    measureContext =
+      typeof document === "undefined"
+        ? null
+        : document.createElement("canvas").getContext("2d");
+  }
+
+  if (!measureContext) {
+    return estimateInlineEditTextUnits(text) * 8;
+  }
+
+  measureContext.font = font;
+  return measureContext.measureText(text).width;
+}
+
+function canvasCssValue(name: string, fallback: string): string {
+  if (typeof document === "undefined") {
+    return fallback;
+  }
+
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
+    fallback
+  );
+}
+
+function canvasCssPx(name: string, fallback: number): number {
+  const value = canvasCssValue(name, `${fallback}px`);
+  const parsed = parseFloat(value);
+
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+
+  return value.endsWith("rem") ? parsed * 16 : parsed;
+}
+
+/**
+ * Sizes the inline editor so it matches the rendered label pixel for pixel:
+ * same font, same padding, same minimum size, scaled by the current zoom.
+ */
 export function inlineEditCssProperties({
   edit,
   maxZoom,
   minZoom,
+  nodeColor,
   zoomPercent,
-  compositionText,
 }: {
   edit: InlineEditTarget;
   maxZoom: number;
   minZoom: number;
+  nodeColor?: GraphColor;
   zoomPercent: number;
-  compositionText: string;
 }): CSSProperties {
   const zoom = clamp(zoomPercent / 100, minZoom, maxZoom);
-  const textUnits = estimateInlineEditTextUnits(
-    compositionText ? `${edit.value}${compositionText}` : edit.value,
+  const fontFamily = canvasCssValue("--canvas-font", "system-ui, sans-serif");
+  const isNode = edit.kind === "node-label";
+  const fontSize =
+    canvasCssPx(
+      isNode ? "--canvas-node-font" : "--canvas-edge-font",
+      isNode ? 16 : 12,
+    ) * zoom;
+  const textWidth = measureInlineEditText(
+    edit.value,
+    `600 ${fontSize}px ${fontFamily}`,
   );
-  const width =
-    edit.kind === "node-label"
-      ? `max(calc(var(--canvas-node-size) * var(--ge-inline-edit-zoom) - 0.625rem), calc(${textUnits}ch + 0.75rem))`
-      : `max(calc(1.5rem * var(--ge-inline-edit-zoom)), calc(${textUnits}ch + 0.875rem))`;
+  const padding =
+    (isNode ? NODE_LABEL_PADDING : canvasCssPx("--canvas-label-padding", 5)) *
+    zoom;
+  const minWidth = isNode ? canvasCssPx("--canvas-node-size", 48) * zoom : 0;
+  const width = Math.max(
+    minWidth,
+    Math.ceil(textWidth + padding * 2 + CARET_ROOM),
+  );
+  const colorVars: Record<string, string | undefined> =
+    isNode && nodeColor && nodeColor !== "paper"
+      ? {
+          "--ge-edit-bg": `var(--canvas-node-${nodeColor})`,
+          "--ge-edit-text":
+            nodeColor === "black"
+              ? "#f8fafc"
+              : nodeColor === "white"
+                ? "#111827"
+                : undefined,
+          "--ge-edit-border":
+            nodeColor === "black" ? "var(--canvas-edge)" : undefined,
+        }
+      : {};
 
-  return {
+  const style: Record<string, string | number | undefined> = {
     maxWidth: "calc(100vw - 2rem)",
     width,
     "--ge-inline-edit-zoom": String(zoom),
-  } as CSSProperties;
+    "--ge-inline-edit-padding": `${padding}px`,
+    ...colorVars,
+  };
+
+  return style as CSSProperties;
 }
 
 function estimateInlineEditTextUnits(text: string): number {

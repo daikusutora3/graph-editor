@@ -1,4 +1,10 @@
-import type { Core, Css, ElementDefinition, StylesheetJson } from "cytoscape";
+import type {
+  Core,
+  Css,
+  ElementDefinition,
+  NodeSingular,
+  StylesheetJson,
+} from "cytoscape";
 
 import {
   computeEdgeRouting,
@@ -61,7 +67,6 @@ export type GraphCanvasPalette = {
   edgeGreen: string;
   edgePink: string;
   labelBg: string;
-  labelBorder: string;
   active: string;
   selectedNode: string;
   selectedNodeText: string;
@@ -79,6 +84,50 @@ export type CytoscapeElementOptions = {
 };
 
 const EDGE_WIDTH = 2.5;
+/** Horizontal padding between a node label and the node border. */
+const NODE_LABEL_PADDING = 14;
+
+type TextMeasure = (text: string) => number;
+
+/** Measures label width in CSS px; falls back to an estimate outside the DOM. */
+function createTextMeasure(palette: GraphCanvasPalette): TextMeasure {
+  const font = `600 ${palette.nodeFontSize}px ${palette.fontFamily}`;
+  const context =
+    typeof document === "undefined"
+      ? null
+      : document.createElement("canvas").getContext("2d");
+
+  if (!context) {
+    return (text) =>
+      [...text].reduce(
+        (width, char) =>
+          width +
+          palette.nodeFontSize *
+            (/[\u3000-\u9fff\uff00-\uffef]/.test(char) ? 1 : 0.62),
+        0,
+      );
+  }
+
+  return (text) => {
+    context.font = font;
+    return context.measureText(text).width;
+  };
+}
+
+function nodeWidth(
+  label: string,
+  palette: GraphCanvasPalette,
+  measure: TextMeasure,
+) {
+  if (!label) {
+    return palette.nodeSize;
+  }
+
+  return Math.max(
+    palette.nodeSize,
+    Math.ceil(measure(label) + NODE_LABEL_PADDING * 2),
+  );
+}
 const SELECTED_EDGE_WIDTH = 3.5;
 const SELECTED_EDGE_ARROW_SCALE = EDGE_WIDTH / SELECTED_EDGE_WIDTH;
 const MULTI_EDGE_WIDTH = EDGE_WIDTH;
@@ -318,6 +367,7 @@ export function createGraphCanvasStylesheet(
 ): StylesheetJson {
   const normalArrowScale = clampArrowScale(arrowScale);
   const selectedArrowScale = normalArrowScale * SELECTED_EDGE_ARROW_SCALE;
+  const measure = createTextMeasure(palette);
 
   return [
     {
@@ -339,7 +389,11 @@ export function createGraphCanvasStylesheet(
     {
       selector: "node",
       style: cytoscapeStyle({
-        width: palette.nodeSize,
+        // A circle that stretches into a pill when the label needs more room.
+        shape: "round-rectangle",
+        "corner-radius": `${palette.nodeSize / 2}px`,
+        width: (node: NodeSingular) =>
+          nodeWidth(node.data("displayLabel") as string, palette, measure),
         height: palette.nodeSize,
         "background-color": palette.node,
         "background-opacity": 1,
@@ -355,7 +409,9 @@ export function createGraphCanvasStylesheet(
         "text-valign": "center",
         "text-outline-color": palette.node,
         "text-outline-width": 0,
-        "underlay-shape": "ellipse",
+        "text-wrap": "none",
+        "underlay-shape": "round-rectangle",
+        "underlay-corner-radius": `${palette.nodeSize / 2 + 5}px`,
       }),
     },
     {
@@ -451,14 +507,12 @@ export function createGraphCanvasStylesheet(
         label: "data(label)",
         "font-family": palette.fontFamily,
         "font-size": palette.edgeFontSize,
-        "font-weight": 700,
+        "font-weight": 600,
         color: palette.nodeText,
         "text-background-color": palette.labelBg,
-        "text-background-opacity": 0.92,
+        "text-background-opacity": 1,
+        "text-background-shape": "round-rectangle",
         "text-background-padding": palette.labelPadding,
-        "text-border-color": palette.labelBorder,
-        "text-border-width": 1,
-        "text-border-opacity": 1,
         "text-rotation": "none",
       }),
     },
@@ -560,6 +614,7 @@ export function createGraphCanvasStylesheet(
         "line-color": palette.active,
         "line-outline-width": 0,
         "target-arrow-color": palette.active,
+        color: palette.active,
         "underlay-opacity": 0,
         "z-index": 20,
       }),
@@ -594,7 +649,9 @@ function clampArrowScale(value: number) {
   return Math.min(2, Math.max(0.6, value));
 }
 
-function cytoscapeStyle(style: Record<string, string | number>) {
+function cytoscapeStyle(
+  style: Record<string, string | number | ((node: NodeSingular) => number)>,
+) {
   return style as Css.Node | Css.Edge | Css.Core;
 }
 
