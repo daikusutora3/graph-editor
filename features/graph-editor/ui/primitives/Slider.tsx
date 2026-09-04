@@ -105,7 +105,7 @@ export function Slider({
                 aria-pressed={current === preset}
                 onClick={() => onChange(preset)}
                 className={cn(
-                  "touch:h-11 touch:px-3 touch:text-[13px] absolute top-0 h-8 rounded-md px-2 font-mono text-xs font-semibold transition-colors",
+                  "touch:h-11 touch:px-3 touch:text-control absolute top-0 h-8 rounded-md px-2 font-mono text-xs font-semibold transition-colors",
                   focusRing,
                   current === preset
                     ? "bg-[var(--accent-fill-soft)] text-[var(--accent-text)]"

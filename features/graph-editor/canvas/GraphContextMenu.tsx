@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import type { EdgeId, GraphModel, NodeId } from "../core/graph/model";
@@ -58,6 +58,11 @@ export function GraphContextMenu({
     getContextMenuPosition(target, DEFAULT_MENU_SIZE, DEFAULT_CANVAS_SIZE),
   );
 
+  const restoreFocusRef = useRef<(() => void) | null>(null);
+
+  // Return focus to where the menu was opened from once it closes.
+  useEffect(() => () => restoreFocusRef.current?.(), []);
+
   useLayoutEffect(() => {
     const menu = menuRef.current;
     const canvas = menu?.parentElement;
@@ -66,9 +71,23 @@ export function GraphContextMenu({
       return;
     }
 
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
     menu.querySelector<HTMLElement>("[role='menuitem']")?.focus({
       preventScroll: true,
     });
+    restoreFocusRef.current = () => {
+      if (
+        previouslyFocused?.isConnected &&
+        (document.activeElement === document.body ||
+          menu.contains(document.activeElement))
+      ) {
+        previouslyFocused.focus({ preventScroll: true });
+      }
+    };
 
     const nextPosition = getContextMenuPosition(
       target,
@@ -130,7 +149,7 @@ export function GraphContextMenu({
     <div
       ref={menuRef}
       data-panel-state={panelState}
-      className="ge-panel ge-context-menu pointer-events-auto absolute z-40 flex max-h-[calc(100%-1rem)] w-[min(14rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto rounded-xl p-1.5 text-[13px] text-[var(--text)] backdrop-blur-[12px]"
+      className="ge-panel ge-context-menu text-control pointer-events-auto absolute z-40 flex max-h-[calc(100%-1rem)] w-[min(14rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto rounded-xl p-1.5 text-[var(--text)] backdrop-blur-[12px]"
       style={{
         left: menuPosition.left,
         top: menuPosition.top,
@@ -158,7 +177,7 @@ export function GraphContextMenu({
               key={id}
               danger={danger}
               divider={danger && index > 0}
-              icon={<Icon className="size-[15px]" aria-hidden="true" />}
+              icon={<Icon className="size-icon-sm" aria-hidden="true" />}
               kbd={kbd}
               label={label}
               onClick={() => runAction(id)}

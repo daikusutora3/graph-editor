@@ -167,7 +167,7 @@ function DesktopToolbar({
 }: ToolbarSharedProps & { wide: boolean }) {
   const { messages } = useI18n();
   const modeButtonClass = cn(
-    "h-10 text-[13px]",
+    "h-10 text-control",
     wide ? "gap-2 pr-2.5 pl-3" : "gap-1.5 px-2.5",
   );
 
@@ -323,7 +323,7 @@ function MobileTopRail({
         tooltipSide="bottom-end"
         onClick={onOpenStarter}
       >
-        <FileInput className="size-[17px]" aria-hidden="true" />
+        <FileInput className="size-icon-md" aria-hidden="true" />
       </IconButton>
       <IconButton
         active={panel === "export"}
@@ -333,7 +333,7 @@ function MobileTopRail({
         tooltipSide="bottom-end"
         onClick={() => onTogglePanel("export")}
       >
-        <Download className="size-[17px]" aria-hidden="true" />
+        <Download className="size-icon-md" aria-hidden="true" />
       </IconButton>
       <IconButton
         active={panel === "png"}
@@ -343,7 +343,7 @@ function MobileTopRail({
         tooltipSide="bottom-end"
         onClick={() => onTogglePanel("png")}
       >
-        <Camera className="size-[17px]" aria-hidden="true" />
+        <Camera className="size-icon-md" aria-hidden="true" />
       </IconButton>
     </div>
   );
@@ -380,8 +380,8 @@ export function MobileBottomBar({
           wide
           onClick={() => onModeChange(itemMode)}
         >
-          <Icon className="size-[18px]" aria-hidden="true" />
-          <span className="text-[11px] leading-none">
+          <Icon className="size-icon-lg" aria-hidden="true" />
+          <span className="text-meta leading-none">
             {messages.toolbar.modes[itemMode].label}
           </span>
         </MobileBarButton>
@@ -392,14 +392,14 @@ export function MobileBottomBar({
         label={messages.toolbar.undo.label}
         onClick={onUndo}
       >
-        <Undo2 className="size-[18px]" aria-hidden="true" />
+        <Undo2 className="size-icon-lg" aria-hidden="true" />
       </MobileBarButton>
       <MobileBarButton
         disabled={!canRedo}
         label={messages.toolbar.redo.label}
         onClick={onRedo}
       >
-        <Redo2 className="size-[18px]" aria-hidden="true" />
+        <Redo2 className="size-icon-lg" aria-hidden="true" />
       </MobileBarButton>
       <Divider tall />
       <MobileBarButton
@@ -408,7 +408,7 @@ export function MobileBottomBar({
         label={messages.chrome.menu}
         onClick={() => onTogglePanel("menu")}
       >
-        <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
+        <SlidersHorizontal className="size-icon-lg" aria-hidden="true" />
       </MobileBarButton>
     </div>
   );
@@ -416,12 +416,12 @@ export function MobileBottomBar({
 
 function ThemeButton({
   iconSize = 16,
-  size = 40,
+  size = "lg",
   theme,
   onClick,
 }: {
   iconSize?: number;
-  size?: 40;
+  size?: "sm" | "md" | "lg";
   theme: ThemeMode;
   onClick: () => void;
 }) {
@@ -469,7 +469,7 @@ function RailButton({
       tooltip={label}
       tooltipSide="bottom-end"
       className={cn(
-        "h-10 gap-[7px] text-[13px]",
+        "text-control h-10 gap-[7px]",
         wide ? "pr-3 pl-2.5" : "w-10 px-0",
       )}
       onClick={onClick}

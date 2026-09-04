@@ -48,7 +48,7 @@ export function ExportPanelBody({
       <div className="grid min-h-[200px] grid-cols-[28px_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
         <div
           aria-hidden="true"
-          className="pr-2 text-right font-mono text-[13px] leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
+          className="text-control pr-2 text-right font-mono leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
         >
           {lineNumbers}
         </div>
@@ -56,10 +56,10 @@ export function ExportPanelBody({
           aria-label={messages.exportPanel.exportedAria(
             messages.exportPanel.formats[exportFormat],
           )}
-          className="m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono text-[13px] leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
+          className="text-control m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
         >
           {exportText || (
-            <span className="text-[var(--faint)]">
+            <span className="text-[var(--muted)]">
               {messages.exportPanel.emptyPlaceholder}
             </span>
           )}
@@ -92,7 +92,7 @@ export function ExportPanelFooter({
         variant={disabled ? "disabled" : "secondary"}
         onClick={onSaveTxt}
       >
-        <Download className="size-[15px]" aria-hidden="true" />
+        <Download className="size-icon-sm" aria-hidden="true" />
         {messages.chrome.saveAs(extension)}
       </Button>
       <Button
@@ -110,7 +110,7 @@ export function ExportPanelFooter({
         className="px-4"
         onClick={onCopy}
       >
-        <ClipboardCopy className="size-[15px]" aria-hidden="true" />
+        <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
         {copyState === "copied"
           ? messages.chrome.copied
           : copyState === "blocked"

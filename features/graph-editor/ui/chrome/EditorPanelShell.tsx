@@ -263,7 +263,7 @@ export function EditorPanelShell({
                 {title}
               </h2>
               {meta ? (
-                <span className="font-mono text-[11px] font-semibold text-[var(--muted)]">
+                <span className="text-meta font-mono font-semibold text-[var(--muted)]">
                   {meta}
                 </span>
               ) : null}
@@ -271,7 +271,7 @@ export function EditorPanelShell({
             <IconButton
               data-panel-close="true"
               label={messages.common.close}
-              size={36}
+              size="md"
               tooltip={`${messages.common.close} (Esc)`}
               tooltipSide="bottom-end"
               className="text-[var(--muted)] hover:text-[var(--text)]"

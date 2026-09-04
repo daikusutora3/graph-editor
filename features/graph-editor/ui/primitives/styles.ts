@@ -11,13 +11,6 @@ export const panelSurface =
 export const solidSurface =
   "border border-[var(--line)] bg-[var(--panel-solid)] shadow-[var(--shadow)]";
 
-export const controlRadius = {
-  panel: "rounded-xl",
-  control: "rounded-lg",
-  input: "rounded-lg",
-  chip: "rounded-md",
-} as const;
-
 /** Secondary (raised) control: white face, hairline border, soft shadow.
  * Used for every clickable choice or secondary action so "raised = pressable"
  * reads the same in every panel. */

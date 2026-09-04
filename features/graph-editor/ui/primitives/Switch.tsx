@@ -15,24 +15,28 @@ import { focusRing } from "./styles";
 export function OptionToggle({
   checked,
   description,
+  disabled = false,
   icon,
   label,
-  onClick,
+  onChange,
 }: {
   checked: boolean;
   description?: string;
+  disabled?: boolean;
   icon?: ReactNode;
   label: string;
-  onClick: () => void;
+  onChange: (checked: boolean) => void;
 }) {
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={checked}
-      onClick={onClick}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
       className={cn(
-        "touch:min-h-12 flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-[13px] font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.06)] transition-colors",
+        disabled && "cursor-default opacity-50",
+        "touch:min-h-12 text-control flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.06)] transition-colors",
         focusRing,
         checked
           ? "border-[var(--accent)] bg-[var(--accent-fill-soft)] text-[var(--accent-text)]"
@@ -42,7 +46,7 @@ export function OptionToggle({
       <span
         aria-hidden="true"
         className={cn(
-          "grid size-[18px] shrink-0 place-items-center rounded-md border transition-colors",
+          "size-icon-lg grid shrink-0 place-items-center rounded-md border transition-colors",
           checked
             ? "border-[var(--accent)] bg-[var(--accent)] text-white"
             : "border-[var(--faint)] bg-[var(--panel-solid)]",
@@ -51,7 +55,7 @@ export function OptionToggle({
         {checked ? <Check className="size-3" strokeWidth={3} /> : null}
       </span>
       {icon ? (
-        <span className="grid size-[15px] shrink-0 place-items-center text-current opacity-80">
+        <span className="size-icon-sm grid shrink-0 place-items-center text-current opacity-80">
           {icon}
         </span>
       ) : null}

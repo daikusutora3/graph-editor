@@ -133,7 +133,7 @@ export function PngPanelBody({
       >
         <div className="flex h-8 shrink-0 items-center justify-between border-b border-[var(--hair)] px-3">
           <SectionLabel>{messages.screenshot.preview}</SectionLabel>
-          <span className="font-mono text-[11px] font-semibold text-[var(--muted)] tabular-nums">
+          <span className="text-meta font-mono font-semibold text-[var(--muted)] tabular-nums">
             {dimensions}
           </span>
         </div>
@@ -214,7 +214,7 @@ export function PngPanelFooter({
         variant={isGraphEmpty ? "disabled" : "secondary"}
         onClick={onDownload}
       >
-        <Download className="size-[15px]" aria-hidden="true" />
+        <Download className="size-icon-sm" aria-hidden="true" />
         {downloadState === "saving"
           ? messages.chrome.pngSaving
           : messages.chrome.pngSave}
@@ -227,7 +227,7 @@ export function PngPanelFooter({
         className="px-4"
         onClick={onCopy}
       >
-        <ClipboardCopy className="size-[15px]" aria-hidden="true" />
+        <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
         {copyLabel}
       </Button>
     </div>

@@ -80,7 +80,7 @@ export function LayoutsPanel({
                 }
               }}
               className={cn(
-                "touch:h-11 h-10 truncate rounded-lg px-2 text-[13px] font-semibold transition-colors",
+                "touch:h-11 text-control h-10 truncate rounded-lg px-2 font-semibold transition-colors",
                 focusRing,
                 reason ? disabledControl : raisedControl,
               )}
@@ -92,9 +92,9 @@ export function LayoutsPanel({
       </div>
       <OptionToggle
         checked={graph.settings.autoEdgeRouting}
-        icon={<GitCompareArrows className="size-[15px]" aria-hidden="true" />}
+        icon={<GitCompareArrows className="size-icon-sm" aria-hidden="true" />}
         label={messages.chrome.offsetEdges}
-        onClick={onToggleOffsetEdges}
+        onChange={() => onToggleOffsetEdges()}
       />
     </div>
   );
