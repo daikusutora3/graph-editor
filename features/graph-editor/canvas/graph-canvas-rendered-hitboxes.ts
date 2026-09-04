@@ -1,7 +1,13 @@
 "use client";
 
 import type { Core } from "cytoscape";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { GraphModel } from "../core/graph/model";
 import type { EditorMode } from "../shell/state/editor-state";
@@ -33,9 +39,17 @@ export function useRenderedHitboxes({
     [],
   );
   const [isGraphOutOfView, setIsGraphOutOfView] = useState(false);
+  // Pan is a pure translation of every hitbox, so panning moves the whole
+  // layer with one CSS transform instead of rebuilding thousands of nodes.
+  const hitboxLayerRef = useRef<HTMLDivElement | null>(null);
+  const basePanRef = useRef({ x: 0, y: 0 });
+  const readPanRef = useRef({ x: 0, y: 0 });
 
   const updateRenderedHitboxesNow = useCallback(
     (cy: Core) => {
+      // cy.pan() returns Cytoscape's live object; snapshot it.
+      const pan = cy.pan();
+      readPanRef.current = { x: pan.x, y: pan.y };
       const nextNodeHitboxes = readNodeHitboxes(cy, graph);
       const nextEdgeLabelHitboxes =
         mode === "select" ? readEdgeLabelHitboxes(cy, graph) : [];
@@ -56,6 +70,38 @@ export function useRenderedHitboxes({
       );
     },
     [chrome, graph, mode],
+  );
+
+  useLayoutEffect(() => {
+    // Fresh hitboxes are already in the new pan frame; drop the transform in
+    // the same commit so nothing jumps.
+    basePanRef.current = readPanRef.current;
+
+    if (hitboxLayerRef.current) {
+      hitboxLayerRef.current.style.transform = "";
+    }
+  }, [nodeHitboxes, edgeLabelHitboxes]);
+
+  const panRenderedHitboxes = useCallback(
+    (cy: Core) => {
+      const pan = cy.pan();
+      const layer = hitboxLayerRef.current;
+
+      if (layer) {
+        const dx = pan.x - basePanRef.current.x;
+        const dy = pan.y - basePanRef.current.y;
+        layer.style.transform =
+          dx === 0 && dy === 0 ? "" : `translate(${dx}px, ${dy}px)`;
+      }
+
+      if (chrome.layout === "mobile") {
+        const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
+        setIsGraphOutOfView((current) =>
+          current === nextGraphOutOfView ? current : nextGraphOutOfView,
+        );
+      }
+    },
+    [chrome],
   );
 
   const updateRenderedHitboxes = useCallback(
@@ -113,8 +159,10 @@ export function useRenderedHitboxes({
   return {
     edgeLabelHitboxes,
     flushRenderedHitboxes,
+    hitboxLayerRef,
     isGraphOutOfView,
     nodeHitboxes,
+    panRenderedHitboxes,
     updateRenderedHitboxes,
   };
 }

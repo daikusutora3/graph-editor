@@ -42,8 +42,7 @@ import {
 } from "../primitives";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 
-export const SAMPLE_GALLERY_GRID_CLASS =
-  "grid grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))] gap-2.5";
+import { SAMPLE_GALLERY_GRID_CLASS } from "./sample-gallery-layout";
 
 type SampleGalleryPaneProps = {
   onSampleApplied: () => void;
@@ -155,7 +154,7 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
                     {messages.samples.group[group.key].note}
                   </div>
                 </div>
-                <div className="font-mono text-[11px] font-semibold text-[var(--muted)] tabular-nums">
+                <div className="text-meta font-mono font-semibold text-[var(--muted)] tabular-nums">
                   {group.samples.length}
                 </div>
               </div>
@@ -266,7 +265,7 @@ function SampleGalleryFilter({
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={messages.samples.searchPlaceholder}
           aria-label={messages.samples.searchAria}
-          className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+          className="text-control h-full min-w-0 flex-1 bg-transparent font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
         />
         {query ? (
           <button
@@ -274,7 +273,7 @@ function SampleGalleryFilter({
             aria-label={messages.samples.clearSearch}
             onClick={() => onQueryChange("")}
             className={cn(
-              "touch:size-9 grid size-5 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]",
+              "touch:size-11 grid size-5 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]",
               focusRing,
             )}
           >
@@ -282,7 +281,7 @@ function SampleGalleryFilter({
           </button>
         ) : null}
       </label>
-      <div className="shrink-0 font-mono text-[11px] font-semibold text-[var(--muted)] tabular-nums">
+      <div className="text-meta shrink-0 font-mono font-semibold text-[var(--muted)] tabular-nums">
         {shown} / {total}
       </div>
     </div>

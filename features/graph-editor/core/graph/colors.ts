@@ -1,6 +1,6 @@
 import type { GraphColor } from "./model";
 
-export const GRAPH_COLORS: GraphColor[] = [
+const GRAPH_COLORS: GraphColor[] = [
   "paper",
   "white",
   "black",

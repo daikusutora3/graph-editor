@@ -25,35 +25,6 @@ export function componentOrder(
   return Math.min(...component.map((nodeId) => order.get(nodeId) ?? 0));
 }
 
-export function orderBipartiteSide(
-  side: NodeId[],
-  opposite: NodeId[],
-  adjacency: Map<NodeId, Set<NodeId>>,
-  order: Map<NodeId, number>,
-  direction: "asc" | "desc",
-) {
-  const oppositeOrder = orderIndex(opposite);
-  const score = (nodeId: NodeId) => {
-    const neighbors = [...(adjacency.get(nodeId) ?? [])]
-      .map((neighbor) => oppositeOrder.get(neighbor))
-      .filter((index): index is number => index !== undefined);
-
-    if (neighbors.length === 0) {
-      return direction === "asc"
-        ? Number.POSITIVE_INFINITY
-        : Number.NEGATIVE_INFINITY;
-    }
-
-    return neighbors.reduce((sum, index) => sum + index, 0) / neighbors.length;
-  };
-
-  return [...side].sort((a, b) => {
-    const byScore =
-      direction === "asc" ? score(a) - score(b) : score(b) - score(a);
-    return byScore === 0 ? order.get(a)! - order.get(b)! : byScore;
-  });
-}
-
 export function undirectedAdjacency(model: GraphModel) {
   const adjacency = new Map<NodeId, Set<NodeId>>(
     model.nodes.map((node) => [node.id, new Set<NodeId>()]),
@@ -298,36 +269,4 @@ export function isDirectedAcyclic(model: GraphModel) {
   }
 
   return visitedCount === nodeIds.length;
-}
-
-export function pathOrder(model: GraphModel) {
-  const nodeIds = orderedNodeIds(model);
-  const adjacency = undirectedAdjacency(model);
-  const order = orderIndex(nodeIds);
-  const unvisited = new Set(nodeIds);
-  const result: NodeId[] = [];
-
-  while (unvisited.size > 0) {
-    const start =
-      nodeIds.find(
-        (nodeId) => unvisited.has(nodeId) && adjacency.get(nodeId)!.size <= 1,
-      ) ?? nodeIds.find((nodeId) => unvisited.has(nodeId))!;
-    let current: NodeId | null = start;
-    let previous: NodeId | null = null;
-
-    while (current && unvisited.has(current)) {
-      result.push(current);
-      unvisited.delete(current);
-
-      const next: NodeId | null =
-        [...(adjacency.get(current) ?? [])]
-          .filter((nodeId) => nodeId !== previous && unvisited.has(nodeId))
-          .sort((a, b) => order.get(a)! - order.get(b)!)[0] ?? null;
-
-      previous = current;
-      current = next;
-    }
-  }
-
-  return result;
 }

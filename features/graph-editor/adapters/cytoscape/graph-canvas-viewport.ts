@@ -5,7 +5,7 @@ import type { GraphCanvasPalette } from "./cytoscape-adapter";
 import type {
   GraphCanvasChrome,
   GraphCanvasExportOptions,
-} from "../../canvas/graph-canvas-types";
+} from "../../core/view/types";
 
 export const MIN_CANVAS_ZOOM = 0.04;
 export const MAX_CANVAS_ZOOM = 1.5;
@@ -53,7 +53,8 @@ export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
     return false;
   }
 
-  const rect = container.getBoundingClientRect();
+  // Work in rendered px from Cytoscape's own size cache; no DOM layout read.
+  const rect = { width: cy.width(), height: cy.height() };
   const insets = graphViewportInsets(rect, chrome);
   const visibleBounds = {
     x1: insets.left,
@@ -61,12 +62,22 @@ export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
     x2: rect.width - insets.right,
     y2: rect.height - insets.bottom,
   };
-  return !cy
-    .nodes()
-    .toArray()
-    .some((node) =>
-      renderedPointInsideViewport(node.renderedPosition(), visibleBounds),
-    );
+  const pan = cy.pan();
+  const zoom = cy.zoom();
+
+  for (const node of cy.nodes()) {
+    const position = node.position();
+    const rendered = {
+      x: position.x * zoom + pan.x,
+      y: position.y * zoom + pan.y,
+    };
+
+    if (renderedPointInsideViewport(rendered, visibleBounds)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function renderedPointInsideViewport(
@@ -200,10 +211,6 @@ function hasRenderableSize(rect: { width: number; height: number }) {
   return rect.width >= 2 && rect.height >= 2;
 }
 
-export function prefersReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 export function nextAnimationFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
@@ -225,12 +232,21 @@ export function readExportBackground(
   return EXPORT_BACKGROUND_COLORS[background];
 }
 
-export function exportImageErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return `画像の書き出しに失敗しました: ${error.message}`;
+/** Error codes thrown by image export; the UI maps them to i18n text. */
+export const IMAGE_EXPORT_ERROR = {
+  emptyGraph: "image-export:empty-graph",
+  failed: "image-export:failed",
+} as const;
+
+export function exportImageErrorCode(error: unknown) {
+  if (
+    error instanceof Error &&
+    error.message === IMAGE_EXPORT_ERROR.emptyGraph
+  ) {
+    return IMAGE_EXPORT_ERROR.emptyGraph;
   }
 
-  return "画像の書き出しに失敗しました";
+  return IMAGE_EXPORT_ERROR.failed;
 }
 
 export function readCanvasPalette(): GraphCanvasPalette {

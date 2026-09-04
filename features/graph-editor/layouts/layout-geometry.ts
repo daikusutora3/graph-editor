@@ -235,18 +235,6 @@ function scalePositions(
   ) as Record<NodeId, { x: number; y: number }>;
 }
 
-export function ensureMinimumNodeDistance(
-  positions: Record<NodeId, { x: number; y: number }>,
-) {
-  const nearestDistance = nearestNodeDistance(positions);
-
-  if (nearestDistance <= 0 || nearestDistance >= LAYOUT_NODE_CLEARANCE) {
-    return positions;
-  }
-
-  return scalePositions(positions, LAYOUT_NODE_CLEARANCE / nearestDistance);
-}
-
 /**
  * Like ensureMinimumNodeDistance, but measures each pair from the boundary of
  * its pill-shaped nodes, so wide labels get the same gap as plain circles.
@@ -261,6 +249,10 @@ export function ensureNodeClearance(
     nodes.map((node) => [node.id, estimateNodeWidth(node.label) / 2]),
   );
   const entries = Object.entries(positions);
+  // No pair can need more than this, so anything farther apart is skipped
+  // before the (comparatively expensive) pill extent math.
+  const maxRequired = 2 * Math.max(halfHeight, ...halfWidths.values()) + gap;
+  const maxRequiredSquared = maxRequired * maxRequired;
   let scale = 1;
 
   for (let i = 0; i < entries.length; i += 1) {
@@ -270,11 +262,13 @@ export function ensureNodeClearance(
       const [idB, b] = entries[j]!;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
-      const distance = Math.hypot(dx, dy);
+      const distanceSquared = dx * dx + dy * dy;
 
-      if (distance === 0) {
+      if (distanceSquared === 0 || distanceSquared > maxRequiredSquared) {
         continue;
       }
+
+      const distance = Math.sqrt(distanceSquared);
 
       const required =
         pillExtentTowards(
