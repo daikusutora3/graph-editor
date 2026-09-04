@@ -4,7 +4,12 @@ export const SITE_URL = "https://graph-editor.daikusutora3.workers.dev";
 
 export const APP_NAME = "Graph Editor";
 
-export const APP_ICON = "/brand/graph-editor-logo.webp";
+// Search engines (Google in particular) ignore WebP favicons, so the icons
+// exposed through metadata are PNG plus a multi-size favicon.ico.
+export const APP_ICON = "/brand/graph-editor-logo-512.png";
+export const APP_ICON_192 = "/brand/graph-editor-logo-192.png";
+export const APP_ICON_48 = "/brand/graph-editor-logo-48.png";
+export const FAVICON = "/favicon.ico";
 export const SOCIAL_IMAGE = APP_ICON;
 export const APPLE_TOUCH_ICON = "/brand/graph-editor-logo-180.png";
 
@@ -156,17 +161,12 @@ export const appRootMetadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      {
-        url: APP_ICON,
-        type: "image/webp",
-      },
+      { url: FAVICON, sizes: "48x48 32x32 16x16", type: "image/x-icon" },
+      { url: APP_ICON_48, sizes: "48x48", type: "image/png" },
+      { url: APP_ICON_192, sizes: "192x192", type: "image/png" },
+      { url: APP_ICON, sizes: "512x512", type: "image/png" },
     ],
-    shortcut: [
-      {
-        url: APP_ICON,
-        type: "image/webp",
-      },
-    ],
+    shortcut: [{ url: FAVICON, type: "image/x-icon" }],
     apple: [
       {
         url: APPLE_TOUCH_ICON,

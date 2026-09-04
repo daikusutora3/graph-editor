@@ -6,9 +6,10 @@ import {
 } from "@/lib/site-metadata";
 
 /**
- * Static intro rendered into the exported HTML. It is what crawlers index
- * and what people see for the instant before the editor mounts; the client
- * replaces it with the live canvas once local storage has been read.
+ * Static intro rendered into the exported HTML. Crawlers and screen readers
+ * get it as the document's opening content, and browsers without JavaScript
+ * see it in place of the editor; with JavaScript it stays visually hidden
+ * until the live canvas mounts.
  */
 export function EditorIntro({ locale }: { locale: AppLocale }) {
   const copy = appLocaleMetadata[locale];

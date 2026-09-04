@@ -3,6 +3,7 @@ import type { MetadataRoute } from "next";
 import {
   APP_DESCRIPTION,
   APP_ICON,
+  APP_ICON_192,
   APP_NAME,
   APPLE_TOUCH_ICON,
 } from "@/lib/site-metadata";
@@ -35,9 +36,15 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
       {
+        src: APP_ICON_192,
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
         src: APP_ICON,
         sizes: "512x512",
-        type: "image/webp",
+        type: "image/png",
       },
     ],
   };
