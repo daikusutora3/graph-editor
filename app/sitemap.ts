@@ -10,9 +10,13 @@ import {
 
 export const dynamic = "force-static";
 
+// Fixed at build time so every locale entry shares one timestamp.
+const BUILD_DATE = new Date();
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return (Object.keys(appLocalePaths) as AppLocale[]).map((locale) => ({
     url: getAppLocaleUrl(locale),
+    lastModified: BUILD_DATE,
     changeFrequency: "monthly",
     priority: locale === "ja" ? 1 : 0.9,
     alternates: {

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
-import { appRootMetadata } from "@/lib/site-metadata";
+import { appRootMetadata, appViewport } from "@/lib/site-metadata";
 
 import { LocaleRootLayout } from "../LocaleRootLayout";
 import "../globals.css";
 
 export const metadata = appRootMetadata;
+export const viewport = appViewport;
 
 export default function JapaneseRootLayout({
   children,

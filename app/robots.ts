@@ -2,35 +2,13 @@ import type { MetadataRoute } from "next";
 
 import { SITE_URL } from "@/lib/site-metadata";
 
-const AI_CRAWLERS = [
-  "Amazonbot",
-  "Applebot-Extended",
-  "Bytespider",
-  "CCBot",
-  "ChatGPT-User",
-  "ClaudeBot",
-  "Claude-User",
-  "cohere-ai",
-  "Diffbot",
-  "FacebookBot",
-  "Google-Extended",
-  "GPTBot",
-  "Meta-ExternalAgent",
-  "OAI-SearchBot",
-  "PerplexityBot",
-  "PetalBot",
-  "TikTokSpider",
-];
-
 export const dynamic = "force-static";
 
 export default function robots(): MetadataRoute.Robots {
   return {
+    // Every crawler, including AI search bots, may index the app: the pages
+    // are public and the graph data never leaves the browser.
     rules: [
-      {
-        userAgent: AI_CRAWLERS,
-        disallow: "/",
-      },
       {
         userAgent: "*",
         allow: "/",
