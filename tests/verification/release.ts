@@ -12,6 +12,7 @@ import {
   appLocaleMetadata,
   appLocalePaths,
   createAppStructuredData,
+  getAppGuideUrl,
   getAppLocaleUrl,
   getAppPathUrl,
   type AppLocale,
@@ -34,6 +35,10 @@ for (const path of [
   "out/en.html",
   "out/zh-hans.html",
   "out/404.html",
+  "out/guide.html",
+  "out/en/guide.html",
+  "out/zh-hans/guide.html",
+  "out/_redirects",
   "out/manifest.webmanifest",
   "out/robots.txt",
   "out/sitemap.xml",
@@ -245,6 +250,27 @@ for (const [locale, page] of [
     "out/llms.txt should not carry a BOM",
   );
 }
+
+for (const [locale, page] of [
+  ["ja", "out/guide.html"],
+  ["en", "out/en/guide.html"],
+  ["zh-Hans", "out/zh-hans/guide.html"],
+] as const) {
+  const html = readText(page);
+  expect(
+    html.includes('"@type":"FAQPage"') &&
+      html.includes('"@type":"BreadcrumbList"'),
+    `${page} should carry FAQ and breadcrumb structured data`,
+  );
+  expect(
+    html.includes(`<link rel="canonical" href="${getAppGuideUrl(locale)}"`),
+    `${page} should declare its canonical guide URL`,
+  );
+}
+expect(
+  readText("out/sitemap.xml").includes(getAppGuideUrl("en")),
+  "sitemap.xml should list the guide pages",
+);
 
 const headers = readText("out/_headers");
 expect(

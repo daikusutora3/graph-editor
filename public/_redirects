@@ -1,0 +1,7 @@
+# Static export writes <name>.html; keep the clean URL canonical.
+/index.html / 301
+/en.html /en 301
+/zh-hans.html /zh-hans 301
+/guide.html /guide 301
+/en/guide.html /en/guide 301
+/zh-hans/guide.html /zh-hans/guide 301

@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
 
 import {
+  appGuideLanguageAlternates,
   appLanguageAlternates,
+  getAppGuideUrl,
   appLocalePaths,
   getAppLocaleUrl,
   getAppPathUrl,
@@ -14,18 +16,29 @@ export const dynamic = "force-static";
 const BUILD_DATE = new Date();
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return (Object.keys(appLocalePaths) as AppLocale[]).map((locale) => ({
-    url: getAppLocaleUrl(locale),
-    lastModified: BUILD_DATE,
-    changeFrequency: "monthly",
-    priority: locale === "ja" ? 1 : 0.9,
-    alternates: {
-      languages: Object.fromEntries(
-        Object.entries(appLanguageAlternates).map(([language, path]) => [
-          language,
-          getAppPathUrl(path),
-        ]),
-      ),
-    },
-  }));
+  const locales = Object.keys(appLocalePaths) as AppLocale[];
+  const toAbsolute = (alternates: Record<string, string>) =>
+    Object.fromEntries(
+      Object.entries(alternates).map(([language, path]) => [
+        language,
+        getAppPathUrl(path),
+      ]),
+    );
+
+  return [
+    ...locales.map((locale) => ({
+      url: getAppLocaleUrl(locale),
+      lastModified: BUILD_DATE,
+      changeFrequency: "monthly" as const,
+      priority: locale === "ja" ? 1 : 0.9,
+      alternates: { languages: toAbsolute(appLanguageAlternates) },
+    })),
+    ...locales.map((locale) => ({
+      url: getAppGuideUrl(locale),
+      lastModified: BUILD_DATE,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+      alternates: { languages: toAbsolute(appGuideLanguageAlternates) },
+    })),
+  ];
 }

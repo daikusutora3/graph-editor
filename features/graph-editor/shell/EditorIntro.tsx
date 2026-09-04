@@ -1,4 +1,9 @@
-import { appLocaleMetadata, type AppLocale } from "@/lib/site-metadata";
+import { guideCopy } from "@/lib/guide-content";
+import {
+  appGuidePaths,
+  appLocaleMetadata,
+  type AppLocale,
+} from "@/lib/site-metadata";
 
 /**
  * Static intro rendered into the exported HTML. It is what crawlers index
@@ -21,6 +26,14 @@ export function EditorIntro({ locale }: { locale: AppLocale }) {
       </h1>
       <p className="text-sm leading-relaxed text-[var(--text-2)]">
         {copy.tagline}
+      </p>
+      <p className="text-sm">
+        <a
+          href={appGuidePaths[locale]}
+          className="font-semibold text-[var(--accent-text)] underline-offset-4 hover:underline"
+        >
+          {guideCopy[locale].heading}
+        </a>
       </p>
       <ul className="grid gap-2 text-left text-sm text-[var(--muted)] sm:grid-cols-2">
         {copy.features.map((feature) => (
