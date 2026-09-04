@@ -321,8 +321,14 @@ expect(
     "each page should receive exactly one Content-Security-Policy",
   );
   expect(
-    cspOf("/missing-page") === cspOf("/404"),
-    "unknown paths should get the 404 page's CSP",
+    cspOf("/404").includes("script-src 'self'") &&
+      resolveHeaders(rules, "/missing-page").get("x-frame-options") === "DENY",
+    "the 404 page should carry a CSP and unknown paths the other headers",
+  );
+  expect(
+    headers.split("\n").filter((line) => line.startsWith("/*")).length === 1 &&
+      !headers.includes("! Content-Security-Policy"),
+    "_headers must not layer two Content-Security-Policy rules on one path",
   );
   expect(
     longest <= HEADERS_LINE_LIMIT,
