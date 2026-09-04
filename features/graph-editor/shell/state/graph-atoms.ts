@@ -41,13 +41,14 @@ export const graphIsEmptyAtom = atom((get) => {
   return graph.nodes.length === 0 && graph.edges.length === 0;
 });
 
-export const graphAtom = atom(
-  (get) => get(storedGraphAtom).graph,
-  (_get, set, graph: GraphModel) => {
-    set(storedGraphAtom, { graph, status: "ready" });
-    scheduleStoredGraphWrite(graph);
-  },
-);
+/** Read-only view of the graph; every change goes through the history atoms. */
+export const graphAtom = atom((get) => get(storedGraphAtom).graph);
+
+/** Write path reserved for the command/history layer. */
+export const commitGraphAtom = atom(null, (_get, set, graph: GraphModel) => {
+  set(storedGraphAtom, { graph, status: "ready" });
+  scheduleStoredGraphWrite(graph);
+});
 
 export const syncExternalGraphAtom = atom(
   null,

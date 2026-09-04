@@ -7,10 +7,13 @@ import type {
 
 import { useRef } from "react";
 
+import { cn } from "@/lib/utils";
+
 import type { EdgeId, NodeId } from "../core/graph/model";
 import { pillExtentTowards } from "../core/graph/node-size";
 import { useI18n } from "../i18n/I18nProvider";
-import type { Locale } from "../i18n/locale";
+import { focusRing } from "../ui/primitives/styles";
+import type { Messages } from "../i18n/messages";
 
 import {
   edgeLabelHitboxWidth,
@@ -49,13 +52,13 @@ export function EdgeNodeHitboxes({
   onPointerEnter,
   onPointerLeave,
 }: EdgeNodeHitboxesProps) {
-  const { locale } = useI18n();
+  const { messages } = useI18n();
 
   return (
     <>
       {nodes.map((node) => {
         const isSource = sourceNodeId === node.id;
-        const nodeName = accessibleNodeName(node.label, locale);
+        const nodeName = accessibleNodeName(node.label, messages);
 
         return (
           <button
@@ -65,18 +68,13 @@ export function EdgeNodeHitboxes({
             data-graph-shortcut-target="true"
             aria-label={
               isSource
-                ? locale === "ja"
-                  ? `${nodeName}を始点に選択中`
-                  : locale === "zh-Hans"
-                    ? `${nodeName}已选为起点`
-                    : `${nodeName} selected as source`
-                : locale === "ja"
-                  ? `${nodeName}に辺を接続`
-                  : locale === "zh-Hans"
-                    ? `连接到${nodeName}`
-                    : `Connect edge to ${nodeName}`
+                ? messages.canvas.sourceSelected(nodeName)
+                : messages.canvas.connectEdgeTo(nodeName)
             }
-            className="group absolute z-20 size-14 -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+            className={cn(
+              "group pointer-events-auto absolute z-20 size-14 -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full",
+              focusRing,
+            )}
             style={{ left: node.x, top: node.y }}
             onPointerEnter={() => onPointerEnter(node)}
             onPointerLeave={() => onPointerLeave(node.id)}
@@ -109,6 +107,7 @@ export function EdgeNodeHitboxes({
 }
 
 type SelectEdgeHitboxesProps = {
+  selectedEdgeIds: ReadonlySet<EdgeId>;
   edges: EdgeLabelHitbox[];
   rangeSelectionActive: boolean;
   weighted: boolean;
@@ -126,6 +125,7 @@ type SelectEdgeHitboxesProps = {
 
 export function SelectEdgeHitboxes({
   edges,
+  selectedEdgeIds,
   rangeSelectionActive,
   weighted,
   onContextMenu,
@@ -137,7 +137,7 @@ export function SelectEdgeHitboxes({
   onSelect,
   zoom,
 }: SelectEdgeHitboxesProps) {
-  const { messages, locale } = useI18n();
+  const { messages } = useI18n();
   const bendRef = useRef<{
     edge: EdgeLabelHitbox;
     pointerId: number;
@@ -309,20 +309,16 @@ export function SelectEdgeHitboxes({
           data-graph-shortcut-target="true"
           aria-label={
             weighted
-              ? locale === "ja"
-                ? `辺の重み ${edge.label} を編集`
-                : locale === "zh-Hans"
-                  ? `编辑边权重 ${edge.label}`
-                  : `Edit edge weight ${edge.label}`
+              ? messages.canvas.editEdgeWeightOf(edge.label)
               : edge.label
-                ? locale === "ja"
-                  ? `辺ラベル ${edge.label} を編集`
-                  : locale === "zh-Hans"
-                    ? `编辑边标签 ${edge.label}`
-                    : `Edit edge label ${edge.label}`
+                ? messages.canvas.editEdgeLabelOf(edge.label)
                 : messages.canvas.editEdgeLabel
           }
-          className="touch:h-11 absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+          aria-pressed={selectedEdgeIds.has(edge.id)}
+          className={cn(
+            "touch:h-11 pointer-events-auto absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none rounded-md",
+            focusRing,
+          )}
           inert={rangeSelectionActive}
           style={{
             left: edge.x,
@@ -524,6 +520,7 @@ function round(value: number) {
 }
 
 type SelectNodeHitboxesProps = {
+  selectedNodeIds: ReadonlySet<NodeId>;
   nodes: NodeHitbox[];
   rangeSelectionActive: boolean;
   onClick: (
@@ -547,6 +544,7 @@ type SelectNodeHitboxesProps = {
 
 export function SelectNodeHitboxes({
   nodes,
+  selectedNodeIds,
   rangeSelectionActive,
   onClick,
   onContextMenu,
@@ -557,7 +555,7 @@ export function SelectNodeHitboxes({
   onRangeSelectionPointerDown,
   onPointerUp,
 }: SelectNodeHitboxesProps) {
-  const { locale } = useI18n();
+  const { messages } = useI18n();
 
   return (
     <>
@@ -566,14 +564,14 @@ export function SelectNodeHitboxes({
           key={node.id}
           type="button"
           data-graph-shortcut-target="true"
-          aria-label={
-            locale === "ja"
-              ? `${accessibleNodeName(node.label, locale)}を選択`
-              : locale === "zh-Hans"
-                ? `选择${accessibleNodeName(node.label, locale)}`
-                : `Select ${accessibleNodeName(node.label, locale)}`
-          }
-          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none active:cursor-grabbing"
+          aria-label={messages.canvas.selectNode(
+            accessibleNodeName(node.label, messages),
+          )}
+          aria-pressed={selectedNodeIds.has(node.id)}
+          className={cn(
+            "pointer-events-auto absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full active:cursor-grabbing",
+            focusRing,
+          )}
           inert={rangeSelectionActive}
           style={{
             height: NODE_HITBOX_SIZE,
@@ -613,18 +611,8 @@ export function SelectNodeHitboxes({
   );
 }
 
-function accessibleNodeName(label: string, locale: Locale) {
-  if (label) {
-    return locale === "ja"
-      ? `頂点 ${label} `
-      : locale === "zh-Hans"
-        ? `顶点 ${label}`
-        : `node ${label}`;
-  }
-
-  return locale === "ja"
-    ? "ラベルなしの頂点"
-    : locale === "zh-Hans"
-      ? "无标签顶点"
-      : "unlabeled node";
+function accessibleNodeName(label: string, messages: Messages) {
+  return label
+    ? messages.canvas.nodeName(label)
+    : messages.canvas.unlabeledNode;
 }

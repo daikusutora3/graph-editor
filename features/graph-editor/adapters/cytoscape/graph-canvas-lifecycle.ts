@@ -12,11 +12,9 @@ import {
 import { withCytoscapeBatch } from "./cytoscape-batch";
 import type { GraphModel } from "../../core/graph/model";
 import type { EdgeRoutingOptions } from "../../core/layout/edge-routing";
-import type {
-  EditorMode,
-  SelectionState,
-} from "../../shell/state/editor-state";
-import type { GraphCanvasChrome } from "../../canvas/graph-canvas-types";
+import type { SelectionState } from "../../core/view/types";
+import type { EditorMode } from "../../shell/state/editor-state";
+import type { GraphCanvasChrome } from "../../core/view/types";
 
 import {
   centerGraphOrigin,
@@ -27,6 +25,7 @@ import {
   readZoomPercent,
   syncCytoscapeSelection,
 } from "./graph-canvas-viewport";
+import { withSuppressedSelectionSync } from "./selection-sync-guard";
 import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
 
 type UseGraphCanvasLifecycleOptions = {
@@ -45,6 +44,7 @@ type UseGraphCanvasLifecycleOptions = {
   setZoomPercent: (value: number) => void;
   suppressSelectionSyncRef: MutableRefObject<boolean>;
   updateRenderedHitboxes: (cy: Core) => void;
+  panRenderedHitboxes: (cy: Core) => void;
 };
 
 export function useGraphCanvasLifecycle({
@@ -63,17 +63,20 @@ export function useGraphCanvasLifecycle({
   setZoomPercent,
   suppressSelectionSyncRef,
   updateRenderedHitboxes,
+  panRenderedHitboxes,
 }: UseGraphCanvasLifecycleOptions) {
   const arrowScaleRef = useRef(graph.settings.arrowScale);
   const flushRenderedHitboxesRef = useRef(flushRenderedHitboxes);
   const setZoomPercentRef = useRef(setZoomPercent);
   const chromeRef = useRef(chrome);
   const updateRenderedHitboxesRef = useRef(updateRenderedHitboxes);
+  const panRenderedHitboxesRef = useRef(panRenderedHitboxes);
   arrowScaleRef.current = graph.settings.arrowScale;
   flushRenderedHitboxesRef.current = flushRenderedHitboxes;
   setZoomPercentRef.current = setZoomPercent;
   chromeRef.current = chrome;
   updateRenderedHitboxesRef.current = updateRenderedHitboxes;
+  panRenderedHitboxesRef.current = panRenderedHitboxes;
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -117,6 +120,8 @@ export function useGraphCanvasLifecycle({
       cy.destroy();
       cyRef.current = null;
     };
+    // Cytoscape is created once; mode/elements/arrowScale are synced by later effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerRef, cyRef]);
 
   useEffect(() => {
@@ -208,9 +213,7 @@ export function useGraphCanvasLifecycle({
       setZoomPercentRef.current(readZoomPercent(cy));
     };
 
-    try {
-      suppressSelectionSyncRef.current = true;
-
+    withSuppressedSelectionSync(suppressSelectionSyncRef, () => {
       withCytoscapeBatch(cy, () => {
         syncCytoscapeElements(cy, elements, {
           skipNodePositionIds: draggingNodeIdsRef.current,
@@ -223,9 +226,7 @@ export function useGraphCanvasLifecycle({
         );
         syncCytoscapeSelection(cy, selectionRef.current);
       });
-    } finally {
-      suppressSelectionSyncRef.current = false;
-    }
+    });
 
     cy.userZoomingEnabled(elements.length > 0);
 
@@ -244,6 +245,8 @@ export function useGraphCanvasLifecycle({
     }
 
     updateRenderedHitboxesRef.current(cy);
+    // pendingFitAfterUpdateRef is a stable ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     cyRef,
     elements,
@@ -273,14 +276,11 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
-    try {
-      suppressSelectionSyncRef.current = true;
+    withSuppressedSelectionSync(suppressSelectionSyncRef, () => {
       withCytoscapeBatch(cy, () => {
         syncCytoscapeSelection(cy, selection);
       });
-    } finally {
-      suppressSelectionSyncRef.current = false;
-    }
+    });
   }, [cyRef, selection, suppressSelectionSyncRef]);
 
   useEffect(() => {
@@ -295,7 +295,7 @@ export function useGraphCanvasLifecycle({
         return;
       }
 
-      updateRenderedHitboxesRef.current(cy);
+      panRenderedHitboxesRef.current(cy);
     };
     const updateZoomOverlay = () => {
       if (cy.destroyed()) {

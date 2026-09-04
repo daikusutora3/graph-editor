@@ -2,10 +2,8 @@ import type { Core, EdgeSingular, NodeSingular, Position } from "cytoscape";
 
 import type { EdgeId, GraphModel, NodeId } from "../../core/graph/model";
 
-import type {
-  InlineEditTarget,
-  RenderedPoint,
-} from "../../canvas/graph-canvas-types";
+import type { RenderedPoint } from "../../core/view/types";
+import type { InlineEditTarget } from "../../canvas/graph-canvas-types";
 
 export type NodeHitbox = {
   id: NodeId;

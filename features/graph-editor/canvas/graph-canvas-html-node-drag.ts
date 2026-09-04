@@ -25,8 +25,10 @@ import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
 type DragSnapshot = Record<NodeId, Position>;
-export const NODE_DRAG_GRID_SIZE_PX = 24;
+const NODE_DRAG_GRID_SIZE_PX = 24;
 const INTERACTIVE_EDGE_ROUTING_INTERVAL_MS = 80;
+/** Interval grows with the last measured routing cost so drags stay smooth. */
+const MAX_INTERACTIVE_EDGE_ROUTING_INTERVAL_MS = 400;
 
 type HtmlNodeDragState = {
   captureElement: HTMLButtonElement;
@@ -66,6 +68,7 @@ export function useHtmlNodeDrag({
   const dragFrameRef = useRef<number | null>(null);
   const dragRoutingTimerRef = useRef<number | null>(null);
   const lastDragRoutingAtRef = useRef(0);
+  const lastDragRoutingCostRef = useRef(0);
   const postRoutingHitboxFrameRef = useRef<number | null>(null);
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
@@ -129,7 +132,15 @@ export function useHtmlNodeDrag({
         const now = performance.now();
         const elapsed = now - lastDragRoutingAtRef.current;
 
-        if (forceRouting || elapsed >= INTERACTIVE_EDGE_ROUTING_INTERVAL_MS) {
+        const interval = Math.min(
+          MAX_INTERACTIVE_EDGE_ROUTING_INTERVAL_MS,
+          Math.max(
+            INTERACTIVE_EDGE_ROUTING_INTERVAL_MS,
+            lastDragRoutingCostRef.current * 3,
+          ),
+        );
+
+        if (forceRouting || elapsed >= interval) {
           if (dragRoutingTimerRef.current !== null) {
             window.clearTimeout(dragRoutingTimerRef.current);
             dragRoutingTimerRef.current = null;
@@ -141,17 +152,20 @@ export function useHtmlNodeDrag({
               previousMeta: dragRoutingBaselineRef.current,
             });
           });
+          lastDragRoutingCostRef.current = performance.now() - now;
           lastDragRoutingAtRef.current = now;
         } else if (dragRoutingTimerRef.current === null) {
           dragRoutingTimerRef.current = window.setTimeout(() => {
             dragRoutingTimerRef.current = null;
             syncDragPreview(cy, true);
-          }, INTERACTIVE_EDGE_ROUTING_INTERVAL_MS - elapsed);
+          }, interval - elapsed);
         }
       }
 
       schedulePostRoutingHitboxes(cy);
     },
+    // Refs are stable; listing them would only add noise.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [edgeRoutingOptions, graph, schedulePostRoutingHitboxes],
   );
 

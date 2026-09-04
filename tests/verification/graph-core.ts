@@ -310,19 +310,20 @@ const emptyModel: GraphModel = {
   edges: [],
   settings: defaultGraphSettings,
 };
+// Beyond the coarse gate (nodes × edges > 400k) routing skips avoidance.
 const largeRoutingModel: GraphModel = {
   version: 1,
-  nodes: Array.from({ length: 200 }, (_, index) => ({
+  nodes: Array.from({ length: 1000 }, (_, index) => ({
     id: `node-${index}`,
     label: `${index}`,
     order: index,
     x: index * 10,
     y: 0,
   })),
-  edges: Array.from({ length: 200 }, (_, index) => ({
+  edges: Array.from({ length: 500 }, (_, index) => ({
     id: `edge-${index}`,
-    source: `node-${index % 200}`,
-    target: `node-${(index + 1) % 200}`,
+    source: `node-${index % 1000}`,
+    target: `node-${(index + 1) % 1000}`,
   })),
   settings: defaultGraphSettings,
 };
@@ -596,10 +597,22 @@ const oversizedRoutingGraph: GraphModel = {
   })),
 };
 
-expect(
-  resolveRoutingMode(oversizedRoutingGraph, "quality") === "simple",
-  "quality routing should fall back to simple mode above the edge-pair work limit",
-);
+{
+  // Large inputs no longer flip wholesale to straight edges; a per-call work
+  // budget bounds the time and the remaining edges degrade gracefully.
+  const startedAt = performance.now();
+  const routes = computeEdgeRouting(oversizedRoutingGraph, { mode: "quality" });
+  const elapsedMs = performance.now() - startedAt;
+
+  expect(
+    routes.size === oversizedRoutingGraph.edges.length && elapsedMs < 500,
+    `quality routing should stay bounded on oversized inputs (took ${elapsedMs.toFixed(0)} ms)`,
+  );
+  expect(
+    resolveRoutingMode(oversizedRoutingGraph, "quality") === "quality",
+    "the coarse mode gate should only reject far larger graphs",
+  );
+}
 
 finish();
 

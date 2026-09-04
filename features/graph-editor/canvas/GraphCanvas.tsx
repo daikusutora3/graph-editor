@@ -1,18 +1,14 @@
 "use client";
 
-import type { Core, Position } from "cytoscape";
+import type { Core } from "cytoscape";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { nanoid } from "nanoid";
+
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { graphModelToCytoscapeElements } from "../adapters/cytoscape/cytoscape-adapter";
-import {
-  addEdgeCommand,
-  addNodeCommand,
-  updateEdgeCommand,
-} from "../core/graph/graph-intents";
-import { resolveEdgeCreation } from "./graph-canvas-edge-creation";
+import { updateEdgeCommand } from "../core/graph/graph-intents";
+
 import type { NodeId } from "../core/graph/model";
 import {
   edgeDraftAtom,
@@ -49,7 +45,11 @@ import { useRangeSelectionPointerForwarding } from "./graph-canvas-range-selecti
 import { useRangeSelectionPreview } from "./graph-canvas-range-selection-preview";
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
+import { useGraphEditingActions } from "./use-graph-editing-actions";
+import { useRangeSelectionKey } from "./use-range-selection-key";
 import { clampBow } from "../core/layout/edge-route-geometry";
+import { describeSelection } from "./selection-actions";
+import { useI18n } from "../i18n/I18nProvider";
 import { useAnimatedNullableState } from "../ui/hooks/use-panel-presence";
 import {
   type EdgeBend,
@@ -78,7 +78,7 @@ export function GraphCanvas() {
   const suppressSelectionSyncRef = useRef(false);
   const [edgeCursor, setEdgeCursor] = useState<RenderedPoint | null>(null);
   const [edgeHoverNodeId, setEdgeHoverNodeId] = useState<NodeId | null>(null);
-  const [rangeSelectionKeyActive, setRangeSelectionKeyActive] = useState(false);
+  const rangeSelectionKeyActive = useRangeSelectionKey();
   const [zoomPercent, setZoomPercent] = useState(100);
   const {
     openValue: contextMenuTarget,
@@ -110,8 +110,10 @@ export function GraphCanvas() {
   const {
     edgeLabelHitboxes,
     flushRenderedHitboxes,
+    hitboxLayerRef,
     isGraphOutOfView,
     nodeHitboxes,
+    panRenderedHitboxes,
     updateRenderedHitboxes,
   } = useRenderedHitboxes({ chrome, graph, mode });
   const isGraphOutOfViewRef = useRef(isGraphOutOfView);
@@ -134,68 +136,13 @@ export function GraphCanvas() {
     }
   }, [mode]);
 
-  useEffect(() => {
-    const syncRangeSelectionKey = (event: KeyboardEvent) => {
-      setRangeSelectionKeyActive(
-        event.shiftKey || event.metaKey || event.ctrlKey,
-      );
-    };
-    const resetRangeSelectionKey = () => setRangeSelectionKeyActive(false);
-
-    window.addEventListener("keydown", syncRangeSelectionKey);
-    window.addEventListener("keyup", syncRangeSelectionKey);
-    window.addEventListener("blur", resetRangeSelectionKey);
-
-    return () => {
-      window.removeEventListener("keydown", syncRangeSelectionKey);
-      window.removeEventListener("keyup", syncRangeSelectionKey);
-      window.removeEventListener("blur", resetRangeSelectionKey);
-    };
-  }, []);
-
-  const addNodeAtGraphPosition = useCallback(
-    (position: Position) => {
-      const nodeId = nanoid();
-
-      executeCommand(
-        addNodeCommand({
-          id: nodeId,
-          x: position.x,
-          y: position.y,
-        }),
-      );
-      showEditFeedback([nodeId]);
-    },
-    [executeCommand, showEditFeedback],
-  );
-
-  const drawEdgeFromNode = useCallback(
-    (targetNodeId: NodeId, continueFromTarget = false) => {
-      const result = resolveEdgeCreation({
-        model: graph,
-        draft: edgeDraft,
-        targetNodeId,
-        continueFromTarget,
-      });
-
-      if (result.kind === "create-edge") {
-        const edgeId = nanoid();
-
-        executeCommand(
-          addEdgeCommand({
-            id: edgeId,
-            source: result.source,
-            target: result.target,
-            weight: graph.settings.weighted ? "1" : undefined,
-          }),
-        );
-        showEditFeedback([result.source, result.target]);
-      }
-
-      setEdgeDraft(result.nextDraft);
-    },
-    [edgeDraft, executeCommand, graph, setEdgeDraft, showEditFeedback],
-  );
+  const { addNodeAtGraphPosition, drawEdgeFromNode } = useGraphEditingActions({
+    edgeDraft,
+    executeCommand,
+    graph,
+    setEdgeDraft,
+    showEditFeedback,
+  });
 
   const {
     renderedPointFromPointer,
@@ -347,6 +294,7 @@ export function GraphCanvas() {
     setZoomPercent: updateZoomPercent,
     suppressSelectionSyncRef,
     updateRenderedHitboxes,
+    panRenderedHitboxes,
   });
 
   useEffect(() => {
@@ -432,6 +380,19 @@ export function GraphCanvas() {
     },
     [cyRef, edgeRoutingMeta],
   );
+  const { messages } = useI18n();
+  const selectedNodeIdSet = useMemo(
+    () => new Set(selection.nodeIds),
+    [selection.nodeIds],
+  );
+  const selectedEdgeIdSet = useMemo(
+    () => new Set(selection.edgeIds),
+    [selection.edgeIds],
+  );
+  const selectionSummary =
+    selection.nodeIds.length > 0 || selection.edgeIds.length > 0
+      ? describeSelection(graph, selection, messages)
+      : "";
   // Menu/keyboard bend: nudge the curve sideways, keeping its position.
   const bendEdgeBy = useCallback(
     (edgeId: string, direction: -1 | 1) => {
@@ -507,6 +468,10 @@ export function GraphCanvas() {
         onPointerDownCapture={previewRangeSelectionPointerDown}
       />
       <ZoomBadge visible={layout === "mobile"} zoomPercent={zoomPercent} />
+      {/* Announces what is selected to assistive tech; visually hidden. */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {selectionSummary}
+      </div>
       {(() => {
         const selectionBar =
           mode === "select" &&
@@ -567,112 +532,119 @@ export function GraphCanvas() {
           </div>
         );
       })()}
-      {mode === "edge" ? (
-        <>
-          <EdgeDraftLine
-            segment={viewState.edgeDraftSegment}
-            hasError={Boolean(viewState.edgeCandidateError)}
-            showTargetMarker={!edgeHoverNodeId}
-          />
-        </>
-      ) : null}
-      <EditFeedbackNodes
-        feedbackId={editFeedback?.id ?? null}
-        nodes={viewState.feedbackNodeHitboxes}
-      />
-      <InlineEditForm
-        edit={inlineEdit}
-        inputRef={inlineLabelInputRef}
-        isComposingRef={inlineEditComposingRef}
-        position={inlineEditPosition}
-        style={inlineEditStyle}
-        onCancel={inlineEditActions.onCancel}
-        onCommit={inlineEditActions.onCommit}
-        onValueChange={inlineEditActions.onValueChange}
-      />
-      {mode === "edge" ? (
-        <EdgeNodeHitboxes
-          nodes={nodeHitboxes}
-          sourceNodeId={edgeDraft.sourceNodeId}
-          onPointerEnter={(node) => {
-            setEdgeCursor({ x: node.x, y: node.y });
-            setEdgeHoverNodeId(node.id);
-          }}
-          onPointerLeave={(nodeId) => {
-            setEdgeCursor(null);
-            setEdgeHoverNodeId((current) =>
-              current === nodeId ? null : current,
-            );
-          }}
-          onConnect={drawEdgeFromNode}
-          onContextMenu={(node) =>
-            openNodeContextMenu(node.id, { x: node.x, y: node.y })
-          }
+      <div
+        ref={hitboxLayerRef}
+        className="pointer-events-none absolute inset-0 z-20 will-change-transform"
+      >
+        {mode === "edge" ? (
+          <>
+            <EdgeDraftLine
+              segment={viewState.edgeDraftSegment}
+              hasError={Boolean(viewState.edgeCandidateError)}
+              showTargetMarker={!edgeHoverNodeId}
+            />
+          </>
+        ) : null}
+        <EditFeedbackNodes
+          feedbackId={editFeedback?.id ?? null}
+          nodes={viewState.feedbackNodeHitboxes}
         />
-      ) : null}
-      {mode === "select" ? (
-        <>
-          <SelectEdgeHitboxes
-            edges={edgeLabelHitboxes}
-            rangeSelectionActive={rangeSelectionActive}
-            weighted={graph.settings.weighted}
-            onSelect={selectEdge}
-            onEdit={openEdgeInlineEdit}
-            zoom={zoomPercent / 100}
-            onBendPreview={previewEdgeBow}
-            onBendCommit={(edgeId, bend) =>
-              executeCommand(
-                updateEdgeCommand(edgeId, {
-                  routing: { bowPx: bend.bowPx, bowT: bend.bowT },
-                }),
-              )
-            }
-            onBendCancel={restoreEdgeRouting}
-            onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
-            onContextMenu={openEdgeContextMenu}
-          />
-          <SelectNodeHitboxes
+        <InlineEditForm
+          edit={inlineEdit}
+          inputRef={inlineLabelInputRef}
+          isComposingRef={inlineEditComposingRef}
+          position={inlineEditPosition}
+          style={inlineEditStyle}
+          onCancel={inlineEditActions.onCancel}
+          onCommit={inlineEditActions.onCommit}
+          onValueChange={inlineEditActions.onValueChange}
+        />
+        {mode === "edge" ? (
+          <EdgeNodeHitboxes
             nodes={nodeHitboxes}
-            rangeSelectionActive={rangeSelectionActive}
-            onPointerDown={(nodeId, event) => {
-              if (event.shiftKey || event.metaKey || event.ctrlKey) {
-                return;
-              }
-
-              htmlNodeDrag.start(event, nodeId);
+            sourceNodeId={edgeDraft.sourceNodeId}
+            onPointerEnter={(node) => {
+              setEdgeCursor({ x: node.x, y: node.y });
+              setEdgeHoverNodeId(node.id);
             }}
-            onPointerMove={htmlNodeDrag.update}
-            onPointerUp={htmlNodeDrag.finish}
-            onPointerCancel={htmlNodeDrag.finish}
-            onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
-            onClick={(node, event) => {
-              if (htmlNodeDrag.consumeSuppressedClick()) {
-                return;
-              }
-
-              if (event.detail >= 2 && htmlNodeDrag.canOpenInlineEdit()) {
-                openNodeLabelEdit(node.id, { x: node.x, y: node.y });
-                return;
-              }
-
-              selectNode(
-                node.id,
-                event.shiftKey || event.metaKey || event.ctrlKey,
+            onPointerLeave={(nodeId) => {
+              setEdgeCursor(null);
+              setEdgeHoverNodeId((current) =>
+                current === nodeId ? null : current,
               );
             }}
-            onDoubleClick={(node) => {
-              if (!htmlNodeDrag.canOpenInlineEdit()) {
-                return;
-              }
-
-              openNodeLabelEdit(node.id, { x: node.x, y: node.y });
-            }}
+            onConnect={drawEdgeFromNode}
             onContextMenu={(node) =>
               openNodeContextMenu(node.id, { x: node.x, y: node.y })
             }
           />
-        </>
-      ) : null}
+        ) : null}
+        {mode === "select" ? (
+          <>
+            <SelectEdgeHitboxes
+              edges={edgeLabelHitboxes}
+              selectedEdgeIds={selectedEdgeIdSet}
+              rangeSelectionActive={rangeSelectionActive}
+              weighted={graph.settings.weighted}
+              onSelect={selectEdge}
+              onEdit={openEdgeInlineEdit}
+              zoom={zoomPercent / 100}
+              onBendPreview={previewEdgeBow}
+              onBendCommit={(edgeId, bend) =>
+                executeCommand(
+                  updateEdgeCommand(edgeId, {
+                    routing: { bowPx: bend.bowPx, bowT: bend.bowT },
+                  }),
+                )
+              }
+              onBendCancel={restoreEdgeRouting}
+              onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
+              onContextMenu={openEdgeContextMenu}
+            />
+            <SelectNodeHitboxes
+              nodes={nodeHitboxes}
+              selectedNodeIds={selectedNodeIdSet}
+              rangeSelectionActive={rangeSelectionActive}
+              onPointerDown={(nodeId, event) => {
+                if (event.shiftKey || event.metaKey || event.ctrlKey) {
+                  return;
+                }
+
+                htmlNodeDrag.start(event, nodeId);
+              }}
+              onPointerMove={htmlNodeDrag.update}
+              onPointerUp={htmlNodeDrag.finish}
+              onPointerCancel={htmlNodeDrag.finish}
+              onRangeSelectionPointerDown={handleRangeSelectionPointerDown}
+              onClick={(node, event) => {
+                if (htmlNodeDrag.consumeSuppressedClick()) {
+                  return;
+                }
+
+                if (event.detail >= 2 && htmlNodeDrag.canOpenInlineEdit()) {
+                  openNodeLabelEdit(node.id, { x: node.x, y: node.y });
+                  return;
+                }
+
+                selectNode(
+                  node.id,
+                  event.shiftKey || event.metaKey || event.ctrlKey,
+                );
+              }}
+              onDoubleClick={(node) => {
+                if (!htmlNodeDrag.canOpenInlineEdit()) {
+                  return;
+                }
+
+                openNodeLabelEdit(node.id, { x: node.x, y: node.y });
+              }}
+              onContextMenu={(node) =>
+                openNodeContextMenu(node.id, { x: node.x, y: node.y })
+              }
+            />
+          </>
+        ) : null}
+      </div>
       {contextMenuPresence.value ? (
         <GraphContextMenu
           target={contextMenuPresence.value}

@@ -23,8 +23,8 @@ export type QuadraticCurveSegment = {
 
 /** Manual and automatic bends share these limits so every curve is draggable. */
 export const MAX_BOW_PX = 180;
-export const MIN_BOW_WEIGHT = 0.05;
-export const MAX_BOW_WEIGHT = 0.95;
+const MIN_BOW_WEIGHT = 0.05;
+const MAX_BOW_WEIGHT = 0.95;
 
 /**
  * Finds the single quadratic control point, placed straight above `point` in
@@ -104,7 +104,7 @@ export function clampBow(bowPx: number) {
   return Math.max(-MAX_BOW_PX, Math.min(MAX_BOW_PX, bowPx));
 }
 
-export function clampWeight(weight: number) {
+function clampWeight(weight: number) {
   return Math.max(MIN_BOW_WEIGHT, Math.min(MAX_BOW_WEIGHT, weight));
 }
 
@@ -142,7 +142,7 @@ export function offsetEdgeCurve(
   };
 }
 
-export function edgeCurveSegments(
+function edgeCurveSegments(
   source: EdgeCurvePoint,
   target: EdgeCurvePoint,
   curve: EdgeCurveGeometry,
@@ -164,7 +164,7 @@ export function edgeCurveSegments(
   }));
 }
 
-export function edgeCurveControlPoints(
+function edgeCurveControlPoints(
   source: EdgeCurvePoint,
   target: EdgeCurvePoint,
   curve: EdgeCurveGeometry,

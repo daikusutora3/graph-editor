@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { computeCytoscapeEdgeRoutingMeta } from "../adapters/cytoscape/cytoscape-adapter";
 import type { GraphModel } from "../core/graph/model";
@@ -10,6 +10,8 @@ import {
   readPreviousAutomaticRoutingMeta,
   updateAutomaticRoutingSnapshot,
 } from "../core/layout/edge-routing-continuity";
+
+type RoutingMeta = ReturnType<typeof computeCytoscapeEdgeRoutingMeta>;
 
 export function useEdgeRoutingMeta(graph: GraphModel) {
   // Edges stay straight unless the setting is on; then parallel edges fan
@@ -25,24 +27,14 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     () => createEdgeRoutingCacheKey(graph, edgeRoutingOptions),
     [edgeRoutingOptions, graph],
   );
-  const cacheRef = useRef<{
-    key: string;
-    meta: ReturnType<typeof computeCytoscapeEdgeRoutingMeta>;
-  } | null>(null);
+  const cacheRef = useRef<{ key: string; meta: RoutingMeta } | null>(null);
   const routingSnapshotRef = useRef(emptyEdgeRoutingContinuitySnapshot());
-  const edgeRoutingMeta = useMemo(() => {
-    const cached = cacheRef.current;
-
-    if (cached?.key === cacheKey) {
-      return cached.meta;
-    }
-
+  const compute = () => {
     const previousSnapshot = routingSnapshotRef.current;
     const previousMeta = readPreviousAutomaticRoutingMeta(
       graph,
       previousSnapshot,
     );
-
     const meta = computeCytoscapeEdgeRoutingMeta(graph, {
       ...edgeRoutingOptions,
       previousMeta,
@@ -55,7 +47,30 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     );
 
     return meta;
-  }, [cacheKey, edgeRoutingOptions, graph]);
+  };
+
+  // The very first routing is computed synchronously so the initial paint
+  // already shows curves. Later changes render the previous routes first and
+  // refine after commit, so a large graph never blocks the frame that shows
+  // the user's edit.
+  const [asyncMeta, setAsyncMeta] = useState<RoutingMeta | null>(null);
+  const cached = cacheRef.current;
+  const edgeRoutingMeta =
+    cached?.key === cacheKey
+      ? cached.meta
+      : cached === null
+        ? compute()
+        : (asyncMeta ?? cached.meta);
+
+  useEffect(() => {
+    if (cacheRef.current?.key === cacheKey) {
+      return;
+    }
+
+    setAsyncMeta(compute());
+    // compute closes over the latest graph/options; cacheKey changes with them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey]);
 
   return { edgeRoutingMeta, edgeRoutingOptions };
 }
