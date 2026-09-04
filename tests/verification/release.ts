@@ -1,3 +1,4 @@
+import { collectInlineScriptHashes } from "../../scripts/build-headers";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -217,6 +218,27 @@ expect(
   headers.includes("X-Content-Type-Options: nosniff"),
   "_headers should include nosniff",
 );
+{
+  const cspLine = headers
+    .split("\n")
+    .find((line) => line.trim().startsWith("Content-Security-Policy:"));
+  const missing = collectInlineScriptHashes().filter(
+    (hash) => !cspLine?.includes(hash),
+  );
+  expect(
+    Boolean(cspLine) && !cspLine?.includes("__INLINE_SCRIPT_HASHES__"),
+    "_headers should carry a generated Content-Security-Policy",
+  );
+  expect(
+    missing.length === 0,
+    `every inline script must be allow-listed in the CSP (${missing.length} missing)`,
+  );
+  expect(
+    headers.includes("X-Frame-Options: DENY") &&
+      cspLine?.includes("frame-ancestors 'none'") === true,
+    "_headers should block framing",
+  );
+}
 expect(
   headers.includes(
     "Permissions-Policy: camera=(), microphone=(), geolocation=()",

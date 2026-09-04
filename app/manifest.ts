@@ -18,6 +18,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
+    lang: "ja",
     background_color: "#f9fafb",
     theme_color: "#111827",
     icons: [
@@ -25,6 +26,13 @@ export default function manifest(): MetadataRoute.Manifest {
         src: APPLE_TOUCH_ICON,
         sizes: "180x180",
         type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: APPLE_TOUCH_ICON,
+        sizes: "180x180",
+        type: "image/png",
+        purpose: "maskable",
       },
       {
         src: APP_ICON,

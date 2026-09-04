@@ -1,4 +1,3 @@
-import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { createAppStructuredData, type AppLocale } from "@/lib/site-metadata";
@@ -37,12 +36,16 @@ export function LocaleRootLayout({
 }) {
   return (
     <html lang={locale} data-locale={locale} suppressHydrationWarning>
-      <body>
-        <Script
+      <head>
+        {/* Plain inline script: runs before first paint and is hashed into
+            the CSP at build time (next/script would re-inject it at runtime
+            as an un-hashed inline script). */}
+        <script
           id="app-init"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themeInitScript }}
         />
+      </head>
+      <body>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

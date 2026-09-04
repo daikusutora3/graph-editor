@@ -22,9 +22,9 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && bun run scripts/build-headers.ts",
     "benchmark:edge-routing": "bun run tests/benchmarks/edge-routing.ts",
-    "lint": "oxlint .",
+    "lint": "oxlint . --deny-warnings",
     "lint:fix": "oxlint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
@@ -33,7 +33,8 @@
     "privacy:check:unpushed": "bun run scripts/privacy-check.ts --range origin/main..HEAD",
     "typecheck": "tsc --noEmit",
     "test": "bun run tests/verification/run-all.ts",
-    "check": "tsc --noEmit && oxlint . && prettier . --check && bun run test",
+    "prepare": "git config core.hooksPath .githooks",
+    "check": "tsc --noEmit && oxlint . --deny-warnings && prettier . --check && bun run policy:check && bun run test",
     "check:all": "bun run check && bun run build && bun run tests/verification/release.ts"
   },
   "dependencies": {
