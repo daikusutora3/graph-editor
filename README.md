@@ -120,7 +120,8 @@ guards, editor-state and IO checks, and a production build.
 Cloudflare static asset deploys use `wrangler.jsonc` and `public/_headers`.
 `bun run build` turns the `public/_headers` template into `out/_headers`, with
 one Content-Security-Policy rule per page that allow-lists that page's inline
-scripts (Cloudflare caps each `_headers` line at 2,000 characters).
+scripts (Cloudflare caps each `_headers` line at 2,000 characters, and a path
+must never match two policy rules because browsers enforce both).
 
 ## License
 

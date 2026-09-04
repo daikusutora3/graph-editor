@@ -12,13 +12,14 @@ import { join, relative, sep } from "node:path";
  *
  * Cloudflare caps each `_headers` line at 2,000 characters, which a single
  * site-wide hash list exceeds, so every page gets its own rule carrying only
- * the hashes it needs. The `/*` rule keeps the 404 page's hashes because the
- * asset server answers unknown paths with 404.html.
+ * the hashes it needs. Exactly one rule sets the policy for any path: the
+ * production asset server was observed to emit both a `/*` policy and the
+ * page policy for `/` even with a `! Content-Security-Policy` detach, and two
+ * policies must both pass, which blocked the page's scripts. Unknown paths
+ * (served as 404.html) therefore carry the other security headers only.
  */
 const OUT_DIR = "out";
 const PLACEHOLDER = "__INLINE_SCRIPT_HASHES__";
-const CSP_HEADER = "Content-Security-Policy";
-const NOT_FOUND_ROUTE = "/404";
 
 export const HEADERS_LINE_LIMIT = 2000;
 export const HEADERS_RULE_LIMIT = 100;
@@ -97,10 +98,6 @@ export function collectInlineScriptHashes(outDir = OUT_DIR) {
   ].sort();
 }
 
-function sameHashes(a: string[], b: string[]) {
-  return a.length === b.length && a.every((hash, index) => hash === b[index]);
-}
-
 export function renderHeaders(template: string, pages: PageScriptHashes[]) {
   const lines = template.split("\n").filter((line) => !line.startsWith("#"));
   const cspTemplate = lines.find((line) => line.includes(PLACEHOLDER));
@@ -109,16 +106,15 @@ export function renderHeaders(template: string, pages: PageScriptHashes[]) {
     throw new Error(`public/_headers must contain ${PLACEHOLDER}`);
   }
 
-  const fallback =
-    pages.find((page) => page.route === NOT_FOUND_ROUTE)?.hashes ?? [];
-  const cspFor = (hashes: string[]) =>
-    cspTemplate.replace(PLACEHOLDER, hashes.join(" "));
-  const base = lines.join("\n").replace(cspTemplate, cspFor(fallback)).trim();
-  const pageRules = pages
-    .filter((page) => !sameHashes(page.hashes, fallback))
-    .map((page) =>
-      [page.route, `  ! ${CSP_HEADER}`, cspFor(page.hashes)].join("\n"),
-    );
+  const base = lines
+    .filter((line) => line !== cspTemplate)
+    .join("\n")
+    .trim();
+  const pageRules = pages.map((page) =>
+    [page.route, cspTemplate.replace(PLACEHOLDER, page.hashes.join(" "))].join(
+      "\n",
+    ),
+  );
   const output = `${[base, ...pageRules].join("\n\n")}\n`;
 
   for (const line of output.split("\n")) {
