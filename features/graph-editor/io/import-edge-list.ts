@@ -54,7 +54,7 @@ export function importStructuredEdgeList(
       nodeCount,
       MAX_IMPORT_NODES,
       options,
-      "辺リスト",
+      "Contest edge list",
       "contest-edge-list",
     );
   }
@@ -64,7 +64,7 @@ export function importStructuredEdgeList(
       edgeCount,
       MAX_IMPORT_EDGES,
       options,
-      "辺リスト",
+      "Contest edge list",
       "contest-edge-list",
     );
   }
@@ -153,7 +153,7 @@ export function importStructuredEdgeList(
   return {
     model,
     warnings,
-    format: "辺リスト",
+    format: "Contest edge list",
     formatKind: "contest-edge-list",
   };
 }

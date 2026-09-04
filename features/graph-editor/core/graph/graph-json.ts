@@ -14,8 +14,28 @@ import type {
  * The graph's JSON document: the same shape as the in-memory model, used for
  * local storage and for lossless export/import (positions, colours, bends).
  */
+export const GRAPH_JSON_VERSION = 1;
 export const GRAPH_JSON_MAX_NODES = 1_000;
 export const GRAPH_JSON_MAX_EDGES = 5_000;
+/** Labels and weights longer than this are truncated on import. */
+export const GRAPH_JSON_MAX_TEXT_CHARS = 256;
+
+/**
+ * Upgrades older documents in place before normalization. Each future schema
+ * bump adds one step here; documents newer than this build are rejected.
+ */
+export function migrateGraphDocument(value: unknown): unknown | null {
+  if (!isRecord(value) || typeof value.version !== "number") {
+    return null;
+  }
+
+  if (value.version > GRAPH_JSON_VERSION) {
+    return null;
+  }
+
+  // version 1 is the current schema; nothing to migrate yet.
+  return value;
+}
 
 const fallbackGraph = createEmptyGraphModel();
 
@@ -37,8 +57,10 @@ export function looksLikeGraphJson(text: string) {
   return text.trimStart().startsWith("{");
 }
 
-export function normalizeGraphModel(value: unknown): GraphModel | null {
-  if (!isRecord(value) || value.version !== 1) {
+export function normalizeGraphModel(input: unknown): GraphModel | null {
+  const value = migrateGraphDocument(input);
+
+  if (!isRecord(value) || value.version !== GRAPH_JSON_VERSION) {
     return null;
   }
 
@@ -94,7 +116,7 @@ export function normalizeGraphModel(value: unknown): GraphModel | null {
   }
 
   return {
-    version: 1,
+    version: GRAPH_JSON_VERSION,
     nodes,
     edges,
     settings: normalizeSettings(value.settings),
@@ -121,7 +143,7 @@ function normalizeNode(value: unknown): GraphNode | null {
 
   return stripUndefinedProperties({
     id: value.id,
-    label: value.label,
+    label: clipText(value.label),
     order: value.order,
     x: value.x,
     y: value.y,
@@ -146,8 +168,9 @@ function normalizeEdge(value: unknown): GraphEdge | null {
     id: value.id,
     source: value.source,
     target: value.target,
-    weight: typeof value.weight === "string" ? value.weight : undefined,
-    label: typeof value.label === "string" ? value.label : undefined,
+    weight:
+      typeof value.weight === "string" ? clipText(value.weight) : undefined,
+    label: typeof value.label === "string" ? clipText(value.label) : undefined,
     color: normalizeGraphColor(value.color),
     routing: normalizeEdgeRoutingOverride(value.routing),
   });
@@ -202,7 +225,13 @@ function normalizeSettings(value: unknown): GraphSettings {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function clipText(value: string) {
+  return value.length > GRAPH_JSON_MAX_TEXT_CHARS
+    ? value.slice(0, GRAPH_JSON_MAX_TEXT_CHARS)
+    : value;
 }
 
 function hasDuplicates(values: Array<string | number>) {

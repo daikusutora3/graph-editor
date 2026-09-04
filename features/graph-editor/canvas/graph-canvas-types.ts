@@ -1,5 +1,11 @@
+import type { InlineEditErrorCode } from "../core/graph/edit-values";
 import type { EdgeId, NodeId } from "../core/graph/model";
-import type { EditorLayout } from "../shell/state/editor-layout";
+export type {
+  GraphCanvasChrome,
+  GraphCanvasExportOptions,
+  RenderedPoint,
+} from "../core/view/types";
+import type { RenderedPoint } from "../core/view/types";
 
 export type ContextMenuAnchorRect = {
   height: number;
@@ -24,35 +30,18 @@ export type GraphContextMenuTarget =
       y: number;
     };
 
-export type RenderedPoint = {
-  x: number;
-  y: number;
-};
-
-export type GraphCanvasChrome = {
-  layout: EditorLayout;
-};
-
-export type GraphCanvasExportOptions = {
-  scope: "full" | "viewport";
-  background: "white" | "black" | "transparent";
-  maxWidth?: number;
-  maxHeight?: number;
-  includeSelection: boolean;
-};
-
 export type InlineEditTarget =
   | {
       kind: "node-label";
       nodeId: NodeId;
       value: string;
       fallbackPosition: RenderedPoint;
-      error?: string;
+      error?: InlineEditErrorCode;
     }
   | {
       kind: "edge-weight" | "edge-label";
       edgeId: EdgeId;
       value: string;
       fallbackPosition: RenderedPoint;
-      error?: string;
+      error?: InlineEditErrorCode;
     };

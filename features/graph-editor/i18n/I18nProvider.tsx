@@ -71,9 +71,9 @@ export function I18nProvider({
   const value = useMemo<I18nContextValue>(
     () => ({
       locale,
-      localeOptions: SUPPORTED_LOCALES.map((value) => ({
-        label: localeLabels[value],
-        value,
+      localeOptions: SUPPORTED_LOCALES.map((option) => ({
+        label: localeLabels[option],
+        value: option,
       })),
       messages: messagesByLocale[locale],
       setLocale,

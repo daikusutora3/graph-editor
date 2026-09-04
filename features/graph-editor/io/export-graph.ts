@@ -11,32 +11,31 @@ export type GraphExportFormat =
 
 export const GRAPH_EXPORT_FORMATS: Array<{
   value: GraphExportFormat;
-  label: string;
   extension: "txt" | "json";
   mimeType: string;
 }> = [
   {
     value: "edge-list",
-    label: "辺リスト",
+
     extension: "txt",
     mimeType: "text/plain;charset=utf-8",
   },
   {
     value: "adjacency-list",
-    label: "隣接リスト",
+
     extension: "txt",
     mimeType: "text/plain;charset=utf-8",
   },
   {
     value: "adjacency-matrix",
-    label: "隣接行列",
+
     extension: "txt",
     mimeType: "text/plain;charset=utf-8",
   },
   // Lossless: keeps positions, colours and manual bends.
   {
     value: "json",
-    label: "JSON",
+
     extension: "json",
     mimeType: "application/json",
   },

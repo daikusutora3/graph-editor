@@ -1,3 +1,4 @@
+import { MAX_IMPORT_NODES } from "./import-utils";
 import {
   looksLikeGraphJson,
   parseGraphModelJson,
@@ -54,7 +55,7 @@ export function analyzeGraphInput(
         {
           code: "input-limit",
           severity: "error",
-          message: `Import is too large: ${input.length.toLocaleString()} input characters, maximum is ${MAX_IMPORT_INPUT_CHARS.toLocaleString()}.`,
+          message: `Import is too large: ${input.length.toLocaleString("en-US")} input characters, maximum is ${MAX_IMPORT_INPUT_CHARS.toLocaleString("en-US")}.`,
         },
       ],
     };
@@ -291,6 +292,10 @@ function probeParentList(
   options: ImportOptions,
 ): ImportCandidate | null {
   const nodeCount = readSingleCountHeader(source);
+  if (nodeCount != null && nodeCount > MAX_IMPORT_NODES) {
+    return null;
+  }
+
   if (
     nodeCount == null ||
     nodeCount < 2 ||
@@ -322,6 +327,10 @@ function probeTreeEdgeList(
   options: ImportOptions,
 ): ImportCandidate | null {
   const nodeCount = readSingleCountHeader(source);
+  if (nodeCount != null && nodeCount > MAX_IMPORT_NODES) {
+    return null;
+  }
+
   if (
     nodeCount == null ||
     nodeCount < 1 ||
@@ -357,6 +366,10 @@ function probeWeightedParentList(
   options: ImportOptions,
 ): ImportCandidate | null {
   const nodeCount = readSingleCountHeader(source);
+  if (nodeCount != null && nodeCount > MAX_IMPORT_NODES) {
+    return null;
+  }
+
   if (
     nodeCount == null ||
     nodeCount < 1 ||

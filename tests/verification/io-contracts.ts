@@ -93,9 +93,38 @@ for (const format of [
   "edge-list",
   "adjacency-list",
   "adjacency-matrix",
+  "json",
 ] satisfies GraphExportFormat[]) {
   assertRoundTrip(weightedDirectedModel, format);
   assertRoundTrip(plainUndirectedModel, format);
+}
+
+{
+  // JSON is the lossless format: positions, colours and bends must survive.
+  const richModel: GraphModel = {
+    ...weightedDirectedModel,
+    nodes: weightedDirectedModel.nodes.map((node, index) => ({
+      ...node,
+      x: 17 * index - 40,
+      y: -23 * index,
+      color: index === 0 ? "blue" : undefined,
+    })),
+    edges: weightedDirectedModel.edges.map((edge, index) => ({
+      ...edge,
+      color: index === 0 ? "red" : undefined,
+      routing: index === 0 ? { bowPx: 64, bowT: 0.3 } : undefined,
+    })),
+  };
+  const imported = importGraphInput(exportGraph(richModel, "json"));
+
+  expect(
+    imported.formatKind === "json" && imported.warnings.length === 0,
+    "json export should be detected on import without warnings",
+  );
+  expect(
+    JSON.stringify(imported.model) === JSON.stringify(richModel),
+    "json round-trip should preserve positions, colours, bends and settings",
+  );
 }
 
 expect(
@@ -157,7 +186,7 @@ const ambiguousStructuredEdgeList = importGraphInput("2 1\n0 1", {
 });
 
 expect(
-  ambiguousStructuredEdgeList.format === "辺リスト" &&
+  ambiguousStructuredEdgeList.format === "Contest edge list" &&
     ambiguousStructuredEdgeList.formatKind === "contest-edge-list" &&
     ambiguousStructuredEdgeList.model.nodes.length === 2,
   "N M shaped input should keep structured edge-list precedence",
@@ -296,7 +325,7 @@ const forcedContestEdgeList = importGraphInput("2 1\n1 2", {
 });
 
 expect(
-  forcedContestEdgeList.format === "辺リスト" &&
+  forcedContestEdgeList.format === "Contest edge list" &&
     forcedContestEdgeList.model.nodes.length === 2 &&
     forcedContestEdgeList.model.edges.length === 1,
   "forced contest edge-list import should keep N M interpretation",
@@ -573,7 +602,7 @@ const partialStructuredEdgeList = importGraphInput("3 2\n1 2", {
 });
 
 expect(
-  partialStructuredEdgeList.format === "辺リスト" &&
+  partialStructuredEdgeList.format === "Contest edge list" &&
     partialStructuredEdgeList.model.edges.length === 1 &&
     partialStructuredEdgeList.warnings.length > 0,
   "plausible incomplete N M edge-list should keep structured interpretation with warnings",
@@ -586,7 +615,7 @@ const partialWeightedStructuredEdgeList = importGraphInput("3 2\n1 2 5\n2 3", {
 });
 
 expect(
-  partialWeightedStructuredEdgeList.format === "辺リスト" &&
+  partialWeightedStructuredEdgeList.format === "Contest edge list" &&
     partialWeightedStructuredEdgeList.model.settings.weighted &&
     partialWeightedStructuredEdgeList.model.edges.length === 1 &&
     partialWeightedStructuredEdgeList.warnings.length > 0,
@@ -645,7 +674,7 @@ const completeBipartiteInput = [
   ...Array.from({ length: 25 }, (_, leftIndex) =>
     Array.from(
       { length: 40 },
-      (_, rightIndex) => `${leftIndex + 1} ${25 + rightIndex + 1}`,
+      (_unused, rightIndex) => `${leftIndex + 1} ${25 + rightIndex + 1}`,
     ),
   ).flat(),
 ].join("\n");

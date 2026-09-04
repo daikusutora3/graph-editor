@@ -79,15 +79,15 @@ export function flushStoredGraphWrite() {
 
 function writeStoredGraphNow(graph: GraphModel) {
   try {
+    // Over the cap: keep the last stored graph rather than deleting it, so
+    // other tabs never observe a removal and reload as empty.
     if (!shouldStoreGraphShape(graph)) {
-      window.localStorage.removeItem(GRAPH_STORAGE_KEY);
       return;
     }
 
     const rawGraph = JSON.stringify(graph);
 
     if (!shouldStoreRawGraph(rawGraph)) {
-      window.localStorage.removeItem(GRAPH_STORAGE_KEY);
       return;
     }
 
@@ -118,6 +118,12 @@ function shouldStoreGraphShape(graph: GraphModel) {
   );
 }
 
+function flushWhenHidden() {
+  if (document.visibilityState === "hidden") {
+    flushStoredGraphWrite();
+  }
+}
+
 function installStorageFlushListeners() {
   if (flushListenersInstalled) {
     return;
@@ -126,11 +132,18 @@ function installStorageFlushListeners() {
   flushListenersInstalled = true;
 
   window.addEventListener("pagehide", flushStoredGraphWrite);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      flushStoredGraphWrite();
-    }
-  });
+  document.addEventListener("visibilitychange", flushWhenHidden);
+}
+
+/** Removes the flush listeners; used by tests and hot reloads. */
+export function uninstallStorageFlushListeners() {
+  if (!flushListenersInstalled || typeof window === "undefined") {
+    return;
+  }
+
+  flushListenersInstalled = false;
+  window.removeEventListener("pagehide", flushStoredGraphWrite);
+  document.removeEventListener("visibilitychange", flushWhenHidden);
 }
 
 export function parseStoredGraph(rawValue: string | null): GraphModel | null {

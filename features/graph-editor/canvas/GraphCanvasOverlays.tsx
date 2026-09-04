@@ -45,11 +45,11 @@ export function ZoomControls({
       <IconButton
         disabled={zoomOutDisabled}
         label={messages.canvas.zoomOut}
-        size={40}
+        size="lg"
         tooltipSide="top"
         onClick={() => onZoom(-zoomStep)}
       >
-        <Minus className="size-[15px]" />
+        <Minus className="size-icon-sm" />
       </IconButton>
       <button
         type="button"
@@ -59,7 +59,7 @@ export function ZoomControls({
         disabled={disabled}
         onClick={onResetZoom}
         className={[
-          "touch:h-11 touch:min-w-14 touch:rounded-lg grid h-10 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono text-[13px] font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
+          "touch:h-11 touch:min-w-14 touch:rounded-lg text-control grid h-10 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
           focusRing,
         ].join(" ")}
       >
@@ -68,21 +68,21 @@ export function ZoomControls({
       <IconButton
         disabled={zoomInDisabled}
         label={messages.canvas.zoomIn}
-        size={40}
+        size="lg"
         tooltipSide="top"
         onClick={() => onZoom(zoomStep)}
       >
-        <Plus className="size-[15px]" />
+        <Plus className="size-icon-sm" />
       </IconButton>
       <span aria-hidden="true" className="mx-1 h-6 w-px bg-[var(--line)]" />
       <IconButton
         disabled={disabled}
         label={messages.canvas.fitGraphTitle}
-        size={40}
+        size="lg"
         tooltipSide="top"
         onClick={onFitView}
       >
-        <Maximize2 className="size-[15px]" />
+        <Maximize2 className="size-icon-sm" />
       </IconButton>
     </div>
   );
@@ -98,7 +98,7 @@ export function FitToViewButton({ onFitView }: { onFitView: () => void }) {
       tooltipSide="top"
       onClick={onFitView}
     >
-      <Maximize2 className="size-[18px]" aria-hidden="true" />
+      <Maximize2 className="size-icon-lg" aria-hidden="true" />
     </IconButton>
   );
 }
@@ -321,7 +321,7 @@ export function InlineEditForm({
           role="alert"
           className="ge-inline-edit-error absolute top-full left-1/2 mt-1 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 text-center"
         >
-          {edit.error}
+          {messages.canvas.inlineEditErrors[edit.error]}
         </div>
       ) : null}
     </form>

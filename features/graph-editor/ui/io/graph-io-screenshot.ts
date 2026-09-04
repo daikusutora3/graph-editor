@@ -1,5 +1,6 @@
 "use client";
 
+import { IMAGE_EXPORT_ERROR } from "../../adapters/cytoscape/graph-canvas-viewport";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -136,10 +137,10 @@ export function useGraphIOScreenshot({
   };
 
   const createBlob = ({
-    background,
+    background: exportBackground,
     longEdgePx,
     paddingPx,
-    scope,
+    scope: exportScope,
   }: {
     background: PngExportBackground;
     longEdgePx: number;
@@ -147,28 +148,31 @@ export function useGraphIOScreenshot({
     scope: PngExportScope;
   }) => {
     if (isGraphEmpty) {
-      return Promise.reject(new Error("グラフが空です"));
+      return Promise.reject(new Error(IMAGE_EXPORT_ERROR.emptyGraph));
     }
 
     const safePaddingPx =
-      scope === "full"
+      exportScope === "full"
         ? clampPaddingPxForLongEdge(paddingPx, longEdgePx)
         : clampPaddingPx(paddingPx);
     const contentLongEdgePx = Math.max(1, longEdgePx - safePaddingPx * 2);
     const sizeOptions =
-      scope === "full"
+      exportScope === "full"
         ? { maxHeight: contentLongEdgePx, maxWidth: contentLongEdgePx }
         : {};
 
     return exportPng({
-      scope,
-      background,
+      scope: exportScope,
+      background: exportBackground,
       ...sizeOptions,
       includeSelection: false,
     })
       .then(ensurePngBlob)
       .then((blob) =>
-        addPngPadding(blob, { background, paddingPx: safePaddingPx }),
+        addPngPadding(blob, {
+          background: exportBackground,
+          paddingPx: safePaddingPx,
+        }),
       );
   };
 
@@ -345,8 +349,9 @@ export function useGraphIOScreenshot({
       .then(saveBlob)
       .catch((error) =>
         markFailed(
-          error instanceof Error
-            ? error.message
+          error instanceof Error &&
+            error.message === IMAGE_EXPORT_ERROR.emptyGraph
+            ? messages.screenshot.emptyGraph
             : messages.screenshot.downloadFailed,
         ),
       );
@@ -392,6 +397,8 @@ export function useGraphIOScreenshot({
     }
 
     void refreshPreview();
+    // refreshPreview is recreated per render; the key captures its inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPreviewInputKey, isGraphEmpty, previewEnabled, previewStale]);
 
   useEffect(

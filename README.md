@@ -36,6 +36,26 @@ Public app: <https://graph-editor.daikusutora3.workers.dev>
 - **Multilingual UI**: Japanese, English, and Simplified Chinese are supported
   in the app.
 
+## Input and Output Formats
+
+The paste box auto-detects these text formats (or pick one explicitly):
+
+| Format                                | Example                                            |
+| ------------------------------------- | -------------------------------------------------- |
+| Edge list with `N M` header           | `4 4` / `1 2` / `2 3` / `2 4` / `3 4`              |
+| Edge pairs (no header)                | `1 2` / `2 3`                                      |
+| Tree edge list (`N` then `N-1` edges) | `4` / `1 2` / `1 3` / `3 4`                        |
+| Parent array                          | `4` / `1 1 3`                                      |
+| Weighted parent array                 | `4` / `1 5` / `1 3` / `3 2`                        |
+| Adjacency list                        | `1: 2 3` / `2: 4`                                  |
+| Adjacency matrix                      | `0 1 1` / `1 0 1` / `1 1 0`                        |
+| Graph Editor JSON                     | `{ "version": 1, "nodes": [...], "edges": [...] }` |
+
+Export offers the edge list, adjacency list, adjacency matrix and JSON. Only
+JSON is lossless: it keeps node positions, colours and manual edge bends, and
+importing it restores the graph exactly. The text formats carry structure and
+weights only.
+
 ## Quick Start
 
 ```bash

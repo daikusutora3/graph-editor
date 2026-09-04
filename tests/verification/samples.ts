@@ -226,8 +226,10 @@ verifySizedSampleGraphs();
 
 finish(`Sample verification passed (${sampleGraphKinds.length} kinds)`);
 
-function verifyNamedSampleGeometry(models: Map<SampleGraphKind, GraphModel>) {
-  const houseX = models.get("houseX");
+function verifyNamedSampleGeometry(
+  sampleModels: Map<SampleGraphKind, GraphModel>,
+) {
+  const houseX = sampleModels.get("houseX");
   if (houseX) {
     const nodes = nodePositionByOrder(houseX);
 
@@ -245,7 +247,7 @@ function verifyNamedSampleGeometry(models: Map<SampleGraphKind, GraphModel>) {
     }
   }
 
-  const octahedral = models.get("octahedral");
+  const octahedral = sampleModels.get("octahedral");
   if (octahedral) {
     const nodes = nodePositionByOrder(octahedral);
 
