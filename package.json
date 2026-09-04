@@ -32,9 +32,13 @@
     "privacy:check": "bun run scripts/privacy-check.ts --staged",
     "privacy:check:unpushed": "bun run scripts/privacy-check.ts --range origin/main..HEAD",
     "typecheck": "tsc --noEmit",
+    "typecheck:strict": "tsc -p tsconfig.strict.json --noEmit",
+    "audit:ui": "bun scripts/audit/ui-audit.mjs",
+    "audit:csp": "bun scripts/audit/csp-check.mjs",
+    "serve:out": "bun scripts/audit/serve-out.mjs",
     "test": "bun run tests/verification/run-all.ts",
     "prepare": "git config core.hooksPath .githooks",
-    "check": "tsc --noEmit && oxlint . --deny-warnings && prettier . --check && bun run policy:check && bun run test",
+    "check": "tsc --noEmit && tsc -p tsconfig.strict.json --noEmit && oxlint . --deny-warnings && prettier . --check && bun run policy:check && bun run test",
     "check:all": "bun run check && bun run build && bun run tests/verification/release.ts"
   },
   "dependencies": {
@@ -53,6 +57,7 @@
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "oxlint": "1.66.0",
+    "playwright": "1.62.1",
     "prettier": "3.8.3",
     "prettier-plugin-tailwindcss": "0.8.0",
     "tailwindcss": "4.3.0",

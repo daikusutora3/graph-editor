@@ -1,3 +1,4 @@
+import { describeImportWarning } from "./import-warning-text";
 import {
   tryImportAdjacencyList,
   tryImportAdjacencyMatrix,
@@ -29,12 +30,15 @@ import type {
   ImportEvaluation,
   ImportFormatKind,
   ImportResult,
+  ImportWarning,
 } from "./import-types";
 
-export const WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING =
-  "Input may be a weighted parent list. If the second value on each row is an edge weight, select Weighted parent list manually.";
-export const MULTIPLE_FORMATS_AMBIGUITY_WARNING =
-  "Input matches multiple graph formats. Select a format before applying.";
+export const WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING: ImportWarning = {
+  code: "maybe-weighted-parent-list",
+};
+export const MULTIPLE_FORMATS_AMBIGUITY_WARNING: ImportWarning = {
+  code: "ambiguous-formats",
+};
 
 export function importGraphInput(
   input: string,
@@ -68,7 +72,7 @@ export function evaluateGraphInput(
   const lines = readLines(input);
 
   if (lines.length === 0) {
-    const result = importFailure("Empty input.", options);
+    const result = importFailure({ code: "empty-input" }, options);
     return {
       analysis: analyzeGraphInput(input, options),
       result,
@@ -87,12 +91,13 @@ export function evaluateGraphInput(
   const analysis = analyzeGraphInput(input, options);
   const recommendedFormat = analysis.recommendedFormat;
   if (!recommendedFormat) {
-    const message =
-      analysis.diagnostics[0]?.message ??
-      "Input does not match a supported graph format.";
+    const warning: ImportWarning =
+      analysis.diagnostics[0]?.code === "empty-input"
+        ? { code: "empty-input" }
+        : { code: "unsupported-format" };
     return {
       analysis,
-      result: importFailure(message, options),
+      result: importFailure(warning, options),
     };
   }
 
@@ -125,14 +130,20 @@ function parseRequestedFormat(
   if (requestedFormat === "adjacency-matrix") {
     return (
       tryImportAdjacencyMatrix(lines, formatOptions) ??
-      importFailure("Input is not a valid adjacency matrix.", formatOptions)
+      importFailure(
+        { code: "invalid-format", formatKind: "adjacency-matrix" },
+        formatOptions,
+      )
     );
   }
 
   if (requestedFormat === "adjacency-list") {
     return (
       tryImportAdjacencyList(lines, formatOptions) ??
-      importFailure("Input is not a valid adjacency list.", formatOptions)
+      importFailure(
+        { code: "invalid-format", formatKind: "adjacency-list" },
+        formatOptions,
+      )
     );
   }
 
@@ -146,34 +157,43 @@ function parseRequestedFormat(
   if (requestedFormat === "edge-pairs") {
     return (
       tryImportLooseEdgeList(lines, formatOptions) ??
-      importFailure("Input is not a valid edge pair list.", formatOptions)
+      importFailure(
+        { code: "invalid-format", formatKind: "edge-pairs" },
+        formatOptions,
+      )
     );
   }
 
   if (requestedFormat === "tree-edge-list") {
     return (
       tryImportTreeEdgeList(lines, formatOptions) ??
-      importFailure("Input is not a valid tree edge list.", formatOptions)
+      importFailure(
+        { code: "invalid-format", formatKind: "tree-edge-list" },
+        formatOptions,
+      )
     );
   }
 
   if (requestedFormat === "parent-list") {
     return (
       tryImportParentList(lines, formatOptions) ??
-      importFailure("Input is not a valid parent list.", formatOptions)
+      importFailure(
+        { code: "invalid-format", formatKind: "parent-list" },
+        formatOptions,
+      )
     );
   }
 
   if (requestedFormat === "weighted-parent-list") {
     return (
       tryImportWeightedParentList(lines, formatOptions) ??
-      importFailure("Input is not a valid weighted parent list.", formatOptions)
+      importFailure(
+        { code: "invalid-format", formatKind: "weighted-parent-list" },
+        formatOptions,
+      )
     );
   }
-  return importFailure(
-    "Input does not match a supported graph format.",
-    formatOptions,
-  );
+  return importFailure({ code: "unsupported-format" }, formatOptions);
 }
 
 function analysisForRequestedFormat(
@@ -194,10 +214,10 @@ function analysisForRequestedFormat(
     status: hasContent ? "detected" : "invalid",
     recommendedFormat: hasContent ? requestedFormat : undefined,
     candidates: hasContent ? [candidate] : [],
-    diagnostics: result.warnings.map((message) => ({
+    diagnostics: result.warnings.map((warning) => ({
       code: hasContent ? "partial-import" : "invalid-format",
       severity: hasContent ? "warning" : "error",
-      message,
+      message: describeImportWarning(warning),
     })),
   };
 }
@@ -274,10 +294,10 @@ function importGraphJson(input: string, options: ImportOptions): ImportResult {
   const model = parseGraphModelJson(input);
 
   if (!model) {
-    return importFailure("Input is not a valid Graph Editor JSON document.", {
-      ...options,
-      format: "json",
-    });
+    return importFailure(
+      { code: "invalid-format", formatKind: "json" },
+      { ...options, format: "json" },
+    );
   }
 
   return { model, warnings: [], formatKind: "json", format: "JSON" };

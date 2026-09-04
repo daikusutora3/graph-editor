@@ -1,14 +1,11 @@
 "use client";
 
+import type { ImportWarning } from "../../io/import-types";
 import { useAtomValue } from "jotai";
 import type { RefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  evaluateGraphInput,
-  MULTIPLE_FORMATS_AMBIGUITY_WARNING,
-  WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
-} from "../../io/import-graph";
+import { evaluateGraphInput } from "../../io/import-graph";
 import type { ImportFormat, ImportOptions } from "../../io/import-utils";
 import type { ImportEvaluation } from "../../io/import-types";
 import { hasGraphContent } from "../../core/graph/selectors";
@@ -34,7 +31,7 @@ export function useGraphStarterState({
   const graph = useAtomValue(graphAtom);
   const applyGraphModel = useApplyGraphModel();
   const [inputText, setInputText] = useState("");
-  const [issues, setIssues] = useState<string[]>([]);
+  const [issues, setIssues] = useState<ImportWarning[]>([]);
   const [tab, setTab] = useState<StarterTab>("paste");
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const importOptions = useMemo<ImportOptions>(
@@ -66,8 +63,8 @@ export function useGraphStarterState({
     analysis?.status === "ambiguous"
       ? (preview?.warnings ?? []).filter(
           (warning) =>
-            warning !== MULTIPLE_FORMATS_AMBIGUITY_WARNING &&
-            warning !== WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING,
+            warning.code !== "ambiguous-formats" &&
+            warning.code !== "maybe-weighted-parent-list",
         )
       : (preview?.warnings ?? []);
 

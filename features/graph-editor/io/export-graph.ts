@@ -151,10 +151,15 @@ function exportAdjacencyMatrix(model: GraphModel): string {
     if (source == null || target == null) continue;
 
     const value = model.settings.weighted ? (edge.weight ?? "1") : "1";
-    matrix[source][target] = value;
+    const sourceRow = matrix[source];
+    const targetRow = matrix[target];
+
+    if (!sourceRow || !targetRow) continue;
+
+    sourceRow[target] = value;
 
     if (!model.settings.directed) {
-      matrix[target][source] = value;
+      targetRow[source] = value;
     }
   }
 

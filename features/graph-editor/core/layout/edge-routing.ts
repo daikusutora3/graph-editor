@@ -179,8 +179,14 @@ export function computeEdgeRouting(
       continue;
     }
 
+    const [firstGroupEdge] = edges;
+
+    if (!firstGroupEdge) {
+      continue;
+    }
+
     if (edges.length === 1) {
-      const edge = edges[0];
+      const edge = firstGroupEdge;
       const curve = chooseEdgeCurve(
         edge,
         model.edges,
@@ -213,7 +219,7 @@ export function computeEdgeRouting(
       resolvedOptions.duplicateBowPx,
     );
     const maxDuplicateBow = center * duplicateBowPx;
-    const firstEdge = orderedEdges[0];
+    const firstEdge = orderedEdges[0] ?? firstGroupEdge;
     const canonicalEdge = canonicalRoutingEdge(firstEdge);
     const canonicalOptions = centerPreviousRouteForParallelGroup(
       firstEdge,

@@ -49,7 +49,7 @@ function nextSelectableColor(
   const currentIndex = colors.indexOf(color ?? "paper");
   const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % colors.length;
 
-  return colors[nextIndex];
+  return colors[nextIndex] ?? "paper";
 }
 
 function isGraphColor(value: string): value is GraphColor {

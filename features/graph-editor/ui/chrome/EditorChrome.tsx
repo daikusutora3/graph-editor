@@ -49,6 +49,7 @@ import { EditorPanelShell } from "./EditorPanelShell";
 import { DesktopTopRow, MobileBottomBar, MobileTopRow } from "./EditorToolbar";
 import { EmptyState } from "./EmptyState";
 import { useTimedState } from "../hooks/use-timed-state";
+import { STORAGE_SKIPPED_EVENT } from "../../adapters/browser/stored-graph";
 import { resetLearnedHints } from "./hint-storage";
 import { AppMenuPanel } from "../panels/AppMenuPanel";
 import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
@@ -202,6 +203,14 @@ export function EditorChrome() {
   const toggleOffsetEdges = useCallback(() => {
     updateGraphSettings({ autoEdgeRouting: !graph.settings.autoEdgeRouting });
   }, [graph.settings.autoEdgeRouting, updateGraphSettings]);
+
+  useEffect(() => {
+    const onSkipped = () => setToast(messages.chrome.storageSkippedToast);
+
+    window.addEventListener(STORAGE_SKIPPED_EVENT, onSkipped);
+
+    return () => window.removeEventListener(STORAGE_SKIPPED_EVENT, onSkipped);
+  }, [messages.chrome.storageSkippedToast, setToast]);
 
   const handleClear = useCallback(() => {
     if (isGraphEmpty) {

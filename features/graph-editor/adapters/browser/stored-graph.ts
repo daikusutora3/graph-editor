@@ -12,6 +12,22 @@ export const MAX_STORED_GRAPH_EDGES = GRAPH_JSON_MAX_EDGES;
 
 const GRAPH_STORAGE_WRITE_DELAY_MS = 250;
 
+/** Fired on window when autosave starts (or stops) skipping an oversized graph. */
+export const STORAGE_SKIPPED_EVENT = "graph-editor:storage-skipped";
+let storageSkipped = false;
+
+function notifyStorageSkipped(skipped: boolean) {
+  if (skipped === storageSkipped) {
+    return;
+  }
+
+  storageSkipped = skipped;
+
+  if (skipped) {
+    window.dispatchEvent(new Event(STORAGE_SKIPPED_EVENT));
+  }
+}
+
 let pendingGraph: GraphModel | null = null;
 let pendingWriteTimeoutId: number | null = null;
 let flushListenersInstalled = false;
@@ -80,18 +96,22 @@ export function flushStoredGraphWrite() {
 function writeStoredGraphNow(graph: GraphModel) {
   try {
     // Over the cap: keep the last stored graph rather than deleting it, so
-    // other tabs never observe a removal and reload as empty.
+    // other tabs never observe a removal and reload as empty. The UI is told
+    // once per transition so it can suggest exporting instead.
     if (!shouldStoreGraphShape(graph)) {
+      notifyStorageSkipped(true);
       return;
     }
 
     const rawGraph = JSON.stringify(graph);
 
     if (!shouldStoreRawGraph(rawGraph)) {
+      notifyStorageSkipped(true);
       return;
     }
 
     window.localStorage.setItem(GRAPH_STORAGE_KEY, rawGraph);
+    notifyStorageSkipped(false);
   } catch {
     // Ignore storage failures so editing still works in restricted browsers.
   }

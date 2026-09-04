@@ -80,11 +80,11 @@ export function isUndirectedTreeLabels(
 
   const find = (node: number) => {
     let root = node;
-    while (parents[root] !== root) {
-      root = parents[root];
+    while ((parents[root] ?? root) !== root) {
+      root = parents[root] ?? root;
     }
-    while (parents[node] !== node) {
-      const next = parents[node];
+    while ((parents[node] ?? node) !== node) {
+      const next = parents[node] ?? node;
       parents[node] = root;
       node = next;
     }

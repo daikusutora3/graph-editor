@@ -225,6 +225,7 @@ type Messages = {
     display: string;
     clear: string;
     resetHints: string;
+    storageSkippedToast: string;
     clearArmed: string;
     clearHint: string;
     clearArmedHint: string;
@@ -775,6 +776,8 @@ const ja: Messages = {
     graphType: "グラフの種類",
     display: "表示",
     resetHints: "ヒントをもう一度表示",
+    storageSkippedToast:
+      "このサイズのグラフは自動保存できません。JSON で書き出して保存してください。",
     clear: "グラフをクリア",
     clearArmed: "本当にクリアする",
     clearHint: "2 回押して確定",
@@ -1220,6 +1223,8 @@ const en: Messages = {
     graphType: "Graph type",
     display: "Display",
     resetHints: "Show hints again",
+    storageSkippedToast:
+      "This graph is too large to autosave. Export it as JSON to keep it.",
     clear: "Clear graph",
     clearArmed: "Really clear",
     clearHint: "Press twice to confirm",
@@ -1658,6 +1663,7 @@ const zhHans: Messages = {
     graphType: "图类型",
     display: "显示",
     resetHints: "重新显示提示",
+    storageSkippedToast: "此图过大，无法自动保存。请导出为 JSON 以保留。",
     clear: "清空图",
     clearArmed: "确认清空",
     clearHint: "点击两次确认",
