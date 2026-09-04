@@ -1,0 +1,28 @@
+# Graph Editor
+
+> A free, browser-based editor for graph theory diagrams. Paste an edge list or adjacency matrix and get a graph instantly; arrange it with automatic layouts, bend edges, colour nodes, and export PNG, text formats, or lossless JSON. All data stays in the browser — nothing is uploaded.
+
+Graph Editor targets competitive programmers, students, and teachers who need quick, clean graph figures. It runs as a static web app (Next.js + Cytoscape) and works offline once loaded.
+
+## Pages
+
+- [Japanese (default)](https://graph-editor.daikusutora3.workers.dev/): グラフ理論の図をブラウザで描く・配置・書き出し
+- [English](https://graph-editor.daikusutora3.workers.dev/en): Draw, arrange, and export graph theory diagrams
+- [Simplified Chinese](https://graph-editor.daikusutora3.workers.dev/zh-hans): 在浏览器中绘制、排布并导出图论图形
+
+## Features
+
+- Input formats (auto-detected): edge list with `N M` header, edge pairs, tree edge list, parent array, weighted parent array, adjacency list, adjacency matrix, and Graph Editor JSON
+- Layouts: auto (force), BFS layers, overlap resolution, tree, DAG, bipartite, SCC, radial, circle, grid, line, concentric
+- Editing: place nodes by tapping, draw edges between nodes, drag any edge to bend it, colour nodes and edges, edit labels and weights inline, undo/redo
+- Export: PNG (full graph or viewport, custom size and padding), edge list, adjacency list, adjacency matrix, and JSON that preserves positions, colours, and bends
+- Directed/undirected, weighted/unweighted, 0- or 1-indexed labels
+- Keyboard shortcuts, touch support with pinch zoom, light and dark themes, Japanese/English/Simplified Chinese UI
+
+## Source
+
+- [GitHub repository](https://github.com/daikusutora3/graph-editor): source code, issue tracker, and README with the full list of input/output formats
+
+## 日本語の概要
+
+Graph Editor は、辺リストや隣接行列を貼るだけでグラフ理論の図を描けるブラウザアプリです。木・DAG・二部グラフ・円形などの自動配置、辺の曲げ、頂点の色分け、PNG・テキスト・JSON での書き出しに対応しています。データはブラウザの外に送信されません。

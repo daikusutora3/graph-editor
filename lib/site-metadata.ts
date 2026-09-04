@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 export const SITE_URL = "https://graph-editor.daikusutora3.workers.dev";
 
@@ -10,20 +10,52 @@ export const APPLE_TOUCH_ICON = "/brand/graph-editor-logo-180.png";
 
 export const appLocaleMetadata = {
   ja: {
+    title: "Graph Editor | グラフ理論の図をブラウザで描く・配置・書き出し",
     description:
-      "ブラウザ上でグラフ理論の図を作成・編集・配置・書き出しできるアプリです。",
-    title: APP_NAME,
+      "辺リストや隣接行列を貼るだけでグラフを描画。自動配置、辺の曲げ、色分け、PNG・JSON 書き出しに対応した無料のグラフ理論エディタです。",
+    headline: "グラフ理論の図を、ブラウザで",
+    tagline:
+      "辺リストを貼る、サンプルから始める、直接描く。競技プログラミングや講義資料のためのグラフエディタです。",
+    features: [
+      "辺リスト・隣接リスト・隣接行列・親配列を自動判定して読み込み",
+      "木・DAG・二部グラフ・円形・格子など 12 種類の自動配置",
+      "頂点の色分け、辺の曲げ、重みやラベルの編集",
+      "PNG 画像、テキスト形式、位置や色まで残る JSON で書き出し",
+    ],
+    ogImage: "/brand/og-ja.png",
   },
   en: {
+    title: "Graph Editor | Draw, arrange, and export graph theory diagrams",
     description:
-      "Create, edit, arrange, and export graph theory diagrams directly in the browser.",
-    title: APP_NAME,
+      "Paste an edge list or adjacency matrix and get a graph instantly. Free browser-based graph theory editor with automatic layouts, edge bending, colours, and PNG/JSON export.",
+    headline: "Graph theory diagrams, in the browser",
+    tagline:
+      "Paste an edge list, start from a sample, or draw directly. Built for competitive programming and lecture material.",
+    features: [
+      "Auto-detects edge lists, adjacency lists, adjacency matrices, and parent arrays",
+      "12 automatic layouts: tree, DAG, bipartite, circle, grid, and more",
+      "Node colours, edge bending, weights, and labels",
+      "Export to PNG, text formats, or lossless JSON with positions and colours",
+    ],
+    ogImage: "/brand/og-en.png",
   },
   "zh-Hans": {
-    description: "直接在浏览器中创建、编辑、排布并导出图论图形。",
-    title: APP_NAME,
+    title: "Graph Editor | 在浏览器中绘制、排布并导出图论图形",
+    description:
+      "粘贴边列表或邻接矩阵即可生成图。免费的浏览器图论编辑器，支持自动布局、边弯曲、着色以及 PNG/JSON 导出。",
+    headline: "在浏览器中绘制图论图形",
+    tagline: "粘贴边列表、从示例开始，或直接绘制。适合算法竞赛和课程资料。",
+    features: [
+      "自动识别边列表、邻接表、邻接矩阵和父数组",
+      "树、DAG、二分图、圆形、网格等 12 种自动布局",
+      "顶点着色、边弯曲、权重与标签编辑",
+      "导出 PNG、文本格式或包含位置与颜色的无损 JSON",
+    ],
+    ogImage: "/brand/og-zh-hans.png",
   },
 } as const;
+
+export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 
 export type AppLocale = keyof typeof appLocaleMetadata;
 
@@ -61,6 +93,16 @@ export const APP_PUBLIC_TITLE = appLocaleMetadata.ja.title;
 export const APP_PUBLIC_DESCRIPTION = appLocaleMetadata.ja.description;
 export const APP_TITLE = APP_PUBLIC_TITLE;
 export const APP_DESCRIPTION = APP_PUBLIC_DESCRIPTION;
+
+/** Browser chrome colour follows the app theme tokens in globals.css. */
+export const appViewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f9fafb" },
+    { media: "(prefers-color-scheme: dark)", color: "#17171a" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const appRootMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -136,9 +178,12 @@ export function createAppStructuredData(locale: AppLocale) {
     name: APP_NAME,
     alternateName: "Graph Editor by daikusutora",
     applicationCategory: "DesignApplication",
+    applicationSubCategory: "Graph theory diagram editor",
     operatingSystem: "Any",
+    browserRequirements: "Requires JavaScript",
+    isAccessibleForFree: true,
     url: getAppLocaleUrl(locale),
-    image: `${SITE_URL}${SOCIAL_IMAGE}`,
+    image: `${SITE_URL}${localeMetadata.ogImage}`,
     description: localeMetadata.description,
     inLanguage: locale,
     offers: {
@@ -174,18 +219,18 @@ export function createAppPageMetadata(locale: AppLocale): Metadata {
       description: localeMetadata.description,
       images: [
         {
-          url: SOCIAL_IMAGE,
-          width: 512,
-          height: 512,
-          alt: "Graph Editor icon",
+          url: localeMetadata.ogImage,
+          width: OG_IMAGE_SIZE.width,
+          height: OG_IMAGE_SIZE.height,
+          alt: localeMetadata.headline,
         },
       ],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: localeMetadata.title,
       description: localeMetadata.description,
-      images: [SOCIAL_IMAGE],
+      images: [localeMetadata.ogImage],
     },
   };
 }

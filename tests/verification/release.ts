@@ -213,6 +213,39 @@ for (const [language, path] of Object.entries(appLanguageAlternates)) {
   );
 }
 
+for (const [locale, page] of [
+  ["ja", "out/index.html"],
+  ["en", "out/en.html"],
+  ["zh-Hans", "out/zh-hans.html"],
+] as const) {
+  const html = readText(page);
+  expect(
+    html.includes("<h1") && html.includes(appLocaleMetadata[locale].headline),
+    `${page} should prerender the intro heading for crawlers`,
+  );
+  expect(
+    html.includes(`content="${SITE_URL}${appLocaleMetadata[locale].ogImage}"`),
+    `${page} should reference its 1200x630 social image`,
+  );
+  expect(
+    html.includes('name="twitter:card" content="summary_large_image"'),
+    `${page} should use the large summary card`,
+  );
+}
+
+{
+  const llms = readFileSync("out/llms.txt");
+  const decoded = new TextDecoder("utf-8", { fatal: true }).decode(llms);
+  expect(
+    decoded.startsWith("# Graph Editor") && decoded.includes(SITE_URL),
+    "out/llms.txt should be valid UTF-8 and describe the app",
+  );
+  expect(
+    !llms.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])),
+    "out/llms.txt should not carry a BOM",
+  );
+}
+
 const headers = readText("out/_headers");
 expect(
   headers.includes("X-Content-Type-Options: nosniff"),
@@ -232,6 +265,10 @@ expect(
   expect(
     missing.length === 0,
     `every inline script must be allow-listed in the CSP (${missing.length} missing)`,
+  );
+  expect(
+    headers.includes("/llms.txt\n  Content-Type: text/plain; charset=utf-8"),
+    "_headers should serve llms.txt as UTF-8 text",
   );
   expect(
     headers.includes("X-Frame-Options: DENY") &&
