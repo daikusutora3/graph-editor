@@ -4,11 +4,17 @@ export function downloadBlob(blob: Blob, fileName: string) {
 
   link.href = blobUrl;
   link.download = fileName;
-  link.rel = "noopener";
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+  // The browser has queued the download once click() returns; release the
+  // URL on the next macrotask (with a long fallback for throttled tabs).
+  const revoke = () => URL.revokeObjectURL(blobUrl);
+  const fallbackId = window.setTimeout(revoke, 60_000);
+  window.setTimeout(() => {
+    window.clearTimeout(fallbackId);
+    revoke();
+  }, 1_000);
 }
 
 export function ensurePngBlob(blob: Blob) {

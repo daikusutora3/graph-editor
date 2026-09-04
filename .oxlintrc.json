@@ -1,0 +1,52 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "react-hooks/exhaustive-deps": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "no-unused-vars": "warn",
+    "unicorn/no-array-for-each": "off",
+    "unicorn/prefer-spread": "off",
+    "unicorn/no-array-reduce": "off",
+    "unicorn/prefer-number-properties": "off",
+    "unicorn/prefer-string-slice": "off",
+    "unicorn/no-null": "off",
+    "unicorn/filename-case": "off",
+    "react/react-in-jsx-scope": "off",
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "oxc/no-map-spread": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "cytoscape",
+            "message": "Only adapters/cytoscape may import Cytoscape values; other layers use `import type` or the adapter API.",
+            "allowTypeImports": true
+          }
+        ]
+      }
+    ]
+  },
+  "ignorePatterns": ["out/", ".next/", "node_modules/"],
+  "overrides": [
+    {
+      "files": [
+        "features/graph-editor/adapters/cytoscape/**",
+        "tests/**",
+        "scripts/**"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
+}
