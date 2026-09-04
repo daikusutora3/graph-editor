@@ -53,6 +53,10 @@ for (const path of [
   "out/brand/graph-editor-logo.webp",
   "out/brand/graph-editor-logo-dark.webp",
   "out/brand/graph-editor-logo-180.png",
+  "out/brand/graph-editor-logo-48.png",
+  "out/brand/graph-editor-logo-192.png",
+  "out/brand/graph-editor-logo-512.png",
+  "out/favicon.ico",
 ]) {
   expectFile(path);
 }
@@ -104,6 +108,16 @@ expect(
 expect(
   indexHtml.includes(SOCIAL_IMAGE),
   "out/index.html should include the social image",
+);
+expect(
+  /<link rel="icon" href="\/favicon\.ico"[^>]*type="image\/x-icon"/.test(
+    indexHtml,
+  ) &&
+    /<link rel="icon" href="\/brand\/graph-editor-logo-192\.png"[^>]*type="image\/png"/.test(
+      indexHtml,
+    ) &&
+    !/<link rel="(?:shortcut )?icon"[^>]*image\/webp/.test(indexHtml),
+  "out/index.html should expose PNG/ICO favicons (search engines skip WebP)",
 );
 expect(
   indexHtml.includes(createAppStructuredData("ja").description),

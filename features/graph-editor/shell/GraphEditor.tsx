@@ -28,7 +28,11 @@ export function GraphEditor({
   intro,
 }: {
   initialLocale?: Locale;
-  /** Server-rendered content shown until the editor mounts (indexed by crawlers). */
+  /**
+   * Server-rendered description of the app. It stays in the exported HTML
+   * for crawlers and assistive tech but is never painted for sighted users:
+   * the page opens straight into the editor.
+   */
   intro?: ReactNode;
 }) {
   return (
@@ -64,7 +68,10 @@ function GraphEditorContent({ intro }: { intro?: ReactNode }) {
           <EditorChrome />
         </>
       ) : (
-        intro
+        <>
+          <div className="sr-only">{intro}</div>
+          <noscript>{intro}</noscript>
+        </>
       )}
     </main>
   );
