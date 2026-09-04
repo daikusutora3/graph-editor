@@ -39,6 +39,8 @@ for (const path of [
   "out/en/guide.html",
   "out/zh-hans/guide.html",
   "out/_redirects",
+  // Search Console ownership; deleting it revokes the property.
+  "out/googleca089be2699caf14.html",
   "out/manifest.webmanifest",
   "out/robots.txt",
   "out/sitemap.xml",
