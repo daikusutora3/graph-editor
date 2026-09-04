@@ -1,7 +1,8 @@
-export type EditorLayout = "desktop" | "compact" | "mobile";
+export type { EditorLayout } from "../../core/view/types";
+import type { EditorLayout } from "../../core/view/types";
 
-export const MOBILE_LAYOUT_MAX_WIDTH = 768;
-export const COMPACT_LAYOUT_MAX_WIDTH = 1280;
+const MOBILE_LAYOUT_MAX_WIDTH = 768;
+const COMPACT_LAYOUT_MAX_WIDTH = 1280;
 
 export function resolveEditorLayout(width: number): EditorLayout {
   if (width > 0 && width < MOBILE_LAYOUT_MAX_WIDTH) {

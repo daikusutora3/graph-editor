@@ -1,4 +1,5 @@
 import {
+  type InlineEditErrorCode,
   normalizeEdgeLabelInput,
   normalizeEdgeWeightInput,
   normalizeNodeLabelInput,
@@ -12,14 +13,14 @@ export type InlineEditCommitInput =
       nodeId: NodeId;
       value: string;
       fallbackPosition: { x: number; y: number };
-      error?: string;
+      error?: InlineEditErrorCode;
     }
   | {
       kind: "edge-weight" | "edge-label";
       edgeId: EdgeId;
       value: string;
       fallbackPosition: { x: number; y: number };
-      error?: string;
+      error?: InlineEditErrorCode;
     };
 
 export type InlineEditCommitResult =

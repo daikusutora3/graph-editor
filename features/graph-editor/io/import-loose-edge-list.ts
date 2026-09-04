@@ -56,7 +56,7 @@ export function tryImportLooseEdgeList(
 
   const settings = readImportSettings(
     { ...options, indexBase: detectIndexBase(labels, options.indexBase) },
-    { weighted: hasWeights || options.weighted ? true : false },
+    { weighted: Boolean(hasWeights || options.weighted) },
   );
   const model = createEmptyGraphModel(settings);
   const idByLabel = new Map<string, NodeId>();

@@ -5,7 +5,7 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "ja";
 export const LOCALE_STORAGE_KEY = "graph-editor-locale";
 
-export const LOCALE_ALIASES: Record<string, Locale> = {
+const LOCALE_ALIASES: Record<string, Locale> = {
   ja: "ja",
   "ja-jp": "ja",
   en: "en",

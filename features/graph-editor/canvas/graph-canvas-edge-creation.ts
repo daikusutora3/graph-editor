@@ -1,7 +1,10 @@
 import { canUseEdgeEndpoints } from "../core/graph/edge-constraints";
 import { getNode } from "../core/graph/selectors";
 import type { GraphModel, NodeId } from "../core/graph/model";
-import type { EdgeDraft } from "../shell/state/editor-state";
+import type {
+  EdgeDraft,
+  EdgeDraftMessageCode,
+} from "../shell/state/editor-state";
 
 export type EdgeCreationInput = {
   model: GraphModel;
@@ -24,14 +27,14 @@ export type EdgeCreationResult =
   | {
       kind: "reject";
       nextDraft: EdgeDraft;
-      reason: string;
+      reason: EdgeDraftMessageCode;
     };
 
 function draftMessage(
   kind: NonNullable<EdgeDraft["message"]>["kind"],
-  text: string,
+  code: EdgeDraftMessageCode,
 ): NonNullable<EdgeDraft["message"]> {
-  return { kind, text };
+  return { kind, code };
 }
 
 export function resolveEdgeCreation({
@@ -48,9 +51,9 @@ export function resolveEdgeCreation({
   const nextSourceOnEndpointError = sourceExists ? sourceNodeId : null;
 
   if (!targetExists || !sourceExists) {
-    const reason = !targetExists
-      ? "接続先のノードが見つかりません"
-      : "始点のノードが見つかりません";
+    const reason: EdgeDraftMessageCode = !targetExists
+      ? "target-missing"
+      : "source-missing";
 
     return {
       kind: "reject",
@@ -67,13 +70,13 @@ export function resolveEdgeCreation({
       kind: "update-draft",
       nextDraft: {
         sourceNodeId: targetNodeId,
-        message: draftMessage("info", "始点を選択しました"),
+        message: draftMessage("info", "source-selected"),
       },
     };
   }
 
   if (sourceNodeId === targetNodeId && !model.settings.allowSelfLoops) {
-    const reason = "自己ループは無効です";
+    const reason = "self-loop";
 
     return {
       kind: "reject",
@@ -89,7 +92,7 @@ export function resolveEdgeCreation({
     !model.settings.allowMultiEdges &&
     !canUseEdgeEndpoints(model, sourceNodeId, targetNodeId)
   ) {
-    const reason = "同じ辺はすでに存在します";
+    const reason = "duplicate-edge";
 
     return {
       kind: "reject",
@@ -107,7 +110,7 @@ export function resolveEdgeCreation({
     target: targetNodeId,
     nextDraft: {
       sourceNodeId: continueFromTarget ? targetNodeId : null,
-      message: draftMessage("success", "辺を作成しました"),
+      message: draftMessage("success", "edge-created"),
     },
   };
 }

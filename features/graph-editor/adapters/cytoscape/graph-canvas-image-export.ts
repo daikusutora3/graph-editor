@@ -4,10 +4,11 @@ import type { MutableRefObject } from "react";
 import { useCallback } from "react";
 import type { Core } from "cytoscape";
 
-import type { GraphCanvasExportOptions } from "../../canvas/graph-canvas-types";
-import type { SelectionState } from "../../shell/state/editor-state";
+import type { GraphCanvasExportOptions } from "../../core/view/types";
+import type { SelectionState } from "../../core/view/types";
 import {
-  exportImageErrorMessage,
+  exportImageErrorCode,
+  IMAGE_EXPORT_ERROR,
   nextAnimationFrame,
   readExportBackground,
   syncCytoscapeSelection,
@@ -39,7 +40,7 @@ export function useGraphImageExport({
 
       try {
         if (cy.elements().length === 0) {
-          throw new Error("グラフが空です");
+          throw new Error(IMAGE_EXPORT_ERROR.emptyGraph);
         }
 
         selectedIds = cy.elements(":selected").map((element) => element.id());
@@ -64,7 +65,7 @@ export function useGraphImageExport({
           bg: readExportBackground(detail.background),
         });
       } catch (error) {
-        throw new Error(exportImageErrorMessage(error));
+        throw new Error(exportImageErrorCode(error), { cause: error });
       } finally {
         if (
           shouldRestoreSelectionState &&

@@ -114,7 +114,7 @@ export function importLimitFailure(
         : "edges";
 
   return importFailure(
-    `Import is too large: ${count.toLocaleString()} ${label}, maximum is ${limit.toLocaleString()}.`,
+    `Import is too large: ${count.toLocaleString("en-US")} ${label}, maximum is ${limit.toLocaleString("en-US")}.`,
     options,
     format,
     formatKind,

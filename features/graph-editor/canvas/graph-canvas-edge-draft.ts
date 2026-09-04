@@ -3,20 +3,22 @@ import type { GraphModel, NodeId } from "../core/graph/model";
 
 import type { RenderedPoint } from "./graph-canvas-types";
 
+export type EdgeCandidateError = "self-loop" | "duplicate-edge";
+
 export function getEdgeCandidateError(
   graph: GraphModel,
   sourceNodeId: NodeId,
   targetNodeId: NodeId,
-) {
+): EdgeCandidateError | null {
   if (sourceNodeId === targetNodeId && !graph.settings.allowSelfLoops) {
-    return "自己ループは無効です";
+    return "self-loop";
   }
 
   if (
     !graph.settings.allowMultiEdges &&
     !canUseEdgeEndpoints(graph, sourceNodeId, targetNodeId)
   ) {
-    return "同じ辺はすでに存在します";
+    return "duplicate-edge";
   }
 
   return null;

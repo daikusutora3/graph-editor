@@ -1,15 +1,13 @@
 import type { LayoutDisabledReason, LayoutKind } from "../layouts";
+import type { InlineEditErrorCode } from "../core/graph/edit-values";
+import type { GraphExportFormat } from "../io/export-graph";
 import type { ImportFormatKind } from "../io/import-types";
 import type { SampleGraphKind } from "../samples/sample-graphs";
 import type { SampleGraphGroupKey } from "../samples/registry";
 import type { Locale } from "./locale";
 import { appLocaleMetadata } from "@/lib/site-metadata";
 
-type GraphExportFormatLabel =
-  | "edge-list"
-  | "adjacency-list"
-  | "adjacency-matrix"
-  | "json";
+type GraphExportFormatLabel = GraphExportFormat;
 
 type Messages = {
   app: {
@@ -152,6 +150,7 @@ type Messages = {
     copyFailed: string;
     download: string;
     downloadFailed: string;
+    emptyGraph: string;
     downloaded: string;
     downloading: string;
   };
@@ -165,6 +164,14 @@ type Messages = {
     nodeLabelPlaceholder: string;
     editEdgeWeight: string;
     editEdgeLabel: string;
+    editEdgeWeightOf: (value: string) => string;
+    editEdgeLabelOf: (value: string) => string;
+    nodeName: (label: string) => string;
+    unlabeledNode: string;
+    selectNode: (name: string) => string;
+    connectEdgeTo: (name: string) => string;
+    sourceSelected: (name: string) => string;
+    inlineEditErrors: Record<InlineEditErrorCode, string>;
     resetEdgeCurve: string;
     bendEdgeLeft: string;
     bendEdgeRight: string;
@@ -241,6 +248,7 @@ type Messages = {
     starterWaiting: string;
     starterMeta: (nodeCount: number, edgeCount: number) => string;
     starterUseSample: string;
+    starterOpenFile: string;
     starterBackToPaste: string;
     starterApply: string;
     starterSamplesTitle: string;
@@ -467,7 +475,7 @@ const zhHansSampleItems = {
   },
 } satisfies Messages["samples"]["item"];
 
-const ja = {
+const ja: Messages = {
   app: {
     title: "Graph Editor",
     authorPrefix: "by",
@@ -626,6 +634,7 @@ const ja = {
     copyFailed: "スクショをクリップボードにコピーできませんでした",
     download: "ダウンロード",
     downloadFailed: "スクショをダウンロードできませんでした",
+    emptyGraph: "グラフが空です",
     downloaded: "ダウンロード済み",
     downloading: "ダウンロード中",
   },
@@ -640,6 +649,14 @@ const ja = {
     nodeLabelPlaceholder: "空欄でラベルなし",
     editEdgeWeight: "辺の重みを編集",
     editEdgeLabel: "辺ラベルを編集",
+    editEdgeWeightOf: (value: string) => `辺の重み ${value} を編集`,
+    editEdgeLabelOf: (value: string) => `辺ラベル ${value} を編集`,
+    nodeName: (label: string) => `頂点 ${label}`,
+    unlabeledNode: "ラベルなしの頂点",
+    selectNode: (name: string) => `${name}を選択`,
+    connectEdgeTo: (name: string) => `${name}に辺を接続`,
+    sourceSelected: (name: string) => `${name}を始点に選択中`,
+    inlineEditErrors: { "invalid-number": "数値を入力してください" },
     resetEdgeCurve: "自動配置に戻す",
     bendEdgeLeft: "左へ曲げる",
     bendEdgeRight: "右へ曲げる",
@@ -782,6 +799,7 @@ const ja = {
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
     starterUseSample: "サンプルを使う",
+    starterOpenFile: "ファイルを開く",
     starterBackToPaste: "貼り付けに戻る",
     starterApply: "グラフに反映",
     starterSamplesTitle: "サンプル",
@@ -1059,6 +1077,7 @@ const en: Messages = {
     copyFailed: "Could not copy the screenshot to the clipboard.",
     download: "Download",
     downloadFailed: "Could not download the screenshot.",
+    emptyGraph: "The graph is empty.",
     downloaded: "Downloaded",
     downloading: "Downloading",
   },
@@ -1073,6 +1092,14 @@ const en: Messages = {
     nodeLabelPlaceholder: "Leave blank for no label",
     editEdgeWeight: "Edit edge weight",
     editEdgeLabel: "Edit edge label",
+    editEdgeWeightOf: (value: string) => `Edit edge weight ${value}`,
+    editEdgeLabelOf: (value: string) => `Edit edge label ${value}`,
+    nodeName: (label: string) => `node ${label}`,
+    unlabeledNode: "unlabeled node",
+    selectNode: (name: string) => `Select ${name}`,
+    connectEdgeTo: (name: string) => `Connect edge to ${name}`,
+    sourceSelected: (name: string) => `${name} selected as source`,
+    inlineEditErrors: { "invalid-number": "Enter a number" },
     resetEdgeCurve: "Return to automatic routing",
     bendEdgeLeft: "Bend left",
     bendEdgeRight: "Bend right",
@@ -1216,6 +1243,7 @@ const en: Messages = {
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
     starterUseSample: "Use a sample",
+    starterOpenFile: "Open file",
     starterBackToPaste: "Back to paste",
     starterApply: "Apply to graph",
     starterSamplesTitle: "Samples",
@@ -1490,6 +1518,7 @@ const zhHans: Messages = {
     copyFailed: "无法将截图复制到剪贴板。",
     download: "下载",
     downloadFailed: "无法下载截图。",
+    emptyGraph: "图为空。",
     downloaded: "已下载",
     downloading: "下载中",
   },
@@ -1504,6 +1533,14 @@ const zhHans: Messages = {
     nodeLabelPlaceholder: "留空则不显示标签",
     editEdgeWeight: "编辑边权值",
     editEdgeLabel: "编辑边标签",
+    editEdgeWeightOf: (value: string) => `编辑边权重 ${value}`,
+    editEdgeLabelOf: (value: string) => `编辑边标签 ${value}`,
+    nodeName: (label: string) => `顶点 ${label}`,
+    unlabeledNode: "无标签顶点",
+    selectNode: (name: string) => `选择${name}`,
+    connectEdgeTo: (name: string) => `连接到${name}`,
+    sourceSelected: (name: string) => `${name}已选为起点`,
+    inlineEditErrors: { "invalid-number": "请输入数字" },
     resetEdgeCurve: "恢复自动布线",
     bendEdgeLeft: "向左弯曲",
     bendEdgeRight: "向右弯曲",
@@ -1643,6 +1680,7 @@ const zhHans: Messages = {
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
     starterUseSample: "使用示例",
+    starterOpenFile: "打开文件",
     starterBackToPaste: "返回粘贴",
     starterApply: "应用到图",
     starterSamplesTitle: "示例",

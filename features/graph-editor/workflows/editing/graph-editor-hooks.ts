@@ -28,7 +28,6 @@ import {
 } from "../../shell/state/editor-shortcuts";
 import {
   GRAPH_STORAGE_KEY,
-  initialGraph,
   syncExternalGraphAtom,
 } from "../../shell/state/graph-atoms";
 import {
@@ -157,7 +156,15 @@ export function useGraphExternalStorageSync() {
         return;
       }
 
-      syncExternalGraph(parseStoredGraph(event.newValue) ?? initialGraph);
+      // Another tab may have hit the storage cap or written something this
+      // build cannot read; never replace the live graph with an empty one.
+      const externalGraph = parseStoredGraph(event.newValue);
+
+      if (!externalGraph) {
+        return;
+      }
+
+      syncExternalGraph(externalGraph);
       resetEditorSession();
     };
 

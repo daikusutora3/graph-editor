@@ -103,7 +103,7 @@ export function tryImportAdjacencyMatrix(
 
   const settings = readImportSettings(options, {
     directed,
-    weighted: hasWeightedValue || options.weighted ? true : false,
+    weighted: Boolean(hasWeightedValue || options.weighted),
   });
   const model = createEmptyGraphModel(settings);
 
@@ -268,7 +268,7 @@ export function tryImportAdjacencyList(
     },
     {
       directed: options.directed || hasArrowSyntax,
-      weighted: hasWeightedTargets || options.weighted ? true : false,
+      weighted: Boolean(hasWeightedTargets || options.weighted),
     },
   );
   const model = createEmptyGraphModel(settings);
