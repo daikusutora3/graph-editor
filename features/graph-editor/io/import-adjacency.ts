@@ -17,7 +17,7 @@ import {
   splitTokens,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
-import type { ImportResult } from "./import-types";
+import type { ImportResult, ImportWarning } from "./import-types";
 
 export function tryImportAdjacencyMatrix(
   lines: ParsedLine[],
@@ -126,11 +126,16 @@ export function tryImportAdjacencyMatrix(
         return;
       }
 
+      const sourceNode = model.nodes[sourceIndex];
+      const targetNode = model.nodes[targetIndex];
+
+      if (!sourceNode || !targetNode) return;
+
       model.edges.push(
         createEdge({
           id: `e${model.edges.length}`,
-          source: model.nodes[sourceIndex].id,
-          target: model.nodes[targetIndex].id,
+          source: sourceNode.id,
+          target: targetNode.id,
           weight: settings.weighted ? String(value) : undefined,
         }),
       );
@@ -222,7 +227,7 @@ export function tryImportAdjacencyList(
   const hasArrowSyntax = lines.some((line) => line.text.includes("->"));
   const labels = lines.flatMap((line) => {
     const separator = line.text.includes("->") ? "->" : ":";
-    const [sourceText, targetText = ""] = line.text.split(separator);
+    const [sourceText = "", targetText = ""] = line.text.split(separator);
     return [
       sourceText.trim(),
       ...splitTokens(targetText).map(
@@ -274,15 +279,15 @@ export function tryImportAdjacencyList(
   const model = createEmptyGraphModel(settings);
   const idByLabel = new Map<string, NodeId>();
   const seenUndirected = new Set<string>();
-  const warnings: string[] = [];
+  const warnings: ImportWarning[] = [];
 
   lines.forEach((line) => {
     const separator = line.text.includes("->") ? "->" : ":";
-    const [sourceText, targetText = ""] = line.text.split(separator);
+    const [sourceText = "", targetText = ""] = line.text.split(separator);
     const sourceLabel = sourceText.trim();
 
     if (!sourceLabel) {
-      warnings.push(`line ${line.number}: missing source node.`);
+      warnings.push({ code: "missing-source", line: line.number });
       return;
     }
 
@@ -298,7 +303,7 @@ export function tryImportAdjacencyList(
       const { label: targetLabel } = parsedTarget;
 
       if (!targetLabel) {
-        warnings.push(`line ${line.number}: missing target node.`);
+        warnings.push({ code: "missing-target", line: line.number });
         return;
       }
 
@@ -307,7 +312,7 @@ export function tryImportAdjacencyList(
         shouldRequireNumericWeights(settings) &&
         !Number.isFinite(Number(weight))
       ) {
-        warnings.push(`line ${line.number}: weight must be numeric.`);
+        warnings.push({ code: "weight-not-numeric", line: line.number });
         return;
       }
 
@@ -349,7 +354,7 @@ function parseAdjacencyTarget(token: string) {
     return { label: token, weight: undefined };
   }
 
-  const [, label, weight] = weightedMatch;
+  const [, label = "", weight = ""] = weightedMatch;
   return {
     label: label.trim(),
     weight: weight.trim() || "1",

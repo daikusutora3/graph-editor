@@ -13,7 +13,7 @@ import {
   splitTokens,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
-import type { ImportResult } from "./import-types";
+import type { ImportResult, ImportWarning } from "./import-types";
 
 export function tryImportLooseEdgeList(
   lines: ParsedLine[],
@@ -60,17 +60,22 @@ export function tryImportLooseEdgeList(
   );
   const model = createEmptyGraphModel(settings);
   const idByLabel = new Map<string, NodeId>();
-  const warnings: string[] = [];
+  const warnings: ImportWarning[] = [];
 
   rows.forEach(([sourceLabel, targetLabel, weight], index) => {
+    if (sourceLabel === undefined || targetLabel === undefined) {
+      return;
+    }
+
     const edgeWeight = weight ?? "1";
     if (
       shouldRequireNumericWeights(settings) &&
       !Number.isFinite(Number(edgeWeight))
     ) {
-      warnings.push(
-        `line ${lines[index]?.number ?? index + 1}: weight must be numeric.`,
-      );
+      warnings.push({
+        code: "weight-not-numeric",
+        line: lines[index]?.number ?? index + 1,
+      });
       return;
     }
 

@@ -13,7 +13,7 @@ import {
   splitTokens,
   type ImportOptions,
 } from "./import-utils";
-import type { ImportResult } from "./import-types";
+import type { ImportResult, ImportWarning } from "./import-types";
 
 type EdgeListImportOptions = ImportOptions;
 
@@ -21,7 +21,7 @@ export function importStructuredEdgeList(
   input: string,
   options: EdgeListImportOptions = {},
 ): ImportResult {
-  const warnings: string[] = [];
+  const warnings: ImportWarning[] = [];
   const settings = readImportSettings(options);
   const lines = readLines(input);
   const header = lines[0]?.text.split(/\s+/) ?? [];
@@ -32,20 +32,24 @@ export function importStructuredEdgeList(
     return {
       model: createEmptyGraphModel(settings),
       warnings: [
-        `line ${lines[0]?.number ?? 1}: expected "N M", got "${lines[0]?.text ?? ""}"`,
+        {
+          code: "expected-header",
+          line: lines[0]?.number ?? 1,
+          got: lines[0]?.text ?? "",
+        },
       ],
     };
   }
   if (!Number.isInteger(nodeCount) || nodeCount < 0) {
     return {
       model: createEmptyGraphModel(settings),
-      warnings: [`line ${lines[0]?.number ?? 1}: invalid node count.`],
+      warnings: [{ code: "invalid-node-count", line: lines[0]?.number ?? 1 }],
     };
   }
   if (!Number.isInteger(edgeCount) || edgeCount < 0) {
     return {
       model: createEmptyGraphModel(settings),
-      warnings: [`line ${lines[0]?.number ?? 1}: invalid edge count.`],
+      warnings: [{ code: "invalid-edge-count", line: lines[0]?.number ?? 1 }],
     };
   }
   if (nodeCount > MAX_IMPORT_NODES) {
@@ -92,12 +96,17 @@ export function importStructuredEdgeList(
 
   const dataLines = lines.slice(1);
   if (dataLines.length < edgeCount) {
-    warnings.push(`Expected ${edgeCount} edges, found ${dataLines.length}.`);
+    warnings.push({
+      code: "missing-edges",
+      expected: edgeCount,
+      found: dataLines.length,
+    });
   }
   if (dataLines.length > edgeCount) {
-    warnings.push(
-      `Ignored ${dataLines.length - edgeCount} extra edge line(s).`,
-    );
+    warnings.push({
+      code: "extra-edge-lines",
+      count: dataLines.length - edgeCount,
+    });
   }
 
   for (
@@ -106,13 +115,20 @@ export function importStructuredEdgeList(
     index += 1
   ) {
     const line = dataLines[index];
+
+    if (!line) continue;
+
     const parts = line.text.split(/\s+/);
     const expectedColumns = settings.weighted ? 3 : 2;
 
     if (parts.length !== expectedColumns) {
-      warnings.push(
-        `line ${line.number}: expected ${expectedColumns} integers (${settings.weighted ? "u v w" : "u v"}), got ${parts.length}`,
-      );
+      warnings.push({
+        code: "expected-integers",
+        line: line.number,
+        expected: expectedColumns,
+        shape: settings.weighted ? "u v w" : "u v",
+        got: parts.length,
+      });
       continue;
     }
 
@@ -126,9 +142,14 @@ export function importStructuredEdgeList(
       targetIndex < 0 ||
       targetIndex >= nodeCount
     ) {
-      warnings.push(
-        `line ${line.number}: node id ${parts[0]} or ${parts[1]} out of range [${inputIndexBase}, ${nodeCount - 1 + inputIndexBase}]`,
-      );
+      warnings.push({
+        code: "node-out-of-range",
+        line: line.number,
+        source: parts[0] ?? "",
+        target: parts[1] ?? "",
+        min: inputIndexBase,
+        max: nodeCount - 1 + inputIndexBase,
+      });
       continue;
     }
 
@@ -136,15 +157,20 @@ export function importStructuredEdgeList(
       shouldRequireNumericWeights(settings) &&
       !Number.isFinite(Number(parts[2]))
     ) {
-      warnings.push(`line ${line.number}: weight must be numeric.`);
+      warnings.push({ code: "weight-not-numeric", line: line.number });
       continue;
     }
+
+    const sourceNode = model.nodes[sourceIndex];
+    const targetNode = model.nodes[targetIndex];
+
+    if (!sourceNode || !targetNode) continue;
 
     model.edges.push(
       createEdge({
         id: `e${index}`,
-        source: model.nodes[sourceIndex].id,
-        target: model.nodes[targetIndex].id,
+        source: sourceNode.id,
+        target: targetNode.id,
         weight: settings.weighted ? parts[2] : undefined,
       }),
     );

@@ -279,13 +279,13 @@ expect(
 );
 
 expect(
-  formatImportWarning("line 2: weight must be numeric.", "ja") ===
+  formatImportWarning({ code: "weight-not-numeric", line: 2 }, "ja") ===
     "2 行目: 重みは数値で入力してください。" &&
     formatImportWarning(
-      "Import is too large: 1,001 nodes, maximum is 1,000.",
+      { code: "too-large", kind: "nodes", count: 1001, limit: 1000 },
       "zh-Hans",
     ) === "输入过大: 1,001 顶点，上限是 1,000。" &&
-    formatImportWarning("line 2: weight must be numeric.", "en") ===
+    formatImportWarning({ code: "weight-not-numeric", line: 2 }, "en") ===
       "line 2: weight must be numeric.",
   "import warning display should localize known warnings and preserve English",
 );
@@ -642,7 +642,7 @@ const nonNumericLooseWeight = importGraphInput("0 1 x", {
 
 expect(
   nonNumericLooseWeight.model.edges.length === 0 &&
-    nonNumericLooseWeight.warnings[0]?.includes("weight must be numeric"),
+    nonNumericLooseWeight.warnings[0]?.code === "weight-not-numeric",
   "weighted edge-pairs import should reject non-numeric weights",
 );
 
@@ -654,7 +654,7 @@ const nonNumericAdjacencyWeight = importGraphInput("0: 1(x)", {
 
 expect(
   nonNumericAdjacencyWeight.model.edges.length === 0 &&
-    nonNumericAdjacencyWeight.warnings[0]?.includes("weight must be numeric"),
+    nonNumericAdjacencyWeight.warnings[0]?.code === "weight-not-numeric",
   "weighted adjacency-list import should reject non-numeric weights",
 );
 
@@ -695,7 +695,7 @@ const oversizedStructuredEdgeList = importGraphInput(
 
 expect(
   oversizedStructuredEdgeList.model.nodes.length === 0 &&
-    oversizedStructuredEdgeList.warnings[0]?.includes("Import is too large"),
+    oversizedStructuredEdgeList.warnings[0]?.code === "too-large",
   "structured edge-list import should reject oversized node counts before allocation",
 );
 
@@ -708,7 +708,7 @@ const oversizedLooseEdgeList = importGraphInput(
 
 expect(
   oversizedLooseEdgeList.model.edges.length === 0 &&
-    oversizedLooseEdgeList.warnings[0]?.includes("Import is too large"),
+    oversizedLooseEdgeList.warnings[0]?.code === "too-large",
   "loose edge-list import should reject oversized edge counts before building the graph",
 );
 
@@ -718,7 +718,7 @@ const oversizedRawInput = importGraphInput(
 
 expect(
   oversizedRawInput.model.nodes.length === 0 &&
-    oversizedRawInput.warnings[0]?.includes("Import is too large"),
+    oversizedRawInput.warnings[0]?.code === "too-large",
   "import should reject oversized raw input before parsing lines",
 );
 

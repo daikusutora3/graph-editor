@@ -47,6 +47,12 @@
       "rules": {
         "no-restricted-imports": "off"
       }
+    },
+    {
+      "files": ["scripts/audit/**"],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
     }
   ]
 }

@@ -1,0 +1,13 @@
+{
+  // Stricter indexing rules, rolled out module by module. Add a directory here
+  // once its errors are fixed; `bun run check` enforces it.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "incremental": false
+  },
+  "include": [
+    "features/graph-editor/io/**/*.ts",
+    "features/graph-editor/core/**/*.ts"
+  ]
+}

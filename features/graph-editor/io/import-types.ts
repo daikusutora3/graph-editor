@@ -10,9 +10,49 @@ export type ImportFormatKind =
   | "adjacency-matrix"
   | "json";
 
+/**
+ * Import warnings are structured so the UI can translate them; the English
+ * rendering lives in i18n/import-warning-messages.ts.
+ */
+export type ImportWarning =
+  | { code: "empty-input" }
+  | {
+      code: "too-large";
+      kind: "input" | "nodes" | "edges";
+      count: number;
+      limit: number;
+    }
+  | { code: "invalid-format"; formatKind: ImportFormatKind }
+  | { code: "unsupported-format" }
+  | { code: "ambiguous-formats" }
+  | { code: "maybe-weighted-parent-list" }
+  | { code: "missing-edges"; expected: number; found: number }
+  | { code: "extra-edge-lines"; count: number }
+  | {
+      code: "expected-integers";
+      line: number;
+      expected: number;
+      shape: string;
+      got: number;
+    }
+  | {
+      code: "node-out-of-range";
+      line: number;
+      source: string;
+      target: string;
+      min: number;
+      max: number;
+    }
+  | { code: "weight-not-numeric"; line: number }
+  | { code: "missing-source"; line: number }
+  | { code: "missing-target"; line: number }
+  | { code: "expected-header"; line: number; got: string }
+  | { code: "invalid-node-count"; line: number }
+  | { code: "invalid-edge-count"; line: number };
+
 export type ImportResult = {
   model: GraphModel;
-  warnings: string[];
+  warnings: ImportWarning[];
   formatKind?: ImportFormatKind;
   format?: string;
 };

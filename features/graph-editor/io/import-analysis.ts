@@ -132,7 +132,23 @@ export function analyzeGraphInput(
     };
   }
 
-  const strongestRank = strengthRank[candidates[0].strength];
+  const best = candidates[0];
+
+  if (!best) {
+    return {
+      status: "invalid",
+      candidates: [],
+      diagnostics: [
+        {
+          code: "invalid-format",
+          severity: "error",
+          message: "Input does not match a supported graph format.",
+        },
+      ],
+    };
+  }
+
+  const strongestRank = strengthRank[best.strength];
   const strongest = candidates.filter(
     (candidate) => strengthRank[candidate.strength] === strongestRank,
   );
@@ -140,7 +156,7 @@ export function analyzeGraphInput(
 
   return {
     status: ambiguous ? "ambiguous" : "detected",
-    recommendedFormat: candidates[0].formatKind,
+    recommendedFormat: best.formatKind,
     candidates,
     diagnostics: ambiguous
       ? [

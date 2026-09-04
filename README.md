@@ -32,7 +32,11 @@ Public app: <https://graph-editor.daikusutora3.workers.dev>
 - **Layout tools**: apply force-directed, BFS, tree, DAG, bipartite, SCC,
   radial, circular, grid, line, concentric, and spread layouts.
 - **Export options**: copy or save edge lists, adjacency lists, adjacency
-  matrices, and PNG images with background and padding controls.
+  matrices, PNG images with background and padding controls, and lossless
+  JSON that keeps positions, colours, and edge bends.
+- **User guide**: `/guide` (also `/en/guide`, `/zh-hans/guide`) documents the
+  formats, layouts, shortcuts, and FAQ; `/llms.txt` summarises the app for
+  AI assistants.
 - **Multilingual UI**: Japanese, English, and Simplified Chinese are supported
   in the app.
 

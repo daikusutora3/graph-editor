@@ -5,7 +5,11 @@ import type {
   GraphSettings,
   NodeId,
 } from "../core/graph/model";
-import type { ImportFormatKind, ImportResult } from "./import-types";
+import type {
+  ImportFormatKind,
+  ImportResult,
+  ImportWarning,
+} from "./import-types";
 
 export type ImportFormat =
   | "auto"
@@ -85,14 +89,14 @@ export function readImportSettings(
 }
 
 export function importFailure(
-  message: string,
+  warning: ImportWarning,
   options: ImportOptions,
   format?: string,
   formatKind?: ImportFormatKind,
 ): ImportResult {
   return {
     model: createEmptyGraphModel(readImportSettings(options)),
-    warnings: [message],
+    warnings: [warning],
     format,
     formatKind,
   };
@@ -106,15 +110,8 @@ export function importLimitFailure(
   format?: string,
   formatKind?: ImportFormatKind,
 ) {
-  const label =
-    kind === "input"
-      ? "input characters"
-      : kind === "nodes"
-        ? "nodes"
-        : "edges";
-
   return importFailure(
-    `Import is too large: ${count.toLocaleString("en-US")} ${label}, maximum is ${limit.toLocaleString("en-US")}.`,
+    { code: "too-large", kind, count, limit },
     options,
     format,
     formatKind,

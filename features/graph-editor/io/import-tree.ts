@@ -83,11 +83,16 @@ export function tryImportTreeEdgeList(
       return;
     }
 
+    const sourceNode = model.nodes[sourceIndex];
+    const targetNode = model.nodes[targetIndex];
+
+    if (!sourceNode || !targetNode) return;
+
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
-        source: model.nodes[sourceIndex].id,
-        target: model.nodes[targetIndex].id,
+        source: sourceNode.id,
+        target: targetNode.id,
       }),
     );
   });
@@ -121,7 +126,7 @@ export function tryImportParentList(
     return null;
   }
 
-  const parents = splitTokens(lines[1].text).map(Number);
+  const parents = splitTokens(lines[1]?.text ?? "").map(Number);
   if (
     parents.length !== nodeCount - 1 ||
     parents.some((value) => !Number.isInteger(value))
@@ -155,12 +160,17 @@ export function tryImportParentList(
   parents.forEach((parentLabel, index) => {
     const parentIndex = parentIndices[index];
     const childIndex = index + 1;
+    const parentNode =
+      parentIndex === undefined ? undefined : model.nodes[parentIndex];
+    const childNode = model.nodes[childIndex];
+
+    if (!parentNode || !childNode) return;
 
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
-        source: model.nodes[parentIndex].id,
-        target: model.nodes[childIndex].id,
+        source: parentNode.id,
+        target: childNode.id,
       }),
     );
   });
@@ -239,12 +249,17 @@ export function tryImportWeightedParentList(
   rows.forEach(([, weight], index) => {
     const parentIndex = parentIndices[index];
     const childIndex = index + 1;
+    const parentNode =
+      parentIndex === undefined ? undefined : model.nodes[parentIndex];
+    const childNode = model.nodes[childIndex];
+
+    if (!parentNode || !childNode) return;
 
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
-        source: model.nodes[parentIndex].id,
-        target: model.nodes[childIndex].id,
+        source: parentNode.id,
+        target: childNode.id,
         weight,
       }),
     );

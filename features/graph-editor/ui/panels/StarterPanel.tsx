@@ -189,7 +189,10 @@ export function StarterPasteBody({
           )}
         >
           {visibleIssues.slice(0, 3).map((issue) => (
-            <div key={issue} className="flex items-center gap-1.5">
+            <div
+              key={formatImportWarning(issue, locale)}
+              className="flex items-center gap-1.5"
+            >
               <CircleAlert
                 className="size-[13px] shrink-0"
                 aria-hidden="true"
