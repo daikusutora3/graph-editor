@@ -48,6 +48,7 @@ import { CanvasHint, Toast } from "./CanvasHint";
 import { EditorPanelShell } from "./EditorPanelShell";
 import { DesktopTopRow, MobileBottomBar, MobileTopRow } from "./EditorToolbar";
 import { EmptyState } from "./EmptyState";
+import { useTimedState } from "../hooks/use-timed-state";
 import { resetLearnedHints } from "./hint-storage";
 import { AppMenuPanel } from "../panels/AppMenuPanel";
 import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
@@ -107,11 +108,11 @@ export function EditorChrome() {
     useState<GraphExportFormat>("edge-list");
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const copyResetRef = useRef<number | null>(null);
-  const [clearArmed, setClearArmed] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [clearArmed, setClearArmed] = useTimedState(false, 3000);
+  const [toast, setToast] = useTimedState<string | null>(null, 4000);
   const [starterView, setStarterView] = useState<StarterView>("paste");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const isGraphEmpty = graph.nodes.length === 0;
+  const isGraphEmpty = graphIsEmpty;
   const visiblePanel = presence.value;
   const exportVisible = panel === "export" || visiblePanel === "export";
   const exportText = useMemo(
@@ -147,16 +148,6 @@ export function EditorChrome() {
   }, [panel]);
 
   useEffect(() => {
-    if (!clearArmed) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => setClearArmed(false), 3000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [clearArmed]);
-
-  useEffect(() => {
     if (panel !== "settings" && panel !== "menu") {
       setClearArmed(false);
     }
@@ -164,7 +155,7 @@ export function EditorChrome() {
     if (panel !== "export") {
       setCopyState("idle");
     }
-  }, [panel]);
+  }, [panel, setClearArmed]);
 
   useEffect(
     () => () => {
@@ -213,7 +204,7 @@ export function EditorChrome() {
   }, [graph.settings.autoEdgeRouting, updateGraphSettings]);
 
   const handleClear = useCallback(() => {
-    if (isGraphEmpty && graph.edges.length === 0) {
+    if (isGraphEmpty) {
       setClearArmed(false);
       return;
     }
@@ -231,21 +222,12 @@ export function EditorChrome() {
     clearArmed,
     clearGraph,
     close,
-    graph.edges.length,
     isGraphEmpty,
     messages.chrome,
+    setClearArmed,
+    setToast,
     undoShortcut,
   ]);
-
-  useEffect(() => {
-    if (toast === null) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => setToast(null), 4000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [toast]);
 
   const copyExport = useCallback(async () => {
     const copied = await copyTextToClipboard(exportGraph(graph, exportFormat));

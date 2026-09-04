@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { focusRing } from "./styles";
+import { rovingFocusKeyDown } from "./use-roving-focus";
 
 export type SegmentOption<T extends string> = { label: string; value: T };
 
@@ -14,12 +15,14 @@ export type SegmentOption<T extends string> = { label: string; value: T };
  * without relying on color alone.
  */
 export function Segment<T extends string>({
+  disabled = false,
   label,
   onChange,
   options,
   size = "sm",
   value,
 }: {
+  disabled?: boolean;
   label: string;
   onChange: (value: T) => void;
   options: readonly SegmentOption<T>[];
@@ -30,6 +33,7 @@ export function Segment<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
+      onKeyDown={rovingFocusKeyDown}
       className="grid min-w-0 shrink-0 auto-cols-[minmax(0,1fr)] grid-flow-col overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] shadow-[0_1px_2px_rgb(0_0_0/0.06)]"
     >
       {options.map((option, index) => {
@@ -41,10 +45,12 @@ export function Segment<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
+            disabled={disabled}
+            tabIndex={selected ? 0 : -1}
             aria-label={`${label}: ${option.label}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex min-w-0 items-center justify-center gap-1.5 px-2 text-[13px] whitespace-nowrap transition-colors",
+              "text-control flex min-w-0 items-center justify-center gap-1.5 px-2 whitespace-nowrap transition-colors",
               "focus-visible:relative focus-visible:z-10",
               focusRing,
               size === "md" ? "min-h-9" : "min-h-[30px]",

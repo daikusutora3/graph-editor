@@ -45,7 +45,7 @@ export function SectionLabel({
 }) {
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
-      <span className="text-[11px] font-bold tracking-[0.06em] text-[var(--muted)]">
+      <span className="text-meta font-bold tracking-[0.06em] text-[var(--muted)]">
         {children}
       </span>
       {trailing ? (

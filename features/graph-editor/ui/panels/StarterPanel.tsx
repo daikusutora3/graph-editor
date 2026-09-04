@@ -1,7 +1,7 @@
 "use client";
 
-import { CircleAlert, FileInput } from "lucide-react";
-import { lazy, Suspense, type RefObject } from "react";
+import { CircleAlert, FileInput, FolderOpen } from "lucide-react";
+import { lazy, Suspense, type RefObject, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,7 @@ const IMPORT_FORMAT_EXAMPLES: Record<ImportFormat, string> = {
 };
 import type { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
 import { Button, Select, focusRing, raisedControl } from "../primitives";
-import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/SampleGalleryPane";
+import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/sample-gallery-layout";
 import { SampleGraphPreview } from "../samples/SampleGraphPreview";
 
 export const loadSampleGalleryPane = () =>
@@ -121,7 +121,7 @@ export function StarterPasteBody({
             role="status"
             aria-live="polite"
             className={cn(
-              "font-mono text-[11px] font-semibold whitespace-nowrap",
+              "text-meta font-mono font-semibold whitespace-nowrap",
               hasIssues && inputText.trim()
                 ? "text-[var(--danger)]"
                 : "text-[var(--muted)]",
@@ -216,11 +216,40 @@ export function StarterPasteFooter({
   const { messages } = useI18n();
   const canApply = canApplyStarter(starter);
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const openFile = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+
+    starter.setInput(await file.text());
+  };
+
   return (
     <div className="flex w-full items-center gap-2">
       <Button size="lg" variant="secondary" onClick={onUseSample}>
         {messages.chrome.starterUseSample}
       </Button>
+      <Button
+        size="lg"
+        variant="secondary"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <FolderOpen className="size-icon-sm" aria-hidden="true" />
+        {messages.chrome.starterOpenFile}
+      </Button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.json,text/plain,application/json"
+        hidden
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(event) => {
+          void openFile(event.currentTarget.files?.[0]);
+          event.currentTarget.value = "";
+        }}
+      />
       <span className="flex-1" />
       <Button
         disabled={!canApply}
@@ -229,7 +258,7 @@ export function StarterPasteFooter({
         className="px-4"
         onClick={() => starter.applyText()}
       >
-        <FileInput className="size-[15px]" aria-hidden="true" />
+        <FileInput className="size-icon-sm" aria-hidden="true" />
         {messages.chrome.starterApply}
       </Button>
     </div>
@@ -280,7 +309,7 @@ function AmbiguousFormatChoices({
 
   return (
     <fieldset className="rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3">
-      <legend className="px-1 text-[13px] font-semibold text-[var(--text)]">
+      <legend className="text-control px-1 font-semibold text-[var(--text)]">
         {messages.starter.ambiguousTitle}
       </legend>
       <p className="mb-2 text-xs text-[var(--muted)]">

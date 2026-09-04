@@ -5,7 +5,10 @@ import { ArrowLeftRight, Lightbulb, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import type { GraphModel, GraphSettings } from "../../core/graph/model";
+import { useAtomValue } from "jotai";
+
 import { useI18n } from "../../i18n/I18nProvider";
+import { graphIsEmptyAtom } from "../../shell/state/graph-atoms";
 import type { Locale } from "../../i18n/locale";
 import {
   Button,
@@ -39,7 +42,7 @@ export function SettingsPanel({
   const canReverseAll =
     settings.directed &&
     graph.edges.some((edge) => edge.source !== edge.target);
-  const isGraphEmpty = graph.nodes.length === 0 && graph.edges.length === 0;
+  const isGraphEmpty = useAtomValue(graphIsEmptyAtom);
 
   return (
     <>
@@ -101,11 +104,11 @@ export function SettingsPanel({
               }
             />
             <Button
-              className="justify-start rounded-lg px-3 text-[13px]"
+              className="text-control justify-start rounded-lg px-3"
               disabled={!canReverseAll}
               onClick={onReverseAllEdges}
             >
-              <ArrowLeftRight className="size-[15px]" aria-hidden="true" />
+              <ArrowLeftRight className="size-icon-sm" aria-hidden="true" />
               {messages.settings.reverseAllEdges}
             </Button>
           </>
@@ -119,14 +122,12 @@ export function SettingsPanel({
         <OptionToggle
           checked={settings.snapToGrid}
           label={messages.settings.snapToGrid}
-          onClick={() => onUpdateSettings({ snapToGrid: !settings.snapToGrid })}
+          onChange={(checked) => onUpdateSettings({ snapToGrid: checked })}
         />
         <OptionToggle
           checked={settings.showNodeLabels}
           label={messages.settings.showNodeLabels}
-          onClick={() =>
-            onUpdateSettings({ showNodeLabels: !settings.showNodeLabels })
-          }
+          onChange={(checked) => onUpdateSettings({ showNodeLabels: checked })}
         />
       </div>
 
@@ -147,11 +148,11 @@ export function SettingsPanel({
           type="button"
           onClick={onResetHints}
           className={cn(
-            "touch:min-h-11 flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
+            "touch:min-h-11 text-control flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
             focusRing,
           )}
         >
-          <Lightbulb className="size-[15px]" aria-hidden="true" />
+          <Lightbulb className="size-icon-sm" aria-hidden="true" />
           <span className="flex-1">{messages.chrome.resetHints}</span>
         </button>
         <button
@@ -162,18 +163,18 @@ export function SettingsPanel({
           }
           onClick={onClear}
           className={cn(
-            "touch:min-h-11 flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[13px] font-semibold transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
+            "touch:min-h-11 text-control flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left font-semibold transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
             focusRing,
             clearArmed
               ? "bg-[var(--danger-fill)] text-[var(--danger)]"
               : "text-[var(--muted)] hover:bg-[var(--danger-fill)] hover:text-[var(--danger)]",
           )}
         >
-          <Trash2 className="size-[15px]" aria-hidden="true" />
+          <Trash2 className="size-icon-sm" aria-hidden="true" />
           <span className="flex-1">
             {clearArmed ? messages.chrome.clearArmed : messages.chrome.clear}
           </span>
-          <span className="text-[11px] font-medium text-[var(--muted)]">
+          <span className="text-meta font-medium text-[var(--muted)]">
             {clearArmed
               ? messages.chrome.clearArmedHint
               : messages.chrome.clearHint}

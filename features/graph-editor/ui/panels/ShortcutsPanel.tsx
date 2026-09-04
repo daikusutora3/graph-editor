@@ -49,16 +49,16 @@ export function ShortcutsPanel({ platform }: { platform: ShortcutPlatform }) {
     <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-x-7 gap-y-4">
       {groups.map((group) => (
         <div key={group.title} className="flex flex-col gap-1">
-          <div className="pb-1 text-[11px] font-bold tracking-[0.06em] text-[var(--muted)]">
+          <div className="text-meta pb-1 font-bold tracking-[0.06em] text-[var(--muted)]">
             {group.title}
           </div>
           {group.rows.map(([label, key]) => (
             <div
               key={label}
-              className="flex h-[30px] items-center justify-between text-[13px] text-[var(--text-2)]"
+              className="text-control flex h-[30px] items-center justify-between text-[var(--text-2)]"
             >
               <span>{label}</span>
-              <kbd className="grid h-6 min-w-[26px] place-items-center rounded-md bg-[var(--fill)] px-1.5 font-mono text-[13px] font-semibold text-[var(--text-2)]">
+              <kbd className="text-control grid h-6 min-w-[26px] place-items-center rounded-md bg-[var(--fill)] px-1.5 font-mono font-semibold text-[var(--text-2)]">
                 {key}
               </kbd>
             </div>

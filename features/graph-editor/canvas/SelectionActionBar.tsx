@@ -2,6 +2,7 @@
 
 import { useI18n } from "../i18n/I18nProvider";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
+import { rovingFocusKeyDown } from "../ui/primitives/use-roving-focus";
 import {
   SELECTABLE_EDGE_COLORS,
   SELECTABLE_NODE_COLORS,
@@ -114,6 +115,7 @@ export function SelectionActionBar({
               ? messages.canvas.nodeColor
               : messages.canvas.edgeColor
           }
+          onKeyDown={rovingFocusKeyDown}
           className={cn(
             "flex items-center border-x border-[var(--line)] px-2.5 py-1",
             chrome.layout === "mobile" ? "gap-0 px-1" : "gap-0 px-1.5",
@@ -129,6 +131,12 @@ export function SelectionActionBar({
               kind={swatchKind}
               large={chrome.layout === "mobile"}
               active={activeColor === color}
+              tabIndex={
+                activeColor === color ||
+                (activeColor == null && color === SELECTABLE_NODE_COLORS[0])
+                  ? 0
+                  : -1
+              }
               label={messages.canvas.colorFor(
                 swatchKind,
                 messages.canvas.colors[color],
@@ -154,7 +162,7 @@ export function SelectionActionBar({
             className="rounded-lg"
             onClick={() => runAction(id)}
           >
-            <Icon className="size-[15px]" aria-hidden="true" />
+            <Icon className="size-icon-sm" aria-hidden="true" />
             {label}
             {kbd ? (
               <Kbd size="md" tone={danger ? "danger" : "neutral"}>
@@ -175,6 +183,7 @@ function ColorSwatch({
   label,
   large,
   onPick,
+  tabIndex,
 }: {
   active: boolean;
   color: GraphColor;
@@ -182,6 +191,7 @@ function ColorSwatch({
   label: string;
   large: boolean;
   onPick: () => void;
+  tabIndex: number;
 }) {
   const fill = kind === "node" ? swatchFill(color) : swatchStroke(color);
   const stroke = swatchStroke(color);
@@ -191,6 +201,7 @@ function ColorSwatch({
       type="button"
       role="radio"
       aria-checked={active}
+      tabIndex={tabIndex}
       aria-label={label}
       data-tooltip={label}
       data-tooltip-side="top"

@@ -30,8 +30,8 @@ const variantClass: Record<ButtonVariant, string> = {
 
 const sizeClass: Record<ButtonSize, string> = {
   sm: "h-8 gap-1.5 px-2.5 text-xs touch:h-11 touch:px-3",
-  md: "h-9 gap-1.5 px-2.5 text-[13px] touch:h-11 touch:px-3",
-  lg: "h-10 gap-2 px-3.5 text-[13px] touch:h-11",
+  md: "h-9 gap-1.5 px-2.5 text-control touch:h-11 touch:px-3",
+  lg: "h-10 gap-2 px-3.5 text-control touch:h-11",
 };
 
 export type TooltipSide = "bottom" | "bottom-end" | "top";
@@ -94,9 +94,10 @@ export function Button({
   );
 }
 
+/** Same size names as Button: sm = 30px, md = 36px, lg = 40px. */
 export type IconButtonProps = Omit<ButtonProps, "size"> & {
   label: string;
-  size?: 30 | 36 | 38 | 40;
+  size?: "sm" | "md" | "lg";
   children: ReactNode;
 };
 
@@ -105,7 +106,7 @@ export function IconButton({
   children,
   className,
   label,
-  size = 40,
+  size = "lg",
   tooltip,
   tooltipSide,
   variant = "ghost",
@@ -121,10 +122,9 @@ export function IconButton({
         "grid shrink-0 place-items-center transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
         focusRing,
         "touch:size-11 touch:rounded-lg",
-        size === 30 && "size-[30px] rounded-md",
-        size === 36 && "size-9 rounded-lg",
-        size === 38 && "size-[38px] rounded-lg",
-        size === 40 && "size-10 rounded-lg",
+        size === "sm" && "size-[30px] rounded-md",
+        size === "md" && "size-9 rounded-lg",
+        size === "lg" && "size-10 rounded-lg",
         active
           ? "bg-[var(--accent-fill)] text-[var(--accent-text)]"
           : variantClass[variant],

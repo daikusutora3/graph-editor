@@ -14,7 +14,7 @@ const APP_REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
 const APP_ISSUES_URL = `${APP_REPOSITORY_URL}/issues/new`;
 
 const rowClass = cn(
-  "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[13px] font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] touch:min-h-11",
+  "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-control font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] touch:min-h-11",
   focusRing,
 );
 

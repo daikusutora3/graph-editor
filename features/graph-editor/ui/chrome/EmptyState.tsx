@@ -69,26 +69,26 @@ export function EmptyState({
           >
             {messages.app.title}
           </span>
-          <span className="text-[13px] leading-[1.6] text-[var(--muted)]">
+          <span className="text-control leading-[1.6] text-[var(--muted)]">
             {messages.chrome.emptyTagline}
           </span>
         </div>
         <div className="flex w-full flex-wrap justify-center gap-2.5">
           <EmptyCard
             body={cards.paste.body}
-            icon={<ClipboardList className="size-[17px]" aria-hidden="true" />}
+            icon={<ClipboardList className="size-icon-md" aria-hidden="true" />}
             title={cards.paste.title}
             onClick={onOpenPaste}
           />
           <EmptyCard
             body={cards.sample.body}
-            icon={<LayoutGrid className="size-[17px]" aria-hidden="true" />}
+            icon={<LayoutGrid className="size-icon-md" aria-hidden="true" />}
             title={cards.sample.title}
             onClick={onOpenSamples}
           />
           <EmptyCard
             body={cards.draw.body}
-            icon={<CirclePlus className="size-[17px]" aria-hidden="true" />}
+            icon={<CirclePlus className="size-icon-md" aria-hidden="true" />}
             title={cards.draw.title}
             onClick={onDraw}
           />
@@ -105,7 +105,7 @@ export function EmptyState({
               aria-label={messages.samples.applyAria(sample.label)}
               onClick={() => onLoadSample(sample.model)}
               className={cn(
-                "ge-panel touch:h-11 inline-flex h-[34px] items-center gap-2 rounded-full pr-3 pl-2.5 text-[13px] font-semibold text-[var(--text)] transition-colors hover:border-[var(--faint)]",
+                "ge-panel touch:h-11 text-control inline-flex h-[34px] items-center gap-2 rounded-full pr-3 pl-2.5 font-semibold text-[var(--text)] transition-colors hover:border-[var(--faint)]",
                 focusRing,
               )}
             >
