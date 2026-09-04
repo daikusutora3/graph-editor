@@ -1,4 +1,9 @@
-import { collectInlineScriptHashes } from "../../scripts/build-headers";
+import {
+  HEADERS_LINE_LIMIT,
+  collectPageScriptHashes,
+  parseHeaderRules,
+  resolveHeaders,
+} from "../../scripts/build-headers";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -280,19 +285,34 @@ expect(
   "_headers should include nosniff",
 );
 {
-  const cspLine = headers
-    .split("\n")
-    .find((line) => line.trim().startsWith("Content-Security-Policy:"));
-  const missing = collectInlineScriptHashes().filter(
-    (hash) => !cspLine?.includes(hash),
-  );
+  const rules = parseHeaderRules(headers);
+  const cspOf = (path: string) =>
+    resolveHeaders(rules, path).get("content-security-policy") ?? "";
+  const pages = collectPageScriptHashes();
+  const missing = pages.flatMap((page) => {
+    const csp = cspOf(page.route);
+    return page.hashes.filter((hash) => !csp.includes(hash));
+  });
+  const longest = Math.max(...headers.split("\n").map((line) => line.length));
   expect(
-    Boolean(cspLine) && !cspLine?.includes("__INLINE_SCRIPT_HASHES__"),
-    "_headers should carry a generated Content-Security-Policy",
+    pages.length >= 7 && !headers.includes("__INLINE_SCRIPT_HASHES__"),
+    "_headers should carry generated Content-Security-Policy rules",
   );
   expect(
     missing.length === 0,
-    `every inline script must be allow-listed in the CSP (${missing.length} missing)`,
+    `every inline script must be allow-listed in its page's CSP (${missing.length} missing)`,
+  );
+  expect(
+    pages.every((page) => !cspOf(page.route).includes(", ")),
+    "each page should receive exactly one Content-Security-Policy",
+  );
+  expect(
+    cspOf("/missing-page") === cspOf("/404"),
+    "unknown paths should get the 404 page's CSP",
+  );
+  expect(
+    longest <= HEADERS_LINE_LIMIT,
+    `_headers lines must stay within Cloudflare's ${HEADERS_LINE_LIMIT} character limit (longest ${longest})`,
   );
   expect(
     headers.includes("/llms.txt\n  Content-Type: text/plain; charset=utf-8"),
@@ -300,7 +320,9 @@ expect(
   );
   expect(
     headers.includes("X-Frame-Options: DENY") &&
-      cspLine?.includes("frame-ancestors 'none'") === true,
+      pages.every((page) =>
+        cspOf(page.route).includes("frame-ancestors 'none'"),
+      ),
     "_headers should block framing",
   );
 }

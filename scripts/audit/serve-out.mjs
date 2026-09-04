@@ -5,16 +5,11 @@ import { createServer } from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseHeaderRules, resolveHeaders } from "../build-headers.ts";
 
 const OUT = fileURLToPath(new URL("../../out/", import.meta.url));
 const PORT = Number(process.env.PORT ?? 3123);
-const headersText = readFileSync(join(OUT, "_headers"), "utf8");
-const cspLine = headersText
-  .split("\n")
-  .find((line) => line.trim().startsWith("Content-Security-Policy:"));
-const csp = cspLine
-  ? cspLine.trim().slice("Content-Security-Policy:".length).trim()
-  : "";
+const rules = parseHeaderRules(readFileSync(join(OUT, "_headers"), "utf8"));
 const types = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",
@@ -30,25 +25,26 @@ const types = {
 };
 
 createServer((req, res) => {
-  let path = decodeURIComponent(
+  const requestPath = decodeURIComponent(
     new URL(req.url ?? "/", "http://localhost").pathname,
   );
-  if (path === "/") path = "/index.html";
-  let file = join(OUT, path);
+  let file = join(OUT, requestPath === "/" ? "/index.html" : requestPath);
   if (
     (!existsSync(file) || statSync(file).isDirectory()) &&
     existsSync(`${file}.html`)
   ) {
     file = `${file}.html`;
   }
+  let status = 200;
   if (!existsSync(file) || statSync(file).isDirectory()) {
-    res.writeHead(404).end("not found");
-    return;
+    // Mirror Cloudflare's not_found_handling: unknown paths get 404.html
+    // with the headers of the requested path.
+    status = 404;
+    file = join(OUT, "404.html");
   }
-  res.writeHead(200, {
+  res.writeHead(status, {
     "content-type": types[extname(file)] ?? "application/octet-stream",
-    "content-security-policy": csp,
-    "x-frame-options": "DENY",
+    ...Object.fromEntries(resolveHeaders(rules, requestPath)),
   });
   res.end(readFileSync(file));
 }).listen(PORT, () => console.log(`serving out/ on ${PORT}`));

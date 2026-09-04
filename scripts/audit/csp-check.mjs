@@ -11,7 +11,9 @@ const page = await (
   })
 ).newPage();
 const errors = [];
+let expectNotFound = false;
 page.on("console", (m) => {
+  if (expectNotFound && /status of 404/.test(m.text())) return;
   if (m.type() === "error") errors.push(m.text().slice(0, 600));
 });
 await page.addInitScript(() => {
@@ -45,9 +47,19 @@ console.log(
   "violations on /:",
   JSON.stringify(await page.evaluate(() => window.cspViolations)),
 );
-await page.goto(`${BASE_URL}/en`, { waitUntil: "networkidle" });
-await page.waitForTimeout(1000);
-console.log("en title:", await page.title());
+for (const route of [
+  "/en",
+  "/zh-hans",
+  "/guide",
+  "/en/guide",
+  "/zh-hans/guide",
+  "/missing-page",
+]) {
+  expectNotFound = route === "/missing-page";
+  await page.goto(`${BASE_URL}${route}`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(500);
+  console.log(`${route} title:`, await page.title());
+}
 console.log("console errors:", errors.length ? errors : "none");
 console.log(
   "violations:",
