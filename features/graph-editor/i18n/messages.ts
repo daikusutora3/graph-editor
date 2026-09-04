@@ -35,6 +35,7 @@ type Messages = {
     open: string;
     github: string;
     reportIssue: string;
+    guide: string;
     shareOnX: string;
   };
   toolbar: {
@@ -501,6 +502,7 @@ const ja: Messages = {
     open: "アプリメニューを開く",
     github: "GitHub",
     reportIssue: "GitHub Issue",
+    guide: "使い方ガイド",
     shareOnX: "Xで共有",
   },
   toolbar: {
@@ -942,6 +944,7 @@ const en: Messages = {
     open: "Open app menu",
     github: "GitHub",
     reportIssue: "GitHub Issue",
+    guide: "User guide",
     shareOnX: "Share on X",
   },
   toolbar: {
@@ -1385,6 +1388,7 @@ const zhHans: Messages = {
     open: "打开应用菜单",
     github: "GitHub",
     reportIssue: "GitHub Issue",
+    guide: "使用指南",
     shareOnX: "分享到 X",
   },
   toolbar: {

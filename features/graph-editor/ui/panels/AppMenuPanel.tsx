@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowUpRight, CircleDot, Keyboard } from "lucide-react";
+import { ArrowUpRight, BookOpen, CircleDot, Keyboard } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { getAppLocaleUrl } from "@/lib/site-metadata";
+import { appGuidePaths, getAppLocaleUrl } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
@@ -37,6 +37,9 @@ export function AppMenuPanel({
       </MenuLink>
       <MenuLink href={APP_ISSUES_URL} label={messages.appMenu.reportIssue}>
         <CircleDot className="size-4" aria-hidden="true" />
+      </MenuLink>
+      <MenuLink href={appGuidePaths[locale]} label={messages.appMenu.guide}>
+        <BookOpen className="size-4" aria-hidden="true" />
       </MenuLink>
       <MenuLink href={shareUrl} label={messages.appMenu.shareOnX}>
         <XLogo className="size-4" aria-hidden="true" />

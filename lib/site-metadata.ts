@@ -76,6 +76,19 @@ export const appLocalePaths: Record<AppLocale, string> = {
   "zh-Hans": "/zh-hans",
 };
 
+export const appGuidePaths: Record<AppLocale, string> = {
+  ja: "/guide",
+  en: "/en/guide",
+  "zh-Hans": "/zh-hans/guide",
+};
+
+export const appGuideLanguageAlternates: Record<string, string> = {
+  ja: appGuidePaths.ja,
+  en: appGuidePaths.en,
+  "zh-Hans": appGuidePaths["zh-Hans"],
+  "x-default": appGuidePaths[DEFAULT_APP_LOCALE],
+};
+
 export const appLanguageAlternates: Record<string, string> = {
   ja: appLocalePaths.ja,
   en: appLocalePaths.en,
@@ -130,7 +143,16 @@ export const appRootMetadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
+  // Search engine ownership is verified by dropping the provider's HTML file
+  // into public/ (e.g. public/google1234abcd.html); no tokens or env vars.
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -231,6 +253,51 @@ export function createAppPageMetadata(locale: AppLocale): Metadata {
       title: localeMetadata.title,
       description: localeMetadata.description,
       images: [localeMetadata.ogImage],
+    },
+  };
+}
+
+export function getAppGuideUrl(locale: AppLocale) {
+  return getAppPathUrl(appGuidePaths[locale]);
+}
+
+export function createGuidePageMetadata(
+  locale: AppLocale,
+  copy: { title: string; description: string },
+): Metadata {
+  const alternateLocales = Object.values(appOpenGraphLocales).filter(
+    (value) => value !== appOpenGraphLocales[locale],
+  );
+
+  return {
+    title: { absolute: copy.title },
+    description: copy.description,
+    alternates: {
+      canonical: appGuidePaths[locale],
+      languages: appGuideLanguageAlternates,
+    },
+    openGraph: {
+      type: "article",
+      locale: appOpenGraphLocales[locale],
+      alternateLocale: alternateLocales,
+      url: appGuidePaths[locale],
+      siteName: APP_NAME,
+      title: copy.title,
+      description: copy.description,
+      images: [
+        {
+          url: appLocaleMetadata[locale].ogImage,
+          width: OG_IMAGE_SIZE.width,
+          height: OG_IMAGE_SIZE.height,
+          alt: appLocaleMetadata[locale].headline,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: copy.title,
+      description: copy.description,
+      images: [appLocaleMetadata[locale].ogImage],
     },
   };
 }

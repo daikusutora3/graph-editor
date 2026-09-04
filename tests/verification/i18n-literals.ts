@@ -11,6 +11,7 @@ const allowed = [
   "features/graph-editor/i18n/",
   "features/graph-editor/samples/",
   "lib/site-metadata.ts",
+  "lib/guide-content.ts",
 ];
 const cjk = /[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]/;
 const findings: string[] = [];
