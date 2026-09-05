@@ -1,3 +1,4 @@
+import { GRAPH_MAX_JSON_CHARS } from "../core/graph/graph-limits";
 import { MAX_IMPORT_NODES } from "./import-utils";
 import {
   looksLikeGraphJson,
@@ -47,7 +48,12 @@ export function analyzeGraphInput(
   input: string,
   options: ImportOptions = {},
 ): ImportAnalysis {
-  if (input.length > MAX_IMPORT_INPUT_CHARS) {
+  const inputLimit =
+    options.format === "json" ||
+    ((options.format ?? "auto") === "auto" && looksLikeGraphJson(input))
+      ? GRAPH_MAX_JSON_CHARS
+      : MAX_IMPORT_INPUT_CHARS;
+  if (input.length > inputLimit) {
     return {
       status: "limit",
       candidates: [],
@@ -55,7 +61,7 @@ export function analyzeGraphInput(
         {
           code: "input-limit",
           severity: "error",
-          message: `Import is too large: ${input.length.toLocaleString("en-US")} input characters, maximum is ${MAX_IMPORT_INPUT_CHARS.toLocaleString("en-US")}.`,
+          message: `Import is too large: ${input.length.toLocaleString("en-US")} input characters, maximum is ${inputLimit.toLocaleString("en-US")}.`,
         },
       ],
     };

@@ -155,6 +155,8 @@ function createLayoutPositions(
 ) {
   const positions = getLayoutRuntime(kind).positions(model, rootNodeId);
 
+  if (kind === "spread") return positions;
+
   // Force layouts space circles themselves; wide pills still need the pass.
   if (
     kind === "force" &&
@@ -163,7 +165,13 @@ function createLayoutPositions(
     return positions;
   }
 
-  return ensureNodeClearance(positions, model.nodes);
+  return ensureNodeClearance(
+    positions,
+    model.nodes.map((node) => ({
+      ...node,
+      label: model.settings.showNodeLabels ? node.label : "",
+    })),
+  );
 }
 
 export function manualLayoutDisabledReasonCode(

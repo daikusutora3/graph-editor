@@ -1,3 +1,7 @@
+import {
+  measureNodeWidth,
+  withMeasuredNodeGeometry,
+} from "../browser/node-geometry";
 import type {
   Core,
   Css,
@@ -12,10 +16,6 @@ import {
   type EdgeRoutingMeta,
   type EdgeRoutingOptions,
 } from "../../core/layout/edge-routing";
-import {
-  estimateLabelWidth,
-  NODE_LABEL_PADDING_PX,
-} from "../../core/graph/node-size";
 import { minimumCurveDistanceToNode } from "../../core/layout/edge-route-geometry";
 import type {
   EdgeId,
@@ -88,42 +88,6 @@ export type CytoscapeElementOptions = {
 };
 
 const EDGE_WIDTH = 2.5;
-const NODE_LABEL_PADDING = NODE_LABEL_PADDING_PX;
-
-type TextMeasure = (text: string) => number;
-
-/** Measures label width in CSS px; falls back to an estimate outside the DOM. */
-function createTextMeasure(palette: GraphCanvasPalette): TextMeasure {
-  const font = `600 ${palette.nodeFontSize}px ${palette.fontFamily}`;
-  const context =
-    typeof document === "undefined"
-      ? null
-      : document.createElement("canvas").getContext("2d");
-
-  if (!context) {
-    return (text) => estimateLabelWidth(text, palette.nodeFontSize);
-  }
-
-  return (text) => {
-    context.font = font;
-    return context.measureText(text).width;
-  };
-}
-
-function nodeWidth(
-  label: string,
-  palette: GraphCanvasPalette,
-  measure: TextMeasure,
-) {
-  if (!label) {
-    return palette.nodeSize;
-  }
-
-  return Math.max(
-    palette.nodeSize,
-    Math.ceil(measure(label) + NODE_LABEL_PADDING * 2),
-  );
-}
 const SELECTED_EDGE_WIDTH = 3.5;
 const SELECTED_EDGE_ARROW_SCALE = EDGE_WIDTH / SELECTED_EDGE_WIDTH;
 const MULTI_EDGE_WIDTH = EDGE_WIDTH;
@@ -165,7 +129,10 @@ export function computeCytoscapeEdgeRoutingMeta(
   model: GraphModel,
   edgeRoutingOptions?: EdgeRoutingOptions,
 ) {
-  return computeEdgeRouting(model, edgeRoutingOptions);
+  return computeEdgeRouting(
+    withMeasuredNodeGeometry(model),
+    edgeRoutingOptions,
+  );
 }
 
 export function syncCytoscapeEdgeRoutingData(
@@ -180,7 +147,15 @@ export function syncCytoscapeEdgeRoutingData(
   const positionedModel = graphModelWithCytoscapeNodePositions(cy, model);
   const rerouteEdgeIds = interaction
     ? interactiveRerouteEdgeIds(
-        positionedModel,
+        {
+          ...positionedModel,
+          nodes: [
+            ...positionedModel.nodes,
+            ...model.nodes.filter((node) =>
+              interaction.movedNodeIds.has(node.id),
+            ),
+          ],
+        },
         interaction.previousMeta,
         interaction.movedNodeIds,
       )
@@ -236,7 +211,8 @@ function interactiveRerouteEdgeIds(
       movedNodeIds.has(edge.source) ||
       movedNodeIds.has(edge.target) ||
       edge.source === edge.target ||
-      (previous?.controlPointWeights.length ?? 0) > 1
+      (previous?.controlPointWeights.length ?? 0) > 1 ||
+      (previous?.bowPx ?? 0) !== 0
     ) {
       reroute.add(edge.id);
       continue;
@@ -363,7 +339,6 @@ export function createGraphCanvasStylesheet(
 ): StylesheetJson {
   const normalArrowScale = clampArrowScale(arrowScale);
   const selectedArrowScale = normalArrowScale * SELECTED_EDGE_ARROW_SCALE;
-  const measure = createTextMeasure(palette);
 
   return [
     {
@@ -389,7 +364,7 @@ export function createGraphCanvasStylesheet(
         shape: "round-rectangle",
         "corner-radius": `${palette.nodeSize / 2}px`,
         width: (node: NodeSingular) =>
-          nodeWidth(node.data("displayLabel") as string, palette, measure),
+          measureNodeWidth(node.data("displayLabel") as string, palette),
         height: palette.nodeSize,
         "background-color": palette.node,
         "background-opacity": 1,

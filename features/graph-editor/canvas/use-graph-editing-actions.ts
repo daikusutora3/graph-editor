@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { addEdgeCommand, addNodeCommand } from "../core/graph/graph-intents";
 import type { GraphIntent, GraphModel, NodeId } from "../core/graph/model";
 import type { EdgeDraft } from "../core/view/types";
+import type { CommandResult } from "../shell/state/history-atoms";
 import { resolveEdgeCreation } from "./graph-canvas-edge-creation";
 
 type Position = { x: number; y: number };
@@ -19,7 +20,7 @@ export function useGraphEditingActions({
   showEditFeedback,
 }: {
   edgeDraft: EdgeDraft;
-  executeCommand: (command: GraphIntent) => void;
+  executeCommand: (command: GraphIntent) => CommandResult;
   graph: GraphModel;
   setEdgeDraft: (draft: EdgeDraft) => void;
   showEditFeedback: (nodeIds: NodeId[]) => void;
@@ -28,14 +29,14 @@ export function useGraphEditingActions({
     (position: Position) => {
       const nodeId = nanoid();
 
-      executeCommand(
+      const outcome = executeCommand(
         addNodeCommand({
           id: nodeId,
           x: position.x,
           y: position.y,
         }),
       );
-      showEditFeedback([nodeId]);
+      if (outcome.status === "applied") showEditFeedback([nodeId]);
     },
     [executeCommand, showEditFeedback],
   );
@@ -52,7 +53,7 @@ export function useGraphEditingActions({
       if (result.kind === "create-edge") {
         const edgeId = nanoid();
 
-        executeCommand(
+        const outcome = executeCommand(
           addEdgeCommand({
             id: edgeId,
             source: result.source,
@@ -60,6 +61,7 @@ export function useGraphEditingActions({
             weight: graph.settings.weighted ? "1" : undefined,
           }),
         );
+        if (outcome.status !== "applied") return;
         showEditFeedback([result.source, result.target]);
       }
 

@@ -1,9 +1,6 @@
+import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
 import type { GraphNode } from "../graph/model";
-import {
-  estimateNodeWidth,
-  NODE_SIZE_PX,
-  pillExtentTowards,
-} from "../graph/node-size";
+import { nodeGeometryWidth, NODE_SIZE_PX } from "../graph/node-size";
 
 export type EdgeCurveGeometry = {
   controlPointDistancesPx: readonly number[];
@@ -22,7 +19,7 @@ export type QuadraticCurveSegment = {
 };
 
 /** Manual and automatic bends share these limits so every curve is draggable. */
-export const MAX_BOW_PX = 180;
+export { MAX_BOW_PX } from "../graph/edge-routing-overrides";
 const MIN_BOW_WEIGHT = 0.05;
 const MAX_BOW_WEIGHT = 0.95;
 
@@ -287,19 +284,65 @@ export function minimumCurveDistanceToNode(
   curve: EdgeCurveGeometry,
   node: GraphNode,
 ) {
-  let minimum = Number.POSITIVE_INFINITY;
-  const halfWidth = estimateNodeWidth(node.label) / 2;
-  const halfHeight = NODE_SIZE_PX / 2;
-
-  for (const point of sampleEdgeCurve(source, target, curve, 16)) {
-    const dx = point.x - node.x;
-    const dy = point.y - node.y;
-    // Measure from the pill boundary as if it were a circle of NODE_SIZE_PX.
-    const reach = pillExtentTowards(halfWidth, halfHeight, dx, dy) - halfHeight;
-    minimum = Math.min(minimum, Math.hypot(dx, dy) - reach);
-  }
-
+  const span = Math.max(0, (nodeGeometryWidth(node) - NODE_SIZE_PX) / 2);
+  const left = { x: node.x - span, y: node.y };
+  const right = { x: node.x + span, y: node.y };
+  let minimum = Infinity;
+  const visit = (segment: QuadraticCurveSegment, depth: number) => {
+    const { start, control, end } = segment;
+    const error = pointSegmentDistance(control, start, end) / 2;
+    if (error <= 0.25 || depth >= 16) {
+      minimum = Math.min(
+        minimum,
+        segmentDistance(start, end, left, right) - error,
+      );
+      return;
+    }
+    const a = { x: (start.x + control.x) / 2, y: (start.y + control.y) / 2 };
+    const b = { x: (end.x + control.x) / 2, y: (end.y + control.y) / 2 };
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    visit({ start, control: a, end: mid }, depth + 1);
+    visit({ start: mid, control: b, end }, depth + 1);
+  };
+  for (const segment of edgeCurveSegments(source, target, curve))
+    visit(segment, 0);
   return minimum;
+}
+
+function pointSegmentDistance(
+  p: EdgeCurvePoint,
+  a: EdgeCurvePoint,
+  b: EdgeCurvePoint,
+) {
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1),
+    ),
+  );
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+}
+function segmentDistance(
+  a: EdgeCurvePoint,
+  b: EdgeCurvePoint,
+  c: EdgeCurvePoint,
+  d: EdgeCurvePoint,
+) {
+  // The capsule's center segment is horizontal. Include interior intersections.
+  if (a.y !== b.y) {
+    const t = (c.y - a.y) / (b.y - a.y);
+    const x = a.x + t * (b.x - a.x);
+    if (t >= 0 && t <= 1 && x >= c.x && x <= d.x) return 0;
+  }
+  return Math.min(
+    pointSegmentDistance(a, c, d),
+    pointSegmentDistance(b, c, d),
+    pointSegmentDistance(c, a, b),
+    pointSegmentDistance(d, a, b),
+  );
 }
 
 export function approximateCurveLength(

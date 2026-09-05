@@ -1,3 +1,8 @@
+import {
+  GRAPH_MAX_INPUT_CHARS,
+  GRAPH_MAX_NODES,
+  GRAPH_MAX_EDGES,
+} from "../core/graph/graph-limits";
 import { createEmptyGraphModel, createNode } from "../core/graph/graph-factory";
 import type {
   GraphModel,
@@ -31,9 +36,9 @@ export type ParsedLine = {
   text: string;
 };
 
-export const MAX_IMPORT_INPUT_CHARS = 1_000_000;
-export const MAX_IMPORT_NODES = 1_000;
-export const MAX_IMPORT_EDGES = 5_000;
+export const MAX_IMPORT_INPUT_CHARS = GRAPH_MAX_INPUT_CHARS;
+export const MAX_IMPORT_NODES = GRAPH_MAX_NODES;
+export const MAX_IMPORT_EDGES = GRAPH_MAX_EDGES;
 
 export function readLines(input: string): ParsedLine[] {
   return input

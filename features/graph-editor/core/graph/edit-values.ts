@@ -11,7 +11,7 @@ export function normalizeEdgeLabelInput(value: string) {
 }
 
 /** Validation failures are codes; the UI resolves them through i18n. */
-export type InlineEditErrorCode = "invalid-number";
+export type InlineEditErrorCode = "invalid-number" | "invalid-graph";
 
 export function normalizeEdgeWeightInput(
   value: string,

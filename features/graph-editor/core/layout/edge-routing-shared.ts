@@ -6,6 +6,7 @@ import type { GraphEdge, EdgeId } from "../graph/model";
 /** Per-call scratch state: a work counter and cached curve samples. */
 export type RoutingWork = {
   units: number;
+  pending?: Set<EdgeId>;
   samples: Map<string, EdgeCurvePoint[]>;
 };
 export type ResolvedEdgeRoutingOptions = {

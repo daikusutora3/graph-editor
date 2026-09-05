@@ -79,9 +79,10 @@ export const pasteGraphClipboardAtom = atom(null, (get, set) => {
     return true;
   }
 
+  const result = set(executeCommandAtom, pasteResult.command);
+  if (result.status !== "applied") return true;
   set(editorModeAtom, "select");
   set(edgeDraftAtom, createEmptyEdgeDraft());
-  set(executeCommandAtom, pasteResult.command);
   set(selectionAtom, pasteResult.selection);
   set(graphPasteCountAtom, pasteCount);
   return true;

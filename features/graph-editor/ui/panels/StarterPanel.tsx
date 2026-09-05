@@ -1,4 +1,5 @@
 "use client";
+import { integrityCopy } from "../../i18n/integrity-copy";
 
 import { CircleAlert, FileInput, FolderOpen } from "lucide-react";
 import { lazy, Suspense, type RefObject, useRef } from "react";
@@ -59,7 +60,9 @@ function canApplyStarter(starter: StarterState) {
     starter.analysis?.status === "detected" &&
     Boolean(
       previewModel &&
-      (previewModel.nodes.length > 0 || previewModel.edges.length > 0),
+      (previewModel.nodes.length > 0 ||
+        previewModel.edges.length > 0 ||
+        starter.preview?.warnings.length === 0),
     )
   );
 }
@@ -216,7 +219,7 @@ export function StarterPasteFooter({
   starter: StarterState;
   onUseSample: () => void;
 }) {
-  const { messages } = useI18n();
+  const { messages, locale } = useI18n();
   const canApply = canApplyStarter(starter);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -262,7 +265,11 @@ export function StarterPasteFooter({
         onClick={() => starter.applyText()}
       >
         <FileInput className="size-icon-sm" aria-hidden="true" />
-        {messages.chrome.starterApply}
+        {starter.visibleIssues.length
+          ? integrityCopy[locale === "ja" ? "ja" : "en"].partial(
+              starter.preview?.model.edges.length ?? 0,
+            )
+          : messages.chrome.starterApply}
       </Button>
     </div>
   );
@@ -274,7 +281,7 @@ export function StarterSampleBody({
   onSampleApplied: () => void;
 }) {
   return (
-    <div className="-mx-4 -mt-3.5 -mb-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <Suspense fallback={<SampleGalleryFallback />}>
         <SampleGalleryPane onSampleApplied={onSampleApplied} />
       </Suspense>

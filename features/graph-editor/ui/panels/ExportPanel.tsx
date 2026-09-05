@@ -1,4 +1,5 @@
 "use client";
+import { integrityCopy } from "../../i18n/integrity-copy";
 
 import { ClipboardCopy, Download } from "lucide-react";
 
@@ -23,7 +24,7 @@ export function ExportPanelBody({
   mobile: boolean;
   onExportFormatChange: (format: GraphExportFormat) => void;
 }) {
-  const { messages } = useI18n();
+  const { messages, locale } = useI18n();
   const lines = exportText ? exportText.split("\n") : [];
   const lineNumbers = lines.map((_, index) => index + 1).join("\n");
 
@@ -44,7 +45,11 @@ export function ExportPanelBody({
         <p className="shrink-0 text-xs leading-[1.5] text-[var(--muted)]">
           {messages.exportPanel.jsonNote}
         </p>
-      ) : null}
+      ) : (
+        <p className="text-xs text-[var(--muted)]">
+          {integrityCopy[locale === "ja" ? "ja" : "en"].textNote}
+        </p>
+      )}
       <div className="grid min-h-[200px] grid-cols-[28px_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
         <div
           aria-hidden="true"

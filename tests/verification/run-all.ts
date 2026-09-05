@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 
 const suites = [
+  { name: "integrity", path: "tests/verification/integrity.ts" },
+  { name: "autosave", path: "tests/verification/autosave.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
   { name: "samples", path: "tests/verification/samples.ts" },
   { name: "layouts", path: "tests/verification/layouts.ts" },

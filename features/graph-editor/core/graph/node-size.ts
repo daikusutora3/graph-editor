@@ -70,3 +70,11 @@ export function pillExtentTowards(
 
   return (low + high) / 2;
 }
+
+/** Measured width is transient input supplied by the browser adapter. */
+export function nodeGeometryWidth(node: {
+  label: string;
+  measuredWidth?: number;
+}) {
+  return node.measuredWidth ?? estimateNodeWidth(node.label);
+}

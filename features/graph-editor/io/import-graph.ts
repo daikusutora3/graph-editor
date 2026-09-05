@@ -1,3 +1,4 @@
+import { GRAPH_MAX_JSON_CHARS } from "../core/graph/graph-limits";
 import { describeImportWarning } from "./import-warning-text";
 import {
   tryImportAdjacencyList,
@@ -47,15 +48,19 @@ export function importGraphInput(
   return evaluateGraphInput(input, options).result;
 }
 
-export function evaluateGraphInput(
+function evaluateGraphInputInternal(
   input: string,
   options: ImportOptions = {},
 ): ImportEvaluation {
-  if (input.length > MAX_IMPORT_INPUT_CHARS) {
+  const jsonInput =
+    options.format === "json" ||
+    ((options.format ?? "auto") === "auto" && looksLikeGraphJson(input));
+  const inputLimit = jsonInput ? GRAPH_MAX_JSON_CHARS : MAX_IMPORT_INPUT_CHARS;
+  if (input.length > inputLimit) {
     const result = importLimitFailure(
       "input",
       input.length,
-      MAX_IMPORT_INPUT_CHARS,
+      inputLimit,
       options,
     );
     return {
@@ -64,7 +69,7 @@ export function evaluateGraphInput(
     };
   }
 
-  if (looksLikeGraphJson(input)) {
+  if (jsonInput) {
     const result = importGraphJson(input, options);
     return { analysis: analyzeGraphInput(input, options), result };
   }
@@ -201,7 +206,9 @@ function analysisForRequestedFormat(
   result: ImportResult,
 ): ImportAnalysis {
   const hasContent =
-    result.model.nodes.length > 0 || result.model.edges.length > 0;
+    result.warnings.length === 0 ||
+    result.model.nodes.length > 0 ||
+    result.model.edges.length > 0;
   const candidate: ImportCandidate = {
     formatKind: requestedFormat,
     strength: "exact",
@@ -301,4 +308,25 @@ function importGraphJson(input: string, options: ImportOptions): ImportResult {
   }
 
   return { model, warnings: [], formatKind: "json", format: "JSON" };
+}
+
+export function evaluateGraphInput(
+  input: string,
+  options: ImportOptions = {},
+): ImportEvaluation {
+  const evaluation = evaluateGraphInputInternal(input, options);
+  const { result, analysis } = evaluation;
+  const empty =
+    result.model.nodes.length === 0 && result.model.edges.length === 0;
+  const status =
+    analysis.status === "invalid" ||
+    analysis.status === "limit" ||
+    (empty && result.warnings.length > 0)
+      ? "failure"
+      : result.warnings.length > 0
+        ? "partial"
+        : empty
+          ? "empty"
+          : "success";
+  return { ...evaluation, result: { ...result, status } };
 }

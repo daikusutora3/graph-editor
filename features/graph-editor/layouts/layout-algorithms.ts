@@ -1,3 +1,4 @@
+import { resolveNodeOverlaps } from "./resolve-node-overlaps";
 /**
  * The layout algorithms themselves. Each takes a GraphModel and returns
  * positions; manual-layouts.ts is the registry that wires them to the UI.
@@ -631,55 +632,7 @@ export function layoutPathIds(nodeIds: NodeId[]) {
   ) as Record<NodeId, { x: number; y: number }>;
 }
 export function layoutSpread(model: GraphModel) {
-  const nodeIds = orderedNodeIds(model);
-  if (nodeIds.length <= 1) {
-    return Object.fromEntries(
-      nodeIds.map((nodeId) => [nodeId, { x: 0, y: 0 }]),
-    ) as Record<NodeId, { x: number; y: number }>;
-  }
-
-  const positions = new Map(
-    model.nodes.map((node) => [node.id, { x: node.x, y: node.y }]),
-  );
-  const minimumDistance = 64;
-
-  for (let iteration = 0; iteration < 18; iteration += 1) {
-    for (let first = 0; first < nodeIds.length; first += 1) {
-      for (let second = first + 1; second < nodeIds.length; second += 1) {
-        const firstId = nodeIds[first];
-        const secondId = nodeIds[second];
-        const firstPosition = positions.get(firstId)!;
-        const secondPosition = positions.get(secondId)!;
-        let dx = secondPosition.x - firstPosition.x;
-        let dy = secondPosition.y - firstPosition.y;
-        let distance = Math.hypot(dx, dy);
-
-        if (distance >= minimumDistance) continue;
-
-        if (distance < 0.01) {
-          const angle = pseudoRandom(first * 97 + second * 13) * Math.PI * 2;
-          dx = Math.cos(angle);
-          dy = Math.sin(angle);
-          distance = 1;
-        }
-
-        const push = (minimumDistance - distance) / 2;
-        const offsetX = (dx / distance) * push;
-        const offsetY = (dy / distance) * push;
-
-        positions.set(firstId, {
-          x: firstPosition.x - offsetX,
-          y: firstPosition.y - offsetY,
-        });
-        positions.set(secondId, {
-          x: secondPosition.x + offsetX,
-          y: secondPosition.y + offsetY,
-        });
-      }
-    }
-  }
-
-  return normalizePositions(Object.fromEntries(positions));
+  return resolveNodeOverlaps(model).positions;
 }
 export function currentPositions(model: GraphModel) {
   return Object.fromEntries(

@@ -29,15 +29,17 @@ export function useApplyGraphModel() {
         selectMode = false,
       }: ApplyGraphModelOptions = {},
     ) => {
-      replaceGraphModel(model, {
+      const result = replaceGraphModel(model, {
         clearEdgeDraft,
         clearSelection,
         selectMode,
       });
 
+      if (result.status === "rejected") return false;
       if (fitAfterUpdate) {
         fitAfterNextGraphRender();
       }
+      return true;
     },
     [fitAfterNextGraphRender, replaceGraphModel],
   );

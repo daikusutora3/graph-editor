@@ -1,6 +1,8 @@
+import { serializeGraphModel } from "./graph-json";
 import type { GraphModel } from "./model";
 
 export function assertValidGraphModel(model: GraphModel) {
+  serializeGraphModel(model);
   const nodeIds = new Set(model.nodes.map((node) => node.id));
   const edgeIds = new Set(model.edges.map((edge) => edge.id));
   const nodeOrders = new Set(model.nodes.map((node) => node.order));

@@ -1,3 +1,10 @@
+import {
+  GRAPH_MAX_NODES,
+  GRAPH_MAX_EDGES,
+  GRAPH_MAX_TEXT_CODE_POINTS,
+  GRAPH_MAX_JSON_CHARS,
+  isGraphText,
+} from "./graph-limits";
 import { normalizeGraphColor } from "./colors";
 import { normalizeEdgeRoutingOverride } from "./edge-routing-overrides";
 import { createEmptyGraphModel } from "./graph-factory";
@@ -15,10 +22,9 @@ import type {
  * local storage and for lossless export/import (positions, colours, bends).
  */
 export const GRAPH_JSON_VERSION = 1;
-export const GRAPH_JSON_MAX_NODES = 1_000;
-export const GRAPH_JSON_MAX_EDGES = 5_000;
-/** Labels and weights longer than this are truncated on import. */
-export const GRAPH_JSON_MAX_TEXT_CHARS = 256;
+export const GRAPH_JSON_MAX_NODES = GRAPH_MAX_NODES;
+export const GRAPH_JSON_MAX_EDGES = GRAPH_MAX_EDGES;
+export const GRAPH_JSON_MAX_TEXT_CHARS = GRAPH_MAX_TEXT_CODE_POINTS;
 
 /**
  * Upgrades older documents in place before normalization. Each future schema
@@ -40,11 +46,21 @@ export function migrateGraphDocument(value: unknown): unknown | null {
 const fallbackGraph = createEmptyGraphModel();
 
 export function serializeGraphModel(model: GraphModel) {
-  return JSON.stringify(model, null, 2);
+  const raw = JSON.stringify(model);
+  const normalized = normalizeGraphModel(model);
+  if (
+    raw.length > GRAPH_MAX_JSON_CHARS ||
+    !normalized ||
+    !sameDocument(model, normalized)
+  ) {
+    throw new Error("Graph exceeds the JSON contract");
+  }
+  return raw;
 }
 
 /** Parses a JSON document produced by serializeGraphModel; null if invalid. */
 export function parseGraphModelJson(text: string): GraphModel | null {
+  if (text.length > GRAPH_MAX_JSON_CHARS) return null;
   try {
     return normalizeGraphModel(JSON.parse(text));
   } catch {
@@ -105,6 +121,7 @@ export function normalizeGraphModel(input: unknown): GraphModel | null {
     if (
       !edge ||
       edgeIds.has(edge.id) ||
+      nodeIds.has(edge.id) ||
       !nodeIds.has(edge.source) ||
       !nodeIds.has(edge.target)
     ) {
@@ -114,6 +131,8 @@ export function normalizeGraphModel(input: unknown): GraphModel | null {
     edgeIds.add(edge.id);
     edges.push(edge);
   }
+
+  if (!validSettings(value.settings)) return null;
 
   return {
     version: GRAPH_JSON_VERSION,
@@ -130,11 +149,15 @@ function normalizeNode(value: unknown): GraphNode | null {
 
   if (
     typeof value.id !== "string" ||
-    typeof value.label !== "string" ||
+    !value.id.trim() ||
+    !isGraphText(value.label) ||
+    (value.color !== undefined &&
+      normalizeGraphColor(value.color) === undefined) ||
     typeof value.order !== "number" ||
     typeof value.x !== "number" ||
     typeof value.y !== "number" ||
-    !Number.isFinite(value.order) ||
+    !Number.isSafeInteger(value.order) ||
+    value.order < 0 ||
     !Number.isFinite(value.x) ||
     !Number.isFinite(value.y)
   ) {
@@ -143,7 +166,7 @@ function normalizeNode(value: unknown): GraphNode | null {
 
   return stripUndefinedProperties({
     id: value.id,
-    label: clipText(value.label),
+    label: value.label,
     order: value.order,
     x: value.x,
     y: value.y,
@@ -159,7 +182,13 @@ function normalizeEdge(value: unknown): GraphEdge | null {
   if (
     typeof value.id !== "string" ||
     typeof value.source !== "string" ||
-    typeof value.target !== "string"
+    typeof value.target !== "string" ||
+    !value.id.trim() ||
+    (value.weight !== undefined && !isGraphText(value.weight)) ||
+    (value.label !== undefined && !isGraphText(value.label)) ||
+    (value.color !== undefined &&
+      normalizeGraphColor(value.color) === undefined) ||
+    !validRouting(value.routing)
   ) {
     return null;
   }
@@ -168,9 +197,8 @@ function normalizeEdge(value: unknown): GraphEdge | null {
     id: value.id,
     source: value.source,
     target: value.target,
-    weight:
-      typeof value.weight === "string" ? clipText(value.weight) : undefined,
-    label: typeof value.label === "string" ? clipText(value.label) : undefined,
+    weight: typeof value.weight === "string" ? value.weight : undefined,
+    label: typeof value.label === "string" ? value.label : undefined,
     color: normalizeGraphColor(value.color),
     routing: normalizeEdgeRoutingOverride(value.routing),
   });
@@ -228,12 +256,53 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function clipText(value: string) {
-  return value.length > GRAPH_JSON_MAX_TEXT_CHARS
-    ? value.slice(0, GRAPH_JSON_MAX_TEXT_CHARS)
-    : value;
+function validRouting(value: unknown) {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  const normalized = normalizeEdgeRoutingOverride(value);
+  return Object.entries(value).every(
+    ([key, item]) =>
+      typeof item === "number" &&
+      Number.isFinite(item) &&
+      normalized?.[key as keyof typeof normalized] === item,
+  );
+}
+
+function validSettings(value: unknown) {
+  if (!isRecord(value)) return false;
+  const defaults = fallbackGraph.settings;
+  return Object.entries(value).every(([key, item]) => {
+    if (!(key in defaults)) return false;
+    if (key === "indexBase") return item === 0 || item === 1;
+    if (key === "arrowScale")
+      return (
+        typeof item === "number" &&
+        Number.isFinite(item) &&
+        item >= 0.6 &&
+        item <= 2
+      );
+    if (key === "weightKind")
+      return item === "none" || item === "number" || item === "string";
+    return typeof item === "boolean";
+  });
 }
 
 function hasDuplicates(values: Array<string | number>) {
   return new Set(values).size !== values.length;
+}
+
+function sameDocument(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b))
+    return (
+      a.length === b.length &&
+      a.every((value, index) => sameDocument(value, b[index]))
+    );
+  if (!isRecord(a) || !isRecord(b)) return false;
+  const keys = Object.keys(a).filter((key) => a[key] !== undefined);
+  return (
+    keys.length ===
+      Object.keys(b).filter((key) => b[key] !== undefined).length &&
+    keys.every((key) => sameDocument(a[key], b[key]))
+  );
 }

@@ -13,6 +13,11 @@ import {
 import { graphAtom, graphRevisionAtom, commitGraphAtom } from "./graph-atoms";
 import { pruneSelectionForGraph } from "./editor-selection";
 
+export type CommandResult =
+  | { status: "applied" | "noop" }
+  | { status: "rejected"; message: string };
+export const commandErrorAtom = atom<string | null>(null);
+
 export const historyAtom = atom<GraphTransaction[]>([]);
 export const futureAtom = atom<GraphTransaction[]>([]);
 
@@ -20,20 +25,24 @@ const MAX_HISTORY_ENTRIES = 150;
 
 export const executeCommandAtom = atom(
   null,
-  (get, set, intent: GraphIntent) => {
+  (get, set, intent: GraphIntent): CommandResult => {
     const graph = get(graphAtom);
-    const prepared = prepareGraphTransaction(
-      graph,
-      intent,
-      get(graphRevisionAtom),
-    );
+    let prepared;
+    try {
+      prepared = prepareGraphTransaction(graph, intent, get(graphRevisionAtom));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      set(commandErrorAtom, message);
+      return { status: "rejected", message };
+    }
+    set(commandErrorAtom, null);
 
     if (!prepared) {
-      return;
+      return { status: "noop" };
     }
 
     const { after, transaction } = prepared;
-    set(commitGraphAtom, after);
+    set(commitGraphAtom, after, prepared.serialized);
     set(graphRevisionAtom, transaction.afterRevision);
     if (
       get(edgeDraftAtom).sourceNodeId !== null ||
@@ -44,6 +53,7 @@ export const executeCommandAtom = atom(
     set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), after));
     set(historyAtom, appendHistory(get(historyAtom), transaction));
     set(futureAtom, []);
+    return { status: "applied" };
   },
 );
 

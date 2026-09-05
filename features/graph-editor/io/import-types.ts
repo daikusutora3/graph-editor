@@ -51,6 +51,7 @@ export type ImportWarning =
   | { code: "invalid-edge-count"; line: number };
 
 export type ImportResult = {
+  status?: "success" | "partial" | "failure" | "empty";
   model: GraphModel;
   warnings: ImportWarning[];
   formatKind?: ImportFormatKind;

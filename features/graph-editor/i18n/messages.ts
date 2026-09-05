@@ -659,7 +659,11 @@ const ja: Messages = {
     selectNode: (name: string) => `${name}を選択`,
     connectEdgeTo: (name: string) => `${name}に辺を接続`,
     sourceSelected: (name: string) => `${name}を始点に選択中`,
-    inlineEditErrors: { "invalid-number": "数値を入力してください" },
+    inlineEditErrors: {
+      "invalid-number": "数値を入力してください",
+      "invalid-graph":
+        "入力を保存できません。文字列は256文字以内にしてください",
+    },
     resetEdgeCurve: "自動配置に戻す",
     bendEdgeLeft: "左へ曲げる",
     bendEdgeRight: "右へ曲げる",
@@ -1105,7 +1109,10 @@ const en: Messages = {
     selectNode: (name: string) => `Select ${name}`,
     connectEdgeTo: (name: string) => `Connect edge to ${name}`,
     sourceSelected: (name: string) => `${name} selected as source`,
-    inlineEditErrors: { "invalid-number": "Enter a number" },
+    inlineEditErrors: {
+      "invalid-number": "Enter a number",
+      "invalid-graph": "Cannot save this input. Use at most 256 characters",
+    },
     resetEdgeCurve: "Return to automatic routing",
     bendEdgeLeft: "Bend left",
     bendEdgeRight: "Bend right",
@@ -1549,7 +1556,10 @@ const zhHans: Messages = {
     selectNode: (name: string) => `选择${name}`,
     connectEdgeTo: (name: string) => `连接到${name}`,
     sourceSelected: (name: string) => `${name}已选为起点`,
-    inlineEditErrors: { "invalid-number": "请输入数字" },
+    inlineEditErrors: {
+      "invalid-number": "请输入数字",
+      "invalid-graph": "无法保存输入。请使用最多256个字符",
+    },
     resetEdgeCurve: "恢复自动布线",
     bendEdgeLeft: "向左弯曲",
     bendEdgeRight: "向右弯曲",

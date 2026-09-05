@@ -1,6 +1,6 @@
 import type { EdgeRoutingOverride } from "./model";
 
-const MAX_BOW_PX = 180;
+export const MAX_BOW_PX = 180;
 const MIN_BOW_T = 0.05;
 const MAX_BOW_T = 0.95;
 const MAX_ROUTING_LOOP_DIRECTION_DEG = 360;

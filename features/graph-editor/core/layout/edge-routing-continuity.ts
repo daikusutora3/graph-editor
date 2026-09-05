@@ -71,5 +71,5 @@ export function updateAutomaticRoutingSnapshot(
 }
 
 function edgeRoutingTopology(edge: GraphModel["edges"][number]) {
-  return `${edge.source}\0${edge.target}`;
+  return JSON.stringify([edge.source, edge.target]);
 }
