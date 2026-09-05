@@ -22,6 +22,10 @@ import {
   getAppPathUrl,
   type AppLocale,
 } from "../../lib/site-metadata";
+import {
+  GUIDE_LAST_MODIFIED,
+  HOME_LAST_MODIFIED,
+} from "../../lib/content-dates";
 import { createVerification } from "./harness";
 
 const root = process.cwd();
@@ -182,9 +186,13 @@ for (const locale of Object.keys(localeHtmlPaths) as AppLocale[]) {
     html.includes(`"inLanguage":"${locale}"`),
     `${localeHtmlPaths[locale]} should include the localized JSON-LD language`,
   );
+  // featureList is generated from the same copy the intro renders, so it can
+  // never drift from the page text.
   expect(
-    !html.includes("featureList"),
-    `${localeHtmlPaths[locale]} should keep JSON-LD lean and avoid featureList drift`,
+    html.includes(
+      `"featureList":${JSON.stringify(appLocaleMetadata[locale].features)}`,
+    ),
+    `${localeHtmlPaths[locale]} JSON-LD featureList should match the intro features`,
   );
 
   for (const [language, path] of Object.entries(appLanguageAlternates)) {
@@ -292,6 +300,27 @@ expect(
   readText("out/sitemap.xml").includes(getAppGuideUrl("en")),
   "sitemap.xml should list the guide pages",
 );
+expect(
+  sitemap.includes(`<lastmod>${HOME_LAST_MODIFIED.toISOString()}</lastmod>`) &&
+    sitemap.includes(`<lastmod>${GUIDE_LAST_MODIFIED.toISOString()}</lastmod>`),
+  "sitemap.xml lastmod should come from the content commit dates, not the build clock",
+);
+for (const page of ["out/guide.html", "out/en/guide.html"]) {
+  const html = readText(page);
+  expect(
+    html.includes('"@type":"TechArticle"') && html.includes('"dateModified":"'),
+    `${page} should carry dated TechArticle structured data`,
+  );
+}
+{
+  const redirects = readText("out/_redirects");
+  for (const path of ["/en", "/guide", "/en/guide", "/zh-hans/guide"]) {
+    expect(
+      redirects.includes(`${path}/ ${path} 301`),
+      `_redirects should permanently redirect ${path}/ to ${path}`,
+    );
+  }
+}
 
 const headers = readText("out/_headers");
 expect(

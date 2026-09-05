@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from "next";
 export const SITE_URL = "https://graph-editor.daikusutora3.workers.dev";
 
 export const APP_NAME = "Graph Editor";
+export const AUTHOR_NAME = "daikusutora";
+export const REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
 
 // Search engines (Google in particular) ignore WebP favicons, so the icons
 // exposed through metadata are PNG plus a multi-size favicon.ico.
@@ -28,6 +30,17 @@ export const appLocaleMetadata = {
       "PNG 画像、テキスト形式、位置や色まで残る JSON で書き出し",
     ],
     ogImage: "/brand/og-ja.png",
+    keywords: [
+      "グラフ理論",
+      "グラフ 描画",
+      "グラフ エディタ",
+      "辺リスト",
+      "隣接行列",
+      "隣接リスト",
+      "競技プログラミング",
+      "木 可視化",
+      "Graph Editor",
+    ],
   },
   en: {
     title: "Graph Editor | Draw, arrange, and export graph theory diagrams",
@@ -43,6 +56,17 @@ export const appLocaleMetadata = {
       "Export to PNG, text formats, or lossless JSON with positions and colours",
     ],
     ogImage: "/brand/og-en.png",
+    keywords: [
+      "graph theory",
+      "graph editor",
+      "graph drawing",
+      "graph visualization",
+      "edge list",
+      "adjacency matrix",
+      "adjacency list",
+      "competitive programming",
+      "tree visualizer",
+    ],
   },
   "zh-Hans": {
     title: "Graph Editor | 在浏览器中绘制、排布并导出图论图形",
@@ -57,6 +81,17 @@ export const appLocaleMetadata = {
       "导出 PNG、文本格式或包含位置与颜色的无损 JSON",
     ],
     ogImage: "/brand/og-zh-hans.png",
+    keywords: [
+      "图论",
+      "图论 绘图",
+      "图 编辑器",
+      "边列表",
+      "邻接矩阵",
+      "邻接表",
+      "算法竞赛",
+      "树 可视化",
+      "Graph Editor",
+    ],
   },
 } as const;
 
@@ -130,20 +165,10 @@ export const appRootMetadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
-  keywords: [
-    "Graph Editor",
-    "graph theory",
-    "graph drawing",
-    "graph visualization",
-    "edge list",
-    "adjacency matrix",
-    "network diagram",
-    "グラフ理論",
-    "グラフ描画",
-  ],
-  authors: [{ name: "daikusutora" }],
-  creator: "daikusutora",
-  publisher: "daikusutora",
+  keywords: [...appLocaleMetadata.ja.keywords],
+  authors: [{ name: AUTHOR_NAME, url: REPOSITORY_URL }],
+  creator: AUTHOR_NAME,
+  publisher: AUTHOR_NAME,
   category: "graph theory",
   robots: {
     index: true,
@@ -191,12 +216,20 @@ export function getAppLocaleFromParam(param: string): AppLocale {
   );
 }
 
+export const appAuthorStructuredData = {
+  "@type": "Person",
+  name: AUTHOR_NAME,
+  url: REPOSITORY_URL,
+  sameAs: ["https://github.com/daikusutora3"],
+} as const;
+
 export function createAppStructuredData(locale: AppLocale) {
   const localeMetadata = appLocaleMetadata[locale];
 
   return {
     "@context": "https://schema.org",
     "@type": "WebApplication",
+    "@id": `${getAppLocaleUrl(locale)}#app`,
     name: APP_NAME,
     alternateName: "Graph Editor by daikusutora",
     applicationCategory: "DesignApplication",
@@ -206,8 +239,13 @@ export function createAppStructuredData(locale: AppLocale) {
     isAccessibleForFree: true,
     url: getAppLocaleUrl(locale),
     image: `${SITE_URL}${localeMetadata.ogImage}`,
+    screenshot: `${SITE_URL}${localeMetadata.ogImage}`,
     description: localeMetadata.description,
     inLanguage: locale,
+    featureList: [...localeMetadata.features],
+    license: "https://opensource.org/licenses/MIT",
+    sameAs: [REPOSITORY_URL],
+    author: appAuthorStructuredData,
     offers: {
       "@type": "Offer",
       price: "0",
@@ -227,6 +265,7 @@ export function createAppPageMetadata(locale: AppLocale): Metadata {
       absolute: localeMetadata.title,
     },
     description: localeMetadata.description,
+    keywords: [...localeMetadata.keywords],
     alternates: {
       canonical: appLocalePaths[locale],
       languages: appLanguageAlternates,
@@ -272,6 +311,7 @@ export function createGuidePageMetadata(
   return {
     title: { absolute: copy.title },
     description: copy.description,
+    keywords: [...appLocaleMetadata[locale].keywords],
     alternates: {
       canonical: appGuidePaths[locale],
       languages: appGuideLanguageAlternates,

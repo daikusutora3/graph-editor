@@ -5,3 +5,11 @@
 /guide.html /guide 301
 /en/guide.html /en/guide 301
 /zh-hans/guide.html /zh-hans/guide 301
+
+# Cloudflare answers trailing-slash variants with a temporary 307; make the
+# redirect permanent so crawlers consolidate on the clean URL.
+/en/ /en 301
+/zh-hans/ /zh-hans 301
+/guide/ /guide 301
+/en/guide/ /en/guide 301
+/zh-hans/guide/ /zh-hans/guide 301

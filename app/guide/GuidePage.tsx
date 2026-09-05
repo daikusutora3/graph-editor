@@ -1,20 +1,44 @@
 import Link from "next/link";
 
+import {
+  GUIDE_LAST_MODIFIED,
+  GUIDE_PUBLISHED_DATE,
+  toIsoDate,
+} from "@/lib/content-dates";
 import { guideCopy } from "@/lib/guide-content";
 import {
   APP_NAME,
+  appAuthorStructuredData,
+  appLocaleMetadata,
   appLocalePaths,
   getAppGuideUrl,
   getAppLocaleUrl,
+  REPOSITORY_URL,
+  SITE_URL,
   type AppLocale,
 } from "@/lib/site-metadata";
-
-const REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
 
 /** Static, fully server-rendered guide: real content for people and crawlers. */
 export function GuidePage({ locale }: { locale: AppLocale }) {
   const copy = guideCopy[locale];
   const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "@id": `${getAppGuideUrl(locale)}#article`,
+      headline: copy.heading,
+      description: copy.description,
+      url: getAppGuideUrl(locale),
+      mainEntityOfPage: getAppGuideUrl(locale),
+      inLanguage: locale,
+      image: `${SITE_URL}${appLocaleMetadata[locale].ogImage}`,
+      datePublished: GUIDE_PUBLISHED_DATE,
+      dateModified: toIsoDate(GUIDE_LAST_MODIFIED),
+      author: appAuthorStructuredData,
+      publisher: appAuthorStructuredData,
+      about: { "@id": `${getAppLocaleUrl(locale)}#app` },
+      isAccessibleForFree: true,
+    },
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
