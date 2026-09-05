@@ -40,7 +40,9 @@ export function StorageNotice() {
   const { fitAfterNextGraphRender } = useGraphCanvasApi();
   const { locale } = useI18n();
   const copy = integrityCopy[locale === "ja" ? "ja" : "en"];
-  if (state.status === "saved" && !error) return null;
+  const needsStorageAttention =
+    state.status !== "saved" && state.status !== "pending";
+  if (!needsStorageAttention && !error) return null;
   const external = parseStoredGraph(state.raw);
   const download = (raw: string, filename: string) =>
     downloadBlob(new Blob([raw], { type: "application/json" }), filename);
@@ -60,7 +62,7 @@ export function StorageNotice() {
       className="pointer-events-auto absolute inset-x-4 top-20 z-[70] mx-auto flex max-w-2xl flex-wrap items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3 text-xs text-[var(--text)] shadow-lg"
     >
       {error ? <p className="w-full">{copy.rejected}</p> : null}
-      {state.status !== "saved" ? (
+      {needsStorageAttention ? (
         <p className="w-full">{copy[state.status]}</p>
       ) : null}
       {state.status !== "pending" ? (
