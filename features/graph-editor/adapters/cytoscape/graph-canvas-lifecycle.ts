@@ -2,7 +2,7 @@
 
 import cytoscape, { type Core } from "cytoscape";
 import type { MutableRefObject, RefObject } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   createGraphCanvasStylesheet,
@@ -29,6 +29,7 @@ import { withSuppressedSelectionSync } from "./selection-sync-guard";
 import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
 
 type UseGraphCanvasLifecycleOptions = {
+  routingReady: boolean;
   containerRef: RefObject<HTMLDivElement | null>;
   cyRef: MutableRefObject<Core | null>;
   elements: ReturnType<typeof graphModelToCytoscapeElements>;
@@ -48,6 +49,7 @@ type UseGraphCanvasLifecycleOptions = {
 };
 
 export function useGraphCanvasLifecycle({
+  routingReady,
   containerRef,
   cyRef,
   elements,
@@ -65,6 +67,11 @@ export function useGraphCanvasLifecycle({
   updateRenderedHitboxes,
   panRenderedHitboxes,
 }: UseGraphCanvasLifecycleOptions) {
+  const [displayReady, setDisplayReady] = useState(false);
+  const [displayError, setDisplayError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const initialFitRef = useRef(true);
+  const requestRef = useRef(0);
   const arrowScaleRef = useRef(graph.settings.arrowScale);
   const flushRenderedHitboxesRef = useRef(flushRenderedHitboxes);
   const setZoomPercentRef = useRef(setZoomPercent);
@@ -83,46 +90,37 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
-    const cy = cytoscape({
-      container: containerRef.current,
-      elements,
-      style: createGraphCanvasStylesheet(
-        readCanvasPalette(),
-        graph.settings.arrowScale,
-      ),
-      layout: { name: "preset", fit: false },
-      boxSelectionEnabled: mode === "select",
-      selectionType: "single",
-      autoungrabify: true,
-      autounselectify: mode !== "select",
-      minZoom: MIN_CANVAS_ZOOM,
-      maxZoom: MAX_CANVAS_ZOOM,
-    });
-
+    let cy: Core;
+    try {
+      cy = cytoscape({
+        container: containerRef.current,
+        elements,
+        style: createGraphCanvasStylesheet(
+          readCanvasPalette(),
+          graph.settings.arrowScale,
+        ),
+        layout: { name: "preset", fit: false },
+        boxSelectionEnabled: mode === "select",
+        selectionType: "single",
+        autoungrabify: true,
+        autounselectify: mode !== "select",
+        minZoom: MIN_CANVAS_ZOOM,
+        maxZoom: MAX_CANVAS_ZOOM,
+      });
+    } catch {
+      setDisplayError(true);
+      return;
+    }
+    initialFitRef.current = true;
     cyRef.current = cy;
-    const initialViewportFrame = requestAnimationFrame(() => {
-      if (cy.destroyed()) {
-        return;
-      }
-
-      if (cy.elements().length > 0) {
-        fitGraphToAvailableViewport(cy, chromeRef.current);
-      } else {
-        centerGraphOrigin(cy, chromeRef.current);
-      }
-      updateRenderedHitboxesRef.current(cy);
-      setZoomPercentRef.current(readZoomPercent(cy));
-    });
-
     return () => {
-      cancelAnimationFrame(initialViewportFrame);
       cy.removeAllListeners();
       cy.destroy();
       cyRef.current = null;
     };
     // Cytoscape is created once; mode/elements/arrowScale are synced by later effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerRef, cyRef]);
+  }, [containerRef, cyRef, retry]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -144,7 +142,7 @@ export function useGraphCanvasLifecycle({
     observer.observe(container);
 
     return () => observer.disconnect();
-  }, [containerRef, cyRef]);
+  }, [containerRef, cyRef, retry]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -165,6 +163,7 @@ export function useGraphCanvasLifecycle({
       updateRenderedHitboxesRef.current(cy);
     };
 
+    document.fonts?.addEventListener("loadingdone", updateCanvasTheme);
     const observer = new MutationObserver(updateCanvasTheme);
     observer.observe(document.documentElement, {
       attributeFilter: ["data-theme"],
@@ -173,8 +172,9 @@ export function useGraphCanvasLifecycle({
 
     return () => {
       observer.disconnect();
+      document.fonts?.removeEventListener("loadingdone", updateCanvasTheme);
     };
-  }, [cyRef]);
+  }, [cyRef, retry]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -200,6 +200,24 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
+    const shouldReveal =
+      initialFitRef.current || pendingFitAfterUpdateRef.current;
+    const request = ++requestRef.current;
+    let completed = false;
+    let renderFrame: number | null = null;
+    let timeout: number | null = null;
+    if (shouldReveal) setDisplayReady(false);
+    const reveal = () => {
+      if (request !== requestRef.current || cy.destroyed()) return;
+      renderFrame = requestAnimationFrame(() => {
+        if (request !== requestRef.current || cy.destroyed()) return;
+        flushRenderedHitboxesRef.current(cy);
+        completed = true;
+        setDisplayReady(true);
+        setDisplayError(false);
+        if (timeout !== null) clearTimeout(timeout);
+      });
+    };
     const fitToGraph = () => {
       cy.resize();
 
@@ -230,26 +248,35 @@ export function useGraphCanvasLifecycle({
 
     cy.userZoomingEnabled(elements.length > 0);
 
-    if (elements.length === 0) {
+    if (shouldReveal && routingReady) {
+      initialFitRef.current = false;
       pendingFitAfterUpdateRef.current = false;
-      centerGraphOrigin(cy, chromeRef.current);
-      flushRenderedHitboxesRef.current(cy);
-      setZoomPercentRef.current(readZoomPercent(cy));
-      return;
-    }
-
-    if (pendingFitAfterUpdateRef.current) {
-      pendingFitAfterUpdateRef.current = false;
+      // Register for this exact element/viewport request, after batched updates.
+      cy.one("render", reveal);
       fitToGraph();
-      return;
+      cy.forceRender();
+      timeout = window.setTimeout(() => {
+        if (request === requestRef.current) setDisplayError(true);
+      }, 10_000);
+    } else {
+      updateRenderedHitboxesRef.current(cy);
     }
-
-    updateRenderedHitboxesRef.current(cy);
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      if (requestRef.current === request) requestRef.current = request + 1;
+      cy.off("render", reveal);
+      if (renderFrame !== null) cancelAnimationFrame(renderFrame);
+      if (timeout !== null) clearTimeout(timeout);
+      // An interrupted reveal still needs to finish for the replacement request.
+      if (shouldReveal && !completed) initialFitRef.current = true;
+    };
     // pendingFitAfterUpdateRef is a stable ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     cyRef,
     elements,
+    routingReady,
+    retry,
     edgeRoutingOptions,
     draggingNodeIdsRef,
     graph,
@@ -315,7 +342,16 @@ export function useGraphCanvasLifecycle({
         cy.off("zoom resize", updateZoomOverlay);
       }
     };
-  }, [cyRef]);
+  }, [cyRef, retry]);
+  return {
+    displayReady: displayReady && !pendingFitAfterUpdateRef.current,
+    displayError,
+    retryDisplay: () => {
+      setDisplayReady(false);
+      setDisplayError(false);
+      setRetry((value) => value + 1);
+    },
+  };
 }
 
 function syncDraggedEdgeRoutingPreview(

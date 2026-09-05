@@ -2,14 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { Search, X } from "lucide-react";
-import {
-  type FocusEvent,
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type FocusEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -27,6 +20,7 @@ import {
   type SizedSampleGraphKind,
 } from "../../samples/sample-graphs";
 import {
+  sampleDefaultNodeCount,
   sampleGraphCount,
   sampleGraphGroups,
   type SampleGraphItem,
@@ -95,13 +89,13 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
   );
 
   const applyModel = (model: GraphModel) => {
-    applyGraphModel(model, {
+    const applied = applyGraphModel(model, {
       clearEdgeDraft: true,
       clearSelection: true,
       fitAfterUpdate: true,
       selectMode: true,
     });
-    onSampleApplied();
+    if (applied) onSampleApplied();
   };
   const generateSample = (kind: SampleGraphKind) => {
     applyModel(createSampleGraph(kind, graph.settings));
@@ -141,10 +135,14 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
         onQueryChange={setSampleQuery}
       />
 
-      <div className="ge-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4">
+      <div
+        data-sample-scroll
+        tabIndex={0}
+        className="ge-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pb-4"
+      >
         {filteredSampleGroups.length > 0 ? (
           filteredSampleGroups.map((group) => (
-            <section key={group.key} className="flex flex-col gap-2.5">
+            <section key={group.key} className="flex shrink-0 flex-col gap-2.5">
               <div className="flex items-start justify-between gap-3 px-0.5">
                 <div className="flex min-w-0 flex-col gap-1">
                   <SectionLabel>
@@ -158,22 +156,17 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
                   {group.samples.length}
                 </div>
               </div>
-              <LazyGroup
-                count={group.samples.length}
-                eager={filteredSampleGroups.indexOf(group) === 0}
-              >
-                <div className={SAMPLE_GALLERY_GRID_CLASS}>
-                  {group.samples.map((sample) => (
-                    <SampleCard
-                      key={sample.kind}
-                      sample={sample}
-                      settings={graph.settings}
-                      onApply={() => generateSample(sample.kind)}
-                      onApplySized={generateSizedSample}
-                    />
-                  ))}
-                </div>
-              </LazyGroup>
+              <div className={SAMPLE_GALLERY_GRID_CLASS}>
+                {group.samples.map((sample) => (
+                  <SampleCard
+                    key={sample.kind}
+                    sample={sample}
+                    settings={graph.settings}
+                    onApply={() => generateSample(sample.kind)}
+                    onApplySized={generateSizedSample}
+                  />
+                ))}
+              </div>
             </section>
           ))
         ) : (
@@ -187,55 +180,6 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-/** Renders a group's cards only once it approaches the viewport. Sixty-plus
- * SVG previews with edge routing are too heavy to paint in one go. */
-function LazyGroup({
-  children,
-  count,
-  eager,
-}: {
-  children: ReactNode;
-  count: number;
-  eager: boolean;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [rendered, setRendered] = useState(eager);
-
-  useEffect(() => {
-    if (rendered) {
-      return;
-    }
-
-    const element = ref.current;
-
-    if (!element || typeof IntersectionObserver === "undefined") {
-      setRendered(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setRendered(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "320px 0px" },
-    );
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [rendered]);
-
-  const rows = Math.ceil(count / 2);
-
-  return (
-    <div ref={ref} style={rendered ? undefined : { minHeight: rows * 172 }}>
-      {rendered ? children : null}
     </div>
   );
 }
@@ -254,7 +198,7 @@ function SampleGalleryFilter({
   const { messages } = useI18n();
 
   return (
-    <div className="flex items-center gap-3 px-4 pt-3.5 pb-3">
+    <div className="flex shrink-0 items-center gap-3 px-4 pt-3.5 pb-3">
       <label className="ge-focus touch:h-11 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
         <Search className="size-3.5 shrink-0" aria-hidden="true" />
         <input
@@ -304,11 +248,37 @@ function SampleCard({
   const subtitle =
     messages.samples.item[sample.kind]?.subtitle ??
     (locale === "ja" ? sample.subtitle : humanizeSampleKind(sample.kind));
+  const previewRef = useRef<HTMLSpanElement | null>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const element = previewRef.current;
+    if (!element || visible) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      {
+        root: element.closest("[data-sample-scroll]"),
+        rootMargin: "320px 0px",
+      },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [visible]);
   const model = useMemo(
-    () => createSampleGraph(sample.kind, settings),
-    [sample.kind, settings],
+    () => (visible ? createSampleGraph(sample.kind, settings) : null),
+    [visible, sample.kind, settings],
   );
-  const [nodeCount, setNodeCount] = useState(() => String(model.nodes.length));
+  const [nodeCount, setNodeCount] = useState(() =>
+    String(sampleDefaultNodeCount(sample.kind)),
+  );
   const [rows, setRows] = useState(() => (sample.kind === "grid" ? "3" : "4"));
   const [columns, setColumns] = useState(() =>
     sample.kind === "grid" ? "3" : "4",
@@ -348,13 +318,18 @@ function SampleCard({
       }}
     >
       <div className="grid grid-cols-[106px_minmax(0,1fr)] items-center gap-3 p-3">
-        <span className="grid h-[88px] w-[106px] place-items-center overflow-hidden rounded-lg bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:12px_12px]">
-          <SampleGraphPreview
-            model={model}
-            sampleKind={sample.kind}
-            width={98}
-            height={76}
-          />
+        <span
+          ref={previewRef}
+          className="grid h-[88px] w-[106px] place-items-center overflow-hidden rounded-lg bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:12px_12px]"
+        >
+          {model ? (
+            <SampleGraphPreview
+              model={model}
+              sampleKind={sample.kind}
+              width={98}
+              height={76}
+            />
+          ) : null}
         </span>
         <span className="flex min-w-0 flex-col gap-1">
           <span className="text-sm leading-tight font-bold break-words text-[var(--text)]">

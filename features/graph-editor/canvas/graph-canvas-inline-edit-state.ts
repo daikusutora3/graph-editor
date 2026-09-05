@@ -40,7 +40,9 @@ type UseGraphInlineEditOptions = {
   contextMenuTarget: GraphContextMenuTarget | null;
   cyRef: MutableRefObject<Core | null>;
   edgeLabelHitboxes: EdgeLabelHitbox[];
-  executeCommand: (command: GraphIntent) => void;
+  executeCommand: (
+    command: GraphIntent,
+  ) => import("../shell/state/history-atoms").CommandResult;
   graph: GraphModel;
   mode: EditorMode;
   nodeHitboxes: NodeHitbox[];
@@ -180,7 +182,12 @@ export function useGraphInlineEdit({
       }
 
       if (result.command) {
-        executeCommand(result.command);
+        if (executeCommand(result.command).status === "rejected") {
+          closingRef.current = null;
+          setInlineEdit({ ...inlineEdit, error: "invalid-graph" });
+          window.requestAnimationFrame(() => inputRef.current?.focus());
+          return;
+        }
       }
 
       closeInlineEdit();

@@ -168,7 +168,17 @@ function sameElementData(
 
   return (
     currentKeys.length === nextKeys.length &&
-    currentKeys.every((key) => current[key] === next[key])
+    currentKeys.every((key) => {
+      const a = current[key],
+        b = next[key];
+      return (
+        a === b ||
+        (Array.isArray(a) &&
+          Array.isArray(b) &&
+          a.length === b.length &&
+          a.every((value, index) => value === b[index]))
+      );
+    })
   );
 }
 

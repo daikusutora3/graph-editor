@@ -1,183 +1,181 @@
 import {
-  GRAPH_JSON_MAX_EDGES,
-  GRAPH_JSON_MAX_NODES,
-  normalizeGraphModel,
+  parseGraphModelJson,
+  serializeGraphModel,
 } from "../../core/graph/graph-json";
+import {
+  GRAPH_MAX_JSON_CHARS,
+  GRAPH_MAX_NODES,
+  GRAPH_MAX_EDGES,
+} from "../../core/graph/graph-limits";
 import type { GraphModel } from "../../core/graph/model";
 
 export const GRAPH_STORAGE_KEY = "graph-editor-graph";
-export const MAX_STORED_GRAPH_CHARS = 2_000_000;
-export const MAX_STORED_GRAPH_NODES = GRAPH_JSON_MAX_NODES;
-export const MAX_STORED_GRAPH_EDGES = GRAPH_JSON_MAX_EDGES;
-
-const GRAPH_STORAGE_WRITE_DELAY_MS = 250;
-
-/** Fired on window when autosave starts (or stops) skipping an oversized graph. */
+export const MAX_STORED_GRAPH_CHARS = GRAPH_MAX_JSON_CHARS;
+export const MAX_STORED_GRAPH_NODES = GRAPH_MAX_NODES;
+export const MAX_STORED_GRAPH_EDGES = GRAPH_MAX_EDGES;
 export const STORAGE_SKIPPED_EVENT = "graph-editor:storage-skipped";
-let storageSkipped = false;
+export const STORAGE_STATE_EVENT = "graph-editor:storage-state";
+export type SaveStatus =
+  | "saved"
+  | "pending"
+  | "failed"
+  | "conflict"
+  | "unavailable"
+  | "invalid";
+export type StorageSnapshot = { status: SaveStatus; raw: string | null };
+let snapshot: StorageSnapshot = { status: "saved", raw: null };
+let baseline: string | null = null;
+let initialized = false;
+let pendingRaw: string | null = null;
+let generation = 0;
+let timer: number | null = null;
+let installed = false;
 
-function notifyStorageSkipped(skipped: boolean) {
-  if (skipped === storageSkipped) {
-    return;
-  }
-
-  storageSkipped = skipped;
-
-  if (skipped) {
-    window.dispatchEvent(new Event(STORAGE_SKIPPED_EVENT));
+function notify(status: SaveStatus, raw = snapshot.raw) {
+  snapshot = { status, raw };
+  if (
+    typeof window !== "undefined" &&
+    typeof window.dispatchEvent === "function"
+  ) {
+    window.dispatchEvent(new Event(STORAGE_STATE_EVENT));
   }
 }
-
-let pendingGraph: GraphModel | null = null;
-let pendingWriteTimeoutId: number | null = null;
-let flushListenersInstalled = false;
-
+export function getStorageSnapshot() {
+  return snapshot;
+}
 export function readStoredGraph() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
+  if (typeof window === "undefined") return null;
+  cancelScheduledStoredGraphWrite();
+  initialized = true;
   try {
-    return parseStoredGraph(window.localStorage.getItem(GRAPH_STORAGE_KEY));
+    baseline = window.localStorage.getItem(GRAPH_STORAGE_KEY);
+    const graph = parseStoredGraph(baseline);
+    notify(
+      baseline !== null && !graph
+        ? "invalid"
+        : typeof navigator === "undefined" || !navigator.locks
+          ? "unavailable"
+          : "saved",
+      baseline,
+    );
+    return graph;
   } catch {
+    notify("unavailable", null);
     return null;
   }
 }
 
-export function scheduleStoredGraphWrite(graph: GraphModel) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  pendingGraph = graph;
+export function scheduleStoredGraphWrite(
+  graph: GraphModel,
+  serialized?: string,
+) {
+  if (typeof window === "undefined") return;
+  if (!initialized) readStoredGraph();
   installStorageFlushListeners();
-
-  if (pendingWriteTimeoutId !== null) {
+  pendingRaw = serialized ?? serializeStoredGraphForWrite(graph);
+  generation += 1;
+  if (!pendingRaw) {
+    notify("failed");
     return;
   }
-
-  pendingWriteTimeoutId = window.setTimeout(() => {
-    pendingWriteTimeoutId = null;
-    flushStoredGraphWrite();
-  }, GRAPH_STORAGE_WRITE_DELAY_MS);
+  if (["invalid", "conflict", "unavailable"].includes(snapshot.status)) return;
+  notify("pending");
+  installStorageFlushListeners();
+  if (timer !== null) window.clearTimeout(timer);
+  timer = window.setTimeout(() => {
+    timer = null;
+    void flushStoredGraphWrite();
+  }, 250);
 }
 
 export function cancelScheduledStoredGraphWrite() {
-  if (typeof window === "undefined") {
-    pendingGraph = null;
-    pendingWriteTimeoutId = null;
-    return;
-  }
-
-  if (pendingWriteTimeoutId !== null) {
-    window.clearTimeout(pendingWriteTimeoutId);
-    pendingWriteTimeoutId = null;
-  }
-
-  pendingGraph = null;
+  generation += 1;
+  pendingRaw = null;
+  if (timer !== null && typeof window !== "undefined")
+    window.clearTimeout(timer);
+  timer = null;
 }
 
-export function flushStoredGraphWrite() {
-  if (typeof window === "undefined" || !pendingGraph) {
+export async function flushStoredGraphWrite() {
+  if (typeof window === "undefined" || pendingRaw === null) return;
+  if (["invalid", "conflict", "unavailable"].includes(snapshot.status)) return;
+  if (timer !== null) window.clearTimeout(timer);
+  timer = null;
+  if (typeof navigator === "undefined" || !navigator.locks) {
+    notify("unavailable");
     return;
   }
-
-  if (pendingWriteTimeoutId !== null) {
-    window.clearTimeout(pendingWriteTimeoutId);
-    pendingWriteTimeoutId = null;
-  }
-
-  const graph = pendingGraph;
-  pendingGraph = null;
-
-  writeStoredGraphNow(graph);
-}
-
-function writeStoredGraphNow(graph: GraphModel) {
+  const request = generation;
+  const raw = pendingRaw;
   try {
-    // Over the cap: keep the last stored graph rather than deleting it, so
-    // other tabs never observe a removal and reload as empty. The UI is told
-    // once per transition so it can suggest exporting instead.
-    if (!shouldStoreGraphShape(graph)) {
-      notifyStorageSkipped(true);
-      return;
-    }
-
-    const rawGraph = JSON.stringify(graph);
-
-    if (!shouldStoreRawGraph(rawGraph)) {
-      notifyStorageSkipped(true);
-      return;
-    }
-
-    window.localStorage.setItem(GRAPH_STORAGE_KEY, rawGraph);
-    notifyStorageSkipped(false);
+    await navigator.locks.request(GRAPH_STORAGE_KEY, () => {
+      if (request !== generation) return;
+      const current = window.localStorage.getItem(GRAPH_STORAGE_KEY);
+      if (current !== baseline) {
+        notify("conflict", current);
+        return;
+      }
+      window.localStorage.setItem(GRAPH_STORAGE_KEY, raw);
+      baseline = raw;
+      if (request === generation) {
+        pendingRaw = null;
+        notify("saved", raw);
+      }
+    });
   } catch {
-    // Ignore storage failures so editing still works in restricted browsers.
+    if (request === generation) notify("failed");
   }
+}
+
+/** Notifications never replace the current graph or its undo history. */
+export function observeExternalStorage(raw: string | null) {
+  if (raw !== baseline) {
+    generation += 1;
+    notify("conflict", raw);
+  }
+}
+
+/** Accept only the exact document the user reviewed; a later write is a new conflict. */
+export function acceptStorageBaseline(raw: string | null) {
+  cancelScheduledStoredGraphWrite();
+  baseline = raw;
+  initialized = true;
+  notify("saved", raw);
 }
 
 export function serializeStoredGraphForWrite(graph: GraphModel) {
-  if (!shouldStoreGraphShape(graph)) {
-    return null;
-  }
-
-  const rawGraph = JSON.stringify(graph);
-
-  return shouldStoreRawGraph(rawGraph) ? rawGraph : null;
-}
-
-function shouldStoreRawGraph(rawGraph: string) {
-  return rawGraph.length <= MAX_STORED_GRAPH_CHARS;
-}
-
-function shouldStoreGraphShape(graph: GraphModel) {
-  return (
-    graph.nodes.length <= MAX_STORED_GRAPH_NODES &&
-    graph.edges.length <= MAX_STORED_GRAPH_EDGES
-  );
-}
-
-function flushWhenHidden() {
-  if (document.visibilityState === "hidden") {
-    flushStoredGraphWrite();
-  }
-}
-
-function installStorageFlushListeners() {
-  if (flushListenersInstalled) {
-    return;
-  }
-
-  flushListenersInstalled = true;
-
-  window.addEventListener("pagehide", flushStoredGraphWrite);
-  document.addEventListener("visibilitychange", flushWhenHidden);
-}
-
-/** Removes the flush listeners; used by tests and hot reloads. */
-export function uninstallStorageFlushListeners() {
-  if (!flushListenersInstalled || typeof window === "undefined") {
-    return;
-  }
-
-  flushListenersInstalled = false;
-  window.removeEventListener("pagehide", flushStoredGraphWrite);
-  document.removeEventListener("visibilitychange", flushWhenHidden);
-}
-
-export function parseStoredGraph(rawValue: string | null): GraphModel | null {
-  if (!rawValue) {
-    return null;
-  }
-
-  if (!shouldStoreRawGraph(rawValue)) {
-    return null;
-  }
-
   try {
-    return normalizeGraphModel(JSON.parse(rawValue));
+    return serializeGraphModel(graph);
   } catch {
     return null;
   }
+}
+export function parseStoredGraph(raw: string | null): GraphModel | null {
+  return raw === null ? null : parseGraphModelJson(raw);
+}
+function flushWhenHidden() {
+  if (document.visibilityState === "hidden") void flushStoredGraphWrite();
+}
+function flushOnPageHide() {
+  void flushStoredGraphWrite();
+}
+function installStorageFlushListeners() {
+  if (installed) return;
+  installed = true;
+  window.addEventListener("pagehide", flushOnPageHide);
+  window.addEventListener("beforeunload", warnUnsavedChanges);
+  document.addEventListener("visibilitychange", flushWhenHidden);
+}
+export function uninstallStorageFlushListeners() {
+  if (!installed || typeof window === "undefined") return;
+  installed = false;
+  window.removeEventListener("pagehide", flushOnPageHide);
+  window.removeEventListener("beforeunload", warnUnsavedChanges);
+  document.removeEventListener("visibilitychange", flushWhenHidden);
+}
+
+function warnUnsavedChanges(event: BeforeUnloadEvent) {
+  if (pendingRaw === null) return;
+  event.preventDefault();
+  event.returnValue = "";
 }

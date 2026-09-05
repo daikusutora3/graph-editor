@@ -1,3 +1,4 @@
+import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
 import { chooseLoopDirection } from "./edge-routing-loops";
 import { clamp } from "./edge-routing-shared";
@@ -13,6 +14,7 @@ import type {
 } from "../graph/model";
 import { normalizeEdgeRoutingOverride } from "../graph/edge-routing-overrides";
 import {
+  minimumCurveDistanceToNode,
   curveThroughChordOffset,
   offsetEdgeCurve,
   reverseEdgeCurve,
@@ -20,12 +22,13 @@ import {
   type EdgeCurveGeometry,
 } from "./edge-route-geometry";
 import {
-  estimateNodeWidth,
+  nodeGeometryWidth,
   NODE_SIZE_PX,
   pillExtentTowards,
 } from "../graph/node-size";
 
 export type EdgeRoutingMeta = EdgeCurveGeometry & {
+  status?: "ready" | "pending" | "unresolved";
   bowPx: number;
   duplicate: boolean;
   loopDirectionDeg: number;
@@ -40,7 +43,6 @@ export type EdgeRoutingOptions = {
   rerouteEdgeIds?: ReadonlySet<EdgeId> | null;
 };
 
-const MAX_BOW_PX = 180;
 const LOOP_DIRECTION_DEG = -45;
 const LOOP_DIRECTION_STEP_DEG = 42;
 const LOOP_SWEEP_DEG = 70;
@@ -70,7 +72,7 @@ const defaultEdgeRoutingMeta: EdgeRoutingMeta = {
 const defaultEdgeRoutingOptions: ResolvedEdgeRoutingOptions = {
   variant: 0,
   avoidNodes: true,
-  work: { units: 0, samples: new Map() },
+  work: { units: 0, samples: new Map(), pending: new Set() },
   previousMeta: new Map(),
   rerouteEdgeIds: null,
   separateParallelEdges: true,
@@ -81,13 +83,16 @@ const defaultEdgeRoutingOptions: ResolvedEdgeRoutingOptions = {
   loopSweepDeg: LOOP_SWEEP_DEG,
   loopSweepStepDeg: LOOP_SWEEP_STEP_DEG,
   maxLoopSweepDeg: MAX_LOOP_SWEEP_DEG,
-  candidateBowPx: [0, 32, -32, 64, -64, 96, -96],
+  candidateBowPx: [
+    0, 32, -32, 64, -64, 96, -96, 128, -128, 160, -160, 180, -180,
+  ],
 };
 
 export function computeEdgeRouting(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
 ): Map<EdgeId, EdgeRoutingMeta> {
+  model = routingDisplayModel(model);
   const resolvedOptions = resolveEdgeRoutingOptions(model, options);
   const routeGroups = new Map<string, GraphEdge[]>();
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
@@ -259,6 +264,89 @@ export function computeEdgeRouting(
     }
   }
 
+  if (resolvedOptions.avoidNodes) {
+    for (const edges of routeGroups.values()) {
+      const pending = edges.some((edge) =>
+        resolvedOptions.work.pending?.has(edge.id),
+      );
+      for (const edge of edges) {
+        const route = meta.get(edge.id);
+        const source = nodesById.get(edge.source),
+          target = nodesById.get(edge.target);
+        if (!route || !source || !target || edge.source === edge.target)
+          continue;
+        if (pending) {
+          meta.set(edge.id, { ...route, status: "pending" });
+          continue;
+        }
+        if (
+          resolvedOptions.rerouteEdgeIds &&
+          !resolvedOptions.rerouteEdgeIds.has(edge.id)
+        )
+          continue;
+        let finalRoute = route;
+        if (
+          !edge.routing &&
+          edges.length > 1 &&
+          nodeCollisions(route, edge, source, target, model.nodes) > 0
+        ) {
+          // Evaluate offsets after applying the parallel lane, including the clamp.
+          let bestCollisions = nodeCollisions(
+            route,
+            edge,
+            source,
+            target,
+            model.nodes,
+          );
+          for (const offset of [24, -24, 48, -48, 96, -96, 180, -180]) {
+            const candidate = clampCurveDistances(
+              offsetEdgeCurve(route, offset),
+              -MAX_BOW_PX,
+              MAX_BOW_PX,
+            );
+            const collisions = nodeCollisions(
+              candidate,
+              edge,
+              source,
+              target,
+              model.nodes,
+            );
+            const distinct = edges.every(
+              (other) =>
+                other.id === edge.id ||
+                Math.abs(
+                  canonicalPreviousBow(other, meta) -
+                    (edge.source <= edge.target
+                      ? representativeBow(candidate)
+                      : -representativeBow(candidate)),
+                ) >= MIN_DUPLICATE_BOW_SPACING_PX,
+            );
+            if (distinct && collisions < bestCollisions) {
+              bestCollisions = collisions;
+              finalRoute = {
+                ...route,
+                ...candidate,
+                bowPx: representativeBow(candidate),
+              };
+            }
+          }
+        }
+        meta.set(edge.id, {
+          ...finalRoute,
+          status: nodeCollisions(finalRoute, edge, source, target, model.nodes)
+            ? "unresolved"
+            : "ready",
+        });
+      }
+    }
+  }
+  if (
+    (options.mode ?? "quality") === "quality" &&
+    !resolvedOptions.avoidNodes
+  ) {
+    for (const [id, route] of meta)
+      meta.set(id, { ...route, status: "unresolved" });
+  }
   return meta;
 }
 
@@ -333,7 +421,7 @@ function resolveEdgeRoutingOptions(
   return {
     ...defaultEdgeRoutingOptions,
     avoidNodes: mode === "quality",
-    work: { units: 0, samples: new Map() },
+    work: { units: 0, samples: new Map(), pending: new Set() },
     previousMeta:
       options.previousMeta ?? defaultEdgeRoutingOptions.previousMeta,
     rerouteEdgeIds:
@@ -346,6 +434,7 @@ export function createEdgeRoutingCacheKey(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
 ) {
+  model = routingDisplayModel(model);
   const resolvedOptions = resolveEdgeRoutingOptions(model, options);
   const optionSignature = [
     model.settings.directed,
@@ -362,12 +451,19 @@ export function createEdgeRoutingCacheKey(
     resolvedOptions.candidateBowPx.join(","),
   ].join(":");
   const nodeSignature = resolvedOptions.avoidNodes
-    ? model.nodes.map((node) => `${node.id}:${node.x}:${node.y}`).join("|")
+    ? JSON.stringify(
+        model.nodes.map((node) => [
+          node.id,
+          node.x,
+          node.y,
+          nodeGeometryWidth(node),
+        ]),
+      )
     : "";
   const edgeSignature = model.edges
     .map(
       (edge) =>
-        `${edge.id}:${edge.source}:${edge.target}:${edge.routing?.bowPx ?? ""}:${edge.routing?.bowT ?? ""}:${
+        `${JSON.stringify([edge.id, edge.source, edge.target, edge.label, edge.weight])}:${edge.routing?.bowPx ?? ""}:${edge.routing?.bowT ?? ""}:${
           edge.routing?.loopDirectionDeg ?? ""
         }:${edge.routing?.loopSweepDeg ?? ""}`,
     )
@@ -415,6 +511,8 @@ function chooseEdgeCurve(
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
 ): EdgeCurveGeometry {
+  if (edge.routing?.bowPx !== undefined)
+    return singleBowCurve(edge.routing.bowPx, edge.routing.bowT);
   const simpleCurve = singleBowCurve(0);
 
   if (!options.avoidNodes || edge.source === edge.target) {
@@ -429,6 +527,7 @@ function chooseEdgeCurve(
   }
 
   if (options.work.units > ROUTING_WORK_BUDGET) {
+    options.work.pending?.add(edge.id);
     // Budget spent: keep whatever this edge had rather than stalling.
     const previous = options.previousMeta.get(edge.id);
 
@@ -466,7 +565,14 @@ function chooseEdgeCurve(
       controlPointWeights: previous.controlPointWeights,
     });
   }
+  for (let index = 0; index < candidates.length; index++)
+    candidates[index] = clampCurveDistances(
+      candidates[index]!,
+      -MAX_BOW_PX,
+      MAX_BOW_PX,
+    );
   let best = candidates[0] ?? simpleCurve;
+  let bestCollisions = nodeCollisions(best, edge, source, target, nodes);
   let bestScore = scoreCandidateCurve(
     best,
     source,
@@ -492,11 +598,15 @@ function chooseEdgeCurve(
       resolvedMeta,
     );
 
+    const collisions = nodeCollisions(candidate, edge, source, target, nodes);
     if (
-      score < bestScore ||
-      (score === bestScore &&
-        compareCurvePreference(candidate, best, options.variant) < 0)
+      collisions < bestCollisions ||
+      (collisions === bestCollisions &&
+        (score < bestScore ||
+          (score === bestScore &&
+            compareCurvePreference(candidate, best, options.variant) < 0)))
     ) {
+      bestCollisions = collisions;
       best = candidate;
       bestScore = score;
     }
@@ -538,7 +648,7 @@ function projectedEdgeObstacles(
       const relativeY = node.y - source.y;
       // Wide pills extend further than a circle; measure their reach along
       // and across the edge so the clearance hugs the actual shape.
-      const halfWidth = estimateNodeWidth(node.label) / 2;
+      const halfWidth = nodeGeometryWidth(node) / 2;
       const halfHeight = NODE_SIZE_PX / 2;
       const acrossExtra =
         pillExtentTowards(halfWidth, halfHeight, normalX, normalY) - halfHeight;
@@ -767,8 +877,8 @@ function centerPreviousRouteForParallelGroup(
 
 export function routeEdgeKey(edge: GraphEdge) {
   return edge.source <= edge.target
-    ? `${edge.source}\0${edge.target}`
-    : `${edge.target}\0${edge.source}`;
+    ? JSON.stringify([edge.source, edge.target])
+    : JSON.stringify([edge.target, edge.source]);
 }
 
 function getDuplicateKeys(model: GraphModel) {
@@ -790,10 +900,71 @@ function getDuplicateKeys(model: GraphModel) {
 
 function duplicateEdgeKey(model: GraphModel, edge: GraphEdge) {
   if (model.settings.directed) {
-    return `${edge.source}\0${edge.target}`;
+    return JSON.stringify([edge.source, edge.target]);
   }
 
   return routeEdgeKey(edge);
 }
 
 export { defaultEdgeRoutingMeta };
+
+function routingDisplayModel(model: GraphModel): GraphModel {
+  return {
+    ...model,
+    nodes: model.settings.showNodeLabels
+      ? model.nodes
+      : model.nodes.map((node) => ({
+          ...node,
+          label: "",
+          measuredWidth: NODE_SIZE_PX,
+        })),
+    edges: model.edges.map((edge) => ({
+      ...edge,
+      label:
+        edge.label ?? (model.settings.weighted ? (edge.weight ?? "1") : ""),
+      weight: undefined,
+    })),
+  };
+}
+
+function nodeCollisions(
+  curve: EdgeCurveGeometry,
+  edge: GraphEdge,
+  source: GraphNode,
+  target: GraphNode,
+  nodes: GraphNode[],
+) {
+  const reach =
+    Math.max(0, ...curve.controlPointDistancesPx.map(Math.abs)) + NODE_SIZE_PX;
+  let count = 0;
+  for (const node of nodes) {
+    if (node.id === edge.source || node.id === edge.target) continue;
+    const halfWidth = nodeGeometryWidth(node) / 2;
+    if (
+      node.x + halfWidth < Math.min(source.x, target.x) - reach ||
+      node.x - halfWidth > Math.max(source.x, target.x) + reach ||
+      node.y < Math.min(source.y, target.y) - reach ||
+      node.y > Math.max(source.y, target.y) + reach
+    )
+      continue;
+    if (
+      minimumCurveDistanceToNode(source, target, curve, node) <
+      NODE_SIZE_PX / 2 + 12
+    )
+      count++;
+  }
+  return count;
+}
+
+export function edgeRoutingProgress(
+  routes: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
+) {
+  return {
+    pendingEdgeIds: [...routes]
+      .filter(([, route]) => route.status === "pending")
+      .map(([id]) => id),
+    unresolvedEdgeIds: [...routes]
+      .filter(([, route]) => route.status === "unresolved")
+      .map(([id]) => id),
+  };
+}

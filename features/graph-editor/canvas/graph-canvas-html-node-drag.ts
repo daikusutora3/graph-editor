@@ -46,7 +46,13 @@ type UseHtmlNodeDragOptions = {
   draggingNodeIdsRef: MutableRefObject<ReadonlySet<NodeId>>;
   edgeRoutingMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
   edgeRoutingOptions: EdgeRoutingOptions;
-  executeCommand: (command: GraphIntent) => void;
+  executeCommand: (
+    command: GraphIntent,
+  ) => import("../shell/state/history-atoms").CommandResult;
+  acceptRoutingMeta: (
+    model: GraphModel,
+    meta: Map<EdgeId, EdgeRoutingMeta>,
+  ) => void;
   graph: GraphModel;
   selectionRef: MutableRefObject<SelectionState>;
   setSelection: AtomSetter<SelectionState>;
@@ -60,6 +66,7 @@ export function useHtmlNodeDrag({
   edgeRoutingOptions,
   executeCommand,
   graph,
+  acceptRoutingMeta,
   selectionRef,
   setSelection,
   updateRenderedHitboxes,
@@ -73,6 +80,27 @@ export function useHtmlNodeDrag({
   const lastMovedAtRef = useRef(0);
   const suppressClickRef = useRef(false);
   const dragCleanupRef = useRef<(() => void) | null>(null);
+  const originalRoutesRef = useRef<Map<EdgeId, EdgeRoutingMeta>>(new Map());
+  const restoreRoutes = useCallback(
+    (cy: Core) => {
+      const routes = originalRoutesRef.current;
+      cy.edges().forEach((edge) => {
+        const route = routes.get(edge.id());
+        if (route)
+          edge.data({
+            bow: route.bowPx,
+            controlPointDistances: route.controlPointDistancesPx,
+            controlPointWeights: route.controlPointWeights,
+            duplicate: route.duplicate,
+            loopDirection: `${route.loopDirectionDeg}deg`,
+            loopSweep: `${route.loopSweepDeg}deg`,
+          });
+      });
+      acceptRoutingMeta(graph, routes);
+      updateRenderedHitboxes(cy);
+    },
+    [acceptRoutingMeta, graph, updateRenderedHitboxes],
+  );
   const dragRoutingBaselineRef = useRef<ReadonlyMap<EdgeId, EdgeRoutingMeta>>(
     new Map(),
   );
@@ -147,10 +175,26 @@ export function useHtmlNodeDrag({
           }
 
           withCytoscapeBatch(cy, () => {
-            syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions, {
-              movedNodeIds: draggingNodeIdsRef.current,
-              previousMeta: dragRoutingBaselineRef.current,
-            });
+            const meta = syncCytoscapeEdgeRoutingData(
+              cy,
+              graph,
+              edgeRoutingOptions,
+              {
+                movedNodeIds: draggingNodeIdsRef.current,
+                previousMeta: dragRoutingBaselineRef.current,
+              },
+            );
+            dragRoutingBaselineRef.current = meta;
+            acceptRoutingMeta(
+              {
+                ...graph,
+                nodes: graph.nodes.map((node) => {
+                  const position = cy.getElementById(node.id).position();
+                  return { ...node, x: position.x, y: position.y };
+                }),
+              },
+              meta,
+            );
           });
           lastDragRoutingCostRef.current = performance.now() - now;
           lastDragRoutingAtRef.current = now;
@@ -166,7 +210,7 @@ export function useHtmlNodeDrag({
     },
     // Refs are stable; listing them would only add noise.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [edgeRoutingOptions, graph, schedulePostRoutingHitboxes],
+    [acceptRoutingMeta, edgeRoutingOptions, graph, schedulePostRoutingHitboxes],
   );
 
   const flushDragPreview = useCallback(
@@ -211,7 +255,7 @@ export function useHtmlNodeDrag({
     withCytoscapeBatch(cy, () => {
       restoreDragSnapshot(cy, state);
     });
-    flushDragPreview(cy);
+    restoreRoutes(cy);
     draggingNodeIdsRef.current = new Set();
     dragRoutingBaselineRef.current = new Map();
   }, [
@@ -220,7 +264,7 @@ export function useHtmlNodeDrag({
     cleanupDragListeners,
     cyRef,
     draggingNodeIdsRef,
-    flushDragPreview,
+    restoreRoutes,
   ]);
 
   useEffect(() => cancel, [cancel]);
@@ -241,6 +285,7 @@ export function useHtmlNodeDrag({
 
     cancel();
     dragRoutingBaselineRef.current = edgeRoutingMeta;
+    originalRoutesRef.current = new Map(edgeRoutingMeta);
     lastDragRoutingAtRef.current = 0;
 
     const selectedNodeIds = selectionRef.current.nodeIds.includes(nodeId)
@@ -388,7 +433,14 @@ export function useHtmlNodeDrag({
         return;
       }
 
-      executeCommand(createMoveNodesCommand("Move node", after));
+      if (
+        executeCommand(createMoveNodesCommand("Move node", after)).status ===
+        "rejected"
+      ) {
+        withCytoscapeBatch(cy, () => restoreDragSnapshot(cy, state));
+        restoreRoutes(cy);
+        return;
+      }
       setSelection({ nodeIds: Object.keys(after) as NodeId[], edgeIds: [] });
     },
     [
@@ -399,6 +451,7 @@ export function useHtmlNodeDrag({
       executeCommand,
       flushDragPreview,
       graph.settings.snapToGrid,
+      restoreRoutes,
       setSelection,
     ],
   );

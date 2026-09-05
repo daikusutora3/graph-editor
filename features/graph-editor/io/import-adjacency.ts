@@ -25,7 +25,7 @@ export function tryImportAdjacencyMatrix(
 ): ImportResult | null {
   const rows = lines.map((line) => splitTokens(line.text));
 
-  if (rows.length < 2 || rows.some((row) => row.length !== rows.length)) {
+  if (rows.length < 1 || rows.some((row) => row.length !== rows.length)) {
     return null;
   }
 
@@ -45,10 +45,6 @@ export function tryImportAdjacencyMatrix(
     return null;
   }
 
-  if (values.length < 2) {
-    return null;
-  }
-
   const isSymmetric = isSymmetricMatrix(values);
   const hasZeroValue = values.some((row) => row.includes(0));
 
@@ -64,7 +60,10 @@ export function tryImportAdjacencyMatrix(
 
   const directed = options.directed || !isSymmetric;
 
-  if (!isSafeAdjacencyMatrixSize(values, directed)) {
+  if (
+    options.format !== "adjacency-matrix" &&
+    !isSafeAdjacencyMatrixSize(values, directed)
+  ) {
     return null;
   }
 

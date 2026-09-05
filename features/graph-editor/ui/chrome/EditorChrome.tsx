@@ -1,4 +1,5 @@
 "use client";
+import { integrityCopy } from "../../i18n/integrity-copy";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,7 +14,6 @@ import {
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   exportGraph,
-  hasLossyAdjacencyExport,
   type GraphExportFormat,
   getGraphExportFormat,
 } from "../../io/export-graph";
@@ -47,6 +47,7 @@ import { useEditorPanel } from "./editor-chrome-state";
 import { CanvasHint, Toast } from "./CanvasHint";
 import { EditorPanelShell } from "./EditorPanelShell";
 import { DesktopTopRow, MobileBottomBar, MobileTopRow } from "./EditorToolbar";
+import { StorageNotice } from "./StorageNotice";
 import { EmptyState } from "./EmptyState";
 import { useTimedState } from "../hooks/use-timed-state";
 import { STORAGE_SKIPPED_EVENT } from "../../adapters/browser/stored-graph";
@@ -75,7 +76,8 @@ import { useThemeMode } from "../theme/theme";
 type StarterView = "paste" | "sample";
 
 export function EditorChrome() {
-  const { messages } = useI18n();
+  const { messages, locale } = useI18n();
+  const integrity = integrityCopy[locale === "ja" ? "ja" : "en"];
   const layout = useAtomValue(editorLayoutAtom);
   const mobile = layout === "mobile";
   const wide = layout === "desktop";
@@ -116,10 +118,15 @@ export function EditorChrome() {
   const isGraphEmpty = graphIsEmpty;
   const visiblePanel = presence.value;
   const exportVisible = panel === "export" || visiblePanel === "export";
-  const exportText = useMemo(
-    () => (exportVisible ? exportGraph(graph, exportFormat) : ""),
-    [exportFormat, exportVisible, graph],
-  );
+  const exportResult = useMemo(() => {
+    if (!exportVisible) return { text: "", blocked: false };
+    try {
+      return { text: exportGraph(graph, exportFormat), blocked: false };
+    } catch {
+      return { text: "", blocked: true };
+    }
+  }, [exportFormat, exportVisible, graph]);
+  const exportText = exportResult.text;
   const screenshot = useGraphIOScreenshot({
     graphRevision,
     isGraphEmpty,
@@ -188,8 +195,10 @@ export function EditorChrome() {
 
   const applyLayout = useCallback(
     (kind: LayoutKind) => {
-      applyManualLayout(kind);
-      fitAfterNextGraphRender();
+      const result = applyManualLayout(kind);
+      if (result?.remainingPairs)
+        setToast(integrity.unresolved(result.remainingPairs));
+      if (kind !== "spread") fitAfterNextGraphRender();
 
       // A bottom sheet hides most of the canvas, so on mobile the result
       // would be invisible until the sheet is dismissed.
@@ -197,7 +206,14 @@ export function EditorChrome() {
         close();
       }
     },
-    [applyManualLayout, close, fitAfterNextGraphRender, mobile],
+    [
+      applyManualLayout,
+      close,
+      fitAfterNextGraphRender,
+      mobile,
+      integrity,
+      setToast,
+    ],
   );
 
   const toggleOffsetEdges = useCallback(() => {
@@ -239,7 +255,7 @@ export function EditorChrome() {
   ]);
 
   const copyExport = useCallback(async () => {
-    const copied = await copyTextToClipboard(exportGraph(graph, exportFormat));
+    const copied = await copyTextToClipboard(exportText);
     setCopyState(copied ? "copied" : "blocked");
 
     if (copyResetRef.current !== null) {
@@ -247,16 +263,16 @@ export function EditorChrome() {
     }
 
     copyResetRef.current = window.setTimeout(() => setCopyState("idle"), 1500);
-  }, [exportFormat, graph]);
+  }, [exportText]);
 
   const saveExportTxt = useCallback(() => {
     const { extension, mimeType } = getGraphExportFormat(exportFormat);
 
     downloadBlob(
-      new Blob([exportGraph(graph, exportFormat)], { type: mimeType }),
+      new Blob([exportText], { type: mimeType }),
       `graph-editor-${formatTimestamp(new Date())}.${extension}`,
     );
-  }, [exportFormat, graph]);
+  }, [exportFormat, exportText]);
 
   const loadSampleModel = useCallback(
     (model: GraphModel) => {
@@ -368,9 +384,7 @@ export function EditorChrome() {
               exportFormat={exportFormat}
               exportText={exportText}
               exportWarning={
-                hasLossyAdjacencyExport(graph, exportFormat)
-                  ? messages.exportPanel.adjacencyLossWarning
-                  : undefined
+                exportResult.blocked ? integrity.exportBlocked : undefined
               }
               mobile={mobile}
               onExportFormatChange={(format) => {
@@ -438,7 +452,7 @@ export function EditorChrome() {
         ) : (
           <EditorPanelShell
             {...shellProps}
-            bodyClassName="gap-0"
+            scrollOwner="child"
             title={messages.chrome.starterSamplesTitle}
             width={680}
             footer={
@@ -461,6 +475,7 @@ export function EditorChrome() {
 
   return (
     <>
+      <StorageNotice />
       {graphIsEmpty && !visiblePanel && mode === "select" ? (
         <EmptyState
           graph={graph}

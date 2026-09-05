@@ -1,3 +1,5 @@
+import { nodeGeometryWidth } from "../graph/node-size";
+import { singleBowCurve } from "./edge-route-geometry";
 import type { EdgeRoutingMeta } from "./edge-routing";
 import { edgeHasVisibleLabel } from "./edge-routing-shared";
 import type { RoutingWork } from "./edge-routing-shared";
@@ -53,8 +55,8 @@ export function scoreCandidateCurve(
     }
 
     if (
-      node.x < bounds.x1 ||
-      node.x > bounds.x2 ||
+      node.x + nodeGeometryWidth(node) / 2 < bounds.x1 ||
+      node.x - nodeGeometryWidth(node) / 2 > bounds.x2 ||
       node.y < bounds.y1 ||
       node.y > bounds.y2
     ) {
@@ -217,6 +219,8 @@ export function routeForEdge(
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
 ): EdgeCurveGeometry {
+  if (edge.routing?.bowPx !== undefined)
+    return singleBowCurve(edge.routing.bowPx, edge.routing.bowT);
   return (
     resolvedMeta.get(edge.id) ??
     options.previousMeta.get(edge.id) ??

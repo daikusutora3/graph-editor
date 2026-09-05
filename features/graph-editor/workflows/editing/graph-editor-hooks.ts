@@ -10,7 +10,6 @@ import { toggleEditorPanel } from "../../shell/state/editor-layout";
 import { isEditorShortcutBlockedTarget } from "../../adapters/browser/shortcut-targets";
 import {
   clearInteractionStateAtom,
-  resetEditorSessionAtom,
   setEditorModeAtom,
 } from "../../shell/state/editor-actions";
 import {
@@ -28,14 +27,13 @@ import {
 } from "../../shell/state/editor-shortcuts";
 import {
   GRAPH_STORAGE_KEY,
-  syncExternalGraphAtom,
-} from "../../shell/state/graph-atoms";
+  observeExternalStorage,
+} from "../../adapters/browser/stored-graph";
 import {
   deleteSelectionAtom,
   redoAtom,
   undoAtom,
 } from "../../shell/state/history-atoms";
-import { parseStoredGraph } from "../../adapters/browser/stored-graph";
 
 export function useGraphEditorShortcuts() {
   const setMode = useSetAtom(setEditorModeAtom);
@@ -147,28 +145,14 @@ export function useGraphEditorShortcuts() {
 }
 
 export function useGraphExternalStorageSync() {
-  const syncExternalGraph = useSetAtom(syncExternalGraphAtom);
-  const resetEditorSession = useSetAtom(resetEditorSessionAtom);
-
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== GRAPH_STORAGE_KEY) {
-        return;
+      if (event.storageArea !== window.localStorage) return;
+      if (event.key === GRAPH_STORAGE_KEY || event.key === null) {
+        observeExternalStorage(event.newValue);
       }
-
-      // Another tab may have hit the storage cap or written something this
-      // build cannot read; never replace the live graph with an empty one.
-      const externalGraph = parseStoredGraph(event.newValue);
-
-      if (!externalGraph) {
-        return;
-      }
-
-      syncExternalGraph(externalGraph);
-      resetEditorSession();
     };
-
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [resetEditorSession, syncExternalGraph]);
+  }, []);
 }

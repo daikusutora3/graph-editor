@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from "react";
 import { evaluateGraphInput } from "../../io/import-graph";
 import type { ImportFormat, ImportOptions } from "../../io/import-utils";
 import type { ImportEvaluation } from "../../io/import-types";
-import { hasGraphContent } from "../../core/graph/selectors";
 import type { GraphModel } from "../../core/graph/model";
 import { graphAtom } from "../../shell/state/graph-atoms";
 import { useDebouncedValue } from "../../ui/hooks/use-debounced-value";
@@ -93,7 +92,7 @@ export function useGraphStarterState({
   }, [open, tab, textareaRef]);
 
   const applyModel = (model: GraphModel) => {
-    applyGraphModel(model, {
+    return applyGraphModel(model, {
       clearEdgeDraft: true,
       clearSelection: true,
       fitAfterUpdate: true,
@@ -112,13 +111,12 @@ export function useGraphStarterState({
 
     if (
       currentAnalysis.status === "ambiguous" ||
-      !hasGraphContent(result.model)
+      currentAnalysis.status !== "detected"
     ) {
       return;
     }
 
-    applyModel(result.model);
-    close();
+    if (applyModel(result.model)) close();
   };
 
   const setInput = (value: string) => {

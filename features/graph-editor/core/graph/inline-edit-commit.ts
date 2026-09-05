@@ -1,3 +1,4 @@
+import { isGraphText } from "./graph-limits";
 import {
   type InlineEditErrorCode,
   normalizeEdgeLabelInput,
@@ -31,6 +32,8 @@ export function resolveInlineEditCommit(
   edit: InlineEditCommitInput,
   graph: GraphModel,
 ): InlineEditCommitResult {
+  if (!isGraphText(edit.value.trim()))
+    return { kind: "error", edit: { ...edit, error: "invalid-graph" } };
   if (edit.kind === "node-label") {
     const node = graph.nodes.find((item) => item.id === edit.nodeId);
     const nextLabel = normalizeNodeLabelInput(edit.value);

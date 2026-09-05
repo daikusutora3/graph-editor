@@ -1,3 +1,6 @@
+import { withMeasuredNodeGeometry } from "../../adapters/browser/node-geometry";
+import { resolveNodeOverlaps } from "../../layouts/resolve-node-overlaps";
+import { createMoveNodesCommand } from "../../core/graph/graph-intents";
 import { atom } from "jotai";
 
 import { createEmptyGraphModel } from "../../core/graph/graph-factory";
@@ -45,7 +48,8 @@ export const setEditorModeAtom = atom(null, (_get, set, mode: EditorMode) => {
 export const replaceGraphModelAtom = atom(
   null,
   (_get, set, model: GraphModel, options: ReplaceGraphOptions = {}) => {
-    set(executeCommandAtom, replaceModelCommand(model));
+    const result = set(executeCommandAtom, replaceModelCommand(model));
+    if (result.status === "rejected") return result;
 
     if (options.selectMode) {
       set(editorModeAtom, "select");
@@ -58,6 +62,7 @@ export const replaceGraphModelAtom = atom(
     if (options.clearEdgeDraft) {
       set(edgeDraftAtom, createEmptyEdgeDraft());
     }
+    return result;
   },
 );
 
@@ -84,7 +89,19 @@ export const applyManualLayoutAtom = atom(
       selection.nodeIds.length === 1 ? selection.nodeIds[0] : undefined;
 
     set(editorModeAtom, "select");
-    set(executeCommandAtom, createManualLayoutCommand(graph, kind, rootNodeId));
+    const measured = withMeasuredNodeGeometry(graph);
+    if (kind === "spread") {
+      const result = resolveNodeOverlaps(measured);
+      set(
+        executeCommandAtom,
+        createMoveNodesCommand("Resolve overlaps", result.positions),
+      );
+      return result;
+    }
+    set(
+      executeCommandAtom,
+      createManualLayoutCommand(measured, kind, rootNodeId),
+    );
   },
 );
 

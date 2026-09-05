@@ -254,3 +254,19 @@ export const sampleGraphGroups: SampleGraphGroup[] = sampleDefinitionGroups.map(
 );
 
 export const sampleGraphCount = sampleGraphDefinitions.length;
+
+export function sampleDefaultNodeCount(kind: SampleGraphKind) {
+  const defaults: Partial<Record<SampleGraphKind, number>> = {
+    path: 6,
+    cycle: 6,
+    edgeless: 6,
+    complete: 5,
+    star: 6,
+    tree: 7,
+    grid: 9,
+    bipartite: 6,
+    crown: 10,
+    knight: 16,
+  };
+  return defaults[kind] ?? 6;
+}

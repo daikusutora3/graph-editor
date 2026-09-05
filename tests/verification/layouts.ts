@@ -130,8 +130,8 @@ expect(
       ),
     },
     { mode: "quality" },
-  ) === routingBaseKey,
-  "routing cache key should ignore node labels",
+  ) !== routingBaseKey,
+  "routing cache key should invalidate resized node labels",
 );
 expect(
   createEdgeRoutingCacheKey(

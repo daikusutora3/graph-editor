@@ -45,10 +45,13 @@ export const graphIsEmptyAtom = atom((get) => {
 export const graphAtom = atom((get) => get(storedGraphAtom).graph);
 
 /** Write path reserved for the command/history layer. */
-export const commitGraphAtom = atom(null, (_get, set, graph: GraphModel) => {
-  set(storedGraphAtom, { graph, status: "ready" });
-  scheduleStoredGraphWrite(graph);
-});
+export const commitGraphAtom = atom(
+  null,
+  (_get, set, graph: GraphModel, serialized?: string) => {
+    set(storedGraphAtom, { graph, status: "ready" });
+    scheduleStoredGraphWrite(graph, serialized);
+  },
+);
 
 export const syncExternalGraphAtom = atom(
   null,

@@ -19,6 +19,7 @@ import type {
 
 type EditorPanelShellProps = {
   bodyClassName?: string;
+  scrollOwner?: "body" | "child";
   children: ReactNode;
   footer?: ReactNode;
   layout: EditorLayout;
@@ -81,6 +82,7 @@ function trapTab(event: ReactKeyboardEvent, root: HTMLElement | null) {
 
 export function EditorPanelShell({
   bodyClassName,
+  scrollOwner = "body",
   children,
   footer,
   layout,
@@ -225,6 +227,9 @@ export function EditorPanelShell({
           data-editor-panel={panel}
           className={cn(
             "flex min-h-0 flex-col overflow-hidden",
+            scrollOwner === "child" &&
+              !fullscreen &&
+              "h-[min(760px,calc(100dvh-80px))]",
             mobile
               ? cn(
                   "ge-sheet bg-[var(--panel-solid)] shadow-[0_-12px_40px_-20px_rgb(17_24_39/0.3)]",
@@ -284,8 +289,11 @@ export function EditorPanelShell({
             className={cn(
               // Children keep their natural height; long content scrolls instead of
               // squeezing controls above it.
-              "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 pb-4 [&>*]:shrink-0",
+              scrollOwner === "body"
+                ? "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 pb-4 [&>*]:shrink-0"
+                : "flex min-h-0 flex-1 flex-col overflow-hidden",
               bodyClassName,
+              (scrollOwner = "body"),
             )}
           >
             {children}

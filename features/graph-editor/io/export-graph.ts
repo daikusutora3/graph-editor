@@ -1,3 +1,4 @@
+import { GRAPH_MAX_INPUT_CHARS } from "../core/graph/graph-limits";
 import { exportEdgeList } from "./export-edge-list";
 import type { GraphModel } from "../core/graph/model";
 import { getExportNodeEntries } from "./export-node-labels";
@@ -45,6 +46,15 @@ export function exportGraph(
   model: GraphModel,
   format: GraphExportFormat,
 ): string {
+  const problem = graphExportProblem(model, format);
+  if (problem) throw new Error(problem);
+  const text = exportUnchecked(model, format);
+  if (format !== "json" && text.length > GRAPH_MAX_INPUT_CHARS)
+    throw new Error("input-limit");
+  return text;
+}
+
+function exportUnchecked(model: GraphModel, format: GraphExportFormat): string {
   switch (format) {
     case "json":
       return serializeGraphModel(model);
@@ -178,4 +188,46 @@ function formatAdjacencyTarget(
   weighted: boolean,
 ) {
   return weighted ? `${target}(${weight ?? "1"})` : String(target);
+}
+
+export function graphExportProblem(
+  model: GraphModel,
+  format: GraphExportFormat,
+): string | null {
+  if (format === "json") return null;
+  if (format === "adjacency-matrix") {
+    if (hasLossyAdjacencyExport(model, format)) return "parallel-edges";
+    if (
+      model.settings.weighted &&
+      model.edges.some(
+        (edge) =>
+          !Number.isFinite(Number(edge.weight ?? "1")) ||
+          Number(edge.weight ?? "1") === 0,
+      )
+    )
+      return "matrix-weight";
+    // Includes delimiters before allocating a quadratic matrix.
+    let size = Math.max(0, 2 * model.nodes.length ** 2 - 1);
+    if (model.settings.weighted)
+      for (const edge of model.edges)
+        size +=
+          Math.max(0, (edge.weight ?? "1").length - 1) *
+          (!model.settings.directed && edge.source !== edge.target ? 2 : 1);
+    if (size > GRAPH_MAX_INPUT_CHARS) return "input-limit";
+  }
+  if (format === "adjacency-list" && hasLossyAdjacencyExport(model, format))
+    return "parallel-edges";
+  if (
+    model.settings.weighted &&
+    model.edges.some((edge) => {
+      const weight = edge.weight ?? "1";
+      return (
+        !weight ||
+        /[\s,]/.test(weight) ||
+        (format === "adjacency-list" && /[()]/.test(weight))
+      );
+    })
+  )
+    return "weight-token";
+  return null;
 }

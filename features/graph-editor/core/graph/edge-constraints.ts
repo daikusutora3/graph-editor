@@ -37,17 +37,26 @@ export function canUseEdgeEndpoints(
 }
 
 export function filterAddableEdges(model: GraphModel, edges: GraphEdge[]) {
-  const workingModel: GraphModel = { ...model, edges: [...model.edges] };
+  const nodeIds = new Set(model.nodes.map((node) => node.id));
+  const key = (edge: GraphEdge) =>
+    JSON.stringify(
+      model.settings.directed
+        ? [edge.source, edge.target]
+        : [edge.source, edge.target].sort(),
+    );
+  const pairs = new Set(model.edges.map(key));
   const acceptedEdges: GraphEdge[] = [];
-
   for (const edge of edges) {
-    if (!canUseEdgeEndpoints(workingModel, edge.source, edge.target)) {
+    if (
+      !nodeIds.has(edge.source) ||
+      !nodeIds.has(edge.target) ||
+      (!model.settings.allowSelfLoops && edge.source === edge.target)
+    )
       continue;
-    }
-
+    const pair = key(edge);
+    if (!model.settings.allowMultiEdges && pairs.has(pair)) continue;
     acceptedEdges.push(edge);
-    workingModel.edges.push(edge);
+    pairs.add(pair);
   }
-
   return acceptedEdges;
 }

@@ -60,7 +60,7 @@ export function EmptyState({
           : "pointer-events-none absolute inset-0 z-50 grid place-items-center px-5 pt-20 pb-[120px]"
       }
     >
-      <div className="ge-fade-in pointer-events-auto flex w-full max-w-[720px] flex-col items-center gap-7">
+      <div className="ge-fade-in pointer-events-auto flex max-h-full min-h-0 w-full max-w-[720px] flex-col items-center gap-7 overflow-y-auto overscroll-contain">
         <div className="flex flex-col items-center gap-2 text-center">
           <BrandLogo size={56} />
           <span

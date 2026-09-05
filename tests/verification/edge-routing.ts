@@ -70,7 +70,7 @@ expect(
   "unrelated labels and colors should not move existing routes",
 );
 expect(
-  createEdgeRoutingCacheKey(baseGraph) ===
+  createEdgeRoutingCacheKey(baseGraph) !==
     createEdgeRoutingCacheKey({
       ...decoratedGraph,
       edges: decoratedGraph.edges.map((edge) => ({
@@ -78,7 +78,7 @@ expect(
         label: "renamed edge",
       })),
     }),
-  "routing cache identity should ignore edge labels and colors",
+  "routing cache identity should invalidate visible edge labels",
 );
 
 const dragStartGraph: GraphModel = {

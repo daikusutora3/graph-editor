@@ -7,7 +7,10 @@ export type ExportNodeEntry = {
 };
 
 export function getExportNodeEntries(model: GraphModel): ExportNodeEntry[] {
-  const numericEntries = readContiguousNumericLabels(model.nodes);
+  const numericEntries = readContiguousNumericLabels(
+    model.nodes,
+    model.settings.indexBase,
+  );
 
   if (numericEntries) {
     return numericEntries.toSorted((a, b) => a.label - b.label);
@@ -21,6 +24,7 @@ export function getExportNodeEntries(model: GraphModel): ExportNodeEntry[] {
 
 function readContiguousNumericLabels(
   nodes: GraphNode[],
+  indexBase: number,
 ): ExportNodeEntry[] | null {
   const entries: ExportNodeEntry[] = [];
   const seen = new Set<number>();
@@ -47,5 +51,5 @@ function readContiguousNumericLabels(
   const min = Math.min(...entries.map((entry) => entry.label));
   const max = Math.max(...entries.map((entry) => entry.label));
 
-  return max - min + 1 === entries.length ? entries : null;
+  return min === indexBase && max - min + 1 === entries.length ? entries : null;
 }

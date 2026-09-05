@@ -1,11 +1,7 @@
 import type { NodeId } from "../core/graph/model";
 
 import type { GraphNode } from "../core/graph/model";
-import {
-  estimateNodeWidth,
-  NODE_SIZE_PX,
-  pillExtentTowards,
-} from "../core/graph/node-size";
+import { nodeGeometryWidth, NODE_SIZE_PX } from "../core/graph/node-size";
 
 export const LAYOUT_NODE_CLEARANCE = 104;
 export const LAYOUT_COMPONENT_GAP = 180;
@@ -246,7 +242,7 @@ export function ensureNodeClearance(
   const halfHeight = NODE_SIZE_PX / 2;
   const gap = LAYOUT_NODE_CLEARANCE - NODE_SIZE_PX;
   const halfWidths = new Map(
-    nodes.map((node) => [node.id, estimateNodeWidth(node.label) / 2]),
+    nodes.map((node) => [node.id, nodeGeometryWidth(node) / 2]),
   );
   const entries = Object.entries(positions);
   // No pair can need more than this, so anything farther apart is skipped
@@ -268,23 +264,21 @@ export function ensureNodeClearance(
         continue;
       }
 
-      const distance = Math.sqrt(distanceSquared);
-
-      const required =
-        pillExtentTowards(
-          halfWidths.get(idA) ?? halfHeight,
-          halfHeight,
-          dx,
-          dy,
-        ) +
-        pillExtentTowards(
-          halfWidths.get(idB) ?? halfHeight,
-          halfHeight,
-          -dx,
-          -dy,
-        ) +
-        gap;
-      scale = Math.max(scale, required / distance);
+      const span =
+        Math.max(0, (halfWidths.get(idA) ?? halfHeight) - halfHeight) +
+        Math.max(0, (halfWidths.get(idB) ?? halfHeight) - halfHeight);
+      const required = halfHeight * 2 + gap;
+      const distanceAt = (factor: number) =>
+        Math.hypot(Math.max(0, Math.abs(dx) * factor - span), dy * factor);
+      if (distanceAt(scale) >= required) continue;
+      let low = scale,
+        high = Math.max(scale, (span + required) / Math.sqrt(distanceSquared));
+      for (let step = 0; step < 32; step++) {
+        const mid = (low + high) / 2;
+        if (distanceAt(mid) < required) low = mid;
+        else high = mid;
+      }
+      scale = high;
     }
   }
 
