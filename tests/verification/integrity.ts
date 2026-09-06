@@ -15,6 +15,7 @@ import {
 import {
   replaceModelCommand,
   updateNodeCommand,
+  updateSettingsCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { graphAtom } from "../../features/graph-editor/shell/state/graph-atoms";
@@ -291,5 +292,70 @@ expect(
     format: "json",
   }).status === "empty",
   "valid empty JSON is a successful empty import",
+);
+
+const numericStore = createStore();
+const labels = ["9007199254740993", "-9007199254740993", "0007", "free"];
+const numericGraph = {
+  ...createEmptyGraphModel(),
+  nodes: labels.map((label, order) => ({
+    id: `n${order}`,
+    label,
+    order,
+    x: order * 100,
+    y: 0,
+  })),
+};
+numericGraph.settings.indexBase = 0;
+numericStore.set(executeCommandAtom, replaceModelCommand(numericGraph));
+const numericBefore = numericStore.get(graphAtom);
+const numericResult = numericStore.set(
+  executeCommandAtom,
+  updateSettingsCommand({ indexBase: 1 }),
+);
+expect(
+  numericResult.status === "applied" &&
+    numericResult.graph === numericStore.get(graphAtom),
+  "applied result identifies the committed graph",
+);
+expect(
+  isDeepStrictEqual(
+    numericStore.get(graphAtom).nodes.map((n) => n.label),
+    ["9007199254740994", "-9007199254740992", "8", "free"],
+  ),
+  "integer shifts retain exact precision and existing zero normalization",
+);
+numericStore.set(undoAtom);
+expect(
+  isDeepStrictEqual(numericStore.get(graphAtom), numericBefore),
+  "undo restores original label strings",
+);
+const canonical = numericStore.get(graphAtom);
+const numericHistory = numericStore.get(historyAtom);
+const same = numericStore.set(
+  executeCommandAtom,
+  replaceModelCommand(structuredClone(canonical)),
+);
+expect(
+  same.status === "noop" &&
+    same.graph === canonical &&
+    numericStore.get(historyAtom) === numericHistory,
+  "noop returns stored identity without adding history",
+);
+numericStore.set(
+  executeCommandAtom,
+  updateNodeCommand("n0", { label: "9".repeat(256) }),
+);
+const boundary = numericStore.get(graphAtom),
+  boundaryHistory = numericStore.get(historyAtom);
+expect(
+  numericStore.set(executeCommandAtom, updateSettingsCommand({ indexBase: 1 }))
+    .status === "rejected",
+  "label growth beyond contract rejects the whole setting change",
+);
+expect(
+  numericStore.get(graphAtom) === boundary &&
+    numericStore.get(historyAtom) === boundaryHistory,
+  "label overflow preserves settings, graph and history",
 );
 finish();

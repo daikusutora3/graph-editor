@@ -1,3 +1,4 @@
+import { nudgeEdgeBend } from "../../features/graph-editor/core/layout/edge-route-geometry";
 import { normalizeEdgeWeightInput } from "../../features/graph-editor/core/graph/edit-values";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
@@ -167,4 +168,19 @@ expect(
   "browser locale detection should map regional tags and fall back to Japanese",
 );
 
+const autoBend = { controlPointDistancesPx: [128], controlPointWeights: [0.3] };
+const nudge = nudgeEdgeBend(undefined, autoBend, 48);
+expect(
+  nudge?.bowPx === 176 && nudge.bowT === 0.3,
+  "menu bend inherits displayed distance and position",
+);
+expect(
+  nudgeEdgeBend(undefined, undefined, 48) === null,
+  "no route means no speculative bend",
+);
+const manualNudge = nudgeEdgeBend({ bowPx: -128, bowT: 0.7 }, autoBend, -48);
+expect(
+  manualNudge?.bowPx === -176 && manualNudge.bowT === 0.7,
+  "manual and reversed direction keep their own starting curve",
+);
 finish();

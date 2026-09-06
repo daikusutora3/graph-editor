@@ -1,5 +1,5 @@
 import { withMeasuredNodeGeometry } from "../../adapters/browser/node-geometry";
-import { resolveNodeOverlaps } from "../../layouts/resolve-node-overlaps";
+import { createOverlapTask } from "../../layouts/resolve-node-overlaps";
 import { createMoveNodesCommand } from "../../core/graph/graph-intents";
 import { atom } from "jotai";
 
@@ -21,7 +21,17 @@ import {
   type EditorMode,
 } from "./editor-state";
 import { graphAtom } from "./graph-atoms";
-import { clearHistoryAtom, executeCommandAtom } from "./history-atoms";
+import {
+  acceptStorageBaseline,
+  parseStoredGraph,
+  scheduleStoredGraphWrite,
+  flushStoredGraphWrite,
+} from "../../adapters/browser/stored-graph";
+import {
+  commandErrorAtom,
+  clearHistoryAtom,
+  executeCommandAtom,
+} from "./history-atoms";
 
 type ReplaceGraphOptions = {
   clearEdgeDraft?: boolean;
@@ -80,6 +90,8 @@ export const clearGraphAtom = atom(null, (get, set) => {
   });
 });
 
+const layoutRequestAtom = atom<symbol | null>(null);
+
 export const applyManualLayoutAtom = atom(
   null,
   (get, set, kind: LayoutKind) => {
@@ -89,16 +101,36 @@ export const applyManualLayoutAtom = atom(
       selection.nodeIds.length === 1 ? selection.nodeIds[0] : undefined;
 
     set(editorModeAtom, "select");
+    const request = Symbol();
+    set(layoutRequestAtom, request);
     const measured = withMeasuredNodeGeometry(graph);
     if (kind === "spread") {
-      const result = resolveNodeOverlaps(measured);
-      set(
-        executeCommandAtom,
-        createMoveNodesCommand("Resolve overlaps", result.positions),
-      );
-      return result;
+      return (async () => {
+        const task = createOverlapTask(measured);
+        while (true) {
+          if (get(graphAtom) !== graph || get(layoutRequestAtom) !== request) {
+            return {
+              status: "rejected" as const,
+              message: "Layout superseded",
+            };
+          }
+          const deadline = performance.now() + 4;
+          let step = task.next();
+          while (!step.done && performance.now() < deadline) step = task.next();
+          if (step.done) {
+            const command = set(
+              executeCommandAtom,
+              createMoveNodesCommand("Resolve overlaps", step.value.positions),
+            );
+            return { ...command, overlap: step.value };
+          }
+          // Yield sequentially: every slice resumes the same computation.
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        }
+      })();
     }
-    set(
+    return set(
       executeCommandAtom,
       createManualLayoutCommand(measured, kind, rootNodeId),
     );
@@ -130,3 +162,25 @@ export const reverseAllDirectedEdgesAtom = atom(null, (get, set) => {
   set(executeCommandAtom, reverseEdgesCommand(edgeIds));
   return true;
 });
+
+/** Resolve the exact storage snapshot displayed by the notice. */
+export const resolveStorageConflictAtom = atom(
+  null,
+  (get, set, raw: string | null, fresh = false) => {
+    const model = fresh
+      ? createEmptyGraphModel(get(graphAtom).settings)
+      : parseStoredGraph(raw);
+    if (!model) {
+      const message = "Invalid stored graph";
+      set(commandErrorAtom, message);
+      return { status: "rejected" as const, message };
+    }
+    const result = set(executeCommandAtom, replaceModelCommand(model));
+    if (result.status === "rejected") return result;
+    acceptStorageBaseline(raw);
+    if (fresh) scheduleStoredGraphWrite(result.graph);
+    return result;
+  },
+);
+
+export const retryGraphSaveAtom = atom(null, () => flushStoredGraphWrite());

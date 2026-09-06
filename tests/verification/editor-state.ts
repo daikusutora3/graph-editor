@@ -3,6 +3,7 @@ import { createStore } from "jotai/vanilla";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import {
   addNodeCommand,
+  replaceModelCommand,
   updateSettingsCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
@@ -140,6 +141,42 @@ verifyIndexBaseRelabeling();
 verifyReverseAllDirectedEdgesAction();
 verifyShortcutActions();
 
+const layoutBefore = store.get(graphAtom);
+const spreadTask = store.set(applyManualLayoutAtom, "spread");
+const spreadResult = await spreadTask;
+expect(
+  spreadResult.status !== "rejected" &&
+    spreadResult.graph === store.get(graphAtom),
+  "spread exposes committed graph result",
+);
+const staleStore = createStore();
+staleStore.set(
+  executeCommandAtom,
+  replaceModelCommand({
+    ...layoutBefore,
+    nodes: Array.from({ length: 200 }, (_, order) => ({
+      id: `n${order}`,
+      order,
+      label: `${order}`,
+      x: 0,
+      y: 0,
+    })),
+    edges: [],
+  }),
+);
+const pendingLayout = staleStore.set(applyManualLayoutAtom, "spread");
+staleStore.set(executeCommandAtom, replaceModelCommand(layoutBefore));
+const newGraph = staleStore.get(graphAtom),
+  newHistory = staleStore.get(historyAtom);
+expect(
+  (await pendingLayout).status === "rejected",
+  "superseded overlap calculation is discarded",
+);
+expect(
+  staleStore.get(graphAtom) === newGraph &&
+    staleStore.get(historyAtom) === newHistory,
+  "stale layout cannot change graph or history",
+);
 finish();
 
 function verifyShortcutResolver() {

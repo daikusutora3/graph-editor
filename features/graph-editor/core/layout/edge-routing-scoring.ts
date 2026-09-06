@@ -14,7 +14,7 @@ import type { GraphEdge, GraphNode, EdgeId, NodeId } from "../graph/model";
 import {
   approximateCurveLength,
   edgeCurveMidpoint,
-  minimumCurveDistanceToNode,
+  createCurveNodeDistance,
   sampleEdgeCurve,
   type EdgeCurveGeometry,
   type EdgeCurvePoint,
@@ -45,6 +45,7 @@ export function scoreCandidateCurve(
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
 ) {
+  const distanceToNode = createCurveNodeDistance(source, target, curve);
   let collisionCount = 0;
   let penetrationScore = 0;
   const bounds = curveBounds(source, target, curve, options.nodeClearancePx);
@@ -64,7 +65,7 @@ export function scoreCandidateCurve(
     }
 
     options.work.units += NODE_CHECK_UNITS;
-    const distance = minimumCurveDistanceToNode(source, target, curve, node);
+    const distance = distanceToNode(node);
     const overlap = Math.max(0, options.nodeClearancePx - distance);
 
     if (overlap > 0) {

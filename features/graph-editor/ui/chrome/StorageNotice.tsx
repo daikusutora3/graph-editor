@@ -2,22 +2,18 @@
 import { useSyncExternalStore } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-  acceptStorageBaseline,
-  flushStoredGraphWrite,
   getStorageSnapshot,
   parseStoredGraph,
   STORAGE_STATE_EVENT,
-  scheduleStoredGraphWrite,
 } from "../../adapters/browser/stored-graph";
 import { downloadBlob } from "../../adapters/browser/file-actions";
-import { createEmptyGraphModel } from "../../core/graph/graph-factory";
 import { serializeGraphModel } from "../../core/graph/graph-json";
-import { replaceModelCommand } from "../../core/graph/graph-intents";
-import { graphAtom } from "../../shell/state/graph-atoms";
 import {
-  commandErrorAtom,
-  executeCommandAtom,
-} from "../../shell/state/history-atoms";
+  resolveStorageConflictAtom,
+  retryGraphSaveAtom,
+} from "../../shell/state/editor-actions";
+import { graphAtom } from "../../shell/state/graph-atoms";
+import { commandErrorAtom } from "../../shell/state/history-atoms";
 import { useI18n } from "../../i18n/I18nProvider";
 import { integrityCopy } from "../../i18n/integrity-copy";
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
@@ -36,8 +32,9 @@ export function StorageNotice() {
   );
   const graph = useAtomValue(graphAtom);
   const error = useAtomValue(commandErrorAtom);
-  const execute = useSetAtom(executeCommandAtom);
-  const { fitAfterNextGraphRender } = useGraphCanvasApi();
+  const resolveConflict = useSetAtom(resolveStorageConflictAtom);
+  const retrySave = useSetAtom(retryGraphSaveAtom);
+  const { requestFit } = useGraphCanvasApi();
   const { locale } = useI18n();
   const copy = integrityCopy[locale === "ja" ? "ja" : "en"];
   const needsStorageAttention =
@@ -47,14 +44,8 @@ export function StorageNotice() {
   const download = (raw: string, filename: string) =>
     downloadBlob(new Blob([raw], { type: "application/json" }), filename);
   const load = (fresh: boolean) => {
-    const model = fresh ? createEmptyGraphModel(graph.settings) : external;
-    if (!model) return;
-    const result = execute(replaceModelCommand(model));
-    if (result.status === "rejected") return;
-    acceptStorageBaseline(state.raw);
-    fitAfterNextGraphRender();
-    if (fresh) scheduleStoredGraphWrite(model);
-    // Loading is undoable, but must not immediately write the external document back.
+    const result = resolveConflict(state.raw, fresh);
+    if (result.status !== "rejected") requestFit(result.graph);
   };
   return (
     <aside
@@ -76,7 +67,7 @@ export function StorageNotice() {
             {copy.backup}
           </Button>
           {state.status === "failed" ? (
-            <Button size="sm" onClick={() => void flushStoredGraphWrite()}>
+            <Button size="sm" onClick={() => void retrySave()}>
               {copy.retry}
             </Button>
           ) : null}

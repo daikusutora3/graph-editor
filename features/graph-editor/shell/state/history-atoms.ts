@@ -3,7 +3,11 @@ import { atom } from "jotai";
 import { deleteSelectionCommand } from "../../core/graph/graph-intents";
 import { applyGraphPatch } from "../../core/graph/graph-patch";
 import { prepareGraphTransaction } from "../../core/graph/graph-transaction";
-import type { GraphIntent, GraphTransaction } from "../../core/graph/model";
+import type {
+  GraphModel,
+  GraphIntent,
+  GraphTransaction,
+} from "../../core/graph/model";
 import { edgeDraftAtom, selectionAtom } from "./editor-atoms";
 import {
   createEmptyEdgeDraft,
@@ -14,7 +18,7 @@ import { graphAtom, graphRevisionAtom, commitGraphAtom } from "./graph-atoms";
 import { pruneSelectionForGraph } from "./editor-selection";
 
 export type CommandResult =
-  | { status: "applied" | "noop" }
+  | { status: "applied" | "noop"; graph: GraphModel }
   | { status: "rejected"; message: string };
 export const commandErrorAtom = atom<string | null>(null);
 
@@ -38,7 +42,7 @@ export const executeCommandAtom = atom(
     set(commandErrorAtom, null);
 
     if (!prepared) {
-      return { status: "noop" };
+      return { status: "noop", graph };
     }
 
     const { after, transaction } = prepared;
@@ -53,7 +57,7 @@ export const executeCommandAtom = atom(
     set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), after));
     set(historyAtom, appendHistory(get(historyAtom), transaction));
     set(futureAtom, []);
-    return { status: "applied" };
+    return { status: "applied", graph: after };
   },
 );
 

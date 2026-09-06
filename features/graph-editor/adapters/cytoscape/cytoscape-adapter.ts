@@ -12,6 +12,7 @@ import type {
 
 import {
   computeEdgeRouting,
+  createEdgeRoutingTask,
   defaultEdgeRoutingMeta,
   type EdgeRoutingMeta,
   type EdgeRoutingOptions,
@@ -144,6 +145,27 @@ export function syncCytoscapeEdgeRoutingData(
     previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
   },
 ) {
+  const task = createCytoscapeRoutingTask(
+    cy,
+    model,
+    edgeRoutingOptions,
+    interaction,
+  );
+  let step = task.next();
+  while (!step.done) step = task.next();
+  applyCytoscapeRoutingMeta(cy, step.value);
+  return step.value;
+}
+
+export function* createCytoscapeRoutingTask(
+  cy: Core,
+  model: GraphModel,
+  edgeRoutingOptions?: EdgeRoutingOptions,
+  interaction?: {
+    movedNodeIds: ReadonlySet<NodeId>;
+    previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
+  },
+): Generator<void, Map<EdgeId, EdgeRoutingMeta>> {
   const positionedModel = graphModelWithCytoscapeNodePositions(cy, model);
   const rerouteEdgeIds = interaction
     ? interactiveRerouteEdgeIds(
@@ -160,8 +182,8 @@ export function syncCytoscapeEdgeRoutingData(
         interaction.movedNodeIds,
       )
     : null;
-  const edgeRoutingMeta = computeCytoscapeEdgeRoutingMeta(
-    positionedModel,
+  return yield* createEdgeRoutingTask(
+    withMeasuredNodeGeometry(positionedModel),
     interaction
       ? {
           ...edgeRoutingOptions,
@@ -170,7 +192,12 @@ export function syncCytoscapeEdgeRoutingData(
         }
       : edgeRoutingOptions,
   );
+}
 
+export function applyCytoscapeRoutingMeta(
+  cy: Core,
+  edgeRoutingMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
+) {
   cy.edges().forEach((edge) => {
     const meta = edgeRoutingMeta.get(edge.id());
 
@@ -187,8 +214,6 @@ export function syncCytoscapeEdgeRoutingData(
       loopSweep: `${meta.loopSweepDeg}deg`,
     });
   });
-
-  return edgeRoutingMeta;
 }
 
 function interactiveRerouteEdgeIds(
@@ -323,9 +348,15 @@ function edgeToCytoscapeElement(
       label: edge.label ?? (weighted ? (edge.weight ?? "1") : ""),
       weight: edge.weight,
       color: edge.color ?? "paper",
-      bow: routingMeta.bowPx,
-      controlPointDistances: routingMeta.controlPointDistancesPx,
-      controlPointWeights: routingMeta.controlPointWeights,
+      bow: edge.routing?.bowPx ?? routingMeta.bowPx,
+      controlPointDistances:
+        edge.routing?.bowPx !== undefined
+          ? [edge.routing.bowPx]
+          : routingMeta.controlPointDistancesPx,
+      controlPointWeights:
+        edge.routing?.bowPx !== undefined
+          ? [edge.routing.bowT ?? 0.5]
+          : routingMeta.controlPointWeights,
       duplicate: routingMeta.duplicate,
       loopDirection: `${routingMeta.loopDirectionDeg}deg`,
       loopSweep: `${routingMeta.loopSweepDeg}deg`,
@@ -580,16 +611,18 @@ export function createGraphCanvasStylesheet(
         "underlay-padding": 5,
       }),
     },
+    // Selection keeps the edge's own colour visible (so recolouring a
+    // selected edge shows immediately) and marks it with an accent halo.
     ...SELECTED_EDGE_SELECTORS.map((selector) => ({
       selector,
       style: cytoscapeStyle({
         width: SELECTED_EDGE_WIDTH,
         "arrow-scale": selectedArrowScale,
-        "line-color": palette.active,
         "line-outline-width": 0,
-        "target-arrow-color": palette.active,
         color: palette.active,
-        "underlay-opacity": 0,
+        "underlay-color": palette.active,
+        "underlay-opacity": palette.activeOpacity,
+        "underlay-padding": 4,
         "z-index": 20,
       }),
     })),

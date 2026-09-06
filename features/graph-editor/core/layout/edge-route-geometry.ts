@@ -1,5 +1,5 @@
 import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
-import type { GraphNode } from "../graph/model";
+import type { EdgeRoutingOverride, GraphNode } from "../graph/model";
 import { nodeGeometryWidth, NODE_SIZE_PX } from "../graph/node-size";
 
 export type EdgeCurveGeometry = {
@@ -284,18 +284,25 @@ export function minimumCurveDistanceToNode(
   curve: EdgeCurveGeometry,
   node: GraphNode,
 ) {
-  const span = Math.max(0, (nodeGeometryWidth(node) - NODE_SIZE_PX) / 2);
-  const left = { x: node.x - span, y: node.y };
-  const right = { x: node.x + span, y: node.y };
-  let minimum = Infinity;
+  return createCurveNodeDistance(source, target, curve)(node);
+}
+
+/** Subdivide a candidate once, then reuse exactly the same segments for each obstacle. */
+export function createCurveNodeDistance(
+  source: GraphNode,
+  target: GraphNode,
+  curve: EdgeCurveGeometry,
+) {
+  const pieces: {
+    start: EdgeCurvePoint;
+    end: EdgeCurvePoint;
+    error: number;
+  }[] = [];
   const visit = (segment: QuadraticCurveSegment, depth: number) => {
     const { start, control, end } = segment;
     const error = pointSegmentDistance(control, start, end) / 2;
     if (error <= 0.25 || depth >= 16) {
-      minimum = Math.min(
-        minimum,
-        segmentDistance(start, end, left, right) - error,
-      );
+      pieces.push({ start, end, error });
       return;
     }
     const a = { x: (start.x + control.x) / 2, y: (start.y + control.y) / 2 };
@@ -306,7 +313,18 @@ export function minimumCurveDistanceToNode(
   };
   for (const segment of edgeCurveSegments(source, target, curve))
     visit(segment, 0);
-  return minimum;
+  return (node: GraphNode) => {
+    const span = Math.max(0, (nodeGeometryWidth(node) - NODE_SIZE_PX) / 2);
+    const left = { x: node.x - span, y: node.y };
+    const right = { x: node.x + span, y: node.y };
+    let minimum = Infinity;
+    for (const { start, end, error } of pieces)
+      minimum = Math.min(
+        minimum,
+        segmentDistance(start, end, left, right) - error,
+      );
+    return minimum;
+  };
 }
 
 function pointSegmentDistance(
@@ -389,4 +407,18 @@ function midpoint(a: EdgeCurvePoint, b: EdgeCurvePoint) {
 
 function round(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+/** Prefer committed routing, otherwise begin at the curve currently on screen. */
+export function nudgeEdgeBend(
+  manual: EdgeRoutingOverride | undefined,
+  rendered: EdgeCurveGeometry | undefined,
+  delta: number,
+) {
+  const bowPx = manual?.bowPx ?? rendered?.controlPointDistancesPx[0];
+  const bowT =
+    manual?.bowT ??
+    (manual?.bowPx !== undefined ? 0.5 : rendered?.controlPointWeights[0]);
+  if (bowPx === undefined || bowT === undefined) return null;
+  return { bowPx: clampBow(bowPx + delta), bowT };
 }

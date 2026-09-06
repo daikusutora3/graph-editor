@@ -10,6 +10,15 @@ export type OverlapResult = {
 
 /** Exact distance between the horizontal center segments of two stadiums. */
 export function resolveNodeOverlaps(model: GraphModel): OverlapResult {
+  const task = createOverlapTask(model);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+export function* createOverlapTask(
+  model: GraphModel,
+): Generator<void, OverlapResult> {
   const nodes = model.nodes.toSorted(
     (a, b) => a.order - b.order || a.id.localeCompare(b.id),
   );
@@ -29,10 +38,11 @@ export function resolveNodeOverlaps(model: GraphModel): OverlapResult {
   );
   const required = NODE_SIZE_PX + OVERLAP_GAP_PX;
   let changed = false;
-  const scan = (move: boolean) => {
+  function* scan(move: boolean): Generator<void, number> {
     let remaining = 0;
     for (let i = 0; i < nodes.length; i++)
       for (let j = i + 1; j < nodes.length; j++) {
+        if (j % 64 === 0) yield;
         const a = positions[nodes[i]!.id]!;
         const b = positions[nodes[j]!.id]!;
         const dx = b.x - a.x,
@@ -67,17 +77,18 @@ export function resolveNodeOverlaps(model: GraphModel): OverlapResult {
         changed = true;
       }
     return remaining;
-  };
-  for (let step = 0; step < 128; step++) if (scan(true) === 0) break;
+  }
+  for (let step = 0; step < 128; step++) if ((yield* scan(true)) === 0) break;
   // Dense clusters can converge slowly under symmetric relaxation. Finish only
   // residual collisions in stable order, moving the later node monotonically.
   // Each jump passes an earlier capsule, so at most N jumps are needed per node.
-  if (scan(false) > 0) {
+  if ((yield* scan(false)) > 0) {
     for (let j = 1; j < nodes.length; j++) {
       const b = positions[nodes[j]!.id]!;
       for (let pass = 0; pass < nodes.length; pass++) {
         let moved = false;
         for (let i = 0; i < j; i++) {
+          if (i % 64 === 0) yield;
           const a = positions[nodes[i]!.id]!;
           const gapX = Math.max(0, Math.abs(b.x - a.x) - spans[i]! - spans[j]!);
           if (Math.hypot(gapX, b.y - a.y) >= required - 0.00001) continue;
@@ -90,7 +101,7 @@ export function resolveNodeOverlaps(model: GraphModel): OverlapResult {
       }
     }
   }
-  const remainingPairs = scan(false);
+  const remainingPairs = yield* scan(false);
   return {
     positions,
     remainingPairs,

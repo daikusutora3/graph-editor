@@ -6,12 +6,10 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   createGraphCanvasStylesheet,
-  syncCytoscapeEdgeRoutingData,
   type graphModelToCytoscapeElements,
 } from "./cytoscape-adapter";
 import { withCytoscapeBatch } from "./cytoscape-batch";
 import type { GraphModel } from "../../core/graph/model";
-import type { EdgeRoutingOptions } from "../../core/layout/edge-routing";
 import type { SelectionState } from "../../core/view/types";
 import type { EditorMode } from "../../shell/state/editor-state";
 import type { GraphCanvasChrome } from "../../core/view/types";
@@ -28,19 +26,21 @@ import {
 import { withSuppressedSelectionSync } from "./selection-sync-guard";
 import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
 
+import type { CanvasFitRequest } from "../../canvas/GraphCanvasProvider";
+
 type UseGraphCanvasLifecycleOptions = {
   routingReady: boolean;
   containerRef: RefObject<HTMLDivElement | null>;
   cyRef: MutableRefObject<Core | null>;
   elements: ReturnType<typeof graphModelToCytoscapeElements>;
   chrome: GraphCanvasChrome;
-  edgeRoutingOptions: EdgeRoutingOptions;
   graph: GraphModel;
   mode: EditorMode;
   selection: SelectionState;
   selectionRef: MutableRefObject<SelectionState>;
   draggingNodeIdsRef: MutableRefObject<ReadonlySet<string>>;
-  pendingFitAfterUpdateRef: MutableRefObject<boolean>;
+  fitRequest: CanvasFitRequest | null;
+  completeFit: (id: number) => void;
   flushRenderedHitboxes: (cy: Core) => void;
   setZoomPercent: (value: number) => void;
   suppressSelectionSyncRef: MutableRefObject<boolean>;
@@ -54,13 +54,13 @@ export function useGraphCanvasLifecycle({
   cyRef,
   elements,
   chrome,
-  edgeRoutingOptions,
   graph,
   mode,
   selection,
   selectionRef,
   draggingNodeIdsRef,
-  pendingFitAfterUpdateRef,
+  fitRequest,
+  completeFit,
   flushRenderedHitboxes,
   setZoomPercent,
   suppressSelectionSyncRef,
@@ -69,7 +69,6 @@ export function useGraphCanvasLifecycle({
 }: UseGraphCanvasLifecycleOptions) {
   const [displayReady, setDisplayReady] = useState(false);
   const [displayError, setDisplayError] = useState(false);
-  const [retry, setRetry] = useState(0);
   const initialFitRef = useRef(true);
   const requestRef = useRef(0);
   const arrowScaleRef = useRef(graph.settings.arrowScale);
@@ -84,6 +83,18 @@ export function useGraphCanvasLifecycle({
   chromeRef.current = chrome;
   updateRenderedHitboxesRef.current = updateRenderedHitboxes;
   panRenderedHitboxesRef.current = panRenderedHitboxes;
+
+  useEffect(() => {
+    if (!fitRequest) return;
+    const timeout = window.setTimeout(() => completeFit(fitRequest.id), 10_000);
+    return () => clearTimeout(timeout);
+  }, [fitRequest, completeFit]);
+
+  useEffect(() => {
+    if (displayReady) return;
+    const timeout = window.setTimeout(() => setDisplayError(true), 10_000);
+    return () => clearTimeout(timeout);
+  }, [displayReady]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -120,7 +131,7 @@ export function useGraphCanvasLifecycle({
     };
     // Cytoscape is created once; mode/elements/arrowScale are synced by later effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerRef, cyRef, retry]);
+  }, [containerRef, cyRef]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -142,7 +153,7 @@ export function useGraphCanvasLifecycle({
     observer.observe(container);
 
     return () => observer.disconnect();
-  }, [containerRef, cyRef, retry]);
+  }, [containerRef, cyRef]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -174,7 +185,7 @@ export function useGraphCanvasLifecycle({
       observer.disconnect();
       document.fonts?.removeEventListener("loadingdone", updateCanvasTheme);
     };
-  }, [cyRef, retry]);
+  }, [cyRef]);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -200,13 +211,13 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
-    const shouldReveal =
-      initialFitRef.current || pendingFitAfterUpdateRef.current;
+    const shouldReveal = initialFitRef.current;
+    const shouldFit = fitRequest?.graph === graph;
+    if (fitRequest && !shouldFit) completeFit(fitRequest.id);
     const request = ++requestRef.current;
     let completed = false;
     let renderFrame: number | null = null;
-    let timeout: number | null = null;
-    if (shouldReveal) setDisplayReady(false);
+
     const reveal = () => {
       if (request !== requestRef.current || cy.destroyed()) return;
       renderFrame = requestAnimationFrame(() => {
@@ -215,7 +226,7 @@ export function useGraphCanvasLifecycle({
         completed = true;
         setDisplayReady(true);
         setDisplayError(false);
-        if (timeout !== null) clearTimeout(timeout);
+        if (shouldFit && fitRequest) completeFit(fitRequest.id);
       });
     };
     const fitToGraph = () => {
@@ -236,28 +247,20 @@ export function useGraphCanvasLifecycle({
         syncCytoscapeElements(cy, elements, {
           skipNodePositionIds: draggingNodeIdsRef.current,
         });
-        syncDraggedEdgeRoutingPreview(
-          cy,
-          graph,
-          edgeRoutingOptions,
-          draggingNodeIdsRef.current,
-        );
         syncCytoscapeSelection(cy, selectionRef.current);
       });
     });
 
     cy.userZoomingEnabled(elements.length > 0);
 
-    if (shouldReveal && routingReady) {
+    if ((shouldReveal || shouldFit) && routingReady) {
       initialFitRef.current = false;
-      pendingFitAfterUpdateRef.current = false;
+
       // Register for this exact element/viewport request, after batched updates.
-      cy.one("render", reveal);
+      if (shouldReveal) cy.one("render", reveal);
       fitToGraph();
       cy.forceRender();
-      timeout = window.setTimeout(() => {
-        if (request === requestRef.current) setDisplayError(true);
-      }, 10_000);
+      if (!shouldReveal && shouldFit && fitRequest) completeFit(fitRequest.id);
     } else {
       updateRenderedHitboxesRef.current(cy);
     }
@@ -266,18 +269,16 @@ export function useGraphCanvasLifecycle({
       if (requestRef.current === request) requestRef.current = request + 1;
       cy.off("render", reveal);
       if (renderFrame !== null) cancelAnimationFrame(renderFrame);
-      if (timeout !== null) clearTimeout(timeout);
       // An interrupted reveal still needs to finish for the replacement request.
       if (shouldReveal && !completed) initialFitRef.current = true;
     };
-    // pendingFitAfterUpdateRef is a stable ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     cyRef,
     elements,
     routingReady,
-    retry,
-    edgeRoutingOptions,
+    fitRequest,
+    completeFit,
     draggingNodeIdsRef,
     graph,
     selectionRef,
@@ -342,27 +343,9 @@ export function useGraphCanvasLifecycle({
         cy.off("zoom resize", updateZoomOverlay);
       }
     };
-  }, [cyRef, retry]);
+  }, [cyRef]);
   return {
-    displayReady: displayReady && !pendingFitAfterUpdateRef.current,
+    displayReady,
     displayError,
-    retryDisplay: () => {
-      setDisplayReady(false);
-      setDisplayError(false);
-      setRetry((value) => value + 1);
-    },
   };
-}
-
-function syncDraggedEdgeRoutingPreview(
-  cy: Core,
-  graph: GraphModel,
-  edgeRoutingOptions: EdgeRoutingOptions,
-  draggingNodeIds: ReadonlySet<string>,
-) {
-  if (draggingNodeIds.size === 0 || edgeRoutingOptions.mode !== "quality") {
-    return;
-  }
-
-  syncCytoscapeEdgeRoutingData(cy, graph, edgeRoutingOptions);
 }

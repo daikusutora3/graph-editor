@@ -94,7 +94,7 @@ export function EditorChrome() {
   const updateGraphSettings = useSetAtom(updateGraphSettingsAtom);
   const reverseAllDirectedEdges = useSetAtom(reverseAllDirectedEdgesAtom);
   const clearGraph = useSetAtom(clearGraphAtom);
-  const { fitAfterNextGraphRender } = useGraphCanvasApi();
+  const { requestFit } = useGraphCanvasApi();
   const applyGraphModel = useApplyGraphModel();
   const { close, open, panel, presence, toggle } = useEditorPanel();
   const { theme, setTheme } = useThemeMode();
@@ -194,11 +194,12 @@ export function EditorChrome() {
   );
 
   const applyLayout = useCallback(
-    (kind: LayoutKind) => {
-      const result = applyManualLayout(kind);
-      if (result?.remainingPairs)
-        setToast(integrity.unresolved(result.remainingPairs));
-      if (kind !== "spread") fitAfterNextGraphRender();
+    async (kind: LayoutKind) => {
+      const result = await applyManualLayout(kind);
+      if (result.status === "rejected") return;
+      if ("overlap" in result && result.overlap.remainingPairs)
+        setToast(integrity.unresolved(result.overlap.remainingPairs));
+      if (kind !== "spread") requestFit(result.graph);
 
       // A bottom sheet hides most of the canvas, so on mobile the result
       // would be invisible until the sheet is dismissed.
@@ -206,14 +207,7 @@ export function EditorChrome() {
         close();
       }
     },
-    [
-      applyManualLayout,
-      close,
-      fitAfterNextGraphRender,
-      mobile,
-      integrity,
-      setToast,
-    ],
+    [applyManualLayout, close, requestFit, mobile, integrity, setToast],
   );
 
   const toggleOffsetEdges = useCallback(() => {

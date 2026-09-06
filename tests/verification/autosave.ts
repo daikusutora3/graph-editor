@@ -1,3 +1,13 @@
+import { createStore } from "jotai/vanilla";
+import { resolveStorageConflictAtom } from "../../features/graph-editor/shell/state/editor-actions";
+import {
+  executeCommandAtom,
+  undoAtom,
+  historyAtom,
+} from "../../features/graph-editor/shell/state/history-atoms";
+import { graphAtom } from "../../features/graph-editor/shell/state/graph-atoms";
+import { replaceModelCommand } from "../../features/graph-editor/core/graph/graph-intents";
+import { serializeGraphModel } from "../../features/graph-editor/core/graph/graph-json";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import {
   acceptStorageBaseline,
@@ -138,6 +148,47 @@ try {
   expect(
     getStorageSnapshot().status === "conflict",
     "external removal is also a conflict",
+  );
+  const store = createStore();
+  store.set(executeCommandAtom, replaceModelCommand(edited));
+  const reviewed = serializeGraphModel(graph);
+  raw = reviewed;
+  observeExternalStorage(raw);
+  const beforeLoadWrites = writes;
+  expect(
+    store.set(resolveStorageConflictAtom, reviewed).status === "applied",
+    "external document loads through an undoable operation",
+  );
+  await flushStoredGraphWrite();
+  expect(
+    writes === beforeLoadWrites && raw === reviewed,
+    "loading does not write external data back",
+  );
+  store.set(undoAtom);
+  expect(
+    store.get(graphAtom).nodes[0]?.label === "latest",
+    "external load can be undone",
+  );
+  const invalidBefore = store.get(graphAtom),
+    invalidHistory = store.get(historyAtom),
+    invalidBaseline = getStorageSnapshot();
+  expect(
+    store.set(resolveStorageConflictAtom, "broken").status === "rejected",
+    "invalid external data rejects",
+  );
+  expect(
+    store.get(graphAtom) === invalidBefore &&
+      store.get(historyAtom) === invalidHistory &&
+      getStorageSnapshot() === invalidBaseline,
+    "rejected load preserves graph, history and storage baseline",
+  );
+  raw = serializeGraphModel(edited);
+  store.set(resolveStorageConflictAtom, reviewed, true);
+  await flushStoredGraphWrite();
+  expect(
+    getStorageSnapshot().status === "conflict" &&
+      raw === serializeGraphModel(edited),
+    "new graph cannot overwrite a newer external snapshot",
   );
   acceptStorageBaseline(null);
   Object.defineProperty(globalThis, "navigator", {
