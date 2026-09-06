@@ -221,10 +221,17 @@ const simpleAutomatic = computeEdgeRouting(
 const simpleParallel = computeEdgeRouting(baseGraph, { mode: "simple" });
 expect(
   simpleManual.get("manual")?.bowPx === 48 &&
-    simpleAutomatic.get("manual")?.bowPx === 0 &&
-    [...simpleParallel.values()].every((route) => route.bowPx === 0),
-  "disabled auto routing should keep manual curves and otherwise use straight edges without parallel separation",
+    simpleAutomatic.get("manual")?.bowPx === 0,
+  "disabled auto routing should keep manual curves and otherwise use straight edges",
 );
+{
+  const bows = [...simpleParallel.values()].map((route) => route.bowPx);
+  expect(
+    new Set(bows).size === bows.length &&
+      Math.abs(bows.reduce((sum, bow) => sum + bow, 0)) < 1e-9,
+    "disabled auto routing should still fan parallel edges symmetrically around the straight line",
+  );
+}
 
 const curvedMidpoint = edgeCurveMidpoint(
   { x: 0, y: 0 },

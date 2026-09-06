@@ -82,7 +82,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       {
         title: "自動配置",
         paragraphs: [
-          "「配置」パネルから木、DAG、二部グラフ、SCC、放射、円形、格子、直線、同心円、BFS 層、自動配置、重なり解消を選べます。グラフの構造に合わない配置は無効になります。「辺をずらして重なりを避ける」を有効にすると、多重辺を扇状に広げ、頂点の上を通る辺を曲げて避けます。",
+          "「配置」パネルから木、DAG、二部グラフ、SCC、放射、円形、格子、直線、同心円、BFS 層、自動配置、重なり解消を選べます。グラフの構造に合わない配置は無効になります。多重辺は常に少しずらして描かれ、1 本に見えることはありません。「辺をずらして重なりを避ける」を有効にすると、さらに頂点の上を通る辺を曲げて避けます。",
         ],
       },
       {
@@ -165,7 +165,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       {
         title: "Automatic layouts",
         paragraphs: [
-          "The Layouts panel offers tree, DAG, bipartite, SCC, radial, circle, grid, line, concentric, BFS layers, auto (force), and overlap resolution. Layouts that do not fit the graph’s structure are disabled. “Offset edges to avoid overlaps” fans out parallel edges and bends edges that would cross nodes.",
+          "The Layouts panel offers tree, DAG, bipartite, SCC, radial, circle, grid, line, concentric, BFS layers, auto (force), and overlap resolution. Layouts that do not fit the graph’s structure are disabled. Parallel edges are always fanned out slightly so they never collapse into one line; “Offset edges to avoid overlaps” additionally bends edges that would cross nodes.",
         ],
       },
       {
@@ -247,7 +247,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       {
         title: "自动布局",
         paragraphs: [
-          "布局面板提供树、DAG、二分图、SCC、放射、圆形、网格、直线、同心圆、BFS 分层、自动布局和重叠消除。与图结构不匹配的布局会被禁用。开启“错开边以避免重叠”后，多重边会扇形展开，穿过顶点的边会自动弯曲避开。",
+          "布局面板提供树、DAG、二分图、SCC、放射、圆形、网格、直线、同心圆、BFS 分层、自动布局和重叠消除。与图结构不匹配的布局会被禁用。多重边始终会略微错开，不会重叠成一条线；开启“错开边以避免重叠”后，穿过顶点的边还会自动弯曲避开。",
         ],
       },
       {
