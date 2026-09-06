@@ -146,9 +146,9 @@ export function* createEdgeRoutingTask(
     }
 
     if (edges.every((edge) => edge.source === edge.target)) {
-      const center = resolvedOptions.separateParallelEdges
-        ? (edges.length - 1) / 2
-        : 0;
+      // Multiple loops on one node are spread even in simple mode; a
+      // single loop has center 0 and keeps the default direction.
+      const center = (edges.length - 1) / 2;
       const source = nodesById.get(edges[0]?.source ?? "");
       const loopDirectionDeg = source
         ? chooseLoopDirection(source, model.nodes, resolvedOptions)
@@ -164,14 +164,12 @@ export function* createEdgeRoutingTask(
             duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
             loopDirectionDeg: Math.round(
               loopDirectionDeg +
-                (resolvedOptions.separateParallelEdges ? index - center : 0) *
-                  resolvedOptions.loopDirectionStepDeg,
+                (index - center) * resolvedOptions.loopDirectionStepDeg,
             ),
             loopSweepDeg: Math.min(
               resolvedOptions.maxLoopSweepDeg,
               resolvedOptions.loopSweepDeg +
-                (resolvedOptions.separateParallelEdges ? index : 0) *
-                  resolvedOptions.loopSweepStepDeg,
+                index * resolvedOptions.loopSweepStepDeg,
             ),
           }),
         );
@@ -181,12 +179,30 @@ export function* createEdgeRoutingTask(
     }
 
     if (!resolvedOptions.separateParallelEdges) {
-      for (const edge of edges) {
+      // Simple mode skips route scoring, but parallel edges still fan out
+      // around the straight line; otherwise they render as one edge.
+      const orderedEdges = orderParallelEdges(
+        edges,
+        resolvedOptions.previousMeta,
+        originalEdgeOrder,
+      );
+      const center = (orderedEdges.length - 1) / 2;
+      const spacingPx = duplicateBowSpacing(
+        orderedEdges.length,
+        resolvedOptions.duplicateBowPx,
+      );
+
+      for (const [index, edge] of orderedEdges.entries()) {
+        const curve = orientCanonicalCurve(
+          edge,
+          offsetEdgeCurve(singleBowCurve(0), (index - center) * spacingPx),
+        );
+
         meta.set(
           edge.id,
           applyRoutingOverride(edge, {
-            ...singleBowCurve(0),
-            bowPx: 0,
+            ...curve,
+            bowPx: representativeBow(curve),
             duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
             loopDirectionDeg: resolvedOptions.loopDirectionDeg,
             loopSweepDeg: resolvedOptions.loopSweepDeg,
