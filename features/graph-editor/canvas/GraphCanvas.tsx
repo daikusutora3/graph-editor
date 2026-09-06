@@ -49,7 +49,7 @@ import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useGraphEditingActions } from "./use-graph-editing-actions";
 import { useRangeSelectionKey } from "./use-range-selection-key";
-import { clampBow } from "../core/layout/edge-route-geometry";
+import { nudgeEdgeBend } from "../core/layout/edge-route-geometry";
 import { describeSelection } from "./selection-actions";
 import { useI18n } from "../i18n/I18nProvider";
 import { useAnimatedNullableState } from "../ui/hooks/use-panel-presence";
@@ -73,10 +73,15 @@ import { useGraphCanvasApi } from "./GraphCanvasProvider";
 const BEND_STEP_PX = 48;
 
 export function GraphCanvas() {
+  const [attempt, setAttempt] = useState(0);
+  const retryDisplay = useCallback(() => setAttempt((value) => value + 1), []);
+  return <GraphCanvasSession key={attempt} retryDisplay={retryDisplay} />;
+}
+
+function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const draggingNodeIdsRef = useRef<ReadonlySet<NodeId>>(new Set());
-  const pendingFitAfterUpdateRef = useRef(false);
   const suppressSelectionSyncRef = useRef(false);
   const [edgeCursor, setEdgeCursor] = useState<RenderedPoint | null>(null);
   const [edgeHoverNodeId, setEdgeHoverNodeId] = useState<NodeId | null>(null);
@@ -97,7 +102,8 @@ export function GraphCanvas() {
   const setSelection = useSetAtom(selectionAtom);
   const executeCommand = useSetAtom(executeCommandAtom);
   const deleteSelection = useSetAtom(deleteSelectionAtom);
-  const { registerGraphCanvasApi } = useGraphCanvasApi();
+  const { registerGraphCanvasApi, fitRequest, completeFit } =
+    useGraphCanvasApi();
 
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
@@ -163,6 +169,32 @@ export function GraphCanvas() {
     setSelection,
   });
 
+  const updateZoomPercent = useCallback((nextZoomPercent: number) => {
+    setZoomPercent((current) =>
+      current === nextZoomPercent ? current : nextZoomPercent,
+    );
+  }, []);
+
+  const { displayReady, displayError } = useGraphCanvasLifecycle({
+    routingReady,
+    containerRef,
+    cyRef,
+    elements,
+    chrome,
+    graph,
+    mode,
+    fitRequest,
+    completeFit,
+    draggingNodeIdsRef,
+    selection,
+    selectionRef,
+    flushRenderedHitboxes,
+    setZoomPercent: updateZoomPercent,
+    suppressSelectionSyncRef,
+    updateRenderedHitboxes,
+    panRenderedHitboxes,
+  });
+
   const inlineEditState = useGraphInlineEdit({
     contextMenuTarget,
     cyRef,
@@ -199,12 +231,6 @@ export function GraphCanvas() {
     setInlineEdit,
     setSelection,
   });
-
-  const updateZoomPercent = useCallback((nextZoomPercent: number) => {
-    setZoomPercent((current) =>
-      current === nextZoomPercent ? current : nextZoomPercent,
-    );
-  }, []);
 
   const htmlNodeDrag = useHtmlNodeDrag({
     acceptRoutingMeta,
@@ -270,9 +296,6 @@ export function GraphCanvas() {
     registerGraphCanvasApi({
       editSelection,
       fitView,
-      fitAfterNextGraphRender: () => {
-        pendingFitAfterUpdateRef.current = true;
-      },
       exportPng,
       resetZoom: resetCanvasZoom,
       isGraphOutOfView: () => isGraphOutOfViewRef.current,
@@ -286,26 +309,6 @@ export function GraphCanvas() {
     registerGraphCanvasApi,
     resetCanvasZoom,
   ]);
-
-  const { displayReady, displayError, retryDisplay } = useGraphCanvasLifecycle({
-    routingReady,
-    containerRef,
-    cyRef,
-    elements,
-    chrome,
-    edgeRoutingOptions,
-    graph,
-    mode,
-    pendingFitAfterUpdateRef,
-    draggingNodeIdsRef,
-    selection,
-    selectionRef,
-    flushRenderedHitboxes,
-    setZoomPercent: updateZoomPercent,
-    suppressSelectionSyncRef,
-    updateRenderedHitboxes,
-    panRenderedHitboxes,
-  });
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -406,14 +409,20 @@ export function GraphCanvas() {
   // Menu/keyboard bend: nudge the curve sideways, keeping its position.
   const bendEdgeBy = useCallback(
     (edgeId: string, direction: -1 | 1) => {
-      const current = graph.edges.find((edge) => edge.id === edgeId)?.routing;
-      const bowPx = clampBow((current?.bowPx ?? 0) + direction * BEND_STEP_PX);
-
-      executeCommand(
-        updateEdgeCommand(edgeId, {
-          routing: { bowPx, bowT: current?.bowT ?? 0.5 },
-        }),
+      const edge = graph.edges.find((candidate) => candidate.id === edgeId);
+      if (!edge) return;
+      const rendered = cyRef.current?.getElementById(edgeId);
+      const routing = nudgeEdgeBend(
+        edge.routing,
+        rendered && !rendered.empty()
+          ? {
+              controlPointDistancesPx: rendered.data("controlPointDistances"),
+              controlPointWeights: rendered.data("controlPointWeights"),
+            }
+          : undefined,
+        direction * BEND_STEP_PX,
       );
+      if (routing) executeCommand(updateEdgeCommand(edgeId, { routing }));
     },
     [executeCommand, graph.edges],
   );

@@ -17,7 +17,7 @@ type ApplyGraphModelOptions = {
 
 export function useApplyGraphModel() {
   const replaceGraphModel = useSetAtom(replaceGraphModelAtom);
-  const { fitAfterNextGraphRender } = useGraphCanvasApi();
+  const { requestFit } = useGraphCanvasApi();
 
   return useCallback(
     (
@@ -37,10 +37,10 @@ export function useApplyGraphModel() {
 
       if (result.status === "rejected") return false;
       if (fitAfterUpdate) {
-        fitAfterNextGraphRender();
+        requestFit(result.graph);
       }
       return true;
     },
-    [fitAfterNextGraphRender, replaceGraphModel],
+    [requestFit, replaceGraphModel],
   );
 }

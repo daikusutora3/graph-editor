@@ -213,7 +213,7 @@ function adjustNodeLabelsForIndexBase(
 
     return {
       ...node,
-      label: String(Number(node.label) + delta),
+      label: (BigInt(node.label) + BigInt(delta)).toString(),
     };
   });
 }

@@ -10,6 +10,7 @@ import {
 } from "../adapters/browser/node-geometry";
 import {
   edgeRoutingProgress,
+  createEdgeRoutingTask,
   createEdgeRoutingCacheKey,
 } from "../core/layout/edge-routing";
 import {
@@ -46,38 +47,18 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   );
   const cacheRef = useRef<{ key: string; meta: RoutingMeta } | null>(null);
   const routingSnapshotRef = useRef(emptyEdgeRoutingContinuitySnapshot());
-  const compute = () => {
-    const previousSnapshot = routingSnapshotRef.current;
-    const previousMeta = readPreviousAutomaticRoutingMeta(
-      graph,
-      previousSnapshot,
-    );
-    const meta = computeCytoscapeEdgeRoutingMeta(graph, {
-      ...edgeRoutingOptions,
-      previousMeta,
-    });
-    cacheRef.current = { key: cacheKey, meta };
-    routingSnapshotRef.current = updateAutomaticRoutingSnapshot(
-      graph,
-      previousSnapshot,
-      meta,
-    );
-
-    return meta;
-  };
-
-  // The very first routing is computed synchronously so the initial paint
-  // already shows curves. Later changes render the previous routes first and
-  // refine after commit, so a large graph never blocks the frame that shows
-  // the user's edit.
   const [, setAsyncMeta] = useState<RoutingMeta | null>(null);
+  // A cheap provisional route lets React mount the canvas and start its timeout.
+  if (!cacheRef.current) {
+    cacheRef.current = {
+      key: mode ? "" : cacheKey,
+      meta: computeCytoscapeEdgeRoutingMeta(graph, {
+        mode: mode ? "parallel" : "simple",
+      }),
+    };
+  }
   const cached = cacheRef.current;
-  const edgeRoutingMeta =
-    cached?.key === cacheKey
-      ? cached.meta
-      : cached === null
-        ? compute()
-        : cached.meta;
+  const edgeRoutingMeta = cached.meta;
 
   const acceptRoutingMeta = useCallback(
     (model: GraphModel, meta: RoutingMeta) => {
@@ -97,40 +78,54 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   useEffect(() => {
     let frame: number | null = null;
     let cancelled = false;
+    let sourceCache = cacheRef.current;
+    let task: ReturnType<typeof createEdgeRoutingTask> | null = null;
     const refine = () => {
-      if (cancelled) return;
-      let meta: RoutingMeta;
-      if (cacheRef.current?.key !== cacheKey) meta = compute();
-      else {
-        const previous = cacheRef.current.meta;
-        const { pendingEdgeIds } = edgeRoutingProgress(previous);
-        if (!pendingEdgeIds.length) return;
-        meta = computeCytoscapeEdgeRoutingMeta(graph, {
+      if (cancelled || cacheRef.current !== sourceCache) return;
+      if (!task) {
+        const current = cacheRef.current;
+        const pending =
+          current?.key === cacheKey
+            ? edgeRoutingProgress(current.meta).pendingEdgeIds
+            : null;
+        if (pending && !pending.length) return;
+        task = createEdgeRoutingTask(withMeasuredNodeGeometry(graph), {
           ...edgeRoutingOptions,
-          previousMeta: previous,
-          rerouteEdgeIds: new Set(pendingEdgeIds),
+          previousMeta: pending
+            ? current!.meta
+            : readPreviousAutomaticRoutingMeta(
+                graph,
+                routingSnapshotRef.current,
+              ),
+          rerouteEdgeIds: pending ? new Set(pending) : null,
         });
-        acceptRoutingMeta(graph, meta);
       }
-      setAsyncMeta(meta);
-      if (edgeRoutingProgress(meta).pendingEdgeIds.length)
-        frame = requestAnimationFrame(refine);
+      const deadline = performance.now() + 4;
+      let step = task.next();
+      while (!step.done && performance.now() < deadline) step = task.next();
+      if (step.done) {
+        const meta = step.value;
+        acceptRoutingMeta(graph, meta);
+        sourceCache = cacheRef.current;
+        setAsyncMeta(meta);
+        task = null;
+        if (!edgeRoutingProgress(meta).pendingEdgeIds.length) return;
+      }
+      frame = requestAnimationFrame(refine);
     };
     frame = requestAnimationFrame(refine);
     return () => {
       cancelled = true;
       if (frame !== null) cancelAnimationFrame(frame);
     };
-    // Each request owns its continuation; undo revisions are not request identities.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cacheKey]);
+  }, [cacheKey, graph, edgeRoutingOptions, acceptRoutingMeta]);
 
   return {
     edgeRoutingMeta,
     edgeRoutingOptions,
     acceptRoutingMeta,
     routingReady:
-      (cached?.key === cacheKey || cached === null) &&
+      cached.key === cacheKey &&
       edgeRoutingProgress(edgeRoutingMeta).pendingEdgeIds.length === 0,
   };
 }

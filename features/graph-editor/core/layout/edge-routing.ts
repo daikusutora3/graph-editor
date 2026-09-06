@@ -14,7 +14,7 @@ import type {
 } from "../graph/model";
 import { normalizeEdgeRoutingOverride } from "../graph/edge-routing-overrides";
 import {
-  minimumCurveDistanceToNode,
+  createCurveNodeDistance,
   curveThroughChordOffset,
   offsetEdgeCurve,
   reverseEdgeCurve,
@@ -92,6 +92,17 @@ export function computeEdgeRouting(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
 ): Map<EdgeId, EdgeRoutingMeta> {
+  const task = createEdgeRoutingTask(model, options);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+/** Retains group, candidate and final-check progress between browser frames. */
+export function* createEdgeRoutingTask(
+  model: GraphModel,
+  options: EdgeRoutingOptions = {},
+): Generator<void, Map<EdgeId, EdgeRoutingMeta>> {
   model = routingDisplayModel(model);
   const resolvedOptions = resolveEdgeRoutingOptions(model, options);
   const routeGroups = new Map<string, GraphEdge[]>();
@@ -115,6 +126,7 @@ export function computeEdgeRouting(
   );
 
   for (const edges of routeGroups.values()) {
+    yield;
     if (
       resolvedOptions.rerouteEdgeIds &&
       edges.every(
@@ -192,7 +204,7 @@ export function computeEdgeRouting(
 
     if (edges.length === 1) {
       const edge = firstGroupEdge;
-      const curve = chooseEdgeCurve(
+      const curve = yield* chooseEdgeCurve(
         edge,
         model.edges,
         model.nodes,
@@ -232,7 +244,7 @@ export function computeEdgeRouting(
       -center * duplicateBowPx,
     );
     const groupCurve = clampCurveDistances(
-      chooseEdgeCurve(
+      yield* chooseEdgeCurve(
         canonicalEdge,
         model.edges,
         model.nodes,
@@ -266,6 +278,7 @@ export function computeEdgeRouting(
 
   if (resolvedOptions.avoidNodes) {
     for (const edges of routeGroups.values()) {
+      yield;
       const pending = edges.some((edge) =>
         resolvedOptions.work.pending?.has(edge.id),
       );
@@ -299,6 +312,7 @@ export function computeEdgeRouting(
             model.nodes,
           );
           for (const offset of [24, -24, 48, -48, 96, -96, 180, -180]) {
+            yield;
             const candidate = clampCurveDistances(
               offsetEdgeCurve(route, offset),
               -MAX_BOW_PX,
@@ -503,14 +517,14 @@ function applyRoutingOverride(
   };
 }
 
-function chooseEdgeCurve(
+function* chooseEdgeCurve(
   edge: GraphEdge,
   edges: GraphEdge[],
   nodes: GraphNode[],
   nodesById: Map<NodeId, GraphNode>,
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
-): EdgeCurveGeometry {
+): Generator<void, EdgeCurveGeometry> {
   if (edge.routing?.bowPx !== undefined)
     return singleBowCurve(edge.routing.bowPx, edge.routing.bowT);
   const simpleCurve = singleBowCurve(0);
@@ -586,6 +600,7 @@ function chooseEdgeCurve(
   );
 
   for (const candidate of candidates.slice(1)) {
+    yield;
     const score = scoreCandidateCurve(
       candidate,
       source,
@@ -937,6 +952,7 @@ function nodeCollisions(
   const reach =
     Math.max(0, ...curve.controlPointDistancesPx.map(Math.abs)) + NODE_SIZE_PX;
   let count = 0;
+  const distanceToNode = createCurveNodeDistance(source, target, curve);
   for (const node of nodes) {
     if (node.id === edge.source || node.id === edge.target) continue;
     const halfWidth = nodeGeometryWidth(node) / 2;
@@ -947,11 +963,7 @@ function nodeCollisions(
       node.y > Math.max(source.y, target.y) + reach
     )
       continue;
-    if (
-      minimumCurveDistanceToNode(source, target, curve, node) <
-      NODE_SIZE_PX / 2 + 12
-    )
-      count++;
+    if (distanceToNode(node) < NODE_SIZE_PX / 2 + 12) count++;
   }
   return count;
 }

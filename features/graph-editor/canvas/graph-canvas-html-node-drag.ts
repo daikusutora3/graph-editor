@@ -20,7 +20,10 @@ import type {
 } from "../core/layout/edge-routing";
 import type { SelectionState } from "../shell/state/editor-state";
 
-import { syncCytoscapeEdgeRoutingData } from "../adapters/cytoscape/cytoscape-adapter";
+import {
+  createCytoscapeRoutingTask,
+  applyCytoscapeRoutingMeta,
+} from "../adapters/cytoscape/cytoscape-adapter";
 import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
@@ -72,6 +75,8 @@ export function useHtmlNodeDrag({
   updateRenderedHitboxes,
 }: UseHtmlNodeDragOptions) {
   const htmlNodeDragRef = useRef<HtmlNodeDragState | null>(null);
+  const routingFrameRef = useRef<number | null>(null);
+  const routingRequestRef = useRef(0);
   const dragFrameRef = useRef<number | null>(null);
   const dragRoutingTimerRef = useRef<number | null>(null);
   const lastDragRoutingAtRef = useRef(0);
@@ -106,6 +111,11 @@ export function useHtmlNodeDrag({
   );
 
   const cancelScheduledDragFrame = useCallback(() => {
+    routingRequestRef.current++;
+    if (routingFrameRef.current !== null) {
+      cancelAnimationFrame(routingFrameRef.current);
+      routingFrameRef.current = null;
+    }
     if (dragFrameRef.current !== null) {
       window.cancelAnimationFrame(dragFrameRef.current);
       dragFrameRef.current = null;
@@ -156,6 +166,11 @@ export function useHtmlNodeDrag({
         return;
       }
 
+      routingRequestRef.current++;
+      if (routingFrameRef.current !== null) {
+        cancelAnimationFrame(routingFrameRef.current);
+        routingFrameRef.current = null;
+      }
       if (edgeRoutingOptions.mode === "quality") {
         const now = performance.now();
         const elapsed = now - lastDragRoutingAtRef.current;
@@ -174,29 +189,43 @@ export function useHtmlNodeDrag({
             dragRoutingTimerRef.current = null;
           }
 
-          withCytoscapeBatch(cy, () => {
-            const meta = syncCytoscapeEdgeRoutingData(
-              cy,
-              graph,
-              edgeRoutingOptions,
-              {
-                movedNodeIds: draggingNodeIdsRef.current,
-                previousMeta: dragRoutingBaselineRef.current,
-              },
-            );
-            dragRoutingBaselineRef.current = meta;
-            acceptRoutingMeta(
-              {
-                ...graph,
-                nodes: graph.nodes.map((node) => {
-                  const position = cy.getElementById(node.id).position();
-                  return { ...node, x: position.x, y: position.y };
-                }),
-              },
-              meta,
-            );
-          });
-          lastDragRoutingCostRef.current = performance.now() - now;
+          const request = ++routingRequestRef.current;
+          if (routingFrameRef.current !== null)
+            cancelAnimationFrame(routingFrameRef.current);
+          const positioned = {
+            ...graph,
+            nodes: graph.nodes.map((node) => {
+              const position = cy.getElementById(node.id).position();
+              return { ...node, x: position.x, y: position.y };
+            }),
+          };
+          const task = createCytoscapeRoutingTask(
+            cy,
+            positioned,
+            edgeRoutingOptions,
+            {
+              movedNodeIds: new Set(draggingNodeIdsRef.current),
+              previousMeta: dragRoutingBaselineRef.current,
+            },
+          );
+          const advance = () => {
+            routingFrameRef.current = null;
+            if (cy.destroyed() || request !== routingRequestRef.current) return;
+            const start = performance.now();
+            let step = task.next();
+            while (!step.done && performance.now() - start < 4)
+              step = task.next();
+            lastDragRoutingCostRef.current = performance.now() - start;
+            if (step.done) {
+              withCytoscapeBatch(cy, () =>
+                applyCytoscapeRoutingMeta(cy, step.value),
+              );
+              dragRoutingBaselineRef.current = step.value;
+              acceptRoutingMeta(positioned, step.value);
+              schedulePostRoutingHitboxes(cy);
+            } else routingFrameRef.current = requestAnimationFrame(advance);
+          };
+          advance();
           lastDragRoutingAtRef.current = now;
         } else if (dragRoutingTimerRef.current === null) {
           dragRoutingTimerRef.current = window.setTimeout(() => {
@@ -223,6 +252,7 @@ export function useHtmlNodeDrag({
 
   const scheduleDragPreview = useCallback(
     (cy: Core) => {
+      routingRequestRef.current++;
       if (dragFrameRef.current !== null) {
         return;
       }
@@ -396,7 +426,7 @@ export function useHtmlNodeDrag({
         withCytoscapeBatch(cy, () => {
           restoreDragSnapshot(cy, state);
         });
-        flushDragPreview(cy);
+        restoreRoutes(cy);
         draggingNodeIdsRef.current = new Set();
         dragRoutingBaselineRef.current = new Map();
         return;
@@ -433,10 +463,9 @@ export function useHtmlNodeDrag({
         return;
       }
 
-      if (
-        executeCommand(createMoveNodesCommand("Move node", after)).status ===
-        "rejected"
-      ) {
+      const result = executeCommand(createMoveNodesCommand("Move node", after));
+      if (result.status !== "applied") {
+        cancelScheduledDragFrame();
         withCytoscapeBatch(cy, () => restoreDragSnapshot(cy, state));
         restoreRoutes(cy);
         return;
