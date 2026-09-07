@@ -602,10 +602,8 @@ export function createGraphCanvasStylesheet(
     {
       selector: "node:selected",
       style: cytoscapeStyle({
-        "background-color": palette.selectedNode,
-        "border-color": palette.active,
-        color: palette.selectedNodeText,
-        "text-outline-color": palette.selectedNode,
+        // Keep the node's fill, border and contrasting label colour visible
+        // while recolouring it; the outside halo indicates selection.
         "underlay-color": palette.active,
         "underlay-opacity": palette.activeOpacity,
         "underlay-padding": 5,
