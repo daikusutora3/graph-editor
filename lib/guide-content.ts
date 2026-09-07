@@ -9,6 +9,7 @@ export type GuideSection = {
 
 export type GuideCopy = {
   title: string;
+  guideLink: string;
   description: string;
   heading: string;
   intro: string;
@@ -54,13 +55,14 @@ const formatRows: Record<AppLocale, [string, string][]> = {
 
 export const guideCopy: Record<AppLocale, GuideCopy> = {
   ja: {
-    title: "使い方ガイド | Graph Editor",
+    title: "辺リスト・隣接行列からグラフを描画する方法 | Graph Editor",
+    guideLink: "使い方ガイド",
     description:
       "Graph Editor の使い方。対応する入力形式、自動配置、辺の曲げ方、書き出し、キーボードショートカット、よくある質問をまとめました。",
-    heading: "Graph Editor の使い方",
+    heading: "辺リスト・隣接行列からグラフを描画する方法",
     intro:
       "Graph Editor は、辺リストや隣接行列を貼るだけでグラフ理論の図を描けるブラウザアプリです。このページでは入力形式から書き出しまでの流れを説明します。",
-    openApp: "エディタを開く",
+    openApp: "エディタに戻る",
     breadcrumbHome: "Graph Editor",
     sections: [
       {
@@ -134,13 +136,14 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
     ],
   },
   en: {
-    title: "User guide | Graph Editor",
+    title: "Draw graphs from edge lists and adjacency matrices | Graph Editor",
+    guideLink: "User guide",
     description:
       "How to use Graph Editor: supported input formats, automatic layouts, bending edges, exporting, keyboard shortcuts, and frequently asked questions.",
-    heading: "How to use Graph Editor",
+    heading: "Draw graphs from edge lists and adjacency matrices",
     intro:
       "Graph Editor turns an edge list or adjacency matrix into a graph theory diagram in the browser. This page walks through the flow from input to export.",
-    openApp: "Open the editor",
+    openApp: "Back to editor",
     breadcrumbHome: "Graph Editor",
     sections: [
       {
@@ -216,13 +219,14 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
     ],
   },
   "zh-Hans": {
-    title: "使用指南 | Graph Editor",
+    title: "用边列表和邻接矩阵绘制图形 | Graph Editor",
+    guideLink: "使用指南",
     description:
       "Graph Editor 使用方法：支持的输入格式、自动布局、边的弯曲、导出、键盘快捷键以及常见问题。",
-    heading: "Graph Editor 使用指南",
+    heading: "用边列表和邻接矩阵绘制图形",
     intro:
       "Graph Editor 可以在浏览器中把边列表或邻接矩阵变成图论图形。本页介绍从输入到导出的完整流程。",
-    openApp: "打开编辑器",
+    openApp: "返回编辑器",
     breadcrumbHome: "Graph Editor",
     sections: [
       {
@@ -293,6 +297,101 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       {
         question: "是免费的吗？",
         answer: "免费且无需注册。源代码托管在 GitHub。",
+      },
+    ],
+  },
+};
+
+export const guideExampleCopy: Record<
+  AppLocale,
+  {
+    heading: string;
+    instruction: string;
+    input: string;
+    result: string;
+    examples: readonly { title: string; description: string; result: string }[];
+  }
+> = {
+  ja: {
+    heading: "入力例と描画結果",
+    instruction:
+      "コード全体をコピーして「読み込み」に貼り付けてください。以下は無向グラフ・頂点番号 1 始まりの例です。図は接続関係を示しており、実際の配置は選んだレイアウトによって変わります。",
+    input: "入力例",
+    result: "アプリでの描画結果",
+    examples: [
+      {
+        title: "辺リストからグラフを描画する",
+        description:
+          "入力形式は「頂点数・辺数つき辺リスト」。先頭の 4 4 は頂点数と辺数、その後の各行は接続する 2 頂点です。",
+        result: "4 頂点・4 辺。1–2、2–3、2–4、3–4 を結びます。",
+      },
+      {
+        title: "隣接行列をグラフに変換する",
+        description:
+          "入力形式は「隣接行列」。行と列が頂点に対応し、1 は辺あり、0 は辺なしを表します。この対称行列は無向グラフの例です。",
+        result: "3 頂点・3 辺。すべての頂点同士がつながる三角形になります。",
+      },
+      {
+        title: "重み付きの木を可視化する",
+        description:
+          "入力形式は「頂点数・辺数つき辺リスト」。各行の 3 列目が重みです。読み込み後に「配置」から木の配置を選ぶと階層が見やすくなります。",
+        result: "4 頂点・3 辺の木。1–2 の重みが 5、1–3 が 2、3–4 が 7 です。",
+      },
+    ],
+  },
+  en: {
+    heading: "Example inputs and diagrams",
+    instruction:
+      "Copy a complete code block into Import. These examples use undirected graphs and vertex numbering starting at 1. The diagrams show connectivity; positions depend on the layout you select.",
+    input: "Input to copy",
+    result: "Exported from the app",
+    examples: [
+      {
+        title: "Draw a graph from an edge list",
+        description:
+          "Choose the N M edge-list format. The first line, 4 4, gives the vertex and edge counts. Each following line connects two vertices.",
+        result: "4 vertices and 4 edges: 1–2, 2–3, 2–4, and 3–4.",
+      },
+      {
+        title: "Convert an adjacency matrix to a graph",
+        description:
+          "Choose adjacency matrix. Rows and columns represent vertices; 1 means an edge and 0 means no edge. This symmetric matrix describes an undirected graph.",
+        result:
+          "3 vertices and 3 edges form a triangle, with every pair connected.",
+      },
+      {
+        title: "Visualize a weighted tree",
+        description:
+          "Choose the N M edge-list format. The third column is the edge weight. After importing, select the tree layout to see the hierarchy.",
+        result:
+          "A tree with 4 vertices and 3 edges: 1–2 has weight 5, 1–3 has weight 2, and 3–4 has weight 7.",
+      },
+    ],
+  },
+  "zh-Hans": {
+    heading: "输入示例与绘图结果",
+    instruction:
+      "复制完整代码块并粘贴到导入窗口。以下示例使用无向图，顶点编号从 1 开始。图示表示连接关系，实际位置取决于所选布局。",
+    input: "可复制的输入",
+    result: "应用导出的图形",
+    examples: [
+      {
+        title: "用边列表绘制图形",
+        description:
+          "选择带 N M 首行的边列表格式。第一行 4 4 表示顶点数和边数，后续每行表示两个顶点之间的连接。",
+        result: "4 个顶点、4 条边：1–2、2–3、2–4 和 3–4。",
+      },
+      {
+        title: "将邻接矩阵转换为图形",
+        description:
+          "选择邻接矩阵格式。行和列对应顶点，1 表示有边，0 表示无边。此对称矩阵表示无向图。",
+        result: "3 个顶点、3 条边组成三角形，每对顶点之间都有连接。",
+      },
+      {
+        title: "可视化带权树",
+        description:
+          "选择带 N M 首行的边列表格式。第三列为边权。导入后选择树布局，可以更清楚地查看层次关系。",
+        result: "4 个顶点、3 条边的树：1–2 的权重为 5，1–3 为 2，3–4 为 7。",
       },
     ],
   },

@@ -20,7 +20,7 @@ import {
 } from "../workflows/editing/graph-editor-hooks";
 import { useEditorLayoutObserver } from "../ui/chrome/editor-chrome-state";
 import { EditorChrome } from "../ui/chrome/EditorChrome";
-import { I18nProvider, useI18n } from "../i18n/I18nProvider";
+import { I18nProvider } from "../i18n/I18nProvider";
 import type { Locale } from "../i18n/locale";
 
 export function GraphEditor({
@@ -29,9 +29,8 @@ export function GraphEditor({
 }: {
   initialLocale?: Locale;
   /**
-   * Server-rendered description of the app. It stays in the exported HTML
-   * for crawlers and assistive tech but is never painted for sighted users:
-   * the page opens straight into the editor.
+   * Persistent server-rendered description and guide link, visible before
+   * and after the interactive canvas mounts.
    */
   intro?: ReactNode;
 }) {
@@ -47,32 +46,27 @@ export function GraphEditor({
 function GraphEditorContent({ intro }: { intro?: ReactNode }) {
   const graphStorageReady = useAtomValue(graphStorageReadyAtom);
   const layout = useAtomValue(editorLayoutAtom);
-  const rootRef = useRef<HTMLElement | null>(null);
-  const { messages } = useI18n();
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEditorLayoutObserver(rootRef);
   useGraphEditorShortcuts();
   useGraphExternalStorageSync();
 
   return (
-    <main
-      ref={rootRef}
-      data-layout={layout}
-      className="@container/editor relative h-dvh min-h-0 w-full overflow-hidden bg-[var(--bg)] text-[var(--text)]"
-    >
-      {graphStorageReady ? (
-        <>
-          {/* Keeps a document heading once the intro is replaced. */}
-          <h1 className="sr-only">{messages.app.title}</h1>
-          <GraphCanvas />
-          <EditorChrome />
-        </>
-      ) : (
-        <>
-          <div className="sr-only">{intro}</div>
-          <noscript>{intro}</noscript>
-        </>
-      )}
+    <main className="flex h-dvh min-h-0 flex-col bg-[var(--bg)] text-[var(--text)]">
+      <div
+        ref={rootRef}
+        data-layout={layout}
+        className="@container/editor relative min-h-0 w-full flex-1 overflow-hidden"
+      >
+        {graphStorageReady ? (
+          <>
+            <GraphCanvas />
+            <EditorChrome />
+          </>
+        ) : null}
+      </div>
+      {intro}
     </main>
   );
 }
