@@ -39,7 +39,7 @@ verifyEdgeRoutingSyncPreservesModelData();
 verifyEdgeRoutingSyncCanRestorePreviewData();
 verifyViewportRescuePointDetection();
 verifyButtonZoomLevels();
-verifyArrowScaleStyles();
+verifySelectionAndArrowStyles();
 verifyEdgeHitboxPaths();
 verifyNodeDragGridSnapping();
 
@@ -365,7 +365,7 @@ function verifyButtonZoomLevels() {
   );
 }
 
-function verifyArrowScaleStyles() {
+function verifySelectionAndArrowStyles() {
   const palette = {
     selectionBoxBorder: "#000",
     selectionBoxFill: "#000",
@@ -402,6 +402,23 @@ function verifyArrowScaleStyles() {
     selector: string;
     style: Record<string, unknown>;
   }>;
+
+  const selectedNodeStyle = stylesheet.find(
+    (rule) => rule.selector === "node:selected",
+  )?.style;
+  expect(
+    selectedNodeStyle !== undefined &&
+      ["background-color", "border-color", "color", "text-outline-color"].every(
+        (property) => !(property in selectedNodeStyle),
+      ),
+    "selection should preserve the node's chosen colours and label contrast",
+  );
+  expect(
+    selectedNodeStyle?.["underlay-color"] === palette.active &&
+      Number(selectedNodeStyle?.["underlay-opacity"]) > 0 &&
+      Number(selectedNodeStyle?.["underlay-padding"]) > 0,
+    "selected nodes should remain identifiable by an outside halo",
+  );
 
   expect(
     stylesheet.find((rule) => rule.selector === "edge")?.style[
