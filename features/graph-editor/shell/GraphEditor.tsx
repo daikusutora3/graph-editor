@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useRef, type ReactNode } from "react";
+import { useRef } from "react";
 
 import { editorLayoutAtom } from "./state/editor-atoms";
 import { graphStorageReadyAtom } from "./state/graph-atoms";
@@ -21,29 +21,20 @@ import {
 import { useEditorLayoutObserver } from "../ui/chrome/editor-chrome-state";
 import { EditorChrome } from "../ui/chrome/EditorChrome";
 import { I18nProvider } from "../i18n/I18nProvider";
+import { APP_NAME } from "@/lib/site-metadata";
 import type { Locale } from "../i18n/locale";
 
-export function GraphEditor({
-  initialLocale,
-  intro,
-}: {
-  initialLocale?: Locale;
-  /**
-   * Persistent server-rendered description and guide link, visible before
-   * and after the interactive canvas mounts.
-   */
-  intro?: ReactNode;
-}) {
+export function GraphEditor({ initialLocale }: { initialLocale?: Locale }) {
   return (
     <I18nProvider initialLocale={initialLocale}>
       <GraphCanvasProvider>
-        <GraphEditorContent intro={intro} />
+        <GraphEditorContent />
       </GraphCanvasProvider>
     </I18nProvider>
   );
 }
 
-function GraphEditorContent({ intro }: { intro?: ReactNode }) {
+function GraphEditorContent() {
   const graphStorageReady = useAtomValue(graphStorageReadyAtom);
   const layout = useAtomValue(editorLayoutAtom);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -66,7 +57,7 @@ function GraphEditorContent({ intro }: { intro?: ReactNode }) {
           </>
         ) : null}
       </div>
-      {intro}
+      <h1 className="sr-only">{APP_NAME}</h1>
     </main>
   );
 }

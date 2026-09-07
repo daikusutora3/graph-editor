@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 
-import { EditorIntro } from "@/features/graph-editor/shell/EditorIntro";
 import { GraphEditor } from "@/features/graph-editor/shell/GraphEditor";
 import {
   appRouteLocaleParams,
@@ -40,12 +39,7 @@ export default async function LocalizedHome({
 
   const appLocale = getAppLocaleFromParam(locale);
 
-  return (
-    <GraphEditor
-      initialLocale={appLocale}
-      intro={<EditorIntro locale={appLocale} />}
-    />
-  );
+  return <GraphEditor initialLocale={appLocale} />;
 }
 
 function isAppRouteLocaleParam(value: string): value is AppRouteLocaleParam {
