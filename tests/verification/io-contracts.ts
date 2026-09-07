@@ -1,3 +1,4 @@
+import { guideExamples } from "../../lib/guide-examples";
 import { defaultGraphSettings } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
@@ -20,6 +21,44 @@ import {
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("IO contract");
+
+// Keep the copyable guide inputs and their diagrams consistent with real imports.
+for (const example of guideExamples) {
+  const result = importGraphInput(example.input);
+  const labels = new Map(
+    result.model.nodes.map((node) => [node.id, node.label]),
+  );
+  expect(
+    result.status === "success",
+    `${example.id} guide input should import`,
+  );
+  expect(
+    result.warnings.length === 0,
+    `${example.id} guide input should be unambiguous`,
+  );
+  expect(
+    result.model.nodes.length === example.nodes.length,
+    `${example.id} diagram vertex count`,
+  );
+  const actual = result.model.edges
+    .map((edge) =>
+      [
+        labels.get(edge.source),
+        labels.get(edge.target),
+        edge.weight ?? "",
+      ].join(":"),
+    )
+    .sort();
+  const expected = example.edges
+    .map((edge) =>
+      [edge[0], edge[1], edge.length === 3 ? edge[2] : ""].join(":"),
+    )
+    .sort();
+  expect(
+    JSON.stringify(actual) === JSON.stringify(expected),
+    `${example.id} diagram edges and weights`,
+  );
+}
 
 const weightedDirectedModel: GraphModel = {
   version: 1,

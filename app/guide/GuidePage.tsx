@@ -1,4 +1,6 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { GuideExamples } from "./GuideExamples";
 
 import {
   GUIDE_LAST_MODIFIED,
@@ -75,6 +77,13 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <article className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
+        <Link
+          href={appLocalePaths[locale]}
+          className="mb-6 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--line)] px-3 text-sm font-semibold text-[var(--text)] transition-colors hover:bg-[var(--fill)] focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          {copy.openApp}
+        </Link>
         <nav
           aria-label="Breadcrumb"
           className="text-meta font-semibold text-[var(--muted)]"
@@ -98,14 +107,8 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
         <p className="mt-4 text-base leading-relaxed text-[var(--text-2)]">
           {copy.intro}
         </p>
-        <p className="mt-6">
-          <Link
-            href={appLocalePaths[locale]}
-            className="inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-text)]"
-          >
-            {copy.openApp}
-          </Link>
-        </p>
+
+        <GuideExamples locale={locale} />
 
         {copy.sections.map((section) => (
           <section key={section.title} className="mt-12">

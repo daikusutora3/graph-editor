@@ -254,6 +254,7 @@ type Messages = {
     starterBackToPaste: string;
     starterApply: string;
     starterSamplesTitle: string;
+    emptyHeading: string;
     emptyTagline: string;
     emptyCards: Record<
       "paste" | "sample" | "draw",
@@ -812,16 +813,20 @@ const ja: Messages = {
     starterBackToPaste: "貼り付けに戻る",
     starterApply: "グラフに反映",
     starterSamplesTitle: "サンプル",
+    emptyHeading: "何から始めますか？",
     emptyTagline: "辺リストを貼るか、サンプルから始めるか、直接描くか。",
     emptyCards: {
       paste: {
-        title: "貼り付け",
-        body: "辺リスト・隣接リスト。形式は自動判定。",
+        title: "データから作る",
+        body: "辺リストや隣接行列を貼り付けて、グラフに変換。",
       },
-      sample: { title: "サンプル", body: "閉路・木・格子などから選ぶ。" },
+      sample: {
+        title: "サンプルから選ぶ",
+        body: "木・閉路・格子などを読み込んで、自由に編集。",
+      },
       draw: {
-        title: "手で描く",
-        body: "タップで頂点を置き、辺モードで 2 点を結ぶ。",
+        title: "自分で描く",
+        body: "白紙のキャンバスに頂点を置き、辺でつなぐ。",
       },
     },
     recentSamples: "よく使うサンプル",
@@ -1262,16 +1267,20 @@ const en: Messages = {
     starterBackToPaste: "Back to paste",
     starterApply: "Apply to graph",
     starterSamplesTitle: "Samples",
+    emptyHeading: "How do you want to start?",
     emptyTagline: "Paste an edge list, start from a sample, or draw directly.",
     emptyCards: {
       paste: {
-        title: "Paste",
-        body: "Edge list or adjacency list. Format is auto-detected.",
+        title: "Start from data",
+        body: "Paste an edge list or adjacency matrix to create a graph.",
       },
-      sample: { title: "Sample", body: "Pick a cycle, tree, grid, and more." },
+      sample: {
+        title: "Choose a sample",
+        body: "Load a tree, cycle, or grid and make it your own.",
+      },
       draw: {
-        title: "Draw",
-        body: "Tap to place nodes, then connect them in edge mode.",
+        title: "Draw your own",
+        body: "Place nodes on a blank canvas and connect them with edges.",
       },
     },
     recentSamples: "Popular samples",
@@ -1704,11 +1713,12 @@ const zhHans: Messages = {
     starterBackToPaste: "返回粘贴",
     starterApply: "应用到图",
     starterSamplesTitle: "示例",
+    emptyHeading: "从哪里开始？",
     emptyTagline: "粘贴边列表、从示例开始，或直接绘制。",
     emptyCards: {
-      paste: { title: "粘贴", body: "边列表或邻接表，格式自动检测。" },
-      sample: { title: "示例", body: "从环、树、网格等中选择。" },
-      draw: { title: "手绘", body: "点击放置顶点，再在边模式下连接两点。" },
+      paste: { title: "从数据创建", body: "粘贴边列表或邻接矩阵，生成图形。" },
+      sample: { title: "选择示例", body: "载入树、环或网格，再自由编辑。" },
+      draw: { title: "自己绘制", body: "在空白画布上放置顶点，用边连接。" },
     },
     recentSamples: "常用示例",
     nodeHintEmpty: "点击空白处添加顶点",

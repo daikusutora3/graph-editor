@@ -21,7 +21,13 @@ const HOME_CONTENT_PATHS = [
   "features/graph-editor/i18n",
 ];
 
-const GUIDE_CONTENT_PATHS = ["lib/guide-content.ts", "app/guide/GuidePage.tsx"];
+const GUIDE_CONTENT_PATHS = [
+  "lib/guide-content.ts",
+  "lib/guide-examples.ts",
+  "app/guide/GuidePage.tsx",
+  "app/guide/GuideExamples.tsx",
+  "public/guide",
+];
 
 function lastCommitDate(paths: string[]): Date {
   try {
