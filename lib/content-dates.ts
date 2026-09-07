@@ -15,7 +15,6 @@ export const GUIDE_PUBLISHED_DATE = "2026-09-04";
 
 const HOME_CONTENT_PATHS = [
   "lib/site-metadata.ts",
-  "features/graph-editor/shell/EditorIntro.tsx",
   "features/graph-editor/shell/GraphEditor.tsx",
   "features/graph-editor/ui",
   "features/graph-editor/i18n",

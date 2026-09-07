@@ -254,8 +254,8 @@ for (const [locale, page] of [
 ] as const) {
   const html = readText(page);
   expect(
-    html.includes("<h1") && html.includes(appLocaleMetadata[locale].headline),
-    `${page} should prerender the intro heading for crawlers`,
+    html.includes("<h1") && html.includes(APP_NAME),
+    `${page} should prerender the app heading`,
   );
   expect(
     html.includes(`content="${SITE_URL}${appLocaleMetadata[locale].ogImage}"`),

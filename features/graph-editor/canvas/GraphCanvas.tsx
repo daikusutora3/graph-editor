@@ -1,5 +1,4 @@
 "use client";
-import { edgeRoutingProgress } from "../core/layout/edge-routing";
 import { integrityCopy } from "../i18n/integrity-copy";
 
 import type { Core } from "cytoscape";
@@ -141,7 +140,6 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     });
   }, [edgeRoutingMeta, edgeRoutingOptions, graph]);
   const graphHasElements = elements.length > 0;
-  const routingProgress = edgeRoutingProgress(edgeRoutingMeta);
 
   useEffect(() => {
     if (mode !== "edge") {
@@ -484,22 +482,6 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             integrityCopy[locale === "ja" ? "ja" : "en"].loading
           )}
         </div>
-      ) : null}
-      {graph.settings.autoEdgeRouting &&
-      (routingProgress.pendingEdgeIds.length ||
-        routingProgress.unresolvedEdgeIds.length) ? (
-        <p
-          role="status"
-          className="pointer-events-none absolute bottom-20 left-4 z-20 max-w-[calc(100%-32px)] rounded bg-[var(--panel-solid)] px-2 py-1 text-xs text-[var(--muted)]"
-        >
-          {routingProgress.pendingEdgeIds.length
-            ? integrityCopy[locale === "ja" ? "ja" : "en"].pendingRoutes(
-                routingProgress.pendingEdgeIds.length,
-              )
-            : integrityCopy[locale === "ja" ? "ja" : "en"].unresolvedRoutes(
-                routingProgress.unresolvedEdgeIds.length,
-              )}
-        </p>
       ) : null}
       <div
         data-canvas-ready={displayReady}
