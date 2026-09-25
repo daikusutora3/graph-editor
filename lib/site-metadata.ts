@@ -19,7 +19,7 @@ export const appLocaleMetadata = {
   ja: {
     title: "Graph Editor | グラフ理論の図をブラウザで描く・配置・書き出し",
     description:
-      "辺リストや隣接行列を貼るだけでグラフを描画。自動配置、辺の曲げ、色分け、PNG・JSON 書き出しに対応した無料のグラフ理論エディタです。",
+      "辺リストや隣接行列を貼るだけでグラフを描画。自動配置、辺の曲げ、色分け、PNG・JSON・TikZ（TeX）書き出しに対応した無料のグラフ理論エディタです。",
     headline: "グラフ理論の図を、ブラウザで",
     tagline:
       "辺リストを貼る、サンプルから始める、直接描く。競技プログラミングや講義資料のためのグラフエディタです。",
@@ -27,7 +27,7 @@ export const appLocaleMetadata = {
       "辺リスト・隣接リスト・隣接行列・親配列を自動判定して読み込み",
       "木・DAG・二部グラフ・円形・格子など 12 種類の自動配置",
       "頂点の色分け、辺の曲げ、重みやラベルの編集",
-      "PNG 画像、テキスト形式、位置や色まで残る JSON で書き出し",
+      "PNG 画像、TikZ（TeX）、テキスト形式、位置や色まで残る JSON で書き出し",
     ],
     ogImage: "/brand/og-ja.png",
     keywords: [
@@ -45,7 +45,7 @@ export const appLocaleMetadata = {
   en: {
     title: "Graph Editor | Draw, arrange, and export graph theory diagrams",
     description:
-      "Paste an edge list or adjacency matrix and get a graph instantly. Free browser-based graph theory editor with automatic layouts, edge bending, colours, and PNG/JSON export.",
+      "Paste an edge list or adjacency matrix and get a graph instantly. Free browser-based graph theory editor with automatic layouts, edge bending, colours, and PNG/JSON/TikZ (TeX) export.",
     headline: "Graph theory diagrams, in the browser",
     tagline:
       "Paste an edge list, start from a sample, or draw directly. Built for competitive programming and lecture material.",
@@ -53,7 +53,7 @@ export const appLocaleMetadata = {
       "Auto-detects edge lists, adjacency lists, adjacency matrices, and parent arrays",
       "12 automatic layouts: tree, DAG, bipartite, circle, grid, and more",
       "Node colours, edge bending, weights, and labels",
-      "Export to PNG, text formats, or lossless JSON with positions and colours",
+      "Export to PNG, TikZ (TeX), text formats, or lossless JSON with positions and colours",
     ],
     ogImage: "/brand/og-en.png",
     keywords: [
@@ -71,14 +71,14 @@ export const appLocaleMetadata = {
   "zh-Hans": {
     title: "Graph Editor | 在浏览器中绘制、排布并导出图论图形",
     description:
-      "粘贴边列表或邻接矩阵即可生成图。免费的浏览器图论编辑器，支持自动布局、边弯曲、着色以及 PNG/JSON 导出。",
+      "粘贴边列表或邻接矩阵即可生成图。免费的浏览器图论编辑器，支持自动布局、边弯曲、着色以及 PNG/JSON/TikZ（TeX）导出。",
     headline: "在浏览器中绘制图论图形",
     tagline: "粘贴边列表、从示例开始，或直接绘制。适合算法竞赛和课程资料。",
     features: [
       "自动识别边列表、邻接表、邻接矩阵和父数组",
       "树、DAG、二分图、圆形、网格等 12 种自动布局",
       "顶点着色、边弯曲、权重与标签编辑",
-      "导出 PNG、文本格式或包含位置与颜色的无损 JSON",
+      "导出 PNG、TikZ（TeX）、文本格式或包含位置与颜色的无损 JSON",
     ],
     ogImage: "/brand/og-zh-hans.png",
     keywords: [

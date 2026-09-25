@@ -93,6 +93,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           "PNG 画像: 全体または表示範囲を、長辺サイズと余白を指定して保存・コピー。",
           "辺リスト・隣接リスト・隣接行列: 競技プログラミングの入力形式として貼り付け可能。",
           "JSON: 位置、色、曲げまで含めて保存。読み込むと完全に復元されます。",
+          "TikZ（TeX）: 書き出し形式で TikZ (TeX) を選び、コードをコピーまたは .tex ファイルを保存。配置・色・ラベル・矢印・辺の曲げを TeX 文書に取り込めます。必要なパッケージは出力冒頭のコメントに記載しています。日本語ラベルは LuaLaTeX と luatexja を使ってください。",
         ],
       },
       {
@@ -177,6 +178,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           "PNG: the whole graph or the current view, with a chosen long edge and padding; save or copy.",
           "Edge list, adjacency list, adjacency matrix: paste straight into competitive programming input.",
           "JSON: keeps positions, colours, and bends; importing restores the graph exactly.",
+          "TikZ (TeX): select TikZ (TeX) in Export, then copy the code or save a .tex file. Include positions, colours, labels, arrows, and bends in a TeX document. Required packages are listed in the opening comments. Japanese labels need LuaLaTeX and luatexja.",
         ],
       },
       {
@@ -260,6 +262,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           "PNG：导出整张图或当前视图，可指定长边尺寸和留白，支持保存或复制。",
           "边列表、邻接表、邻接矩阵：可直接作为算法竞赛的输入格式。",
           "JSON：保留位置、颜色和弯曲，导入后可完整还原。",
+          "TikZ（TeX）：在导出格式中选择 TikZ (TeX)，复制代码或保存 .tex 文件，将位置、颜色、标签、箭头和弯曲导入 TeX 文档。所需宏包列在输出开头的注释中；中文等 Unicode 标签需要支持相应字符的引擎和字体。",
         ],
       },
       {
