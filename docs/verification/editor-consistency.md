@@ -1,6 +1,8 @@
 # Editor consistency and responsiveness
 
-Implemented from the September 6 design review:
+Behavior contracts implemented from the September 6 design review. Read these
+when changing the affected operations. The measurements below are historical
+observations; rerun the relevant check before claiming current performance.
 
 - Commands expose `applied` / `noop` with the committed graph reference. Rejected layouts do not fit or close the panel.
 - The Canvas provider holds one replaceable fit request. No-op imports fit without another edit, unmounted canvases retain requests, and superseded or timed-out requests are discarded. Ordinary fitting does not hide an already visible canvas.
@@ -26,6 +28,7 @@ The long-label initial routing total changed from a mean of 142.50 ms to 114.55 
 
 ## Verification
 
-- `bun run check`: type checks, lint, format, repository policy, existing verification suites, and regression tests for exact labels, canonical no-op results, storage conflict operations, stale overlap work, and bend origins.
-- With a local server running: `BASE_URL=http://127.0.0.1:3100/en bun tests/browser/editor-regressions.ts`. This injects renderer-construction failures, retries before and after display, and checks placement, history, identical imports, identical layouts, dragging, automatic bend inheritance, and range selection.
+- See the [development guide](../development.md#choose-checks-for-the-change) for commands and browser setup.
+- Model verification covers exact labels, canonical no-op results, storage conflict operations, stale overlap work, and bend origins.
+- `tests/browser/editor-regressions.ts` injects renderer-construction failures, retries before and after display, and checks placement, history, identical imports, identical layouts, dragging, automatic bend inheritance, and range selection.
 - The browser test retains the real retry button's React callback solely in its isolated browser context to exercise a post-display remount. No test API is shipped with the application.

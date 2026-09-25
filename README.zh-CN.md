@@ -34,18 +34,6 @@ bun run dev
 
 打开 Next.js 输出的本地地址，通常是 `http://localhost:3000`。
 
-## 常用脚本
-
-```bash
-bun run typecheck
-bun run lint
-bun run format:check
-bun run test
-bun run check
-bun run check:all
-bun run build
-```
-
 ## 技术栈
 
 - Next.js 16
@@ -56,32 +44,11 @@ bun run build
 - Tailwind CSS
 - Bun
 
-## 项目结构
+## 开发文档
 
-```text
-app/                    Next.js app entry points
-features/graph-editor/  Graph editor feature modules
-  adapters/             Browser and Cytoscape integration
-  canvas/               Interactive graph canvas
-  core/                 Graph model, reducers, validation, layouts
-  io/                   Import, export, clipboard, and file actions
-  samples/              Curated sample graph catalog
-  shell/                Editor state and top-level UI shell
-  ui/                   Panels, toolbar, starter dialog, screenshot controls
-tests/verification/     Graph, IO, layout, adapter, and release checks
-public/brand/           App icons and logo assets
-```
-
-## 构建
-
-```bash
-bun run build
-```
-
-应用已配置 Next.js `output: "export"`，可以进行静态导出。
-公开发布前请运行 `bun run check:all`。它会覆盖类型检查、lint、格式检查、
-图模型/样例/布局/编辑器状态/IO 验证和生产构建。Cloudflare 静态
-资源部署使用 `wrangler.jsonc` 和 `public/_headers`。
+请参阅[文档索引](docs/README.md)和[开发指南](docs/development.md)，
+了解代码结构、按改动选择的验证命令、浏览器检查和历史设计记录。
+准备公开构建前请运行 `bun run check:all`。
 
 ## 许可证
 
