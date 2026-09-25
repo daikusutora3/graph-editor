@@ -1,5 +1,6 @@
 import { GRAPH_MAX_INPUT_CHARS } from "../core/graph/graph-limits";
 import { exportEdgeList } from "./export-edge-list";
+import { exportTikz } from "./export-tikz";
 import type { GraphModel } from "../core/graph/model";
 import { getExportNodeEntries } from "./export-node-labels";
 import { serializeGraphModel } from "../core/graph/graph-json";
@@ -8,11 +9,12 @@ export type GraphExportFormat =
   | "edge-list"
   | "adjacency-list"
   | "adjacency-matrix"
-  | "json";
+  | "json"
+  | "tikz";
 
 export const GRAPH_EXPORT_FORMATS: Array<{
   value: GraphExportFormat;
-  extension: "txt" | "json";
+  extension: "txt" | "json" | "tex";
   mimeType: string;
 }> = [
   {
@@ -40,6 +42,11 @@ export const GRAPH_EXPORT_FORMATS: Array<{
     extension: "json",
     mimeType: "application/json",
   },
+  {
+    value: "tikz",
+    extension: "tex",
+    mimeType: "application/x-tex;charset=utf-8",
+  },
 ];
 
 export function exportGraph(
@@ -56,6 +63,8 @@ export function exportGraph(
 
 function exportUnchecked(model: GraphModel, format: GraphExportFormat): string {
   switch (format) {
+    case "tikz":
+      return exportTikz(model);
     case "json":
       return serializeGraphModel(model);
     case "adjacency-list":
@@ -71,7 +80,7 @@ export function hasLossyAdjacencyExport(
   model: GraphModel,
   format: GraphExportFormat,
 ) {
-  if (format === "edge-list" || format === "json") {
+  if (format !== "adjacency-list" && format !== "adjacency-matrix") {
     return false;
   }
 
@@ -194,7 +203,7 @@ export function graphExportProblem(
   model: GraphModel,
   format: GraphExportFormat,
 ): string | null {
-  if (format === "json") return null;
+  if (format === "json" || format === "tikz") return null;
   if (format === "adjacency-matrix") {
     if (hasLossyAdjacencyExport(model, format)) return "parallel-edges";
     if (

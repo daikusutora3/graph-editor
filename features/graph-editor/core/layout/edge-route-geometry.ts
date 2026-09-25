@@ -139,7 +139,7 @@ export function offsetEdgeCurve(
   };
 }
 
-function edgeCurveSegments(
+export function edgeCurveSegments(
   source: EdgeCurvePoint,
   target: EdgeCurvePoint,
   curve: EdgeCurveGeometry,

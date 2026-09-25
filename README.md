@@ -32,7 +32,7 @@ Public app: <https://graph-editor.daikusutora3.workers.dev>
 - **Layout tools**: apply force-directed, BFS, tree, DAG, bipartite, SCC,
   radial, circular, grid, line, concentric, and spread layouts.
 - **Export options**: copy or save edge lists, adjacency lists, adjacency
-  matrices, PNG images with background and padding controls, and lossless
+  matrices, TikZ (TeX), PNG images with background and padding controls, and lossless
   JSON that keeps positions, colours, and edge bends.
 - **User guide**: `/guide` (also `/en/guide`, `/zh-hans/guide`) documents the
   formats, layouts, shortcuts, and FAQ; `/llms.txt` summarises the app for
@@ -55,10 +55,25 @@ The paste box auto-detects these text formats (or pick one explicitly):
 | Adjacency matrix                      | `0 1 1` / `1 0 1` / `1 1 0`                        |
 | Graph Editor JSON                     | `{ "version": 1, "nodes": [...], "edges": [...] }` |
 
-Export offers the edge list, adjacency list, adjacency matrix and JSON. Only
+Export offers the edge list, adjacency list, adjacency matrix, JSON and TikZ. Only
 JSON is lossless: it keeps node positions, colours and manual edge bends, and
-importing it restores the graph exactly. The text formats carry structure and
+importing it restores the graph exactly. The edge list and adjacency formats carry structure and
 weights only.
+
+### Using TikZ in LaTeX
+
+Choose **Export → TikZ (TeX)**, then copy the picture or save `graph.tex`.
+Add `\usepackage{tikz}` and `\usetikzlibrary{arrows.meta,shapes.misc}` to
+your preamble, then place `\input{graph.tex}` inside your document.
+Japanese labels need LuaLaTeX with `\usepackage{luatexja}`; other Unicode
+characters require suitable fonts and an engine that supports them. Labels
+are escaped as literal text, so `$x$` is printed literally.
+
+TikZ exports positions, visible labels, colours, arrows, weights, parallel
+edges, loops and bends as editable drawing commands. It uses a print palette
+and TeX fonts; font metrics and automatic routes may differ from the canvas.
+Large layouts are fitted to a 12 cm coordinate span. TikZ is for inclusion in
+a document and cannot be imported back into the editor; use JSON for backups.
 
 ## Quick Start
 
