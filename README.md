@@ -84,18 +84,6 @@ bun run dev
 
 Open the local URL printed by Next.js, usually `http://localhost:3000`.
 
-## Useful Scripts
-
-```bash
-bun run typecheck
-bun run lint
-bun run format:check
-bun run test
-bun run check
-bun run check:all
-bun run build
-```
-
 ## Tech Stack
 
 - Next.js 16
@@ -106,37 +94,12 @@ bun run build
 - Tailwind CSS
 - Bun
 
-## Project Shape
+## Development documentation
 
-```text
-app/                    Next.js app entry points
-features/graph-editor/  Graph editor feature modules
-  adapters/             Browser and Cytoscape integration
-  canvas/               Interactive graph canvas
-  core/                 Graph model, reducers, validation, layouts
-  io/                   Import, export, clipboard, and file actions
-  samples/              Curated sample graph catalog
-  shell/                Editor state and top-level UI shell
-  ui/                   Panels, toolbar, starter dialog, screenshot controls
-tests/verification/     Graph, IO, layout, adapter, and release checks
-public/brand/           App icons and logo assets
-```
-
-## Build
-
-```bash
-bun run build
-```
-
-The app is configured for static export with Next.js `output: "export"`.
-Before publishing a public build, run `bun run check:all`. This covers
-type-checking, linting, formatting, graph model verification, sample/layout
-guards, editor-state and IO checks, and a production build.
-Cloudflare static asset deploys use `wrangler.jsonc` and `public/_headers`.
-`bun run build` turns the `public/_headers` template into `out/_headers`, with
-one Content-Security-Policy rule per page that allow-lists that page's inline
-scripts (Cloudflare caps each `_headers` line at 2,000 characters, and a path
-must never match two policy rules because browsers enforce both).
+See the [documentation index](docs/README.md) for the
+[development guide](docs/development.md), validation commands, browser audits,
+and historical design records. Run `bun run check:all` before preparing a public
+build.
 
 ## License
 

@@ -1,5 +1,13 @@
 # Sample card controls — Design QA
 
+> Historical implementation record. The observations below belong to the
+> original QA session and have not been rerun for this documentation update.
+> Its temporary source image and `local-artifacts/graph-editor-card-controls/`
+> screenshots are not available in this checkout. Artifact paths below are
+> preserved as recorded, relative to the original repository root where applicable.
+> For current checks, use the [development guide](../development.md) and
+> [browser audits](../../scripts/audit/README.md).
+
 - Source visual truth: `/var/folders/50/6xgbvsns0y57591s85h31lcm0000gn/T/codex-clipboard-3f72b88c-b27b-46e2-ab7b-4387d15eecdb.png`
 - Implementation screenshot: `local-artifacts/graph-editor-card-controls/sample-card-controls-desktop.png`
 - Focused implementation crop: `local-artifacts/graph-editor-card-controls/sample-card-controls-panel.png`

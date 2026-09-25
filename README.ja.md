@@ -54,18 +54,6 @@ bun run dev
 
 Next.js が表示するローカルURLを開きます。通常は `http://localhost:3000` です。
 
-## よく使うスクリプト
-
-```bash
-bun run typecheck
-bun run lint
-bun run format:check
-bun run test
-bun run check
-bun run check:all
-bun run build
-```
-
 ## 技術スタック
 
 - Next.js 16
@@ -76,33 +64,11 @@ bun run build
 - Tailwind CSS
 - Bun
 
-## ディレクトリ構成
+## 開発ドキュメント
 
-```text
-app/                    Next.js app entry points
-features/graph-editor/  Graph editor feature modules
-  adapters/             Browser and Cytoscape integration
-  canvas/               Interactive graph canvas
-  core/                 Graph model, reducers, validation, layouts
-  io/                   Import, export, clipboard, and file actions
-  samples/              Curated sample graph catalog
-  shell/                Editor state and top-level UI shell
-  ui/                   Panels, toolbar, starter dialog, screenshot controls
-tests/verification/     Graph, IO, layout, adapter, and release checks
-public/brand/           App icons and logo assets
-```
-
-## ビルド
-
-```bash
-bun run build
-```
-
-Next.js の `output: "export"` を使った静的書き出しに対応しています。
-公開前は `bun run check:all` を実行してください。型チェック、lint、
-フォーマット確認、グラフモデル・サンプル・レイアウト・エディタ状態・IO の検証、
-本番ビルドまでまとめて実行します。Cloudflare の静的
-アセット配信には `wrangler.jsonc` と `public/_headers` を使います。
+[ドキュメント一覧](docs/README.md)から、[開発ガイド](docs/development.md)、
+変更内容に応じた検証手順、ブラウザ監査、過去の設計記録を参照できます。
+公開ビルドの準備には `bun run check:all` を実行してください。
 
 ## ライセンス
 
