@@ -122,6 +122,7 @@ type Messages = {
     copyAria: (label: string, state: "idle" | "copied" | "blocked") => string;
     adjacencyLossWarning: string;
     jsonNote: string;
+    tikzNote: string;
     formats: Record<GraphExportFormatLabel, string>;
   };
   screenshot: {
@@ -600,6 +601,8 @@ const ja: Messages = {
         : state === "blocked"
           ? `${label}をコピーできませんでした`
           : `${label}をコピー`,
+    tikzNote:
+      "TeX文書に貼り付けるか、保存した .tex を \\input で読み込めます。冒頭コメントのパッケージを追加してください。日本語には LuaLaTeX と luatexja が必要です。ラベルは通常の文字として出力します。",
     jsonNote:
       "位置・色・曲げも含めて保存します。読み込みで完全に復元できます。",
     adjacencyLossWarning:
@@ -609,6 +612,7 @@ const ja: Messages = {
       "adjacency-list": "隣接リスト",
       "adjacency-matrix": "隣接行列",
       json: "JSON",
+      tikz: "TikZ (TeX)",
     },
   },
   screenshot: {
@@ -1054,6 +1058,8 @@ const en: Messages = {
         : state === "blocked"
           ? `Could not copy ${label}`
           : `Copy ${label}`,
+    tikzNote:
+      "Paste into a TeX document or load the saved .tex with \\input. Add the packages listed in the opening comments. Japanese labels need LuaLaTeX and luatexja; other Unicode needs suitable fonts. Labels are exported as literal text.",
     jsonNote:
       "Includes positions, colours and bends; importing restores the graph exactly.",
     adjacencyLossWarning:
@@ -1063,6 +1069,7 @@ const en: Messages = {
       "adjacency-list": "Adjacency list",
       "adjacency-matrix": "Adjacency matrix",
       json: "JSON",
+      tikz: "TikZ (TeX)",
     },
   },
   screenshot: {
@@ -1506,6 +1513,8 @@ const zhHans: Messages = {
         : state === "blocked"
           ? `无法复制${label}`
           : `复制${label}`,
+    tikzNote:
+      "粘贴到 TeX 文档，或使用 \\input 加载保存的 .tex 文件。请添加开头注释中列出的宏包。中文等 Unicode 标签需要支持相应字符的引擎和字体。标签作为普通文本导出。",
     jsonNote: "包含位置、颜色和弯曲；导入后可完整还原。",
     adjacencyLossWarning:
       "多重边可能无法在邻接表或邻接矩阵中完整表示。请使用边列表进行无损导出。",
@@ -1514,6 +1523,7 @@ const zhHans: Messages = {
       "adjacency-list": "邻接表",
       "adjacency-matrix": "邻接矩阵",
       json: "JSON",
+      tikz: "TikZ (TeX)",
     },
   },
   screenshot: {

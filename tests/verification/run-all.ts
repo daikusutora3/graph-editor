@@ -11,6 +11,7 @@ const suites = [
   { name: "editor", path: "tests/verification/editor-state.ts" },
   { name: "storage", path: "tests/verification/storage.ts" },
   { name: "io", path: "tests/verification/io-contracts.ts" },
+  { name: "tikz", path: "tests/verification/tikz.ts" },
   { name: "screenshot", path: "tests/verification/screenshot.ts" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },
   { name: "i18n", path: "tests/verification/i18n-literals.ts" },

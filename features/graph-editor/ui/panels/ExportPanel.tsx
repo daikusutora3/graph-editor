@@ -9,7 +9,7 @@ import {
 } from "../../io/export-graph";
 import { useI18n } from "../../i18n/I18nProvider";
 import type { CopyState } from "../io/graph-io-types";
-import { Button, Notice, Segment } from "../primitives";
+import { Button, Notice, Select } from "../primitives";
 
 export function ExportPanelBody({
   exportFormat,
@@ -30,18 +30,29 @@ export function ExportPanelBody({
 
   return (
     <>
-      <Segment
-        label={messages.exportPanel.formatAria}
-        size={mobile ? "md" : "sm"}
-        value={exportFormat}
-        options={GRAPH_EXPORT_FORMATS.map((format) => ({
-          label: messages.exportPanel.formats[format.value],
-          value: format.value,
-        }))}
-        onChange={onExportFormatChange}
-      />
+      <label className="grid shrink-0 gap-1.5 text-xs text-[var(--muted)]">
+        {messages.exportPanel.formatAria}
+        <Select
+          aria-label={messages.exportPanel.formatAria}
+          className={mobile ? "h-11" : undefined}
+          value={exportFormat}
+          onChange={(event) =>
+            onExportFormatChange(event.target.value as GraphExportFormat)
+          }
+        >
+          {GRAPH_EXPORT_FORMATS.map((format) => (
+            <option key={format.value} value={format.value}>
+              {messages.exportPanel.formats[format.value]}
+            </option>
+          ))}
+        </Select>
+      </label>
       {exportWarning ? <Notice>{exportWarning}</Notice> : null}
-      {exportFormat === "json" ? (
+      {exportFormat === "tikz" ? (
+        <p className="shrink-0 text-xs leading-[1.5] text-[var(--muted)]">
+          {messages.exportPanel.tikzNote}
+        </p>
+      ) : exportFormat === "json" ? (
         <p className="shrink-0 text-xs leading-[1.5] text-[var(--muted)]">
           {messages.exportPanel.jsonNote}
         </p>
