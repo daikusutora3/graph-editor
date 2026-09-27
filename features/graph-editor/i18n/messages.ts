@@ -135,9 +135,15 @@ type Messages = {
     scope: string;
     viewport: string;
     fullGraph: string;
+    natural: string;
+    naturalFixed: string;
+    canvasWidth: string;
+    canvasHeight: string;
+    canvasTooSmall: string;
     background: string;
     imageSize: string;
     longEdgeCustom: string;
+    fixedLongEdge: string;
     padding: string;
     black: string;
     white: string;
@@ -287,6 +293,9 @@ type Messages = {
       | "undo"
       | "redo"
       | "selectAll"
+      | "rangeAll"
+      | "rangeNodes"
+      | "rangeEdges"
       | "copy"
       | "cut"
       | "paste"
@@ -311,6 +320,10 @@ type Messages = {
     sizedNodeCountAria: string;
     sizedRowsLabel: string;
     sizedColumnsLabel: string;
+    sizedBipartiteLeftLabel: string;
+    sizedBipartiteRightLabel: string;
+    sizedKnightMoveXLabel: string;
+    sizedKnightMoveYLabel: string;
     sizedKnightMoveLabel: string;
     sizedKnightMoves: Record<"standard" | "long" | "camel", string>;
     sizedCreate: string;
@@ -625,9 +638,15 @@ const ja: Messages = {
     scope: "範囲",
     viewport: "表示中",
     fullGraph: "グラフ全体",
+    natural: "現在倍率",
+    naturalFixed: "倍率＋枠指定",
+    canvasWidth: "画像の幅 (px)",
+    canvasHeight: "画像の高さ (px)",
+    canvasTooSmall: "現在の倍率ではグラフが指定サイズに収まりません",
     background: "背景",
     imageSize: "画像サイズ",
     longEdgeCustom: "カスタム",
+    fixedLongEdge: "長辺指定",
     padding: "余白",
     black: "黒",
     white: "白",
@@ -863,6 +882,9 @@ const ja: Messages = {
       undo: "戻す",
       redo: "進む",
       selectAll: "すべて選択",
+      rangeAll: "範囲選択: 全て",
+      rangeNodes: "範囲選択: 頂点のみ",
+      rangeEdges: "範囲選択: 辺のみ",
       copy: "コピー",
       cut: "切り取り",
       paste: "貼り付け",
@@ -886,6 +908,10 @@ const ja: Messages = {
     sizedNodeCountAria: "生成する頂点数",
     sizedRowsLabel: "行",
     sizedColumnsLabel: "列",
+    sizedBipartiteLeftLabel: "左側の頂点数",
+    sizedBipartiteRightLabel: "右側の頂点数",
+    sizedKnightMoveXLabel: "移動 X",
+    sizedKnightMoveYLabel: "移動 Y",
     sizedKnightMoveLabel: "移動",
     sizedKnightMoves: {
       standard: "標準 (1,2)",
@@ -1082,9 +1108,15 @@ const en: Messages = {
     scope: "Scope",
     viewport: "Current view",
     fullGraph: "Full graph",
+    natural: "Current zoom",
+    naturalFixed: "Fixed canvas",
+    canvasWidth: "Image width (px)",
+    canvasHeight: "Image height (px)",
+    canvasTooSmall: "The graph does not fit at the current zoom.",
     background: "Background",
     imageSize: "Image size",
     longEdgeCustom: "Custom",
+    fixedLongEdge: "Fit long edge",
     padding: "Padding",
     black: "Black",
     white: "White",
@@ -1319,6 +1351,9 @@ const en: Messages = {
       undo: "Undo",
       redo: "Redo",
       selectAll: "Select all",
+      rangeAll: "Box select all",
+      rangeNodes: "Box select nodes",
+      rangeEdges: "Box select edges",
       copy: "Copy",
       cut: "Cut",
       paste: "Paste",
@@ -1342,6 +1377,10 @@ const en: Messages = {
     sizedNodeCountAria: "Node count to generate",
     sizedRowsLabel: "Rows",
     sizedColumnsLabel: "Columns",
+    sizedBipartiteLeftLabel: "Left vertices",
+    sizedBipartiteRightLabel: "Right vertices",
+    sizedKnightMoveXLabel: "Move X",
+    sizedKnightMoveYLabel: "Move Y",
     sizedKnightMoveLabel: "Move",
     sizedKnightMoves: {
       standard: "Standard (1,2)",
@@ -1536,9 +1575,15 @@ const zhHans: Messages = {
     scope: "范围",
     viewport: "当前视图",
     fullGraph: "整个图",
+    natural: "当前缩放",
+    naturalFixed: "指定画布",
+    canvasWidth: "图像宽度 (px)",
+    canvasHeight: "图像高度 (px)",
+    canvasTooSmall: "当前缩放下图形无法放入指定尺寸。",
     background: "背景",
     imageSize: "图像尺寸",
     longEdgeCustom: "自定义",
+    fixedLongEdge: "指定长边",
     padding: "留白",
     black: "黑色",
     white: "白色",
@@ -1757,6 +1802,9 @@ const zhHans: Messages = {
       undo: "撤销",
       redo: "重做",
       selectAll: "全选",
+      rangeAll: "框选全部",
+      rangeNodes: "仅框选顶点",
+      rangeEdges: "仅框选边",
       copy: "复制",
       cut: "剪切",
       paste: "粘贴",
@@ -1781,6 +1829,10 @@ const zhHans: Messages = {
     sizedNodeCountAria: "要生成的顶点数",
     sizedRowsLabel: "行",
     sizedColumnsLabel: "列",
+    sizedBipartiteLeftLabel: "左侧顶点数",
+    sizedBipartiteRightLabel: "右侧顶点数",
+    sizedKnightMoveXLabel: "移动 X",
+    sizedKnightMoveYLabel: "移动 Y",
     sizedKnightMoveLabel: "移动",
     sizedKnightMoves: {
       standard: "标准 (1,2)",

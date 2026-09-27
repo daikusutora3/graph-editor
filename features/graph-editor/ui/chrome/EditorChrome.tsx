@@ -406,6 +406,8 @@ export function EditorChrome() {
           >
             <PngPanelBody
               background={screenshot.effectiveBackground}
+              canvasHeightPx={screenshot.canvasHeightPx}
+              canvasWidthPx={screenshot.canvasWidthPx}
               longEdgePx={
                 screenshot.longEdgePreset === "custom"
                   ? screenshot.customLongEdgePx
@@ -423,6 +425,8 @@ export function EditorChrome() {
               solidBackground={screenshot.solidBackground}
               theme={theme}
               onBackgroundChange={screenshot.setBackground}
+              onCanvasHeightChange={screenshot.setCanvasHeightPx}
+              onCanvasWidthChange={screenshot.setCanvasWidthPx}
               onLongEdgeChange={screenshot.setCustomLongEdgePx}
               onPaddingChange={screenshot.setCustomPaddingPx}
               onScopeChange={screenshot.setScope}

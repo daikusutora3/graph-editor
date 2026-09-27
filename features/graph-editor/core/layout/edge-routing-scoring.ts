@@ -321,6 +321,12 @@ export function scoreCurveInstability(
     return 0;
   }
 
+  // A clear straight route should recover after a layout moves obstacles
+  // away. Continuity must not keep a bend that was only needed before.
+  if (curve.controlPointDistancesPx.every((distance) => distance === 0)) {
+    return 0;
+  }
+
   const sampleCount = Math.max(
     curve.controlPointDistancesPx.length,
     previous.controlPointDistancesPx.length,

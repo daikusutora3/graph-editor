@@ -254,6 +254,32 @@ function verifyNamedSampleGeometry(
     if (!hasRotationalSymmetry(nodes, 120, 2)) {
       fail("octahedral sample should keep its rotationally balanced layout");
     }
+    const mirrorById = new Map(
+      nodes.map((node) => [
+        node.id,
+        nodes.find(
+          (candidate) => candidate.x === -node.x && candidate.y === node.y,
+        )?.id,
+      ]),
+    );
+    const edgeKeys = new Set(
+      octahedral.edges.map((edge) =>
+        [edge.source, edge.target].sort().join("-"),
+      ),
+    );
+    if (
+      [...mirrorById.values()].some((id) => !id) ||
+      octahedral.edges.some(
+        (edge) =>
+          !edgeKeys.has(
+            [mirrorById.get(edge.source), mirrorById.get(edge.target)]
+              .sort()
+              .join("-"),
+          ),
+      )
+    ) {
+      fail("octahedral sample should mirror both vertices and edges");
+    }
   }
 }
 
@@ -303,8 +329,15 @@ function verifyPreviewEdgePaths() {
     target: { x: 20, y: 20 },
   });
 
-  if (!loopPath.includes("C")) {
-    fail("preview self-loop edges should render as curved paths");
+  const loopCoordinates = loopPath.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  if (
+    !loopPath.includes("C") ||
+    loopCoordinates[2] >= 20 ||
+    loopCoordinates[3] >= 20 ||
+    loopCoordinates[4] >= 20 ||
+    loopCoordinates[5] >= 20
+  ) {
+    fail("preview self-loop edges should match Cytoscape's loop direction");
   }
 
   const parallelPath = createPreviewEdgePath({
@@ -322,6 +355,11 @@ function verifyPreviewEdgePaths() {
 }
 
 function verifySizedSampleGraphs() {
+  const largeTree = createSizedSampleGraph("tree", 127, { indexBase: 0 });
+  if (largeTree.nodes.length !== 127) {
+    fail("tree: typed node counts above 64 must not silently create 64 nodes");
+  }
+
   for (const kind of sizedSampleGraphKinds) {
     const model = createSizedSampleGraph(kind, 11, {
       directed: false,
@@ -364,6 +402,39 @@ function verifySizedSampleGraphs() {
   );
   if (customKnight.nodes.length !== 20 || customKnight.edges.length !== 20) {
     fail("knight: sized sample should support custom move presets");
+  }
+
+  const arbitraryKnight = createSizedSampleGraph(
+    "knight",
+    64,
+    { indexBase: 0 },
+    { columns: 8, knightMoveX: 3, knightMoveY: 4, rows: 8 },
+  );
+  const knightIds = nodePositionByOrder(arbitraryKnight).map((node) => node.id);
+  const firstKnightTargets = new Set(
+    arbitraryKnight.edges
+      .filter((edge) => edge.source === knightIds[0])
+      .map((edge) => edge.target),
+  );
+  if (
+    arbitraryKnight.nodes.length !== 64 ||
+    !firstKnightTargets.has(knightIds[3 * 8 + 4]) ||
+    !firstKnightTargets.has(knightIds[4 * 8 + 3])
+  ) {
+    fail("knight: sized sample should support an arbitrary (3,4) move");
+  }
+
+  const unevenBipartite = createSizedSampleGraph(
+    "bipartite",
+    8,
+    { indexBase: 0 },
+    { bipartiteLeft: 3, bipartiteRight: 5 },
+  );
+  if (
+    unevenBipartite.nodes.length !== 8 ||
+    unevenBipartite.edges.length !== 15
+  ) {
+    fail("bipartite: sized sample should support two partition sizes");
   }
 
   const tooSmall = createSizedSampleGraph("path", 0, { indexBase: 0 });

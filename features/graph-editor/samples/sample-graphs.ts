@@ -456,11 +456,11 @@ function hypercubePositions(
 function octahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
   return fixedPositions(nodeIds, [
     { x: 0, y: -220 },
-    { x: 0, y: -85 },
-    { x: 191, y: 110 },
-    { x: 74, y: 42 },
-    { x: -191, y: 110 },
     { x: -74, y: 42 },
+    { x: 191, y: 110 },
+    { x: 0, y: -85 },
+    { x: -191, y: 110 },
+    { x: 74, y: 42 },
   ]);
 }
 
@@ -1278,6 +1278,7 @@ function createKnightGraph(
   moves: readonly (readonly [number, number])[] = KNIGHT_MOVE_PRESETS.standard,
 ): GraphModel {
   const edges: Array<readonly [number, number]> = [];
+  const seenEdges = new Set<string>();
   const indexOf = (row: number, column: number) => row * columns + column;
 
   for (let row = 0; row < rows; row += 1) {
@@ -1298,7 +1299,9 @@ function createKnightGraph(
 
             const source = indexOf(row, column);
             const target = indexOf(nextRow, nextColumn);
-            if (source < target) {
+            const edgeKey = `${source}-${target}`;
+            if (source < target && !seenEdges.has(edgeKey)) {
+              seenEdges.add(edgeKey);
               edges.push([source, target]);
             }
           }
@@ -2822,8 +2825,12 @@ export type SizedSampleGraphKind = (typeof sizedSampleGraphKinds)[number];
 export type SizedKnightMoveKind = keyof typeof KNIGHT_MOVE_PRESETS;
 
 export type SizedSampleGraphOptions = {
+  bipartiteLeft?: number;
+  bipartiteRight?: number;
   columns?: number;
   knightMove?: SizedKnightMoveKind;
+  knightMoveX?: number;
+  knightMoveY?: number;
   rows?: number;
 };
 
@@ -2934,6 +2941,13 @@ function createSizedSampleGraphModel(
     case "grid":
       return createSizedGridGraph(nodeCount, settings, options);
     case "bipartite":
+      if (hasCustomBipartiteSizes(options)) {
+        return createBipartiteGraph(
+          options.bipartiteLeft!,
+          options.bipartiteRight!,
+          settings,
+        );
+      }
       return createBipartiteGraph(
         Math.ceil(nodeCount / 2),
         Math.floor(nodeCount / 2),
@@ -2999,7 +3013,14 @@ function createSizedKnightGraph(
   }
 
   const { columns, rows } = sizedGridDimensions(nodeCount, options);
-  const moves = KNIGHT_MOVE_PRESETS[options.knightMove ?? "standard"];
+  const moves: readonly (readonly [number, number])[] = hasCustomKnightMove(
+    options,
+  )
+    ? [
+        [options.knightMoveX!, options.knightMoveY!],
+        [options.knightMoveY!, options.knightMoveX!],
+      ]
+    : KNIGHT_MOVE_PRESETS[options.knightMove ?? "standard"];
   const model = createKnightGraph(rows, columns, settings, moves);
 
   return withNodePositions(
@@ -3078,6 +3099,28 @@ function hasCustomGridDimensions(options: SizedSampleGraphOptions) {
     (options.columns ?? 0) > 0 &&
     (options.rows ?? 1) * (options.columns ?? 1) <=
       SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES
+  );
+}
+
+function hasCustomBipartiteSizes(options: SizedSampleGraphOptions) {
+  const left = options.bipartiteLeft ?? 0;
+  const right = options.bipartiteRight ?? 0;
+  return (
+    Number.isInteger(left) &&
+    Number.isInteger(right) &&
+    left > 0 &&
+    right > 0 &&
+    left + right <= SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES &&
+    left * right <= SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES
+  );
+}
+
+function hasCustomKnightMove(options: SizedSampleGraphOptions) {
+  return (
+    Number.isInteger(options.knightMoveX) &&
+    Number.isInteger(options.knightMoveY) &&
+    (options.knightMoveX ?? 0) > 0 &&
+    (options.knightMoveY ?? 0) > 0
   );
 }
 

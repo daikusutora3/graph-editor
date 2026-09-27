@@ -221,7 +221,7 @@ function createLoopPath(
       }
     | undefined,
 ) {
-  const direction = ((routing?.loopDirectionDeg ?? -45) * Math.PI) / 180;
+  const direction = (((routing?.loopDirectionDeg ?? -45) - 90) * Math.PI) / 180;
   const sweep = ((routing?.loopSweepDeg ?? 70) * Math.PI) / 180;
   const loopRadius = radius * 3;
   const startAngle = direction - sweep / 2;

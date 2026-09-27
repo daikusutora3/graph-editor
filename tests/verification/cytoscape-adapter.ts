@@ -271,7 +271,7 @@ function verifySelfLoopRoutingCanFollowDraggedNodePositions() {
     const edge = cy.getElementById("aa");
     const initialLoopDirection = edge.data("loopDirection");
 
-    cy.getElementById("b").position({ x: 30, y: -30 });
+    cy.getElementById("b").position({ x: -30, y: -30 });
     syncCytoscapeEdgeRoutingData(cy, graph, { mode: "quality" });
 
     expect(
@@ -483,7 +483,15 @@ function verifyEdgeHitboxPaths() {
     loopSweepDeg: 70,
   });
 
-  expect(loopPath.includes("C"), "loop edge hitboxes should be curved paths");
+  const loopCoordinates = loopPath.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  expect(
+    loopPath.includes("C") &&
+      loopCoordinates[2] < 20 &&
+      loopCoordinates[3] < 20 &&
+      loopCoordinates[4] < 20 &&
+      loopCoordinates[5] < 20,
+    "loop edge hitboxes should follow Cytoscape's upper-left direction",
+  );
 }
 
 function createCy(

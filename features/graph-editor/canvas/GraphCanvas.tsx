@@ -48,6 +48,10 @@ import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useGraphEditingActions } from "./use-graph-editing-actions";
 import { useRangeSelectionKey } from "./use-range-selection-key";
+import {
+  rangeSelectionFilterFromModifiers,
+  type RangeSelectionFilter,
+} from "./range-selection-filter";
 import { nudgeEdgeBend } from "../core/layout/edge-route-geometry";
 import { describeSelection } from "./selection-actions";
 import { useI18n } from "../i18n/I18nProvider";
@@ -101,11 +105,12 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const setSelection = useSetAtom(selectionAtom);
   const executeCommand = useSetAtom(executeCommandAtom);
   const deleteSelection = useSetAtom(deleteSelectionAtom);
-  const { registerGraphCanvasApi, fitRequest, completeFit } =
+  const { registerGraphCanvasApi, fitRequest, completeFit, notifyZoomPercent } =
     useGraphCanvasApi();
 
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
+  const rangeSelectionFilterRef = useRef<RangeSelectionFilter>("all");
   const chrome = useMemo<GraphCanvasChrome>(() => ({ layout }), [layout]);
 
   const exportPng = useGraphImageExport({
@@ -167,11 +172,15 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     setSelection,
   });
 
-  const updateZoomPercent = useCallback((nextZoomPercent: number) => {
-    setZoomPercent((current) =>
-      current === nextZoomPercent ? current : nextZoomPercent,
-    );
-  }, []);
+  const updateZoomPercent = useCallback(
+    (nextZoomPercent: number) => {
+      setZoomPercent((current) =>
+        current === nextZoomPercent ? current : nextZoomPercent,
+      );
+      notifyZoomPercent(nextZoomPercent);
+    },
+    [notifyZoomPercent],
+  );
 
   const { displayReady, displayError } = useGraphCanvasLifecycle({
     routingReady,
@@ -335,6 +344,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     cyRef,
     mode,
     onPlaceNode: addNodeAtGraphPosition,
+    rangeSelectionFilterRef,
     setContextMenuTarget,
     setEdgeDraft,
     setSelection,
@@ -453,6 +463,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     containerRef,
     cyRef,
     enabled: mode === "select" && !inlineEdit,
+    rangeSelectionFilterRef,
   });
   const forwardRangeSelectionPointerDown = useRangeSelectionPointerForwarding({
     containerRef,
@@ -460,6 +471,8 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   });
   const handleRangeSelectionPointerDown = useCallback(
     (event: ReactPointerEvent<Element>) => {
+      rangeSelectionFilterRef.current =
+        rangeSelectionFilterFromModifiers(event);
       previewRangeSelectionPointerDown(event);
       return forwardRangeSelectionPointerDown(event);
     },
@@ -501,7 +514,11 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
         <div
           ref={containerRef}
           className="relative z-10 h-full w-full"
-          onPointerDownCapture={previewRangeSelectionPointerDown}
+          onPointerDownCapture={(event) => {
+            rangeSelectionFilterRef.current =
+              rangeSelectionFilterFromModifiers(event);
+            previewRangeSelectionPointerDown(event);
+          }}
         />
         <ZoomBadge visible={layout === "mobile"} zoomPercent={zoomPercent} />
         {/* Announces what is selected to assistive tech; visually hidden. */}

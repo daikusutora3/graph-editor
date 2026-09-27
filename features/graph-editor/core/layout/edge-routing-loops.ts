@@ -65,7 +65,9 @@ export function loopSamplePoints(
   directionDeg: number,
   options: ResolvedEdgeRoutingOptions,
 ) {
-  const direction = (directionDeg * Math.PI) / 180;
+  // Cytoscape measures loop-direction from 12 o'clock, while Math.cos/sin
+  // measure from 3 o'clock. Match the renderer before scoring obstacles.
+  const direction = ((directionDeg - 90) * Math.PI) / 180;
   const sweep = (options.loopSweepDeg * Math.PI) / 180;
   const radius = options.nodeClearancePx * 1.7;
 

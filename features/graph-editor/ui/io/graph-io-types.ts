@@ -1,6 +1,6 @@
 export type CopyState = "idle" | "copied" | "blocked";
 export type PngExportBackground = "white" | "black" | "transparent";
-export type PngExportScope = "viewport" | "full";
+export type PngExportScope = "viewport" | "full" | "natural" | "natural-fixed";
 export type PngExportLongEdgePreset = 1280 | 1920 | 2560 | 3840 | "custom";
 export type PngExportPaddingPreset = 0 | 24 | 48 | "custom";
 export const PNG_EXPORT_LONG_EDGE_PRESETS = [1280, 1920, 2560, 3840] as const;

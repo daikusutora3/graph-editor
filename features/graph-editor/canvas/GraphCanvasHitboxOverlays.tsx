@@ -484,7 +484,7 @@ export function createEdgeHitboxPath(edge: EdgeLabelHitbox) {
 }
 
 function createLoopHitboxPath(edge: EdgeLabelHitbox) {
-  const direction = (edge.loopDirectionDeg * Math.PI) / 180;
+  const direction = ((edge.loopDirectionDeg - 90) * Math.PI) / 180;
   const sweep = (edge.loopSweepDeg * Math.PI) / 180;
   const nodeRadius = 24;
   const loopRadius = 72;

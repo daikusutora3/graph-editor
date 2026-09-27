@@ -15,6 +15,7 @@ import {
 } from "../shell/state/editor-state";
 
 import type { GraphContextMenuTarget } from "./graph-canvas-types";
+import type { RangeSelectionFilter } from "./range-selection-filter";
 
 type AtomSetter<T> = (value: T | ((current: T) => T)) => void;
 
@@ -25,6 +26,7 @@ type UseCytoscapeInteractionEventsOptions = {
    * the tap from Cytoscape (instead of an overlay div) keeps two-finger
    * pinch and pan working on touch devices. */
   onPlaceNode: (position: Position) => void;
+  rangeSelectionFilterRef: MutableRefObject<RangeSelectionFilter>;
   setContextMenuTarget: (target: GraphContextMenuTarget | null) => void;
   setEdgeDraft: AtomSetter<EdgeDraft>;
   setSelection: AtomSetter<SelectionState>;
@@ -34,6 +36,7 @@ export function useCytoscapeInteractionEvents({
   cyRef,
   mode,
   onPlaceNode,
+  rangeSelectionFilterRef,
   setContextMenuTarget,
   setEdgeDraft,
   setSelection,
@@ -112,6 +115,11 @@ export function useCytoscapeInteractionEvents({
 
       boxSelectionFrame = window.requestAnimationFrame(() => {
         boxSelectionFrame = 0;
+        if (rangeSelectionFilterRef.current === "nodes") {
+          cy.edges(":selected").unselect();
+        } else if (rangeSelectionFilterRef.current === "edges") {
+          cy.nodes(":selected").unselect();
+        }
         setSelection(readCytoscapeSelection(cy));
       });
     };
@@ -132,7 +140,14 @@ export function useCytoscapeInteractionEvents({
         window.cancelAnimationFrame(boxSelectionFrame);
       }
     };
-  }, [cyRef, mode, setContextMenuTarget, setEdgeDraft, setSelection]);
+  }, [
+    cyRef,
+    mode,
+    rangeSelectionFilterRef,
+    setContextMenuTarget,
+    setEdgeDraft,
+    setSelection,
+  ]);
 }
 
 function readCytoscapeSelection(cy: Core): SelectionState {

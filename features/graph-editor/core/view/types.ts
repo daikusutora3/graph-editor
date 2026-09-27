@@ -38,7 +38,7 @@ export type GraphCanvasChrome = {
 };
 
 export type GraphCanvasExportOptions = {
-  scope: "full" | "viewport";
+  scope: "full" | "viewport" | "natural" | "natural-fixed";
   background: "white" | "black" | "transparent";
   maxWidth?: number;
   maxHeight?: number;

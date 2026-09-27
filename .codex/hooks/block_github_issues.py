@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deny GitHub Issue operations before a Codex tool is executed."""
+"""Allow read-only Issue browsing; deny Issue operations."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any
 
 
 DENIAL_REASON = (
-    "Blocked by this repository's policy: GitHub Issue operations are disabled."
+    "Blocked by this repository's policy: only read-only browsing of GitHub Issues is allowed."
 )
 
 GITHUB_ISSUE_URL = re.compile(
@@ -32,6 +32,21 @@ ISSUE_API_SIGNAL = re.compile(
     r"transfer|pin|unpin)Issue\b)",
     re.IGNORECASE,
 )
+ISSUE_BROWSER_OPEN = re.compile(
+    r"\s*(?:let\s+issueTab\s*=\s*)?await\s+"
+    r"cua\.createBrowserTab\(\s*['\"]iab['\"]\s*,\s*"
+    r"['\"]https://github\.com/daikusutora3/graph-editor/issues"
+    r"(?:/\d+)?(?:\?[^'\"]*)?['\"]\s*,\s*"
+    r"\{\s*visible:\s*(?:true|false)\s*\}\s*\);?\s*"
+)
+ISSUE_BROWSER_BIND = re.compile(
+    r"\s*issueTab\s*=\s*await\s+cua\.getTab\(\s*"
+    r"\{\s*url:\s*['\"]https://github\.com/daikusutora3/graph-editor/issues/\d+['\"]\s*\}"
+    r"\s*,\s*\{\s*browser:\s*['\"]iab['\"]\s*\}\s*\);?\s*"
+)
+ISSUE_BROWSER_READ = re.compile(
+    r"\s*await\s+(?:issueTab\.getAXState|cua\.getState)\(\s*\);?\s*"
+)
 
 
 def _compact_json(value: Any) -> str:
@@ -51,10 +66,25 @@ def _command_from(tool_input: Any) -> str:
 
 
 def should_block(tool_name: str, tool_input: Any) -> bool:
-    """Return True only for tool calls that can access or mutate Issues."""
+    """Return True for Issue access outside permitted read-only browsing."""
 
     name = tool_name.casefold()
     payload = _compact_json(tool_input)
+
+    # The web tool only reads public pages and cannot mutate an Issue.
+    if name in ("web__run", "web.run"):
+        return False
+
+    # Restrict the entire computer-use surface while this policy applies.
+    # Otherwise a later call could mutate an already-open Issue without
+    # repeating its URL in the tool input.
+    if name == "mcp__cua_repl__js":
+        code = tool_input.get("code", "") if isinstance(tool_input, dict) else ""
+        return not (
+            ISSUE_BROWSER_OPEN.fullmatch(code)
+            or ISSUE_BROWSER_BIND.fullmatch(code)
+            or ISSUE_BROWSER_READ.fullmatch(code)
+        )
 
     # Dedicated GitHub Issue tools are unambiguous. This covers MCP tools such
     # as mcp__github__issue_read and future connector naming variants.
@@ -76,7 +106,7 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
     if "github" in name and ISSUE_API_SIGNAL.search(payload):
         return True
 
-    # Browser and computer-use navigation must not open an Issue URL either.
+    # Interactive browser/computer-use tools can also write to Issues.
     if any(marker in name for marker in ("browser", "chrome", "computer")):
         return bool(GITHUB_ISSUE_URL.search(payload))
 
@@ -106,6 +136,8 @@ def self_test() -> None:
         ("mcp__github__issue_read", {"owner": "owner", "repo": "repo"}),
         ("mcp__github__api", {"issue_number": 12}),
         ("browser_navigate", {"url": "https://github.com/owner/repo/issues"}),
+        ("mcp__cua_repl__js", {"code": "await issueTab.click(1);"}),
+        ("mcp__cua_repl__js", {"code": "await cua.createBrowserTab('iab', 'https://github.com/daikusutora3/graph-editor/issues', { visible: true }); await issueTab.click(1);"}),
     ]
     allowed = [
         ("Bash", {"command": "rg issue AGENTS.md"}),
@@ -113,6 +145,10 @@ def self_test() -> None:
         ("mcp__github__pull_request_read", {"pull_number": 12}),
         ("browser_navigate", {"url": "https://github.com/owner/repo/pull/12"}),
         ("apply_patch", {"command": "Document the GitHub Issues policy"}),
+        ("web__run", {"open": [{"ref_id": "https://github.com/owner/repo/issues/12"}]}),
+        ("mcp__cua_repl__js", {"code": "let issueTab = await cua.createBrowserTab('iab', 'https://github.com/daikusutora3/graph-editor/issues', { visible: true });"}),
+        ("mcp__cua_repl__js", {"code": "issueTab = await cua.getTab({ url: 'https://github.com/daikusutora3/graph-editor/issues/41' }, { browser: 'iab' });"}),
+        ("mcp__cua_repl__js", {"code": "await issueTab.getAXState();"}),
     ]
 
     for tool_name, tool_input in blocked:

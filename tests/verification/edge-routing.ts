@@ -16,6 +16,11 @@ import type {
 } from "../../features/graph-editor/core/graph/model";
 import { edgeCurveMidpoint } from "../../features/graph-editor/core/layout/edge-route-geometry";
 import {
+  layoutLine,
+  layoutTree,
+} from "../../features/graph-editor/layouts/layout-algorithms";
+import { createSizedSampleGraph } from "../../features/graph-editor/samples/sample-graphs";
+import {
   emptyEdgeRoutingContinuitySnapshot,
   readPreviousAutomaticRoutingMeta,
   updateAutomaticRoutingSnapshot,
@@ -97,6 +102,36 @@ const dragStartGraph: GraphModel = {
   ],
 };
 const dragStartRoutes = computeEdgeRouting(dragStartGraph);
+
+const sevenNodeTree = createSizedSampleGraph("tree", 7, {
+  autoEdgeRouting: true,
+});
+const linePositions = layoutLine(sevenNodeTree);
+const lineTree = {
+  ...sevenNodeTree,
+  nodes: sevenNodeTree.nodes.map((node) => ({
+    ...node,
+    ...linePositions[node.id],
+  })),
+};
+const treePositions = layoutTree(sevenNodeTree);
+const restoredTree = {
+  ...sevenNodeTree,
+  nodes: sevenNodeTree.nodes.map((node) => ({
+    ...node,
+    ...treePositions[node.id],
+  })),
+};
+const lineRoutes = computeEdgeRouting(lineTree, {
+  previousMeta: computeEdgeRouting(sevenNodeTree),
+});
+const restoredRoutes = computeEdgeRouting(restoredTree, {
+  previousMeta: lineRoutes,
+});
+expect(
+  [...restoredRoutes.values()].every((route) => route.bowPx === 0),
+  "returning from line to tree layout should clear unnecessary automatic bends",
+);
 const dragEndGraph: GraphModel = {
   ...dragStartGraph,
   nodes: dragStartGraph.nodes.map((node) =>
@@ -148,6 +183,27 @@ const obstructedGraph: GraphModel = {
     { id: "obstacle-2", label: "O2", order: 4, x: 120, y: 90 },
   ],
 };
+const obstructedLoopGraph: GraphModel = {
+  ...graphFixture([{ id: "loop", source: "a", target: "a" }]),
+  nodes: [
+    { id: "a", label: "A", order: 0, x: 0, y: 0 },
+    { id: "b", label: "B", order: 1, x: 50, y: -50 },
+  ],
+  settings: {
+    ...defaultGraphSettings,
+    allowSelfLoops: true,
+    autoEdgeRouting: true,
+  },
+};
+const loopDirection =
+  computeEdgeRouting(obstructedLoopGraph).get("loop")?.loopDirectionDeg;
+const renderedLoopAngle = (((loopDirection ?? 0) - 90) * Math.PI) / 180;
+expect(
+  loopDirection != null &&
+    Math.cos(renderedLoopAngle) * 50 + Math.sin(renderedLoopAngle) * -50 <=
+      0.000001,
+  "automatic routing should point the rendered self-loop away from the nearby node",
+);
 const previousPositiveRoute = new Map<string, EdgeRoutingMeta>([
   ["ab", routeMeta(64)],
 ]);

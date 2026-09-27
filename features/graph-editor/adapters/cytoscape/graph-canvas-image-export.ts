@@ -59,7 +59,11 @@ export function useGraphImageExport({
 
         return await cy.png({
           output: "blob-promise",
-          full: detail.scope === "full",
+          full: detail.scope !== "viewport",
+          scale:
+            detail.scope === "natural" || detail.scope === "natural-fixed"
+              ? cy.zoom()
+              : undefined,
           maxWidth: detail.maxWidth,
           maxHeight: detail.maxHeight,
           bg: readExportBackground(detail.background),
