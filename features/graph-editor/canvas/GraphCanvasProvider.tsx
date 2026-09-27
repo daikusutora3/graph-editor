@@ -25,6 +25,8 @@ type GraphCanvasApi = {
 };
 
 type GraphCanvasApiContextValue = GraphCanvasApi & {
+  zoomPercent: number;
+  notifyZoomPercent: (value: number) => void;
   fitRequest: CanvasFitRequest | null;
   requestFit: (graph: GraphModel) => void;
   completeFit: (id: number) => void;
@@ -45,6 +47,7 @@ const GraphCanvasApiContext = createContext<GraphCanvasApiContextValue | null>(
 
 export function GraphCanvasProvider({ children }: { children: ReactNode }) {
   const [fitRequest, setFitRequest] = useState<CanvasFitRequest | null>(null);
+  const [zoomPercent, notifyZoomPercent] = useState(100);
   const fitId = useRef(0);
   const requestFit = useCallback((graph: GraphModel) => {
     setFitRequest({ id: ++fitId.current, graph });
@@ -53,6 +56,9 @@ export function GraphCanvasProvider({ children }: { children: ReactNode }) {
     setFitRequest((current) => (current?.id === id ? null : current));
   }, []);
   const apiRef = useRef<GraphCanvasApi | null>(null);
+  const registerGraphCanvasApi = useCallback((api: GraphCanvasApi | null) => {
+    apiRef.current = api;
+  }, []);
 
   const callApi = useCallback(
     <T,>(read: (api: GraphCanvasApi) => T) =>
@@ -66,15 +72,22 @@ export function GraphCanvasProvider({ children }: { children: ReactNode }) {
       fitView: () => callApi((api) => api.fitView()),
       isGraphOutOfView: () => callApi((api) => api.isGraphOutOfView()),
       resetZoom: () => callApi((api) => api.resetZoom()),
+      zoomPercent,
+      notifyZoomPercent,
       fitRequest,
       requestFit,
       completeFit,
       exportPng: (detail) => callApi((api) => api.exportPng(detail)),
-      registerGraphCanvasApi: (api) => {
-        apiRef.current = api;
-      },
+      registerGraphCanvasApi,
     }),
-    [callApi, fitRequest, requestFit, completeFit],
+    [
+      callApi,
+      fitRequest,
+      requestFit,
+      completeFit,
+      registerGraphCanvasApi,
+      zoomPercent,
+    ],
   );
 
   return (

@@ -9,6 +9,7 @@ import type {
 import { useCallback, useEffect, useRef } from "react";
 
 import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
+import type { RangeSelectionFilter } from "./range-selection-filter";
 
 type RenderedPoint = {
   x: number;
@@ -29,6 +30,7 @@ type RangePreviewSession = {
   frame: number;
   nodeIds: Set<string>;
   edgeIds: Set<string>;
+  filter: RangeSelectionFilter;
   stopListeners: () => void;
 };
 
@@ -36,6 +38,7 @@ type UseRangeSelectionPreviewOptions = {
   containerRef: RefObject<HTMLDivElement | null>;
   cyRef: MutableRefObject<Core | null>;
   enabled: boolean;
+  rangeSelectionFilterRef: MutableRefObject<RangeSelectionFilter>;
 };
 
 const RANGE_PREVIEW_CLASS = "range-preview";
@@ -44,6 +47,7 @@ export function useRangeSelectionPreview({
   containerRef,
   cyRef,
   enabled,
+  rangeSelectionFilterRef,
 }: UseRangeSelectionPreviewOptions) {
   const sessionRef = useRef<RangePreviewSession | null>(null);
 
@@ -79,25 +83,27 @@ export function useRangeSelectionPreview({
     const nextNodeIds = new Set<string>();
     const nextEdgeIds = new Set<string>();
 
-    cy.nodes().forEach((node) => {
-      const nodeBox = node.renderedBoundingBox({
-        includeNodes: true,
-        includeEdges: false,
-        includeLabels: false,
-        includeOverlays: false,
-        includeUnderlays: false,
+    if (session.filter !== "edges")
+      cy.nodes().forEach((node) => {
+        const nodeBox = node.renderedBoundingBox({
+          includeNodes: true,
+          includeEdges: false,
+          includeLabels: false,
+          includeOverlays: false,
+          includeUnderlays: false,
+        });
+
+        if (boxContains(box, nodeBox)) {
+          nextNodeIds.add(node.id());
+        }
       });
 
-      if (boxContains(box, nodeBox)) {
-        nextNodeIds.add(node.id());
-      }
-    });
-
-    cy.edges().forEach((edge) => {
-      if (edgeControlPathInBox(box, edge)) {
-        nextEdgeIds.add(edge.id());
-      }
-    });
+    if (session.filter !== "nodes")
+      cy.edges().forEach((edge) => {
+        if (edgeControlPathInBox(box, edge)) {
+          nextEdgeIds.add(edge.id());
+        }
+      });
 
     withCytoscapeBatch(cy, () => {
       applyPreviewClassDiff(cy, session.nodeIds, nextNodeIds);
@@ -178,6 +184,7 @@ export function useRangeSelectionPreview({
 
       sessionRef.current = {
         pointerId,
+        filter: rangeSelectionFilterRef.current,
         start: point,
         current: point,
         frame: 0,
@@ -193,7 +200,14 @@ export function useRangeSelectionPreview({
 
       return true;
     },
-    [containerRef, cyRef, enabled, clearPreview, schedulePreview],
+    [
+      containerRef,
+      cyRef,
+      enabled,
+      clearPreview,
+      rangeSelectionFilterRef,
+      schedulePreview,
+    ],
   );
 }
 

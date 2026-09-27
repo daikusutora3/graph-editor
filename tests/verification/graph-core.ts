@@ -445,7 +445,7 @@ const loopRoutingModel: GraphModel = {
   version: 1,
   nodes: [
     { id: "a", label: "A", order: 0, x: 0, y: 0 },
-    { id: "near-default-loop", label: "B", order: 1, x: 30, y: -30 },
+    { id: "near-default-loop", label: "B", order: 1, x: -30, y: -30 },
   ],
   edges: [{ id: "aa", source: "a", target: "a" }],
   settings: defaultGraphSettings,

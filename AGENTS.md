@@ -1,24 +1,28 @@
 # Repository agent policy
 
-## Absolute ban on GitHub Issues
+## GitHub Issues: web reading only
 
 For every task whose working directory, repository, or target is this directory
-or one of its descendants, automated agents must not access or operate on GitHub
-Issues for this repository.
+or one of its descendants, automated agents may read GitHub Issues for this
+repository through the read-only web tool or by opening an Issue URL in the
+in-app browser and reading the displayed page. This includes listing and
+opening Issues and reading their descriptions and comments.
 
-This ban includes all read and write operations, including:
+All GitHub Issue operations through other interfaces remain prohibited,
+including GitHub connectors, `gh`, REST, GraphQL, and scripts. In-app browser
+calls are limited to opening this repository's Issue URLs and reading the
+displayed state; all other computer-use calls are blocked by the hook. In
+particular, agents must not:
 
-- listing, searching, fetching, summarizing, or otherwise reading issues;
 - creating, editing, reopening, closing, deleting, transferring, pinning, or
   locking issues;
 - adding, editing, or deleting issue comments;
 - adding or removing labels, assignees, milestones, reactions, or relationships;
-- invoking issue-related actions through GitHub connectors, `gh`, REST,
-  GraphQL, browser automation, scripts, or any other interface.
+- perform any other write operation on Issues.
 
 Do not bypass this policy by changing the working directory, delegating the
-operation, or using a different interface. If a task requires GitHub Issue data
-or an Issue operation, stop and report that this repository policy blocks it.
+operation, or using a different interface. If a task requires a prohibited
+Issue operation, stop and report that this repository policy blocks it.
 
 Pull request operations are outside this ban, but use pull-request-specific
 tools and do not route them through Issue actions.
@@ -29,7 +33,7 @@ be changed.
 ## Enforcement
 
 The project-local Codex `PreToolUse` hook in `.codex/config.toml` rejects known
-GitHub Issue operations before their tool call runs. Keep the hook enabled and
+prohibited GitHub Issue operations before their tool call runs. Keep the hook enabled and
 review/trust it when Codex reports a changed hook definition.
 
 The hook is defense in depth for Codex sessions, not a replacement for this

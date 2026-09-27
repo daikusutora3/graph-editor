@@ -11,6 +11,7 @@ import {
   makeScreenshotInputKey,
   resolveLongEdgePx,
   resolvePaddingPx,
+  resolvePngCanvasLayout,
   shouldAcceptScreenshotPreviewRequest,
 } from "../../features/graph-editor/ui/io/graph-io-screenshot-state";
 import { createVerification } from "./harness";
@@ -20,6 +21,25 @@ const { expect, finish } = createVerification("Screenshot");
 verifyPreviewInputKey();
 verifyPreviewStateHelpers();
 verifyScreenshotSizingHelpers();
+
+const naturalLayout = resolvePngCanvasLayout(320, 180, 24);
+const fixedLayout = resolvePngCanvasLayout(320, 180, 24, 640, 360);
+expect(
+  naturalLayout.width === 368 &&
+    naturalLayout.height === 228 &&
+    fixedLayout.width === 640 &&
+    fixedLayout.height === 360 &&
+    fixedLayout.x === 160 &&
+    fixedLayout.y === 90,
+  "natural export should preserve graph pixels and center them in a fixed canvas",
+);
+let rejectedSmallCanvas = false;
+try {
+  resolvePngCanvasLayout(320, 180, 24, 300, 300);
+} catch {
+  rejectedSmallCanvas = true;
+}
+expect(rejectedSmallCanvas, "fixed canvas must not silently crop the graph");
 
 finish();
 
@@ -104,6 +124,31 @@ function verifyPreviewInputKey() {
         theme: "light",
       }),
     "preview input key should include export scope",
+  );
+  expect(
+    makeScreenshotInputKey({
+      background: "white",
+      canvasHeightPx: 1080,
+      canvasWidthPx: 1920,
+      graphRevision: 7,
+      longEdgePx: 1024,
+      paddingPx: 48,
+      scope: "natural-fixed",
+      theme: "light",
+      zoomPercent: 100,
+    }) !==
+      makeScreenshotInputKey({
+        background: "white",
+        canvasHeightPx: 1080,
+        canvasWidthPx: 1920,
+        graphRevision: 7,
+        longEdgePx: 1024,
+        paddingPx: 48,
+        scope: "natural-fixed",
+        theme: "light",
+        zoomPercent: 125,
+      }),
+    "current-zoom preview should update when zoom changes",
   );
   expect(
     makeScreenshotInputKey({

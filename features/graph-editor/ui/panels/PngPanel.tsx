@@ -18,7 +18,14 @@ import {
   type ScreenshotDownloadState,
   type ScreenshotPreview,
 } from "../io/graph-io-types";
-import { Button, Notice, SectionLabel, Segment, Slider } from "../primitives";
+import {
+  Button,
+  Notice,
+  SectionLabel,
+  Segment,
+  Slider,
+  TextInput,
+} from "../primitives";
 import type { ThemeMode } from "../theme/theme";
 
 const LONG_EDGE_STEP = 20;
@@ -26,6 +33,8 @@ const PADDING_STEP = 4;
 
 type PngPanelBodyProps = {
   background: PngExportBackground;
+  canvasHeightPx: number;
+  canvasWidthPx: number;
   longEdgePx: number;
   mobile: boolean;
   notice: string;
@@ -35,6 +44,8 @@ type PngPanelBodyProps = {
   solidBackground: "white" | "black";
   theme: ThemeMode;
   onBackgroundChange: (background: PngExportBackground) => void;
+  onCanvasHeightChange: (value: number) => void;
+  onCanvasWidthChange: (value: number) => void;
   onLongEdgeChange: (value: number) => void;
   onPaddingChange: (value: number) => void;
   onScopeChange: (scope: PngExportScope) => void;
@@ -42,6 +53,8 @@ type PngPanelBodyProps = {
 
 export function PngPanelBody({
   background,
+  canvasHeightPx,
+  canvasWidthPx,
   longEdgePx,
   mobile,
   notice,
@@ -51,6 +64,8 @@ export function PngPanelBody({
   solidBackground,
   theme,
   onBackgroundChange,
+  onCanvasHeightChange,
+  onCanvasWidthChange,
   onLongEdgeChange,
   onPaddingChange,
   onScopeChange,
@@ -72,7 +87,7 @@ export function PngPanelBody({
           <Segment
             label={messages.screenshot.scope}
             size={segmentSize}
-            value={scope}
+            value={scope === "viewport" ? "viewport" : "full"}
             options={[
               { label: messages.chrome.pngScopeFull, value: "full" },
               { label: messages.chrome.pngScopeView, value: "viewport" },
@@ -104,6 +119,26 @@ export function PngPanelBody({
         </div>
       </div>
 
+      {scope !== "viewport" ? (
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel>{messages.screenshot.imageSize}</SectionLabel>
+          <Segment
+            label={messages.screenshot.imageSize}
+            size={segmentSize}
+            value={scope}
+            options={[
+              { label: messages.screenshot.fixedLongEdge, value: "full" },
+              { label: messages.screenshot.natural, value: "natural" },
+              {
+                label: messages.screenshot.naturalFixed,
+                value: "natural-fixed",
+              },
+            ]}
+            onChange={onScopeChange}
+          />
+        </div>
+      ) : null}
+
       {scope === "full" ? (
         <Slider
           label={messages.chrome.pngSize}
@@ -115,6 +150,42 @@ export function PngPanelBody({
           presets={PNG_EXPORT_LONG_EDGE_PRESETS}
           onChange={onLongEdgeChange}
         />
+      ) : null}
+
+      {scope === "natural-fixed" ? (
+        <div className="grid grid-cols-2 gap-2.5">
+          {(
+            [
+              [
+                messages.screenshot.canvasWidth,
+                canvasWidthPx,
+                onCanvasWidthChange,
+              ],
+              [
+                messages.screenshot.canvasHeight,
+                canvasHeightPx,
+                onCanvasHeightChange,
+              ],
+            ] as const
+          ).map(([label, value, onChange]) => (
+            <label key={label} className="flex flex-col gap-1.5">
+              <SectionLabel>{label}</SectionLabel>
+              <TextInput
+                type="number"
+                min={1}
+                max={MAX_LONG_EDGE_PX}
+                value={value}
+                aria-label={label}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  if (Number.isFinite(next) && next > 0) {
+                    onChange(Math.min(MAX_LONG_EDGE_PX, Math.round(next)));
+                  }
+                }}
+              />
+            </label>
+          ))}
+        </div>
       ) : null}
 
       <Slider

@@ -14,9 +14,7 @@ import {
   createSizedSampleGraph,
   getSizedSampleGraphMaxNodes,
   isSizedSampleGraphKind,
-  sizedKnightMoveKinds,
   type SampleGraphKind,
-  type SizedKnightMoveKind,
   type SizedSampleGraphKind,
 } from "../../samples/sample-graphs";
 import {
@@ -27,13 +25,7 @@ import {
 } from "../../samples/registry";
 import { graphAtom } from "../../shell/state/graph-atoms";
 import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
-import {
-  Button,
-  SectionLabel,
-  Select,
-  TextInput,
-  focusRing,
-} from "../primitives";
+import { Button, SectionLabel, TextInput, focusRing } from "../primitives";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 
 import { SAMPLE_GALLERY_GRID_CLASS } from "./sample-gallery-layout";
@@ -43,8 +35,11 @@ type SampleGalleryPaneProps = {
 };
 
 type SizedSampleValues = {
+  bipartiteLeft: number;
+  bipartiteRight: number;
   columns: number;
-  knightMove: SizedKnightMoveKind;
+  knightMoveX: number;
+  knightMoveY: number;
   nodeCount: number;
   rows: number;
 };
@@ -107,7 +102,11 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
     const usesGridDimensions = kind === "grid" || kind === "knight";
     const nodeCount = clampSizedSampleNodeCount(
       kind,
-      usesGridDimensions ? values.rows * values.columns : values.nodeCount,
+      usesGridDimensions
+        ? values.rows * values.columns
+        : kind === "bipartite"
+          ? values.bipartiteLeft + values.bipartiteRight
+          : values.nodeCount,
     );
 
     applyModel(
@@ -118,10 +117,16 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
         usesGridDimensions
           ? {
               columns: values.columns,
-              knightMove: values.knightMove,
+              knightMoveX: values.knightMoveX,
+              knightMoveY: values.knightMoveY,
               rows: values.rows,
             }
-          : undefined,
+          : kind === "bipartite"
+            ? {
+                bipartiteLeft: values.bipartiteLeft,
+                bipartiteRight: values.bipartiteRight,
+              }
+            : undefined,
       ),
     );
   };
@@ -283,7 +288,10 @@ function SampleCard({
   const [columns, setColumns] = useState(() =>
     sample.kind === "grid" ? "3" : "4",
   );
-  const [knightMove, setKnightMove] = useState<SizedKnightMoveKind>("standard");
+  const [knightMoveX, setKnightMoveX] = useState("1");
+  const [knightMoveY, setKnightMoveY] = useState("2");
+  const [bipartiteLeft, setBipartiteLeft] = useState("3");
+  const [bipartiteRight, setBipartiteRight] = useState("3");
   const sizedKind = isSizedSampleGraphKind(sample.kind) ? sample.kind : null;
   const usesGridDimensions = sizedKind === "grid" || sizedKind === "knight";
 
@@ -300,7 +308,17 @@ function SampleCard({
         }
 
         const normalizedRows = clampPositiveInteger(Number(rows), 4);
-        const normalizedColumns = clampPositiveInteger(Number(columns), 4);
+        const normalizedColumns = Math.min(
+          clampPositiveInteger(Number(columns), 4),
+          Math.floor(1000 / normalizedRows),
+        );
+        const normalizedMoveX = clampPositiveInteger(Number(knightMoveX), 1);
+        const normalizedMoveY = clampPositiveInteger(Number(knightMoveY), 2);
+        const normalizedLeft = clampPositiveInteger(Number(bipartiteLeft), 3);
+        const normalizedRight = Math.min(
+          clampPositiveInteger(Number(bipartiteRight), 3),
+          Math.floor(5000 / normalizedLeft),
+        );
         const normalizedNodeCount = clampSizedSampleNodeCount(
           sizedKind,
           Number(nodeCount),
@@ -309,9 +327,16 @@ function SampleCard({
         setNodeCount(String(normalizedNodeCount));
         setRows(String(normalizedRows));
         setColumns(String(normalizedColumns));
+        setKnightMoveX(String(normalizedMoveX));
+        setKnightMoveY(String(normalizedMoveY));
+        setBipartiteLeft(String(normalizedLeft));
+        setBipartiteRight(String(normalizedRight));
         onApplySized(sizedKind, {
+          bipartiteLeft: normalizedLeft,
+          bipartiteRight: normalizedRight,
           columns: normalizedColumns,
-          knightMove,
+          knightMoveX: normalizedMoveX,
+          knightMoveY: normalizedMoveY,
           nodeCount: normalizedNodeCount,
           rows: normalizedRows,
         });
@@ -360,25 +385,32 @@ function SampleCard({
                 onChange={setColumns}
               />
               {sizedKind === "knight" ? (
-                <label className="flex min-w-[120px] flex-[1_1_120px] flex-col gap-1">
-                  <SectionLabel>
-                    {messages.samples.sizedKnightMoveLabel}
-                  </SectionLabel>
-                  <Select
-                    value={knightMove}
-                    aria-label={messages.samples.sizedKnightMoveLabel}
-                    onChange={(event) =>
-                      setKnightMove(event.target.value as SizedKnightMoveKind)
-                    }
-                  >
-                    {sizedKnightMoveKinds.map((move) => (
-                      <option key={move} value={move}>
-                        {messages.samples.sizedKnightMoves[move]}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
+                <>
+                  <CardNumberInput
+                    label={messages.samples.sizedKnightMoveXLabel}
+                    value={knightMoveX}
+                    onChange={setKnightMoveX}
+                  />
+                  <CardNumberInput
+                    label={messages.samples.sizedKnightMoveYLabel}
+                    value={knightMoveY}
+                    onChange={setKnightMoveY}
+                  />
+                </>
               ) : null}
+            </>
+          ) : sizedKind === "bipartite" ? (
+            <>
+              <CardNumberInput
+                label={messages.samples.sizedBipartiteLeftLabel}
+                value={bipartiteLeft}
+                onChange={setBipartiteLeft}
+              />
+              <CardNumberInput
+                label={messages.samples.sizedBipartiteRightLabel}
+                value={bipartiteRight}
+                onChange={setBipartiteRight}
+              />
             </>
           ) : (
             <CardNumberInput

@@ -31,6 +31,7 @@ import {
   makeScreenshotInputKey,
   resolveLongEdgePx,
   resolvePaddingPx,
+  resolvePngCanvasLayout,
   shouldAcceptScreenshotPreviewRequest,
 } from "./graph-io-screenshot-state";
 import type { ThemeMode } from "../theme/theme";
@@ -61,6 +62,8 @@ export function useGraphIOScreenshot({
     useState<PngExportLongEdgePreset>(DEFAULT_LONG_EDGE_PX);
   const [customLongEdgePx, setCustomLongEdgePxState] =
     useState(DEFAULT_LONG_EDGE_PX);
+  const [canvasWidthPx, setCanvasWidthPx] = useState(1920);
+  const [canvasHeightPx, setCanvasHeightPx] = useState(1080);
   const [paddingPreset, setPaddingPresetState] =
     useState<PngExportPaddingPreset>(DEFAULT_PADDING_PX);
   const [customPaddingPx, setCustomPaddingPxState] =
@@ -73,7 +76,7 @@ export function useGraphIOScreenshot({
   const previewRequestRef = useRef(0);
   const copyResetTimeoutRef = useRef<number | null>(null);
   const downloadResetTimeoutRef = useRef<number | null>(null);
-  const { exportPng } = useGraphCanvasApi();
+  const { exportPng, zoomPercent } = useGraphCanvasApi();
   const solidBackground: "white" | "black" =
     theme === "dark" ? "black" : "white";
   const effectiveBackground: PngExportBackground =
@@ -81,14 +84,19 @@ export function useGraphIOScreenshot({
   const currentPreviewInput = useMemo(
     () => ({
       background: effectiveBackground,
+      canvasHeightPx,
+      canvasWidthPx,
       graphRevision,
       longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
       paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
       scope,
       theme,
+      zoomPercent,
     }),
     [
       customLongEdgePx,
+      canvasHeightPx,
+      canvasWidthPx,
       customPaddingPx,
       effectiveBackground,
       graphRevision,
@@ -96,6 +104,7 @@ export function useGraphIOScreenshot({
       paddingPreset,
       scope,
       theme,
+      zoomPercent,
     ],
   );
   const debouncedPreviewInput = useDebouncedValue(currentPreviewInput, 150);
@@ -138,11 +147,15 @@ export function useGraphIOScreenshot({
 
   const createBlob = ({
     background: exportBackground,
+    canvasHeightPx: exportCanvasHeightPx,
+    canvasWidthPx: exportCanvasWidthPx,
     longEdgePx,
     paddingPx,
     scope: exportScope,
   }: {
     background: PngExportBackground;
+    canvasHeightPx: number;
+    canvasWidthPx: number;
     longEdgePx: number;
     paddingPx: number;
     scope: PngExportScope;
@@ -172,6 +185,10 @@ export function useGraphIOScreenshot({
         addPngPadding(blob, {
           background: exportBackground,
           paddingPx: safePaddingPx,
+          targetWidthPx:
+            exportScope === "natural-fixed" ? exportCanvasWidthPx : undefined,
+          targetHeightPx:
+            exportScope === "natural-fixed" ? exportCanvasHeightPx : undefined,
         }),
       );
   };
@@ -230,6 +247,7 @@ export function useGraphIOScreenshot({
 
       revokePreviewUrl();
       previewUrlRef.current = objectUrl;
+      setDownloadMessage("");
       setPreview({
         height,
         inputKey,
@@ -245,6 +263,12 @@ export function useGraphIOScreenshot({
           requestId,
         )
       ) {
+        if (
+          error instanceof Error &&
+          error.message === "image-export:canvas-too-small"
+        ) {
+          setDownloadMessage(messages.screenshot.canvasTooSmall);
+        }
         setPreview({
           height: null,
           inputKey,
@@ -259,6 +283,8 @@ export function useGraphIOScreenshot({
   const createBlobForAction = () =>
     createBlob({
       background: effectiveBackground,
+      canvasHeightPx,
+      canvasWidthPx,
       longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
       paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
       scope,
@@ -308,7 +334,12 @@ export function useGraphIOScreenshot({
           scheduleCopyReset();
         } catch (downloadError) {
           console.warn("Fallback screenshot download failed", downloadError);
-          markFailed(messages.screenshot.copyFailed);
+          markFailed(
+            downloadError instanceof Error &&
+              downloadError.message === "image-export:canvas-too-small"
+              ? messages.screenshot.canvasTooSmall
+              : messages.screenshot.copyFailed,
+          );
         }
       }
     };
@@ -352,7 +383,10 @@ export function useGraphIOScreenshot({
           error instanceof Error &&
             error.message === IMAGE_EXPORT_ERROR.emptyGraph
             ? messages.screenshot.emptyGraph
-            : messages.screenshot.downloadFailed,
+            : error instanceof Error &&
+                error.message === "image-export:canvas-too-small"
+              ? messages.screenshot.canvasTooSmall
+              : messages.screenshot.downloadFailed,
         ),
       );
   };
@@ -386,6 +420,16 @@ export function useGraphIOScreenshot({
     resetFeedback();
   };
 
+  const setCanvasWidth = (value: number) => {
+    setCanvasWidthPx(value);
+    resetFeedback();
+  };
+
+  const setCanvasHeight = (value: number) => {
+    setCanvasHeightPx(value);
+    resetFeedback();
+  };
+
   const setScope = (nextScope: PngExportScope) => {
     setScopeState(nextScope);
     resetFeedback();
@@ -412,6 +456,8 @@ export function useGraphIOScreenshot({
 
   return {
     background,
+    canvasHeightPx,
+    canvasWidthPx,
     copy,
     copyMessage,
     copyState,
@@ -427,6 +473,8 @@ export function useGraphIOScreenshot({
     previewStale,
     scope,
     setBackground,
+    setCanvasHeightPx: setCanvasHeight,
+    setCanvasWidthPx: setCanvasWidth,
     setCustomLongEdgePx,
     setCustomPaddingPx,
     setScope,
@@ -464,19 +512,36 @@ async function addPngPadding(
   {
     background,
     paddingPx,
+    targetHeightPx,
+    targetWidthPx,
   }: {
     background: PngExportBackground;
     paddingPx: number;
+    targetHeightPx?: number;
+    targetWidthPx?: number;
   },
 ) {
-  if (paddingPx === 0) {
+  if (paddingPx === 0 && !targetWidthPx && !targetHeightPx) {
     return blob;
   }
 
   const image = await createImageBitmap(blob);
+  let layout: ReturnType<typeof resolvePngCanvasLayout>;
+  try {
+    layout = resolvePngCanvasLayout(
+      image.width,
+      image.height,
+      paddingPx,
+      targetWidthPx,
+      targetHeightPx,
+    );
+  } catch (error) {
+    image.close();
+    throw error;
+  }
   const canvas = document.createElement("canvas");
-  canvas.width = image.width + paddingPx * 2;
-  canvas.height = image.height + paddingPx * 2;
+  canvas.width = layout.width;
+  canvas.height = layout.height;
 
   const context = canvas.getContext("2d");
   if (!context) {
@@ -489,7 +554,7 @@ async function addPngPadding(
     context.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  context.drawImage(image, paddingPx, paddingPx);
+  context.drawImage(image, layout.x, layout.y);
   image.close();
 
   return new Promise<Blob>((resolve, reject) => {

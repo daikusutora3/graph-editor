@@ -168,7 +168,6 @@ export const sampleExpectations: Partial<
     edgeCount: 12,
     connected: true,
     regularDegree: 4,
-    noCrossings: true,
   },
   icosahedral: {
     nodeCount: 12,

@@ -4,6 +4,7 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { resolveEdgeCreation } from "../../features/graph-editor/canvas/graph-canvas-edge-creation";
 import { getEdgeCandidateError } from "../../features/graph-editor/canvas/graph-canvas-edge-draft";
+import { rangeSelectionFilterFromModifiers } from "../../features/graph-editor/canvas/range-selection-filter";
 import {
   describeSelection,
   resolveSelectionActions,
@@ -29,6 +30,20 @@ const graph: GraphModel = {
   ],
 };
 const messages = messagesByLocale.en;
+
+const rangeModifiers = (shiftKey: boolean, altKey: boolean) => ({
+  altKey,
+  ctrlKey: true,
+  metaKey: false,
+  shiftKey,
+});
+expect(
+  rangeSelectionFilterFromModifiers(rangeModifiers(false, false)) === "all" &&
+    rangeSelectionFilterFromModifiers(rangeModifiers(true, false)) ===
+      "nodes" &&
+    rangeSelectionFilterFromModifiers(rangeModifiers(false, true)) === "edges",
+  "range selection modifiers should distinguish all, nodes, and edges",
+);
 
 // --- edge creation state machine -------------------------------------------
 const pickSource = resolveEdgeCreation({
