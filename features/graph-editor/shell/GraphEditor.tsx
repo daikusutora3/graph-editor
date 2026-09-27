@@ -21,11 +21,7 @@ import {
 import { useEditorLayoutObserver } from "../ui/chrome/editor-chrome-state";
 import { EditorChrome } from "../ui/chrome/EditorChrome";
 import { I18nProvider, useI18n } from "../i18n/I18nProvider";
-import {
-  APP_NAME,
-  appGuidePaths,
-  appLocaleMetadata,
-} from "@/lib/site-metadata";
+import { APP_NAME, appGuidePaths } from "@/lib/site-metadata";
 import type { Locale } from "../i18n/locale";
 
 export function GraphEditor({ initialLocale }: { initialLocale?: Locale }) {
@@ -50,6 +46,12 @@ function GraphEditorContent() {
 
   return (
     <main className="flex h-dvh min-h-0 flex-col bg-[var(--bg)] text-[var(--text)]">
+      <a
+        href={appGuidePaths[locale]}
+        className="absolute -top-20 left-3 z-[100] inline-flex min-h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow)] focus:top-3 focus:outline-2 focus:outline-offset-2"
+      >
+        {messages.appMenu.guide}
+      </a>
       <div
         ref={rootRef}
         data-layout={layout}
@@ -63,15 +65,6 @@ function GraphEditorContent() {
         ) : null}
       </div>
       <h1 className="sr-only">{APP_NAME}</h1>
-      <footer className="flex min-h-9 flex-none flex-wrap items-center justify-center gap-x-2 border-t border-[var(--hair)] bg-[var(--bg)] px-3 py-1 text-center text-xs text-[var(--text-2)]">
-        <span>{appLocaleMetadata[locale].editorIntro}</span>
-        <a
-          href={appGuidePaths[locale]}
-          className="inline-flex min-h-11 items-center rounded px-2 font-semibold text-[var(--text)] underline underline-offset-2 hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-0 md:px-0"
-        >
-          {messages.appMenu.guide}
-        </a>
-      </footer>
     </main>
   );
 }

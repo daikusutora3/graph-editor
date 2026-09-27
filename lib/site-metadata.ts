@@ -21,7 +21,6 @@ export const appLocaleMetadata = {
     description:
       "辺リストや隣接行列を貼るだけでグラフを描画。自動配置、辺の曲げ、色分け、PNG・JSON・TikZ（TeX）書き出しに対応した無料のグラフ理論エディタです。",
     headline: "グラフ理論の図を、ブラウザで",
-    editorIntro: "辺リスト・隣接行列からグラフを描画。",
     tagline:
       "辺リストを貼る、サンプルから始める、直接描く。競技プログラミングや講義資料のためのグラフエディタです。",
     features: [
@@ -48,7 +47,6 @@ export const appLocaleMetadata = {
     description:
       "Paste an edge list or adjacency matrix and get a graph instantly. Free browser-based graph theory editor with automatic layouts, edge bending, colours, and PNG/JSON/TikZ (TeX) export.",
     headline: "Graph theory diagrams, in the browser",
-    editorIntro: "Draw graphs from edge lists and adjacency matrices.",
     tagline:
       "Paste an edge list, start from a sample, or draw directly. Built for competitive programming and lecture material.",
     features: [
@@ -75,7 +73,6 @@ export const appLocaleMetadata = {
     description:
       "粘贴边列表或邻接矩阵即可生成图。免费的浏览器图论编辑器，支持自动布局、边弯曲、着色以及 PNG/JSON/TikZ（TeX）导出。",
     headline: "在浏览器中绘制图论图形",
-    editorIntro: "用边列表和邻接矩阵绘制图。",
     tagline: "粘贴边列表、从示例开始，或直接绘制。适合算法竞赛和课程资料。",
     features: [
       "自动识别边列表、邻接表、邻接矩阵和父数组",
