@@ -15,6 +15,9 @@ export type GuideCopy = {
   intro: string;
   openApp: string;
   breadcrumbHome: string;
+  onThisPage: string;
+  languages: string;
+  languageName: string;
   sections: GuideSection[];
   faqTitle: string;
   faq: { question: string; answer: string }[];
@@ -64,6 +67,9 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       "Graph Editor は、辺リストや隣接行列を貼るだけでグラフ理論の図を描けるブラウザアプリです。このページでは入力形式から書き出しまでの流れを説明します。",
     openApp: "エディタに戻る",
     breadcrumbHome: "Graph Editor",
+    onThisPage: "このページの内容",
+    languages: "ガイドの言語",
+    languageName: "日本語",
     sections: [
       {
         title: "グラフを読み込む",
@@ -146,6 +152,9 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       "Graph Editor turns an edge list or adjacency matrix into a graph theory diagram in the browser. This page walks through the flow from input to export.",
     openApp: "Back to editor",
     breadcrumbHome: "Graph Editor",
+    onThisPage: "On this page",
+    languages: "Guide language",
+    languageName: "English",
     sections: [
       {
         title: "Loading a graph",
@@ -230,6 +239,9 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       "Graph Editor 可以在浏览器中把边列表或邻接矩阵变成图论图形。本页介绍从输入到导出的完整流程。",
     openApp: "返回编辑器",
     breadcrumbHome: "Graph Editor",
+    onThisPage: "本页内容",
+    languages: "指南语言",
+    languageName: "简体中文",
     sections: [
       {
         title: "载入图",
