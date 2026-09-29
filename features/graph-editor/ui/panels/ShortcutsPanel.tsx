@@ -25,7 +25,7 @@ export function ShortcutsPanel({ platform }: { platform: ShortcutPlatform }) {
         [items.undo, `${mod}Z`],
         [items.redo, `${shift}${mod}Z`],
         [items.selectAll, `${mod}A`],
-        [items.rangeAll, `${mod}Drag`],
+        [items.rangeAll, `${shift}Drag`],
         [items.rangeNodes, `${shift}${mod}Drag`],
         [items.rangeEdges, `Alt+${mod}Drag`],
         [items.copy, `${mod}C`],

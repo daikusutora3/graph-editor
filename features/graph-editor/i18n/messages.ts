@@ -533,7 +533,7 @@ const ja: Messages = {
       settings: "設定",
     },
     modes: {
-      select: { label: "選択", tooltip: "頂点や辺を選択・移動" },
+      select: { label: "選択", tooltip: "Shift+ドラッグで範囲選択" },
       node: { label: "頂点", tooltip: "キャンバスに頂点を追加" },
       edge: { label: "辺", tooltip: "2つの頂点を辺で接続" },
     },
@@ -859,7 +859,7 @@ const ja: Messages = {
     edgeHintTarget: (label: string) =>
       `頂点 ${label} → 終点をクリック（Esc で解除）`,
     selectHint:
-      "ドラッグで移動 · ダブルクリックでラベル · 右クリックでメニュー · Shift+ドラッグで範囲選択",
+      "頂点ドラッグで移動 · 空白ドラッグで画面移動 · Shift+ドラッグで範囲選択",
     clearedToast: (shortcut: string) =>
       `グラフをクリアしました（${shortcut} で戻す）`,
     selection: {
@@ -1002,7 +1002,7 @@ const en: Messages = {
       settings: "Settings",
     },
     modes: {
-      select: { label: "Select", tooltip: "Select and move nodes or edges" },
+      select: { label: "Select", tooltip: "Shift+drag to box select" },
       node: { label: "Node", tooltip: "Add nodes on the canvas" },
       edge: { label: "Edge", tooltip: "Connect two nodes with an edge" },
     },
@@ -1329,7 +1329,7 @@ const en: Messages = {
     edgeHintTarget: (label: string) =>
       `Node ${label} → click the target (Esc to cancel)`,
     selectHint:
-      "Drag to move · Double-click to edit the label · Right-click for the menu · Shift+drag to select many",
+      "Drag nodes to move · Drag empty space to pan · Shift+drag to box select",
     clearedToast: (shortcut: string) => `Graph cleared (${shortcut} to undo)`,
     selection: {
       node: (label: string) => `Node ${label}`,
@@ -1471,7 +1471,7 @@ const zhHans: Messages = {
       settings: "设置",
     },
     modes: {
-      select: { label: "选择", tooltip: "选择并移动顶点或边" },
+      select: { label: "选择", tooltip: "Shift+拖动框选" },
       node: { label: "顶点", tooltip: "在画布上添加顶点" },
       edge: { label: "边", tooltip: "连接两个顶点" },
     },
@@ -1780,7 +1780,7 @@ const zhHans: Messages = {
     nodeHintConnect: "切换到边模式（E）连接顶点",
     edgeHintStart: "点击起点顶点",
     edgeHintTarget: (label: string) => `顶点 ${label} → 点击终点（Esc 取消）`,
-    selectHint: "拖动移动 · 双击编辑标签 · 右键打开菜单 · Shift+拖动框选",
+    selectHint: "拖动顶点可移动 · 拖动空白处可平移画布 · Shift+拖动框选",
     clearedToast: (shortcut: string) => `已清空图（${shortcut} 撤销）`,
     selection: {
       node: (label: string) => `顶点 ${label}`,
