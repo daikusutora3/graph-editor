@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  BookOpen,
   ChevronDown,
   ExternalLink,
   PenTool,
@@ -11,6 +12,7 @@ import {
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { appGuidePaths } from "@/lib/site-metadata";
 
 import type { GraphModel } from "../../core/graph/model";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -50,7 +52,7 @@ export function EmptyState({
   onOpenPaste: () => void;
   onOpenSamples: () => void;
 }) {
-  const { messages } = useI18n();
+  const { locale, messages } = useI18n();
   const authorRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -212,6 +214,16 @@ export function EmptyState({
             ))}
           </div>
         </div>
+        <a
+          href={appGuidePaths[locale]}
+          className={cn(
+            "inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[var(--text-2)] underline-offset-4 transition-colors hover:text-[var(--text)] hover:underline",
+            focusRing,
+          )}
+        >
+          <BookOpen className="size-4" aria-hidden="true" />
+          {messages.appMenu.guide}
+        </a>
       </div>
     </div>
   );

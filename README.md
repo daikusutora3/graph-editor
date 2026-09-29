@@ -20,6 +20,8 @@ curated sample, adjust the layout, and export the graph as text data or a PNG.
 
 Public app: <https://graph-editor.daikusutora3.workers.dev>
 
+User guide: <https://graph-editor.daikusutora3.workers.dev/en/guide>
+
 ## Highlights
 
 - **Fast graph input**: paste edge lists, adjacency lists, or adjacency
@@ -34,9 +36,11 @@ Public app: <https://graph-editor.daikusutora3.workers.dev>
 - **Export options**: copy or save edge lists, adjacency lists, adjacency
   matrices, TikZ (TeX), PNG images with background and padding controls, and lossless
   JSON that keeps positions, colours, and edge bends.
-- **User guide**: `/guide` (also `/en/guide`, `/zh-hans/guide`) documents the
-  formats, layouts, shortcuts, and FAQ; `/llms.txt` summarises the app for
-  AI assistants.
+- **User guide**: documents the formats, layouts, shortcuts, and FAQ in
+  [Japanese](https://graph-editor.daikusutora3.workers.dev/guide),
+  [English](https://graph-editor.daikusutora3.workers.dev/en/guide), and
+  [Simplified Chinese](https://graph-editor.daikusutora3.workers.dev/zh-hans/guide).
+- **AI summary**: `/llms.txt` summarises the app for AI assistants.
 - **Multilingual UI**: Japanese, English, and Simplified Chinese are supported
   in the app.
 

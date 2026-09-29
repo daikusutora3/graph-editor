@@ -16,6 +16,8 @@ Graph Editor 是一个 local-first 的浏览器应用，用来把图论想法快
 
 公开地址: <https://graph-editor.daikusutora3.workers.dev>
 
+使用指南: <https://graph-editor.daikusutora3.workers.dev/zh-hans/guide>
+
 ## 亮点
 
 - **快速输入**: 支持粘贴边列表、邻接表和邻接矩阵，并会自动识别常见格式。

@@ -19,6 +19,8 @@ local-first なブラウザアプリです。問題文の辺リストを貼り�
 
 公開URL: <https://graph-editor.daikusutora3.workers.dev>
 
+使い方ガイド: <https://graph-editor.daikusutora3.workers.dev/guide>
+
 ## 特徴
 
 - **すばやい入力**: 辺リスト、隣接リスト、隣接行列を貼り付けられます。よくある形式は自動検出します。
