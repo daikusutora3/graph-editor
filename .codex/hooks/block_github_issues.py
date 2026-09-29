@@ -47,6 +47,37 @@ ISSUE_BROWSER_BIND = re.compile(
 ISSUE_BROWSER_READ = re.compile(
     r"\s*await\s+(?:issueTab\.getAXState|cua\.getState)\(\s*\);?\s*"
 )
+GSC_BROWSER_BIND = re.compile(
+    r"\s*let\s+gscTab\s*=\s*await\s+cua\.getTab\(\s*"
+    r"\{\s*url:\s*['\"]https://search\.google\.com/search-console/index\?"
+    r"resource_id=https%3A%2F%2Fgraph-editor\.daikusutora3\.workers\.dev%2F"
+    r"&hl=ja['\"]\s*\}\s*,\s*\{\s*browser:\s*['\"]2['\"]\s*\}"
+    r"\s*\);?\s*"
+)
+GSC_BROWSER_READ = re.compile(
+    r"\s*await\s+gscTab\.(?:getAXState|getScreenshot|getAXStateAndScreenshot)"
+    r"\(\s*\);?\s*"
+)
+GSC_PERFORMANCE_OPEN = re.compile(
+    r"\s*let\s+perfTab\s*=\s*await\s+cua\.createBrowserTab\(\s*['\"]2['\"]\s*,\s*"
+    r"['\"]https://search\.google\.com/search-console/performance/search-analytics\?"
+    r"resource_id=https%3A%2F%2Fgraph-editor\.daikusutora3\.workers\.dev%2F"
+    r"['\"]\s*\);?\s*"
+)
+GSC_PERFORMANCE_READ = re.compile(
+    r"\s*await\s+perfTab\.(?:getAXState|getScreenshot|getAXStateAndScreenshot)"
+    r"\(\s*\);?\s*"
+)
+GSC_SITEMAP_OPEN = re.compile(
+    r"\s*let\s+sitemapTab\s*=\s*await\s+cua\.createBrowserTab\(\s*['\"]2['\"]\s*,\s*"
+    r"['\"]https://search\.google\.com/search-console/sitemaps\?"
+    r"resource_id=https%3A%2F%2Fgraph-editor\.daikusutora3\.workers\.dev%2F"
+    r"['\"]\s*\);?\s*"
+)
+GSC_SITEMAP_READ = re.compile(
+    r"\s*await\s+sitemapTab\.(?:getAXState|getScreenshot|getAXStateAndScreenshot)"
+    r"\(\s*\);?\s*"
+)
 
 
 def _compact_json(value: Any) -> str:
@@ -84,6 +115,12 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
             ISSUE_BROWSER_OPEN.fullmatch(code)
             or ISSUE_BROWSER_BIND.fullmatch(code)
             or ISSUE_BROWSER_READ.fullmatch(code)
+            or GSC_BROWSER_BIND.fullmatch(code)
+            or GSC_BROWSER_READ.fullmatch(code)
+            or GSC_PERFORMANCE_OPEN.fullmatch(code)
+            or GSC_PERFORMANCE_READ.fullmatch(code)
+            or GSC_SITEMAP_OPEN.fullmatch(code)
+            or GSC_SITEMAP_READ.fullmatch(code)
         )
 
     # Dedicated GitHub Issue tools are unambiguous. This covers MCP tools such
@@ -137,6 +174,9 @@ def self_test() -> None:
         ("mcp__github__api", {"issue_number": 12}),
         ("browser_navigate", {"url": "https://github.com/owner/repo/issues"}),
         ("mcp__cua_repl__js", {"code": "await issueTab.click(1);"}),
+        ("mcp__cua_repl__js", {"code": "await gscTab.click(1);"}),
+        ("mcp__cua_repl__js", {"code": "await perfTab.click(1);"}),
+        ("mcp__cua_repl__js", {"code": "await sitemapTab.click(1);"}),
         ("mcp__cua_repl__js", {"code": "await cua.createBrowserTab('iab', 'https://github.com/daikusutora3/graph-editor/issues', { visible: true }); await issueTab.click(1);"}),
     ]
     allowed = [
@@ -149,6 +189,12 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "let issueTab = await cua.createBrowserTab('iab', 'https://github.com/daikusutora3/graph-editor/issues', { visible: true });"}),
         ("mcp__cua_repl__js", {"code": "issueTab = await cua.getTab({ url: 'https://github.com/daikusutora3/graph-editor/issues/41' }, { browser: 'iab' });"}),
         ("mcp__cua_repl__js", {"code": "await issueTab.getAXState();"}),
+        ("mcp__cua_repl__js", {"code": "let gscTab = await cua.getTab({ url: 'https://search.google.com/search-console/index?resource_id=https%3A%2F%2Fgraph-editor.daikusutora3.workers.dev%2F&hl=ja' }, { browser: '2' });"}),
+        ("mcp__cua_repl__js", {"code": "await gscTab.getAXState();"}),
+        ("mcp__cua_repl__js", {"code": "let perfTab = await cua.createBrowserTab('2', 'https://search.google.com/search-console/performance/search-analytics?resource_id=https%3A%2F%2Fgraph-editor.daikusutora3.workers.dev%2F');"}),
+        ("mcp__cua_repl__js", {"code": "await perfTab.getAXState();"}),
+        ("mcp__cua_repl__js", {"code": "let sitemapTab = await cua.createBrowserTab('2', 'https://search.google.com/search-console/sitemaps?resource_id=https%3A%2F%2Fgraph-editor.daikusutora3.workers.dev%2F');"}),
+        ("mcp__cua_repl__js", {"code": "await sitemapTab.getAXState();"}),
     ]
 
     for tool_name, tool_input in blocked:

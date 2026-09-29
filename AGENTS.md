@@ -11,8 +11,14 @@ opening Issues and reading their descriptions and comments.
 All GitHub Issue operations through other interfaces remain prohibited,
 including GitHub connectors, `gh`, REST, GraphQL, and scripts. In-app browser
 calls are limited to opening this repository's Issue URLs and reading the
-displayed state; all other computer-use calls are blocked by the hook. In
-particular, agents must not:
+displayed state. Chrome computer-use calls may also read an already-open
+Google Search Console tab for this site's property
+(`https://graph-editor.daikusutora3.workers.dev/`). This exception permits
+binding that tab, opening this property's fixed search-performance and sitemap
+report URLs, and reading their displayed state only; it does not permit clicks,
+other navigation, filters, settings changes, sitemap submissions, or indexing
+requests. All other computer-use calls are blocked by the hook. In particular,
+agents must not:
 
 - creating, editing, reopening, closing, deleting, transferring, pinning, or
   locking issues;
