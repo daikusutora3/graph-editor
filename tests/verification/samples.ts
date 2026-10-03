@@ -8,6 +8,10 @@ import {
   type SampleGraphKind,
 } from "../../features/graph-editor/samples";
 import { sampleExpectations } from "./sample-expectations";
+import {
+  createPopularSampleGraph,
+  popularSampleGraphKinds,
+} from "../../features/graph-editor/samples/basic-samples";
 import type {
   GraphModel,
   NodeId,
@@ -56,6 +60,22 @@ for (const definition of sampleGraphDefinitions) {
 }
 
 const models = new Map<SampleGraphKind, GraphModel>();
+
+for (const settings of [
+  {},
+  { directed: true, weighted: true, indexBase: 0 as const },
+  { allowSelfLoops: true, allowMultiEdges: true, autoEdgeRouting: true },
+  { showNodeLabels: false, arrowScale: 2, weighted: true },
+]) {
+  for (const kind of popularSampleGraphKinds) {
+    if (
+      JSON.stringify(createPopularSampleGraph(kind, settings)) !==
+      JSON.stringify(createSampleGraph(kind, settings))
+    ) {
+      fail(`${kind}: starter sample differs from the gallery sample`);
+    }
+  }
+}
 
 for (const kind of sampleGraphKinds) {
   const model = createSampleGraph(kind, {

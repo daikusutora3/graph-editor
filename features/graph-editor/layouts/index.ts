@@ -1,5 +1,6 @@
 export {
   createManualLayoutCommand,
+  createManualLayoutTask,
   layoutDefinitions,
   manualLayoutDisabledReasonCode,
   type LayoutDefinition,

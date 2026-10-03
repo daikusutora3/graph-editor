@@ -70,7 +70,11 @@ import {
   ZoomBadge,
   ZoomControls,
 } from "./GraphCanvasOverlays";
-import { useGraphCanvasApi } from "./GraphCanvasProvider";
+import {
+  useGraphCanvasApi,
+  useGraphCanvasFitRequest,
+} from "./GraphCanvasProvider";
+import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 
 /** Graph px added per "bend" menu action. */
 const BEND_STEP_PX = 48;
@@ -105,8 +109,9 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const setSelection = useSetAtom(selectionAtom);
   const executeCommand = useSetAtom(executeCommandAtom);
   const deleteSelection = useSetAtom(deleteSelectionAtom);
-  const { registerGraphCanvasApi, fitRequest, completeFit, notifyZoomPercent } =
+  const { registerGraphCanvasApi, completeFit, notifyZoomPercent } =
     useGraphCanvasApi();
+  const fitRequest = useGraphCanvasFitRequest();
 
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
@@ -339,6 +344,19 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     setContextMenuTarget,
     syncContextSelection,
   });
+  const handleEdgeNodePointerEnter = useCallback((node: NodeHitbox) => {
+    setEdgeCursor({ x: node.x, y: node.y });
+    setEdgeHoverNodeId(node.id);
+  }, []);
+  const handleEdgeNodePointerLeave = useCallback((nodeId: NodeId) => {
+    setEdgeCursor(null);
+    setEdgeHoverNodeId((current) => (current === nodeId ? null : current));
+  }, []);
+  const handleEdgeNodeContextMenu = useCallback(
+    (node: NodeHitbox) =>
+      openNodeContextMenu(node.id, { x: node.x, y: node.y }),
+    [openNodeContextMenu],
+  );
 
   useCytoscapeInteractionEvents({
     cyRef,
@@ -616,20 +634,10 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             <EdgeNodeHitboxes
               nodes={nodeHitboxes}
               sourceNodeId={edgeDraft.sourceNodeId}
-              onPointerEnter={(node) => {
-                setEdgeCursor({ x: node.x, y: node.y });
-                setEdgeHoverNodeId(node.id);
-              }}
-              onPointerLeave={(nodeId) => {
-                setEdgeCursor(null);
-                setEdgeHoverNodeId((current) =>
-                  current === nodeId ? null : current,
-                );
-              }}
+              onPointerEnter={handleEdgeNodePointerEnter}
+              onPointerLeave={handleEdgeNodePointerLeave}
               onConnect={drawEdgeFromNode}
-              onContextMenu={(node) =>
-                openNodeContextMenu(node.id, { x: node.x, y: node.y })
-              }
+              onContextMenu={handleEdgeNodeContextMenu}
             />
           ) : null}
           {mode === "select" ? (

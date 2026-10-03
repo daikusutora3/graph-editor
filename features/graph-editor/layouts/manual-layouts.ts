@@ -3,7 +3,7 @@ import { layoutScc } from "./layout-algorithms";
 import { layoutGrid } from "./layout-algorithms";
 import { layoutConcentric } from "./layout-algorithms";
 import { layoutBfs } from "./layout-algorithms";
-import { layoutForce } from "./layout-algorithms";
+import { createForceLayoutTask, layoutForce } from "./layout-algorithms";
 import { layoutSpread } from "./layout-algorithms";
 import { layoutTree } from "./layout-algorithms";
 import { layoutDag } from "./layout-algorithms";
@@ -20,7 +20,7 @@ import {
   orderedNodeIds,
 } from "../core/graph/graph-analysis";
 import {
-  ensureNodeClearance,
+  createNodeClearanceTask,
   layoutCircle,
   LAYOUT_CIRCLE_MIN_RADIUS,
 } from "./layout-geometry";
@@ -143,17 +143,31 @@ export function createManualLayoutCommand(
   kind: LayoutKind,
   rootNodeId?: NodeId,
 ) {
-  const after = createLayoutPositions(model, kind, rootNodeId);
+  const task = createManualLayoutTask(model, kind, rootNodeId);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+export function* createManualLayoutTask(
+  model: GraphModel,
+  kind: LayoutKind,
+  rootNodeId?: NodeId,
+): Generator<void, ReturnType<typeof createMoveNodesCommand>> {
+  const after = yield* createLayoutPositionsTask(model, kind, rootNodeId);
 
   return createMoveNodesCommand(`Apply ${kind} layout`, after);
 }
 
-function createLayoutPositions(
+function* createLayoutPositionsTask(
   model: GraphModel,
   kind: LayoutKind,
   rootNodeId?: NodeId,
 ) {
-  const positions = getLayoutRuntime(kind).positions(model, rootNodeId);
+  const positions =
+    kind === "force"
+      ? yield* createForceLayoutTask(model)
+      : getLayoutRuntime(kind).positions(model, rootNodeId);
 
   if (kind === "spread") return positions;
 
@@ -165,7 +179,7 @@ function createLayoutPositions(
     return positions;
   }
 
-  return ensureNodeClearance(
+  return yield* createNodeClearanceTask(
     positions,
     model.nodes.map((node) => ({
       ...node,

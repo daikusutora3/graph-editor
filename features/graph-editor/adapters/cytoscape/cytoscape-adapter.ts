@@ -236,6 +236,8 @@ function interactiveRerouteEdgeIds(
       movedNodeIds.has(edge.source) ||
       movedNodeIds.has(edge.target) ||
       edge.source === edge.target ||
+      previous?.status === "pending" ||
+      previous?.status === "unresolved" ||
       (previous?.controlPointWeights.length ?? 0) > 1 ||
       (previous?.bowPx ?? 0) !== 0
     ) {

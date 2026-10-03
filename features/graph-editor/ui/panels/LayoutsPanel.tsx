@@ -34,11 +34,13 @@ export const layoutPanelOrder: readonly LayoutKind[] = [
 
 export function LayoutsPanel({
   graph,
+  pending = false,
   showTitle = false,
   onApplyLayout,
   onToggleOffsetEdges,
 }: {
   graph: GraphModel;
+  pending?: boolean;
   /** Show a section heading; used when the panel is stacked with others. */
   showTitle?: boolean;
   onApplyLayout: (kind: LayoutKind) => void;
@@ -90,6 +92,15 @@ export function LayoutsPanel({
           );
         })}
       </div>
+      {pending ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-control text-[var(--muted)]"
+        >
+          {messages.chrome.layoutPending}
+        </p>
+      ) : null}
       <OptionToggle
         checked={graph.settings.autoEdgeRouting}
         icon={<GitCompareArrows className="size-icon-sm" aria-hidden="true" />}

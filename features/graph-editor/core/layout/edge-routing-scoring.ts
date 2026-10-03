@@ -315,7 +315,7 @@ export function scoreCurveInstability(
   edge: GraphEdge,
   options: ResolvedEdgeRoutingOptions,
 ) {
-  const previous = options.previousMeta.get(edge.id);
+  const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
 
   if (!previous) {
     return 0;

@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { memo, useId } from "react";
 
 import type { SampleGraphKind } from "../../samples/sample-graphs";
 import type { EdgeId, GraphModel } from "../../core/graph/model";
@@ -16,7 +16,7 @@ type SampleGraphPreviewProps = {
   className?: string;
 };
 
-export function SampleGraphPreview({
+export const SampleGraphPreview = memo(function SampleGraphPreview({
   model,
   sampleKind,
   width = 132,
@@ -168,7 +168,7 @@ export function SampleGraphPreview({
       })}
     </svg>
   );
-}
+});
 
 export function createPreviewEdgePath({
   directed,

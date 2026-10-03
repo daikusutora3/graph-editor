@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 
-import { useRef } from "react";
+import { memo, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ type EdgeNodeHitboxesProps = {
   onPointerLeave: (nodeId: NodeId) => void;
 };
 
-export function EdgeNodeHitboxes({
+export const EdgeNodeHitboxes = memo(function EdgeNodeHitboxes({
   nodes,
   sourceNodeId,
   onConnect,
@@ -104,7 +104,7 @@ export function EdgeNodeHitboxes({
       })}
     </>
   );
-}
+});
 
 type SelectEdgeHitboxesProps = {
   selectedEdgeIds: ReadonlySet<EdgeId>;
