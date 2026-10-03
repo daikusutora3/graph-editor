@@ -4,7 +4,10 @@ import { IMAGE_EXPORT_ERROR } from "../../adapters/cytoscape/graph-canvas-viewpo
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
+import {
+  useGraphCanvasApi,
+  useGraphCanvasZoomPercent,
+} from "../../canvas/GraphCanvasProvider";
 import { EXPORT_BACKGROUND_COLORS } from "../../adapters/cytoscape/graph-canvas-viewport";
 import {
   downloadBlob,
@@ -76,7 +79,8 @@ export function useGraphIOScreenshot({
   const previewRequestRef = useRef(0);
   const copyResetTimeoutRef = useRef<number | null>(null);
   const downloadResetTimeoutRef = useRef<number | null>(null);
-  const { exportPng, zoomPercent } = useGraphCanvasApi();
+  const { exportPng } = useGraphCanvasApi();
+  const zoomPercent = useGraphCanvasZoomPercent(previewEnabled);
   const solidBackground: "white" | "black" =
     theme === "dark" ? "black" : "white";
   const effectiveBackground: PngExportBackground =

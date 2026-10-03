@@ -7,6 +7,8 @@ import cytoscape, { type Core } from "cytoscape";
 
 import {
   createGraphCanvasStylesheet,
+  computeCytoscapeEdgeRoutingMeta,
+  createCytoscapeRoutingTask,
   graphModelToCytoscapeElements,
   syncCytoscapeEdgeRoutingData,
   type GraphCanvasPalette,
@@ -34,6 +36,7 @@ verifyDiffSyncPreservesTransientClasses();
 verifyDiffSyncCanSkipDraggedNodePositions();
 verifyEdgeTopologyChangesAreRecreated();
 verifyEdgeRoutingCanFollowDraggedNodePositions();
+verifyInteractiveRoutingRechecksDepartedObstacles();
 verifySelfLoopRoutingCanFollowDraggedNodePositions();
 verifyEdgeRoutingSyncPreservesModelData();
 verifyEdgeRoutingSyncCanRestorePreviewData();
@@ -257,6 +260,89 @@ function verifyEdgeRoutingCanFollowDraggedNodePositions() {
     expect(
       initialBow !== edge.data("bow") && edge.data("bow") === 0,
       "edge routing preview should use current Cytoscape node positions during drag",
+    );
+  } finally {
+    cy.destroy();
+  }
+}
+
+function verifyInteractiveRoutingRechecksDepartedObstacles() {
+  const base = createEmptyGraphModel();
+  const graph: GraphModel = {
+    ...base,
+    settings: { ...base.settings, autoEdgeRouting: true },
+    nodes: [
+      { id: "a", order: 0, label: "A", x: 0, y: 0 },
+      { id: "b", order: 1, label: "B", x: 200, y: 0 },
+      { id: "c", order: 2, label: "C", x: 100, y: 0 },
+    ],
+    edges: [{ id: "ab", source: "a", target: "b", routing: { bowPx: 0 } }],
+  };
+  const cy = createCy(graph);
+  const movedNodeIds = new Set(["c"]);
+  const route = (
+    model: GraphModel,
+    previousMeta: ReturnType<typeof computeCytoscapeEdgeRoutingMeta>,
+  ) => {
+    const task = createCytoscapeRoutingTask(
+      cy,
+      model,
+      { mode: "quality" },
+      {
+        movedNodeIds,
+        previousMeta,
+      },
+    );
+    let step = task.next();
+    while (!step.done) step = task.next();
+    return step.value;
+  };
+
+  try {
+    const obstructed = computeCytoscapeEdgeRoutingMeta(graph, {
+      mode: "quality",
+    });
+    expect(
+      obstructed.get("ab")?.status === "unresolved",
+      "a manually straight edge through another node should be unresolved",
+    );
+    cy.getElementById("c").position({ x: 100, y: 300 });
+    const departed = route(graph, obstructed);
+    expect(
+      departed.get("ab")?.status === "ready" && departed.get("ab")?.bowPx === 0,
+      "a departed obstacle should clear the status without changing the manual straight route",
+    );
+
+    // A completed stale pass can seed the next drag pass, so the previous
+    // obstacle position need not equal the model's initial position.
+    const initialClearGraph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === "c" ? { ...node, y: 300 } : node,
+      ),
+    };
+    cy.getElementById("c").position({ x: 100, y: 0 });
+    const intermediate = route(initialClearGraph, departed);
+    expect(
+      intermediate.get("ab")?.status === "unresolved",
+      "moving an obstacle onto a manual straight edge should mark it unresolved",
+    );
+    cy.getElementById("c").position({ x: 100, y: 300 });
+    const clearAgain = route(initialClearGraph, intermediate);
+    expect(
+      clearAgain.get("ab")?.status === "ready",
+      "an unresolved intermediate result should be rechecked when both initial and current positions are far from the edge",
+    );
+    const pending = new Map(
+      [...clearAgain].map(([id, meta]) => [
+        id,
+        { ...meta, status: "pending" as const },
+      ]),
+    );
+    cy.getElementById("c").position({ x: 100, y: 400 });
+    expect(
+      route(initialClearGraph, pending).get("ab")?.status === "ready",
+      "an unfinished intermediate route should also be rechecked outside the moved obstacle's proximity",
     );
   } finally {
     cy.destroy();

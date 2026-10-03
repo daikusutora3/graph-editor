@@ -14,6 +14,7 @@ import type {
   GraphEdge,
   GraphModel,
 } from "../../features/graph-editor/core/graph/model";
+import { estimateNodeWidth } from "../../features/graph-editor/core/graph/node-size";
 import { edgeCurveMidpoint } from "../../features/graph-editor/core/layout/edge-route-geometry";
 import {
   layoutLine,
@@ -413,8 +414,90 @@ for (const route of computeEdgeRouting(obstructedGraph).values()) {
 }
 
 verifyManualRoutingHistoryAndStorage();
+verifyRoutingGeometryWork();
+verifyParallelRoutingHistoryWork();
 
 finish();
+
+function verifyRoutingGeometryWork() {
+  const label = "長いラベル".repeat(20);
+  let labelReads = 0;
+  const graph: GraphModel = {
+    ...graphFixture([]),
+    nodes: Array.from({ length: 30 }, (_, index) => ({
+      id: `n${index}`,
+      order: index,
+      get label() {
+        labelReads++;
+        return label;
+      },
+      x: (index % 10) * 90,
+      y: Math.floor(index / 10) * 90,
+    })),
+    edges: Array.from({ length: 60 }, (_, index) => ({
+      id: `e${index}`,
+      source: `n${index % 30}`,
+      target: `n${(index + 1) % 30}`,
+    })),
+  };
+  const routes = computeEdgeRouting(graph);
+  expect(
+    labelReads <= graph.nodes.length * 4,
+    "routing should read long node labels a bounded number of times per node",
+  );
+  const measured = {
+    ...graph,
+    nodes: graph.nodes.map((node) => ({
+      ...node,
+      measuredWidth: estimateNodeWidth(label),
+    })),
+  };
+  expect(
+    routingSignature(routes) === routingSignature(computeEdgeRouting(measured)),
+    "resolving geometry once should preserve routes with estimated node widths",
+  );
+  expect(
+    graph.nodes.every((node) => !("measuredWidth" in node)),
+    "routing should not add transient widths to the editable model",
+  );
+}
+
+function verifyParallelRoutingHistoryWork() {
+  const graph: GraphModel = {
+    ...graphFixture([]),
+    nodes: Array.from({ length: 40 }, (_, index) => ({
+      id: `n${index}`,
+      label: String(index),
+      order: index,
+      x: (index % 10) * 90,
+      y: Math.floor(index / 10) * 90,
+    })),
+    edges: Array.from({ length: 200 }, (_, index) => ({
+      id: `e${index}`,
+      // Include both directions so canonical orientation and lane centering
+      // are exercised together.
+      source: `n${index % 2 ? (index + 1) % 40 : index % 40}`,
+      target: `n${index % 2 ? index % 40 : (index + 1) % 40}`,
+    })),
+  };
+  const previousMeta = computeEdgeRouting(graph);
+  const before = routingSignature(previousMeta);
+  let fullMapReads = 0;
+  const iterator = previousMeta[Symbol.iterator].bind(previousMeta);
+  previousMeta[Symbol.iterator] = () => {
+    fullMapReads++;
+    return iterator();
+  };
+  computeEdgeRouting(graph, { previousMeta });
+  expect(
+    fullMapReads <= 1,
+    "parallel routing should not copy the entire route history for each group",
+  );
+  expect(
+    routingSignature(previousMeta) === before,
+    "canonical orientation and lane centering should not mutate previous routes",
+  );
+}
 
 function verifyManualRoutingHistoryAndStorage() {
   const store = createStore();

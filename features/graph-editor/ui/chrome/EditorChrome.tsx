@@ -20,6 +20,7 @@ import {
 import type { LayoutKind } from "../../layouts";
 import {
   applyManualLayoutAtom,
+  layoutPendingAtom,
   clearGraphAtom,
   reverseAllDirectedEdgesAtom,
   setEditorModeAtom,
@@ -91,6 +92,7 @@ export function EditorChrome() {
   const undo = useSetAtom(undoAtom);
   const redo = useSetAtom(redoAtom);
   const applyManualLayout = useSetAtom(applyManualLayoutAtom);
+  const layoutPending = useAtomValue(layoutPendingAtom);
   const updateGraphSettings = useSetAtom(updateGraphSettingsAtom);
   const reverseAllDirectedEdges = useSetAtom(reverseAllDirectedEdgesAtom);
   const clearGraph = useSetAtom(clearGraphAtom);
@@ -319,6 +321,7 @@ export function EditorChrome() {
           <EditorPanelShell {...shellProps} title={messages.chrome.layouts}>
             <LayoutsPanel
               graph={graph}
+              pending={layoutPending}
               onApplyLayout={applyLayout}
               onToggleOffsetEdges={toggleOffsetEdges}
             />
@@ -343,6 +346,7 @@ export function EditorChrome() {
           <EditorPanelShell {...shellProps} title={messages.chrome.menu}>
             <LayoutsPanel
               graph={graph}
+              pending={layoutPending}
               showTitle
               onApplyLayout={applyLayout}
               onToggleOffsetEdges={toggleOffsetEdges}

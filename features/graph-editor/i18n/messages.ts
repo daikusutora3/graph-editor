@@ -228,6 +228,7 @@ type Messages = {
     theme: string;
     shortcuts: string;
     offsetEdges: string;
+    layoutPending: string;
     graphType: string;
     display: string;
     clear: string;
@@ -801,6 +802,7 @@ const ja: Messages = {
     theme: "テーマ",
     shortcuts: "キーボードショートカット",
     offsetEdges: "辺をずらして重なりを避ける",
+    layoutPending: "配置を計算しています…",
     graphType: "グラフの種類",
     display: "表示",
     resetHints: "ヒントをもう一度表示",
@@ -1271,6 +1273,7 @@ const en: Messages = {
     theme: "Theme",
     shortcuts: "Keyboard shortcuts",
     offsetEdges: "Offset overlapping edges",
+    layoutPending: "Calculating layout…",
     graphType: "Graph type",
     display: "Display",
     resetHints: "Show hints again",
@@ -1734,6 +1737,7 @@ const zhHans: Messages = {
     theme: "主题",
     shortcuts: "键盘快捷键",
     offsetEdges: "错开重叠的边",
+    layoutPending: "正在计算布局…",
     graphType: "图类型",
     display: "显示",
     resetHints: "重新显示提示",

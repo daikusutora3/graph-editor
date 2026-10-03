@@ -3,6 +3,7 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createEdgeRoutingCacheKey } from "../../features/graph-editor/core/layout/edge-routing";
 import {
   createManualLayoutCommand,
+  createManualLayoutTask,
   layoutDefinitions,
   manualLayoutDisabledReasonCode,
 } from "../../features/graph-editor/layouts";
@@ -109,6 +110,61 @@ expect(
   JSON.stringify(createManualLayoutCommand(undirectedPath, "force")) ===
     JSON.stringify(createManualLayoutCommand(undirectedPath, "force")),
   "force layout should remain deterministic for the same graph",
+);
+
+expect(
+  JSON.stringify(createManualLayoutCommand(undirectedPath, "force")) ===
+    JSON.stringify({
+      type: "move-nodes",
+      label: "Apply force layout",
+      after: {
+        a: { x: 63.023444483102075, y: -106.78972537414518 },
+        b: { x: 0, y: 0 },
+        c: { x: -63.023444483102075, y: 106.78972537414518 },
+      },
+    }),
+  "resumable force layout preserves the original numerical result",
+);
+
+const disconnectedForce = {
+  ...graphFixture({
+    directed: false,
+    edges: [
+      ["a", "b"],
+      ["b", "c"],
+      ["c", "d"],
+    ],
+  }),
+  nodes: ["a", "b", "c", "d", "isolated"].map((id, order) => ({
+    id,
+    label: id,
+    order,
+    x: 0,
+    y: 0,
+  })),
+};
+const forceTask = createManualLayoutTask(disconnectedForce, "force");
+let forceStep = forceTask.next();
+let forceYields = 0;
+while (!forceStep.done) {
+  forceYields++;
+  forceStep = forceTask.next();
+}
+expect(forceYields > 180, "force work yields inside its numerical iterations");
+expect(
+  JSON.stringify(forceStep.value) ===
+    JSON.stringify({
+      type: "move-nodes",
+      label: "Apply force layout",
+      after: {
+        a: { x: 57, y: -153 },
+        b: { x: -19, y: -55 },
+        c: { x: -101, y: 54 },
+        d: { x: -176, y: 152 },
+        isolated: { x: 237, y: 0 },
+      },
+    }),
+  "resuming disconnected force components preserves original packing",
 );
 
 const routingBase = graphFixture({

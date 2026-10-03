@@ -105,6 +105,17 @@ export function* createEdgeRoutingTask(
 ): Generator<void, Map<EdgeId, EdgeRoutingMeta>> {
   model = routingDisplayModel(model);
   const resolvedOptions = resolveEdgeRoutingOptions(model, options);
+  if (resolvedOptions.avoidNodes) {
+    // Resolve label geometry once for this pass. Candidate scoring repeatedly
+    // reads it; the transient widths must never enter history or saved models.
+    model = {
+      ...model,
+      nodes: model.nodes.map((node) => ({
+        ...node,
+        measuredWidth: nodeGeometryWidth(node),
+      })),
+    };
+  }
   const routeGroups = new Map<string, GraphEdge[]>();
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
 
@@ -299,6 +310,9 @@ export function* createEdgeRoutingTask(
         resolvedOptions.work.pending?.has(edge.id),
       );
       for (const edge of edges) {
+        // A large parallel group must not perform every collision check in
+        // one generator step; callers yield back to the UI between steps.
+        yield;
         const route = meta.get(edge.id);
         const source = nodesById.get(edge.source),
           target = nodesById.get(edge.target);
@@ -559,7 +573,7 @@ function* chooseEdgeCurve(
   if (options.work.units > ROUTING_WORK_BUDGET) {
     options.work.pending?.add(edge.id);
     // Budget spent: keep whatever this edge had rather than stalling.
-    const previous = options.previousMeta.get(edge.id);
+    const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
 
     return previous
       ? {
@@ -587,7 +601,7 @@ function* chooseEdgeCurve(
       ...createObstacleAvoidingCurves(source, target, obstacles, -1),
     );
   }
-  const previous = options.previousMeta.get(edge.id);
+  const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
 
   if (previous) {
     candidates.unshift({
@@ -874,14 +888,14 @@ function orientPreviousRouteForCanonicalEdge(
     return options;
   }
 
-  const previousMeta = new Map(options.previousMeta);
-  previousMeta.set(edge.id, {
-    ...previous,
-    ...reverseEdgeCurve(previous),
-    bowPx: -previous.bowPx,
-  });
-
-  return { ...options, previousMeta };
+  return {
+    ...options,
+    previousRoute: {
+      ...previous,
+      ...reverseEdgeCurve(previous),
+      bowPx: -previous.bowPx,
+    },
+  };
 }
 
 function centerPreviousRouteForParallelGroup(
@@ -889,21 +903,21 @@ function centerPreviousRouteForParallelGroup(
   options: ResolvedEdgeRoutingOptions,
   edgeOffsetPx: number,
 ): ResolvedEdgeRoutingOptions {
-  const previous = options.previousMeta.get(edge.id);
+  const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
 
   if (!previous || edgeOffsetPx === 0) {
     return options;
   }
 
   const centered = offsetEdgeCurve(previous, -edgeOffsetPx);
-  const previousMeta = new Map(options.previousMeta);
-  previousMeta.set(edge.id, {
-    ...previous,
-    ...centered,
-    bowPx: representativeBow(centered),
-  });
-
-  return { ...options, previousMeta };
+  return {
+    ...options,
+    previousRoute: {
+      ...previous,
+      ...centered,
+      bowPx: representativeBow(centered),
+    },
+  };
 }
 
 export function routeEdgeKey(edge: GraphEdge) {

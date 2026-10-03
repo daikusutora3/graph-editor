@@ -77,6 +77,9 @@ export function useHtmlNodeDrag({
   const htmlNodeDragRef = useRef<HtmlNodeDragState | null>(null);
   const routingFrameRef = useRef<number | null>(null);
   const routingRequestRef = useRef(0);
+  const routingActiveRef = useRef(false);
+  const dragPositionRevisionRef = useRef(0);
+  const dragRoutingPendingRef = useRef(false);
   const dragFrameRef = useRef<number | null>(null);
   const dragRoutingTimerRef = useRef<number | null>(null);
   const lastDragRoutingAtRef = useRef(0);
@@ -112,6 +115,8 @@ export function useHtmlNodeDrag({
 
   const cancelScheduledDragFrame = useCallback(() => {
     routingRequestRef.current++;
+    routingActiveRef.current = false;
+    dragRoutingPendingRef.current = false;
     if (routingFrameRef.current !== null) {
       cancelAnimationFrame(routingFrameRef.current);
       routingFrameRef.current = null;
@@ -166,12 +171,8 @@ export function useHtmlNodeDrag({
         return;
       }
 
-      routingRequestRef.current++;
-      if (routingFrameRef.current !== null) {
-        cancelAnimationFrame(routingFrameRef.current);
-        routingFrameRef.current = null;
-      }
       if (edgeRoutingOptions.mode === "quality") {
+        dragRoutingPendingRef.current = true;
         const now = performance.now();
         const elapsed = now - lastDragRoutingAtRef.current;
 
@@ -183,15 +184,18 @@ export function useHtmlNodeDrag({
           ),
         );
 
-        if (forceRouting || elapsed >= interval) {
+        if (routingActiveRef.current) {
+          // Let the sampled positions finish. A newer pointer position is
+          // queued instead of repeatedly discarding the task's first slice.
+        } else if (forceRouting || elapsed >= interval) {
           if (dragRoutingTimerRef.current !== null) {
             window.clearTimeout(dragRoutingTimerRef.current);
             dragRoutingTimerRef.current = null;
           }
 
           const request = ++routingRequestRef.current;
-          if (routingFrameRef.current !== null)
-            cancelAnimationFrame(routingFrameRef.current);
+          const positionRevision = dragPositionRevisionRef.current;
+          routingActiveRef.current = true;
           const positioned = {
             ...graph,
             nodes: graph.nodes.map((node) => {
@@ -201,13 +205,14 @@ export function useHtmlNodeDrag({
           };
           const task = createCytoscapeRoutingTask(
             cy,
-            positioned,
+            graph,
             edgeRoutingOptions,
             {
               movedNodeIds: new Set(draggingNodeIdsRef.current),
               previousMeta: dragRoutingBaselineRef.current,
             },
           );
+          let routingCost = 0;
           const advance = () => {
             routingFrameRef.current = null;
             if (cy.destroyed() || request !== routingRequestRef.current) return;
@@ -215,18 +220,40 @@ export function useHtmlNodeDrag({
             let step = task.next();
             while (!step.done && performance.now() - start < 4)
               step = task.next();
-            lastDragRoutingCostRef.current = performance.now() - start;
+            routingCost += performance.now() - start;
             if (step.done) {
-              withCytoscapeBatch(cy, () =>
-                applyCytoscapeRoutingMeta(cy, step.value),
-              );
+              routingActiveRef.current = false;
+              lastDragRoutingCostRef.current = routingCost;
               dragRoutingBaselineRef.current = step.value;
-              acceptRoutingMeta(positioned, step.value);
-              schedulePostRoutingHitboxes(cy);
+              if (positionRevision === dragPositionRevisionRef.current) {
+                dragRoutingPendingRef.current = false;
+                withCytoscapeBatch(cy, () =>
+                  applyCytoscapeRoutingMeta(cy, step.value),
+                );
+                acceptRoutingMeta(positioned, step.value);
+                schedulePostRoutingHitboxes(cy);
+              } else if (dragRoutingPendingRef.current) {
+                // The result can seed the next pass but must not overwrite
+                // routes for positions that have since moved.
+                const nextInterval = Math.min(
+                  MAX_INTERACTIVE_EDGE_ROUTING_INTERVAL_MS,
+                  Math.max(
+                    INTERACTIVE_EDGE_ROUTING_INTERVAL_MS,
+                    routingCost * 3,
+                  ),
+                );
+                dragRoutingTimerRef.current = window.setTimeout(
+                  () => {
+                    dragRoutingTimerRef.current = null;
+                    syncDragPreview(cy, true);
+                  },
+                  Math.max(0, nextInterval - (performance.now() - now)),
+                );
+              }
             } else routingFrameRef.current = requestAnimationFrame(advance);
           };
-          advance();
           lastDragRoutingAtRef.current = now;
+          advance();
         } else if (dragRoutingTimerRef.current === null) {
           dragRoutingTimerRef.current = window.setTimeout(() => {
             dragRoutingTimerRef.current = null;
@@ -252,7 +279,6 @@ export function useHtmlNodeDrag({
 
   const scheduleDragPreview = useCallback(
     (cy: Core) => {
-      routingRequestRef.current++;
       if (dragFrameRef.current !== null) {
         return;
       }
@@ -380,6 +406,7 @@ export function useHtmlNodeDrag({
       state.moved = true;
     }
 
+    let positionsChanged = false;
     withCytoscapeBatch(cy, () => {
       state.nodeIds.forEach((id) => {
         const startPosition = state.before[id];
@@ -394,18 +421,27 @@ export function useHtmlNodeDrag({
           return;
         }
 
-        node.position(
-          resolveDragPosition(
-            {
-              x: startPosition.x + dx,
-              y: startPosition.y + dy,
-            },
-            graph.settings.snapToGrid,
-          ),
+        const nextPosition = resolveDragPosition(
+          {
+            x: startPosition.x + dx,
+            y: startPosition.y + dy,
+          },
+          graph.settings.snapToGrid,
         );
+        const currentPosition = node.position();
+        if (
+          currentPosition.x !== nextPosition.x ||
+          currentPosition.y !== nextPosition.y
+        ) {
+          positionsChanged = true;
+          node.position(nextPosition);
+        }
       });
     });
-    scheduleDragPreview(cy);
+    if (positionsChanged) {
+      dragPositionRevisionRef.current++;
+      scheduleDragPreview(cy);
+    }
   };
 
   const finishDrag = useCallback(

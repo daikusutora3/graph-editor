@@ -239,6 +239,16 @@ export function ensureNodeClearance(
   positions: Record<NodeId, { x: number; y: number }>,
   nodes: readonly Pick<GraphNode, "id" | "label">[],
 ) {
+  const task = createNodeClearanceTask(positions, nodes);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+export function* createNodeClearanceTask(
+  positions: Record<NodeId, { x: number; y: number }>,
+  nodes: readonly Pick<GraphNode, "id" | "label">[],
+): Generator<void, Record<NodeId, { x: number; y: number }>> {
   const halfHeight = NODE_SIZE_PX / 2;
   const gap = LAYOUT_NODE_CLEARANCE - NODE_SIZE_PX;
   const halfWidths = new Map(
@@ -252,6 +262,7 @@ export function ensureNodeClearance(
   let scale = 1;
 
   for (let i = 0; i < entries.length; i += 1) {
+    yield;
     const [idA, a] = entries[i]!;
 
     for (let j = i + 1; j < entries.length; j += 1) {

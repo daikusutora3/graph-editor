@@ -13,6 +13,7 @@ import {
 } from "../../features/graph-editor/shell/state/editor-selection";
 import {
   applyManualLayoutAtom,
+  layoutPendingAtom,
   clearGraphAtom,
   replaceGraphModelAtom,
   resetEditorSessionAtom,
@@ -176,6 +177,108 @@ expect(
   staleStore.get(graphAtom) === newGraph &&
     staleStore.get(historyAtom) === newHistory,
   "stale layout cannot change graph or history",
+);
+
+const forceGraph = {
+  ...createEmptyGraphModel(),
+  nodes: Array.from({ length: 100 }, (_, order) => ({
+    id: `n${order}`,
+    order,
+    label: `${order}`,
+    x: order * 90,
+    y: 0,
+  })),
+  edges: Array.from({ length: 99 }, (_, order) => ({
+    id: `e${order}`,
+    source: `n${order}`,
+    target: `n${order + 1}`,
+  })),
+};
+const forceStore = createStore();
+forceStore.set(executeCommandAtom, replaceModelCommand(forceGraph));
+const beforeForce = forceStore.get(graphAtom);
+const beforeForceHistory = forceStore.get(historyAtom);
+let inputHandled = false;
+const inputTask = new Promise<void>((resolve) => {
+  setTimeout(() => {
+    inputHandled = true;
+    resolve();
+  }, 0);
+});
+const pendingForce = forceStore.set(applyManualLayoutAtom, "force");
+expect(
+  forceStore.get(graphAtom) === beforeForce &&
+    forceStore.get(historyAtom) === beforeForceHistory &&
+    forceStore.get(layoutPendingAtom),
+  "force calculation keeps intermediate positions out of graph and history",
+);
+await inputTask;
+expect(
+  inputHandled && forceStore.get(graphAtom) === beforeForce,
+  "input work can run while force layout is pending",
+);
+const forceResult = await pendingForce;
+expect(
+  forceResult.status === "applied" &&
+    forceStore.get(historyAtom).length === beforeForceHistory.length + 1 &&
+    !forceStore.get(layoutPendingAtom),
+  "force layout commits one completed undoable command",
+);
+forceStore.set(undoAtom);
+expect(
+  JSON.stringify(forceStore.get(graphAtom)) === JSON.stringify(beforeForce),
+  "completed force layout can be undone without intermediate states",
+);
+
+const supersededForce = forceStore.set(applyManualLayoutAtom, "force");
+forceStore.set(executeCommandAtom, addNodeCommand({ id: "force-new-node" }));
+const newerForceGraph = forceStore.get(graphAtom);
+const newerForceHistory = forceStore.get(historyAtom);
+expect(
+  (await supersededForce).status === "rejected" &&
+    forceStore.get(graphAtom) === newerForceGraph &&
+    forceStore.get(historyAtom) === newerForceHistory,
+  "editing during force work cancels it without overwriting newer content",
+);
+
+const resetForce = forceStore.set(applyManualLayoutAtom, "force");
+forceStore.set(resetEditorSessionAtom);
+expect(
+  (await resetForce).status === "rejected" &&
+    forceStore.get(historyAtom).length === 0 &&
+    !forceStore.get(layoutPendingAtom),
+  "resetting the editor cancels pending force work even with the same graph",
+);
+
+const replacedForce = forceStore.set(applyManualLayoutAtom, "force");
+forceStore.set(applyManualLayoutAtom, "line");
+const lineGraph = forceStore.get(graphAtom);
+const lineHistory = forceStore.get(historyAtom);
+expect(
+  (await replacedForce).status === "rejected" &&
+    forceStore.get(graphAtom) === lineGraph &&
+    forceStore.get(historyAtom) === lineHistory,
+  "a newer layout supersedes force work without a later stale commit",
+);
+
+const revisedForce = forceStore.set(applyManualLayoutAtom, "force");
+forceStore.set(syncExternalGraphAtom, forceStore.get(graphAtom));
+expect(
+  (await revisedForce).status === "rejected",
+  "an external revision change cancels pending work with the same graph object",
+);
+
+const firstForce = forceStore.set(applyManualLayoutAtom, "force");
+const secondForce = forceStore.set(applyManualLayoutAtom, "force");
+await firstForce;
+expect(
+  forceStore.get(layoutPendingAtom),
+  "an older request cannot clear the newer layout's pending state",
+);
+await secondForce;
+expect(
+  !forceStore.get(layoutPendingAtom),
+  "the latest layout clears pending state when it completes",
 );
 finish();
 

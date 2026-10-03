@@ -46,6 +46,16 @@ export function layoutGrid(nodeIds: NodeId[]) {
   ) as Record<NodeId, { x: number; y: number }>;
 }
 export function layoutForce(model: GraphModel) {
+  const task = createForceLayoutTask(model);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+/** Keeps the deterministic force calculation resumable between input events. */
+export function* createForceLayoutTask(
+  model: GraphModel,
+): Generator<void, Record<NodeId, { x: number; y: number }>> {
   const nodeIds = orderedNodeIds(model);
   if (nodeIds.length <= 1) return layoutCircle(nodeIds, 0);
 
@@ -66,67 +76,70 @@ export function layoutForce(model: GraphModel) {
   const components = connectedComponents(model);
 
   if (components.length > 1) {
-    return packPositionGroups(
-      components.map((component) => {
-        const componentSet = new Set(component);
-        const componentEdges = validEdges.filter(
-          ([source, target]) =>
-            componentSet.has(source) && componentSet.has(target),
-        );
+    const groups: Array<Record<NodeId, { x: number; y: number }>> = [];
+    for (const component of components) {
+      yield;
+      const componentSet = new Set(component);
+      const componentEdges = validEdges.filter(
+        ([source, target]) =>
+          componentSet.has(source) && componentSet.has(target),
+      );
 
-        if (componentEdges.length === 0) {
-          return layoutCircle(
-            component,
-            component.length <= 1 ? 0 : LAYOUT_NODE_CLEARANCE,
-          );
-        }
-
-        return layoutForceComponent(component, componentEdges);
-      }),
-    );
+      groups.push(
+        componentEdges.length === 0
+          ? layoutCircle(
+              component,
+              component.length <= 1 ? 0 : LAYOUT_NODE_CLEARANCE,
+            )
+          : yield* createForceComponentTask(component, componentEdges),
+      );
+    }
+    return packPositionGroups(groups);
   }
 
-  return layoutForceComponent(nodeIds, validEdges);
+  return yield* createForceComponentTask(nodeIds, validEdges);
 }
 export function layoutForceComponent(
   nodeIds: NodeId[],
   edges: ReadonlyArray<readonly [NodeId, NodeId]>,
 ) {
+  const task = createForceComponentTask(nodeIds, edges);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+export function* createForceComponentTask(
+  nodeIds: NodeId[],
+  edges: ReadonlyArray<readonly [NodeId, NodeId]>,
+): Generator<void, Record<NodeId, { x: number; y: number }>> {
   const seedPositions = layoutCircle(
     nodeIds,
     layoutCircleRadius(nodeIds.length),
   );
-  const positions = new Map(
-    nodeIds.map((nodeId, nodeIndex) => {
-      const seeded = seedPositions[nodeId];
-      const jitter = {
-        x: (pseudoRandom(nodeIndex + 17) - 0.5) * 24,
-        y: (pseudoRandom(nodeIndex + 53) - 0.5) * 24,
-      };
-
-      return [
-        nodeId,
-        {
-          x: seeded.x + jitter.x,
-          y: seeded.y + jitter.y,
-        },
-      ];
-    }),
+  const positions = nodeIds.map((nodeId, nodeIndex) => {
+    const seeded = seedPositions[nodeId];
+    return {
+      x: seeded.x + (pseudoRandom(nodeIndex + 17) - 0.5) * 24,
+      y: seeded.y + (pseudoRandom(nodeIndex + 53) - 0.5) * 24,
+    };
+  });
+  const indexById = orderIndex(nodeIds);
+  const indexedEdges = edges.map(
+    ([source, target]) =>
+      [indexById.get(source)!, indexById.get(target)!] as const,
   );
   const ideal = LAYOUT_TARGET_EDGE_LENGTH;
   let temperature = ideal * 0.8;
 
   for (let iteration = 0; iteration < 180; iteration += 1) {
-    const displacement = new Map(
-      nodeIds.map((nodeId) => [nodeId, { x: 0, y: 0 }]),
-    );
+    const displacement = nodeIds.map(() => ({ x: 0, y: 0 }));
 
     for (let first = 0; first < nodeIds.length; first += 1) {
+      yield;
       for (let second = first + 1; second < nodeIds.length; second += 1) {
-        const firstId = nodeIds[first];
-        const secondId = nodeIds[second];
-        const firstPosition = positions.get(firstId)!;
-        const secondPosition = positions.get(secondId)!;
+        const firstPosition = positions[first]!;
+        const secondPosition = positions[second]!;
         let dx = firstPosition.x - secondPosition.x;
         let dy = firstPosition.y - secondPosition.y;
         let distance = Math.hypot(dx, dy);
@@ -141,16 +154,17 @@ export function layoutForceComponent(
         const offsetX = (dx / distance) * force;
         const offsetY = (dy / distance) * force;
 
-        displacement.get(firstId)!.x += offsetX;
-        displacement.get(firstId)!.y += offsetY;
-        displacement.get(secondId)!.x -= offsetX;
-        displacement.get(secondId)!.y -= offsetY;
+        displacement[first]!.x += offsetX;
+        displacement[first]!.y += offsetY;
+        displacement[second]!.x -= offsetX;
+        displacement[second]!.y -= offsetY;
       }
     }
 
-    for (const [source, target] of edges) {
-      const sourcePosition = positions.get(source)!;
-      const targetPosition = positions.get(target)!;
+    for (const [index, [source, target]] of indexedEdges.entries()) {
+      if (index % 64 === 0) yield;
+      const sourcePosition = positions[source]!;
+      const targetPosition = positions[target]!;
       const dx = sourcePosition.x - targetPosition.x;
       const dy = sourcePosition.y - targetPosition.y;
       const distance = Math.max(0.01, Math.hypot(dx, dy));
@@ -158,29 +172,31 @@ export function layoutForceComponent(
       const offsetX = (dx / distance) * force;
       const offsetY = (dy / distance) * force;
 
-      displacement.get(source)!.x -= offsetX;
-      displacement.get(source)!.y -= offsetY;
-      displacement.get(target)!.x += offsetX;
-      displacement.get(target)!.y += offsetY;
+      displacement[source]!.x -= offsetX;
+      displacement[source]!.y -= offsetY;
+      displacement[target]!.x += offsetX;
+      displacement[target]!.y += offsetY;
     }
 
-    for (const nodeId of nodeIds) {
-      const point = positions.get(nodeId)!;
-      const delta = displacement.get(nodeId)!;
+    for (let index = 0; index < nodeIds.length; index++) {
+      const point = positions[index]!;
+      const delta = displacement[index]!;
       const length = Math.max(0.01, Math.hypot(delta.x, delta.y));
       const step = Math.min(length, temperature);
 
-      positions.set(nodeId, {
+      positions[index] = {
         x: point.x + (delta.x / length) * step,
         y: point.y + (delta.y / length) * step,
-      });
+      };
     }
 
     temperature *= 0.965;
   }
 
   return normalizeForcePositions(
-    Object.fromEntries(positions),
+    Object.fromEntries(
+      nodeIds.map((nodeId, index) => [nodeId, positions[index]!]),
+    ),
     edges,
     LAYOUT_TARGET_EDGE_LENGTH,
   );

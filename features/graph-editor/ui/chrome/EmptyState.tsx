@@ -16,11 +16,10 @@ import { appGuidePaths } from "@/lib/site-metadata";
 
 import type { GraphModel } from "../../core/graph/model";
 import { useI18n } from "../../i18n/I18nProvider";
-import { sampleGraphGroups } from "../../samples/registry";
 import {
-  createSampleGraph,
-  type SampleGraphKind,
-} from "../../samples/sample-graphs";
+  createPopularSampleGraph,
+  popularSampleGraphKinds,
+} from "../../samples/basic-samples";
 import { focusRing } from "../primitives";
 import { BrandLogo } from "../brand/BrandLogo";
 
@@ -30,12 +29,6 @@ const AUTHOR_LINKS = [
   { label: "X", href: "https://x.com/daikusutora3" },
   { label: "GitHub", href: "https://github.com/daikusutora3" },
 ] as const;
-
-const RECENT_SAMPLE_KINDS: readonly SampleGraphKind[] = [
-  "cycle",
-  "tree",
-  "grid",
-];
 
 export function EmptyState({
   graph,
@@ -83,12 +76,9 @@ export function EmptyState({
 
   const recentSamples = useMemo(
     () =>
-      RECENT_SAMPLE_KINDS.map((kind) => {
-        const model = createSampleGraph(kind, graph.settings);
-        const item = sampleGraphGroups
-          .flatMap((group) => group.samples)
-          .find((sample) => sample.kind === kind);
-        const label = messages.samples.item[kind]?.title ?? item?.label ?? kind;
+      popularSampleGraphKinds.map((kind) => {
+        const model = createPopularSampleGraph(kind, graph.settings);
+        const label = messages.samples.item[kind]?.title ?? kind;
 
         return { kind, label, model, nodeCount: model.nodes.length };
       }),
