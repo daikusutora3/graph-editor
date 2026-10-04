@@ -24,7 +24,7 @@ const AUDIT = `(async () => {
     const interactive = [...main.querySelectorAll("button,input,select,textarea,a[href],[role=radio],[role=checkbox],[role=switch],[role=menuitem]")].filter(visible);
     for (const el of interactive) {
       const r = el.getBoundingClientRect();
-      if (el.tagName !== "TEXTAREA" && (Math.round(r.width) < minSize || Math.round(r.height) < minSize) && !el.closest("[data-edge-node-hitbox],[class*=cursor-grab],[class*=cursor-text]"))
+      if (el.tagName !== "TEXTAREA" && (Math.round(r.width) < minSize || Math.round(r.height) < minSize) && !el.closest("[data-edge-node-hitbox],.ge-select-node-hitbox,[class*=cursor-text]"))
         findings.push(state + ": target too small " + label(el) + " " + Math.round(r.width) + "x" + Math.round(r.height));
       if (!el.getAttribute("aria-label") && !el.textContent.trim() && !["INPUT","SELECT","TEXTAREA"].includes(el.tagName))
         findings.push(state + ": unlabeled control " + el.tagName);
@@ -50,10 +50,10 @@ const AUDIT = `(async () => {
   const close = async () => { document.querySelector('[aria-label="閉じる"]')?.click(); await wait(250); };
   const w = innerWidth; const mobile = main.dataset.layout === "mobile";
   scan(w + " " + main.dataset.layout + " base");
-  const node = main.querySelector("[class*=cursor-grab]"); if (node) { node.click(); await wait(300); scan(w + " selected"); document.body.click(); await wait(100); }
+  const node = main.querySelector(".ge-select-node-hitbox"); if (node) { node.click(); await wait(300); scan(w + " selected"); document.body.click(); await wait(100); }
   const panelsToOpen = mobile ? ["メニュー", "書き出し", "PNG 画像", "グラフを読み込む", "アプリメニューを開く"] : ["配置", "設定", "書き出し", "PNG 画像", "グラフを読み込む", "アプリメニューを開く"];
   for (const p of panelsToOpen) { if (await openPanel(p)) { await wait(p === "PNG 画像" ? 1200 : 0); scan(w + " " + p); await close(); } }
-  return [w + " " + main.dataset.layout + " theme=" + document.documentElement.dataset.theme + " nodes=" + main.querySelectorAll("[class*=cursor-grab]").length + " panels=" + main.querySelectorAll(".ge-panel").length, ...new Set(findings)];
+  return [w + " " + main.dataset.layout + " theme=" + document.documentElement.dataset.theme + " nodes=" + main.querySelectorAll(".ge-select-node-hitbox").length + " panels=" + main.querySelectorAll(".ge-panel").length, ...new Set(findings)];
 })()`;
 const browser = await chromium.launch();
 const all = [];
@@ -75,7 +75,7 @@ for (const width of [375, 414, 600, 768, 900, 1100, 1280, 1440, 1920]) {
   const sample = page.getByRole("button", { name: /cycle/i });
   await sample.first().click();
   await page.locator('[data-canvas-ready="true"]').waitFor();
-  await page.locator('button[class*="cursor-grab"]').first().waitFor();
+  await page.locator("button.ge-select-node-hitbox").first().waitFor();
   await page.waitForTimeout(800);
   const res = await page.evaluate(AUDIT);
   all.push(...res);

@@ -10,6 +10,7 @@ import {
 } from "../../io/export-graph";
 import { useI18n } from "../../i18n/I18nProvider";
 import type { CopyState } from "../io/graph-io-types";
+import { useExportLineLayout } from "../io/use-export-line-layout";
 import { Button, Notice, Select } from "../primitives";
 
 export function ExportPanelBody({
@@ -28,6 +29,7 @@ export function ExportPanelBody({
   onExportFormatChange: (format: GraphExportFormat) => void;
 }) {
   const { messages, locale } = useI18n();
+  const lineLayout = useExportLineLayout(exportText);
   const lines = useMemo(
     () => (exportText ? exportText.split("\n") : []),
     [exportText],
@@ -78,13 +80,39 @@ export function ExportPanelBody({
           <ExportText lines={lineNumbers} />
         </div>
         <pre
-          aria-busy={pending}
+          ref={lineLayout.ref}
+          aria-busy={pending || lineLayout.pending}
           aria-label={messages.exportPanel.exportedAria(
             messages.exportPanel.formats[exportFormat],
           )}
           className="text-control m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
         >
-          {exportText ? (
+          {lineLayout.pending ? (
+            <span className="text-[var(--muted)]">
+              {messages.exportPanel.preparing}
+            </span>
+          ) : lineLayout.layout ? (
+            <span
+              className="relative block h-[1lh]"
+              style={{ width: lineLayout.layout.width }}
+            >
+              {lineLayout.layout.chunks.map((chunk) => (
+                <span
+                  key={chunk.x}
+                  data-export-line-chunk
+                  className="absolute top-0 h-[1lh]"
+                  style={{
+                    left: chunk.x,
+                    width: chunk.width,
+                    contentVisibility: "auto",
+                    containIntrinsicSize: `auto ${chunk.width}px auto 1lh`,
+                  }}
+                >
+                  {chunk.text}
+                </span>
+              ))}
+            </span>
+          ) : exportText ? (
             <ExportText lines={lines} wide />
           ) : (
             <span className="text-[var(--muted)]">

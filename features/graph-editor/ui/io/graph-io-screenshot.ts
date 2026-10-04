@@ -6,7 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   useGraphCanvasApi,
-  useGraphCanvasZoomPercent,
+  useGraphCanvasExportScaleSignature,
+  useGraphCanvasViewportSignature,
 } from "../../canvas/GraphCanvasProvider";
 import { EXPORT_BACKGROUND_COLORS } from "../../adapters/cytoscape/graph-canvas-viewport";
 import {
@@ -80,7 +81,12 @@ export function useGraphIOScreenshot({
   const copyResetTimeoutRef = useRef<number | null>(null);
   const downloadResetTimeoutRef = useRef<number | null>(null);
   const { exportPng } = useGraphCanvasApi();
-  const zoomPercent = useGraphCanvasZoomPercent(previewEnabled);
+  const exportScaleSignature = useGraphCanvasExportScaleSignature(
+    previewEnabled && (scope === "natural" || scope === "natural-fixed"),
+  );
+  const viewportSignature = useGraphCanvasViewportSignature(
+    previewEnabled && scope === "viewport",
+  );
   const solidBackground: "white" | "black" =
     theme === "dark" ? "black" : "white";
   const effectiveBackground: PngExportBackground =
@@ -95,7 +101,8 @@ export function useGraphIOScreenshot({
       paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
       scope,
       theme,
-      zoomPercent,
+      exportScaleSignature,
+      viewportSignature,
     }),
     [
       customLongEdgePx,
@@ -108,7 +115,8 @@ export function useGraphIOScreenshot({
       paddingPreset,
       scope,
       theme,
-      zoomPercent,
+      exportScaleSignature,
+      viewportSignature,
     ],
   );
   const debouncedPreviewInput = useDebouncedValue(currentPreviewInput, 150);

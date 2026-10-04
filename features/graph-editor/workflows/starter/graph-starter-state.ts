@@ -43,7 +43,9 @@ export function useGraphStarterState({
     }),
     [graphSettings, importFormat],
   );
-  const debouncedInputText = useDebouncedValue(inputText, 150);
+  const debouncedInputText = useDebouncedValue(inputText, 150, {
+    transition: true,
+  });
   const previewParseKey = useMemo(
     () =>
       previewEnabled

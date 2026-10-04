@@ -14,20 +14,22 @@ import {
   type ParsedLine,
   readImportSettings,
   shouldRequireNumericWeights,
-  splitTokens,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
 import type { ImportResult, ImportWarning } from "./import-types";
+import { createImportSource, type ImportSource } from "./import-source";
 
 export function tryImportAdjacencyMatrix(
   lines: ParsedLine[],
   options: ImportOptions,
+  preparedSource?: ImportSource,
 ): ImportResult | null {
-  const rows = lines.map((line) => splitTokens(line.text));
-
-  if (rows.length < 1 || rows.some((row) => row.length !== rows.length)) {
+  const source = preparedSource ?? createImportSource(lines);
+  if (lines.length < 1 || source.firstRow.length !== lines.length) {
     return null;
   }
+  const { rows } = source;
+  if (rows.some((row) => row.length !== rows.length)) return null;
 
   if (lines.length > MAX_IMPORT_NODES) {
     return importLimitFailure(
@@ -40,20 +42,13 @@ export function tryImportAdjacencyMatrix(
     );
   }
 
-  const values = rows.map((row) => row.map(Number));
-  if (values.some((row) => row.some((value) => !Number.isFinite(value)))) {
-    return null;
-  }
-
-  const isSymmetric = isSymmetricMatrix(values);
-  const hasZeroValue = values.some((row) => row.includes(0));
+  const matrix = source.matrix;
+  if (!matrix) return null;
+  const { values, isSymmetric, hasZeroValue, isBinary, hasWeightedValue } =
+    matrix;
 
   if (!hasZeroValue && options.format !== "adjacency-matrix") {
-    const isBinaryMatrix = values.every((row) =>
-      row.every((value) => value === 0 || value === 1),
-    );
-
-    if (!isBinaryMatrix || !isSymmetric) {
+    if (!isBinary || !isSymmetric) {
       return null;
     }
   }
@@ -62,14 +57,11 @@ export function tryImportAdjacencyMatrix(
 
   if (
     options.format !== "adjacency-matrix" &&
-    !isSafeAdjacencyMatrixSize(values, directed)
+    values.length === 2 &&
+    (!isBinary || (!directed && !isSymmetric))
   ) {
     return null;
   }
-
-  const hasWeightedValue = values.some((row) =>
-    row.some((value) => value !== 0 && value !== 1),
-  );
 
   if (
     hasWeightedValue &&
@@ -79,15 +71,9 @@ export function tryImportAdjacencyMatrix(
     return null;
   }
 
-  const edgeCount = values.reduce(
-    (count, row, sourceIndex) =>
-      count +
-      row.filter(
-        (value, targetIndex) =>
-          value !== 0 && (directed || targetIndex >= sourceIndex),
-      ).length,
-    0,
-  );
+  const edgeCount = directed
+    ? matrix.directedEdgeCount
+    : matrix.undirectedEdgeCount;
 
   if (edgeCount > MAX_IMPORT_EDGES) {
     return importLimitFailure(
@@ -178,64 +164,35 @@ function looksLikeWeightedEdgePairs(rows: string[][], matrixSize: number) {
   return !zeroBased && !oneBased;
 }
 
-function isSymmetricMatrix(values: number[][]) {
-  return values.every((row, sourceIndex) =>
-    row.every(
-      (value, targetIndex) => value === values[targetIndex]?.[sourceIndex],
-    ),
-  );
-}
-
-function isSafeAdjacencyMatrixSize(
-  values: number[][],
-  directed: boolean | undefined,
-) {
-  if (values.length !== 2) {
-    return true;
-  }
-
-  const isBinary = values.every((row) =>
-    row.every((value) => value === 0 || value === 1),
-  );
-
-  if (!isBinary) {
-    return false;
-  }
-
-  if (!directed && values[0]?.[1] !== values[1]?.[0]) {
-    return false;
-  }
-
-  return true;
-}
-
 export function tryImportAdjacencyList(
   lines: ParsedLine[],
   options: ImportOptions,
+  preparedSource?: ImportSource,
 ): ImportResult | null {
-  const separators = lines.map(
-    (line) => line.text.match(/->|:/g)?.map(String) ?? [],
-  );
-  if (
-    separators.some((matches) => matches.length !== 1) ||
-    new Set(separators.map((matches) => matches[0])).size !== 1
-  ) {
-    return null;
+  const importSource = preparedSource ?? createImportSource(lines);
+  let separator: string | undefined;
+  let edgeCount = 0;
+  let hasWeightedTargets = false;
+  const uniqueLabels = new Set<string>();
+  for (const line of lines) {
+    const row = importSource.readAdjacencyRow(line.text);
+    if (!row || (separator !== undefined && separator !== row.separator)) {
+      return null;
+    }
+    separator = row.separator;
+    uniqueLabels.add(row.sourceLabel);
+    const targets = row.targetTokens;
+    edgeCount += targets.length;
+    for (const token of targets) {
+      const target = parseAdjacencyTarget(token);
+      uniqueLabels.add(target.label);
+      if (target.weight != null) hasWeightedTargets = true;
+    }
   }
-
-  const hasArrowSyntax = lines.some((line) => line.text.includes("->"));
-  const labels = lines.flatMap((line) => {
-    const separator = line.text.includes("->") ? "->" : ":";
-    const [sourceText = "", targetText = ""] = line.text.split(separator);
-    return [
-      sourceText.trim(),
-      ...splitTokens(targetText).map(
-        (token) => parseAdjacencyTarget(token).label,
-      ),
-    ];
-  });
-  const edgeCount = labels.length - lines.length;
-  const nodeCount = new Set(labels).size;
+  if (separator === undefined) return null;
+  const adjacencySeparator = separator;
+  const labels = [...uniqueLabels];
+  const nodeCount = uniqueLabels.size;
 
   if (nodeCount > MAX_IMPORT_NODES) {
     return importLimitFailure(
@@ -258,20 +215,13 @@ export function tryImportAdjacencyList(
     );
   }
 
-  const hasWeightedTargets = lines.some((line) => {
-    const separator = line.text.includes("->") ? "->" : ":";
-    const [, targetText = ""] = line.text.split(separator);
-    return splitTokens(targetText).some(
-      (token) => parseAdjacencyTarget(token).weight != null,
-    );
-  });
   const settings = readImportSettings(
     {
       ...options,
       indexBase: detectIndexBase(labels, options.indexBase),
     },
     {
-      directed: options.directed || hasArrowSyntax,
+      directed: options.directed || adjacencySeparator === "->",
       weighted: Boolean(hasWeightedTargets || options.weighted),
     },
   );
@@ -281,9 +231,9 @@ export function tryImportAdjacencyList(
   const warnings: ImportWarning[] = [];
 
   lines.forEach((line) => {
-    const separator = line.text.includes("->") ? "->" : ":";
-    const [sourceText = "", targetText = ""] = line.text.split(separator);
-    const sourceLabel = sourceText.trim();
+    const row = importSource.readAdjacencyRow(line.text);
+    if (!row) return;
+    const { sourceLabel } = row;
 
     if (!sourceLabel) {
       warnings.push({ code: "missing-source", line: line.number });
@@ -291,7 +241,7 @@ export function tryImportAdjacencyList(
     }
 
     const source = ensureNodeByLabel(model, idByLabel, sourceLabel);
-    const targets = splitTokens(targetText);
+    const targets = row.targetTokens;
 
     if (targets.length === 0) {
       return;

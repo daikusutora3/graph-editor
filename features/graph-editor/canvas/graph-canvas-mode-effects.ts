@@ -63,7 +63,7 @@ export function useGraphCanvasModeEffects({
 
     if (mode !== "edge") {
       setEdgeDraft(createEmptyEdgeDraft());
-      cy.nodes().removeClass("edge-source");
+      cy.nodes(".edge-source").removeClass("edge-source");
     }
   }, [cyRef, mode, setEdgeDraft, setSelection]);
 
@@ -74,7 +74,9 @@ export function useGraphCanvasModeEffects({
       return;
     }
 
-    cy.nodes().removeClass("edge-source");
+    // Cytoscape dirties node and connected-edge styles even when removeClass
+    // is called on nodes without the class. Only touch the actual draft source.
+    cy.nodes(".edge-source").removeClass("edge-source");
 
     if (edgeDraft.sourceNodeId) {
       cy.getElementById(edgeDraft.sourceNodeId).addClass("edge-source");

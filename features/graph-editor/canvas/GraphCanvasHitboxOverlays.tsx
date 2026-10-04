@@ -129,6 +129,7 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
     propsRef.current = props;
   });
   const bendRef = useRef<{
+    captureElement: Element;
     edge: EdgeLabelHitbox;
     pointerId: number;
     startX: number;
@@ -137,6 +138,24 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
     bend: EdgeBend | null;
   } | null>(null);
   const suppressClickRef = useRef(false);
+
+  // Activity retains the DOM while hidden, so cancel transient bends at the
+  // same boundary that previously unmounted their pointer capture elements.
+  useLayoutEffect(
+    () => () => {
+      const bend = bendRef.current;
+      bendRef.current = null;
+      suppressClickRef.current = false;
+      if (!bend) return;
+      try {
+        bend.captureElement.releasePointerCapture(bend.pointerId);
+      } catch {
+        // The browser may already have released the pointer.
+      }
+      if (bend.moved) propsRef.current.onBendCancel(bend.edge.id);
+    },
+    [],
+  );
 
   // Dispatch through committed props so fresh parent callbacks do not force
   // thousands of hitboxes to render, and skipped renders never use stale ones.
@@ -154,6 +173,7 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
         }
 
         bendRef.current = {
+          captureElement: event.currentTarget,
           edge,
           pointerId: event.pointerId,
           startX: event.clientX,
@@ -432,15 +452,13 @@ const SelectEdgeLabelButton = memo(function SelectEdgeLabelButton({
             : messages.canvas.editEdgeLabel
       }
       aria-pressed={selected}
-      className={cn(
-        "touch:h-11 pointer-events-auto absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none rounded-md",
-        focusRing,
-      )}
+      className="ge-select-edge-hitbox"
       inert={rangeSelectionActive}
       style={{
-        left: edge.x,
+        left: 0,
         pointerEvents: rangeSelectionActive ? "none" : undefined,
-        top: edge.y,
+        top: 0,
+        translate: `${edge.x}px ${edge.y}px`,
         width: edgeLabelHitboxWidth(edge.label),
       }}
       {...edgeHitboxEventProps(edge, handlers)}
@@ -713,16 +731,14 @@ const SelectNodeButton = memo(function SelectNodeButton({
         accessibleNodeName(node.label, messages),
       )}
       aria-pressed={selected}
-      className={cn(
-        "pointer-events-auto absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full active:cursor-grabbing",
-        focusRing,
-      )}
+      className="ge-select-node-hitbox"
       inert={rangeSelectionActive}
       style={{
         height: NODE_HITBOX_SIZE,
-        left: node.x,
+        left: 0,
         pointerEvents: rangeSelectionActive ? "none" : undefined,
-        top: node.y,
+        top: 0,
+        translate: `${node.x}px ${node.y}px`,
         width: node.width,
       }}
       onPointerDown={(event) => {

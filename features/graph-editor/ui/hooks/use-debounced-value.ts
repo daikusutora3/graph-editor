@@ -1,17 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
-export function useDebouncedValue<T>(value: T, delayMs: number) {
+export function useDebouncedValue<T>(
+  value: T,
+  delayMs: number,
+  { transition = false }: { transition?: boolean } = {},
+) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      setDebouncedValue(value);
+      if (transition) {
+        startTransition(() => setDebouncedValue(value));
+      } else {
+        setDebouncedValue(value);
+      }
     }, delayMs);
 
     return () => window.clearTimeout(timeoutId);
-  }, [delayMs, value]);
+  }, [delayMs, transition, value]);
 
   return debouncedValue;
 }
