@@ -1,6 +1,6 @@
 import { GRAPH_MAX_INPUT_CHARS } from "../core/graph/graph-limits";
 import { exportEdgeList } from "./export-edge-list";
-import { exportTikz } from "./export-tikz";
+import { createTikzExportTask, exportTikz } from "./export-tikz";
 import type { GraphModel } from "../core/graph/model";
 import { getExportNodeEntries } from "./export-node-labels";
 import { serializeGraphModel } from "../core/graph/graph-json";
@@ -52,6 +52,22 @@ export function exportGraph(
   const problem = graphExportProblem(model, format);
   if (problem) throw new Error(problem);
   const text = exportUnchecked(model, format);
+  if (format !== "json" && text.length > GRAPH_MAX_INPUT_CHARS)
+    throw new Error("input-limit");
+  return text;
+}
+
+/** Same format restrictions as exportGraph, with resumable TikZ routing. */
+export function* createGraphExportTask(
+  model: GraphModel,
+  format: GraphExportFormat,
+): Generator<void, string> {
+  const problem = graphExportProblem(model, format);
+  if (problem) throw new Error(problem);
+  const text =
+    format === "tikz"
+      ? yield* createTikzExportTask(model)
+      : exportUnchecked(model, format);
   if (format !== "json" && text.length > GRAPH_MAX_INPUT_CHARS)
     throw new Error("input-limit");
   return text;

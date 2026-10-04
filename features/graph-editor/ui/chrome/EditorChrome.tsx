@@ -13,7 +13,6 @@ import {
 } from "../../adapters/browser/file-actions";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
-  exportGraph,
   type GraphExportFormat,
   getGraphExportFormat,
 } from "../../io/export-graph";
@@ -61,6 +60,7 @@ import { AppMenuPanel } from "../panels/AppMenuPanel";
 import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
 import type { CopyState } from "../io/graph-io-types";
 import { useGraphIOScreenshot } from "../io/graph-io-screenshot";
+import { useGraphExport } from "../io/use-graph-export";
 import { LayoutsPanel } from "../panels/LayoutsPanel";
 import { PngPanelBody, PngPanelFooter } from "../panels/PngPanel";
 import { SettingsPanel } from "../panels/SettingsPanel";
@@ -123,7 +123,12 @@ export function EditorChrome() {
 
   const [exportFormat, setExportFormat] =
     useState<GraphExportFormat>("edge-list");
-  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [copyFeedback, setCopyFeedback] = useState<{
+    text: string;
+    format: GraphExportFormat;
+    value: CopyState;
+  } | null>(null);
+  const copyAttemptRef = useRef(0);
   const copyResetRef = useRef<number | null>(null);
   const [clearArmed, setClearArmed] = useTimedState(false, 3000);
   const [toast, setToast] = useTimedState<string | null>(null, 4000);
@@ -131,15 +136,12 @@ export function EditorChrome() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isGraphEmpty = graphIsEmpty;
   const exportVisible = panel === "export" || visiblePanel === "export";
-  const exportResult = useMemo(() => {
-    if (!exportVisible || !graph) return { text: "", blocked: false };
-    try {
-      return { text: exportGraph(graph, exportFormat), blocked: false };
-    } catch {
-      return { text: "", blocked: true };
-    }
-  }, [exportFormat, exportVisible, graph]);
+  const exportResult = useGraphExport(graph, exportFormat, exportVisible);
   const exportText = exportResult.text;
+  const copyState =
+    copyFeedback?.text === exportText && copyFeedback.format === exportFormat
+      ? copyFeedback.value
+      : "idle";
   const screenshot = useGraphIOScreenshot({
     graphRevision,
     isGraphEmpty,
@@ -148,6 +150,7 @@ export function EditorChrome() {
   });
   const starter = useGraphStarterState({
     open: panel === "starter",
+    previewEnabled: visiblePanel === "starter" && starterView === "paste",
     onClose: close,
     textareaRef,
   });
@@ -163,23 +166,29 @@ export function EditorChrome() {
   }, [panel, starterView]);
 
   useEffect(() => {
-    if (panel === "starter") {
+    if (panel === "starter" && starterView === "sample") {
       void loadSampleGalleryPane();
     }
-  }, [panel]);
+  }, [panel, starterView]);
 
   useEffect(() => {
     if (panel !== "settings" && panel !== "menu") {
       setClearArmed(false);
     }
-
-    if (panel !== "export") {
-      setCopyState("idle");
-    }
   }, [panel, setClearArmed]);
+
+  useEffect(() => {
+    copyAttemptRef.current += 1;
+    setCopyFeedback(null);
+    if (copyResetRef.current !== null) {
+      window.clearTimeout(copyResetRef.current);
+      copyResetRef.current = null;
+    }
+  }, [exportFormat, exportVisible, graph]);
 
   useEffect(
     () => () => {
+      copyAttemptRef.current += 1;
       if (copyResetRef.current !== null) {
         window.clearTimeout(copyResetRef.current);
       }
@@ -264,17 +273,28 @@ export function EditorChrome() {
   ]);
 
   const copyExport = useCallback(async () => {
+    if (!exportText) return;
+    const attempt = ++copyAttemptRef.current;
+    setCopyFeedback(null);
     const copied = await copyTextToClipboard(exportText);
-    setCopyState(copied ? "copied" : "blocked");
+    if (attempt !== copyAttemptRef.current) return;
+    setCopyFeedback({
+      text: exportText,
+      format: exportFormat,
+      value: copied ? "copied" : "blocked",
+    });
 
     if (copyResetRef.current !== null) {
       window.clearTimeout(copyResetRef.current);
     }
 
-    copyResetRef.current = window.setTimeout(() => setCopyState("idle"), 1500);
-  }, [exportText]);
+    copyResetRef.current = window.setTimeout(() => {
+      if (attempt === copyAttemptRef.current) setCopyFeedback(null);
+    }, 1500);
+  }, [exportFormat, exportText]);
 
   const saveExportTxt = useCallback(() => {
+    if (!exportText) return;
     const { extension, mimeType } = getGraphExportFormat(exportFormat);
 
     downloadBlob(
@@ -397,6 +417,7 @@ export function EditorChrome() {
             }
           >
             <ExportPanelBody
+              pending={exportResult.pending}
               exportFormat={exportFormat}
               exportText={exportText}
               exportWarning={
@@ -405,7 +426,6 @@ export function EditorChrome() {
               mobile={mobile}
               onExportFormatChange={(format) => {
                 setExportFormat(format);
-                setCopyState("idle");
               }}
             />
           </EditorPanelShell>

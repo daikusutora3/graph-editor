@@ -1,5 +1,5 @@
 "use client";
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import {
   getStorageSnapshot,
@@ -39,8 +39,11 @@ export function StorageNotice() {
   const copy = integrityCopy[locale === "ja" ? "ja" : "en"];
   const needsStorageAttention =
     state.status !== "saved" && state.status !== "pending";
+  const external = useMemo(
+    () => (state.status === "conflict" ? parseStoredGraph(state.raw) : null),
+    [state.raw, state.status],
+  );
   if (!needsStorageAttention && !error) return null;
-  const external = parseStoredGraph(state.raw);
   const download = (raw: string, filename: string) =>
     downloadBlob(new Blob([raw], { type: "application/json" }), filename);
   const load = (fresh: boolean) => {

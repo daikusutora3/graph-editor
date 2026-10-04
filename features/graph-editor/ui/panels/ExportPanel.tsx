@@ -2,6 +2,7 @@
 import { integrityCopy } from "../../i18n/integrity-copy";
 
 import { ClipboardCopy, Download } from "lucide-react";
+import { memo, useMemo } from "react";
 
 import {
   GRAPH_EXPORT_FORMATS,
@@ -16,17 +17,25 @@ export function ExportPanelBody({
   exportText,
   exportWarning,
   mobile,
+  pending = false,
   onExportFormatChange,
 }: {
   exportFormat: GraphExportFormat;
   exportText: string;
   exportWarning?: string;
   mobile: boolean;
+  pending?: boolean;
   onExportFormatChange: (format: GraphExportFormat) => void;
 }) {
   const { messages, locale } = useI18n();
-  const lines = exportText ? exportText.split("\n") : [];
-  const lineNumbers = lines.map((_, index) => index + 1).join("\n");
+  const lines = useMemo(
+    () => (exportText ? exportText.split("\n") : []),
+    [exportText],
+  );
+  const lineNumbers = useMemo(
+    () => lines.map((_, index) => String(index + 1)),
+    [lines],
+  );
 
   return (
     <>
@@ -66,17 +75,22 @@ export function ExportPanelBody({
           aria-hidden="true"
           className="text-control pr-2 text-right font-mono leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
         >
-          {lineNumbers}
+          <ExportText lines={lineNumbers} />
         </div>
         <pre
+          aria-busy={pending}
           aria-label={messages.exportPanel.exportedAria(
             messages.exportPanel.formats[exportFormat],
           )}
           className="text-control m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
         >
-          {exportText || (
+          {exportText ? (
+            <ExportText lines={lines} wide />
+          ) : (
             <span className="text-[var(--muted)]">
-              {messages.exportPanel.emptyPlaceholder}
+              {pending
+                ? messages.exportPanel.preparing
+                : messages.exportPanel.emptyPlaceholder}
             </span>
           )}
         </pre>
@@ -84,6 +98,37 @@ export function ExportPanelBody({
     </>
   );
 }
+
+// Keep every character in the DOM for selection and copying. Large exports
+// only lay out the visible groups; unsupported browsers retain the full view.
+const ExportText = memo(function ExportText({
+  lines,
+  wide = false,
+}: {
+  lines: string[];
+  wide?: boolean;
+}) {
+  if (lines.length <= 100) return lines.join("\n");
+  const groups = [];
+  for (let start = 0; start < lines.length; start += 50) {
+    const end = Math.min(lines.length, start + 50);
+    groups.push(
+      <span
+        key={start}
+        data-export-chunk
+        className={wide ? "block w-max min-w-full" : "block"}
+        style={{
+          contentVisibility: "auto",
+          containIntrinsicBlockSize: `auto ${end - start}lh`,
+          containIntrinsicInlineSize: wide ? "auto 0px" : undefined,
+        }}
+      >
+        {lines.slice(start, end).join("\n") + (end < lines.length ? "\n" : "")}
+      </span>,
+    );
+  }
+  return groups;
+});
 
 export function ExportPanelFooter({
   copyState,

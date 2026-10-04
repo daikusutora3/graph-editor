@@ -2,9 +2,11 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   exportGraph,
+  createGraphExportTask,
   getGraphExportFormat,
   graphExportProblem,
   hasLossyAdjacencyExport,
+  type GraphExportFormat,
 } from "../../features/graph-editor/io/export-graph";
 import { createVerification } from "./harness";
 
@@ -187,4 +189,54 @@ expect(
   huge.includes("(v2) at (12,0)"),
   "large coordinates stay within TeX dimension limits",
 );
+for (const format of [
+  "edge-list",
+  "adjacency-list",
+  "adjacency-matrix",
+  "json",
+  "tikz",
+] satisfies GraphExportFormat[]) {
+  const plain = {
+    ...model,
+    edges: [{ id: "ab", source: "unsafe) id", target: "b", weight: "7" }],
+  };
+  expect(
+    runExportTask(plain, format) === exportGraph(plain, format),
+    `${format} task matches synchronous output`,
+  );
+}
+expect(
+  runExportTask(createEmptyGraphModel(), "tikz") === "",
+  "empty task yields empty output",
+);
+const escapedLimit: GraphModel = {
+  ...createEmptyGraphModel(),
+  nodes: Array.from({ length: 1000 }, (_, index) => ({
+    id: `n${index}`,
+    order: index,
+    label: "\\".repeat(256),
+    x: index * 80,
+    y: 0,
+  })),
+};
+for (const exportText of [
+  () => exportGraph(escapedLimit, "tikz"),
+  () => runExportTask(escapedLimit, "tikz"),
+  () => runExportTask(model, "adjacency-list"),
+]) {
+  let blocked = false;
+  try {
+    exportText();
+  } catch {
+    blocked = true;
+  }
+  expect(blocked, "tasks keep output limits and lossy-adjacency restrictions");
+}
 finish();
+
+function runExportTask(graph: GraphModel, format: GraphExportFormat) {
+  const task = createGraphExportTask(graph, format);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}

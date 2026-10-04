@@ -219,10 +219,13 @@ export function layoutBfs(model: GraphModel, rootNodeId?: NodeId) {
       { nodeId: start, depth: 0 },
     ];
     visited.add(start);
+    let componentMaxRank = componentOffset;
 
-    while (queue.length > 0) {
-      const { nodeId, depth } = queue.shift()!;
-      rank.set(nodeId, componentOffset + depth);
+    for (let head = 0; head < queue.length; head += 1) {
+      const { nodeId, depth } = queue[head]!;
+      const nodeRank = componentOffset + depth;
+      rank.set(nodeId, nodeRank);
+      componentMaxRank = Math.max(componentMaxRank, nodeRank);
 
       const neighbors = [...(adjacency.get(nodeId) ?? [])].sort(
         (a, b) => order.get(a)! - order.get(b)!,
@@ -235,7 +238,7 @@ export function layoutBfs(model: GraphModel, rootNodeId?: NodeId) {
       }
     }
 
-    componentOffset = Math.max(componentOffset, ...rank.values()) + 2;
+    componentOffset = componentMaxRank + 2;
   }
 
   return positionColumns(groupByRank(nodeIds, rank), 150, 92);
@@ -262,8 +265,8 @@ export function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
     );
     const queue = [root];
 
-    while (queue.length > 0) {
-      const current = queue.shift()!;
+    for (let head = 0; head < queue.length; head += 1) {
+      const current = queue[head]!;
       const neighbors = [...(adjacency.get(current) ?? [])].sort(
         (a, b) => order.get(a)! - order.get(b)!,
       );
@@ -331,6 +334,9 @@ export function layoutScc(model: GraphModel) {
   const components = stronglyConnectedComponents(model);
   const componentIndexByNode = new Map<NodeId, number>();
   const order = orderIndex(orderedNodeIds(model));
+  const componentOrders = components.map((component) =>
+    componentOrder(component, order),
+  );
   const outgoing = new Map<number, Set<number>>(
     components.map((_, index) => [index, new Set<number>()]),
   );
@@ -362,13 +368,10 @@ export function layoutScc(model: GraphModel) {
     .map((_, index) => index)
     .filter((index) => indegree.get(index) === 0);
 
-  while (queue.length > 0) {
-    queue.sort(
-      (a, b) =>
-        componentOrder(components[a], order) -
-        componentOrder(components[b], order),
-    );
-    const current = queue.shift()!;
+  // Every predecessor contributes a maximum rank before a component is ready.
+  // Ready components can therefore be consumed in FIFO order.
+  for (let head = 0; head < queue.length; head += 1) {
+    const current = queue[head]!;
 
     for (const next of outgoing.get(current) ?? []) {
       rank.set(next, Math.max(rank.get(next)!, rank.get(current)! + 1));
@@ -392,11 +395,7 @@ export function layoutScc(model: GraphModel) {
   });
 
   columns.forEach((column) => {
-    column.sort(
-      (a, b) =>
-        componentOrder(components[a], order) -
-        componentOrder(components[b], order),
-    );
+    column.sort((a, b) => componentOrders[a]! - componentOrders[b]!);
   });
 
   return packPositionColumns(
@@ -420,8 +419,8 @@ export function layoutBipartite(model: GraphModel) {
     const queue = [nodeId];
     color.set(nodeId, 0);
 
-    while (queue.length > 0) {
-      const current = queue.shift()!;
+    for (let head = 0; head < queue.length; head += 1) {
+      const current = queue[head]!;
       const currentColor = color.get(current)!;
       const neighbors = [...(adjacency.get(current) ?? [])].sort(
         (a, b) => order.get(a)! - order.get(b)!,
@@ -485,16 +484,12 @@ export function layoutDag(model: GraphModel) {
   const visited = new Set<NodeId>();
   const queue = nodeIds.filter((nodeId) => indegree.get(nodeId) === 0);
 
-  while (queue.length > 0) {
-    queue.sort((a, b) => order.get(a)! - order.get(b)!);
-    const current = queue.shift()!;
+  // Maxima over all predecessors are independent of ready-node visit order.
+  for (let head = 0; head < queue.length; head += 1) {
+    const current = queue[head]!;
     visited.add(current);
 
-    const neighbors = [...adjacency.get(current)!].sort(
-      (a, b) => order.get(a)! - order.get(b)!,
-    );
-
-    for (const neighbor of neighbors) {
+    for (const neighbor of adjacency.get(current)!) {
       rank.set(neighbor, Math.max(rank.get(neighbor)!, rank.get(current)! + 1));
       indegree.set(neighbor, indegree.get(neighbor)! - 1);
 
@@ -586,8 +581,8 @@ export function layoutRadial(model: GraphModel, rootNodeId?: NodeId) {
     ];
     visited.add(root);
 
-    while (queue.length > 0) {
-      const { nodeId, depth } = queue.shift()!;
+    for (let head = 0; head < queue.length; head += 1) {
+      const { nodeId, depth } = queue[head]!;
       levels[depth] ??= [];
       levels[depth].push(nodeId);
 
@@ -727,18 +722,24 @@ export function sortLayerByBarycenter(
   related: Map<NodeId, Set<NodeId>>,
   order: Map<NodeId, number>,
 ) {
-  const referenceOrder = orderIndex(reference);
-  const score = (nodeId: NodeId) => {
-    const indexes = [...(related.get(nodeId) ?? [])]
-      .map((neighbor) => referenceOrder.get(neighbor))
-      .filter((index): index is number => index !== undefined);
+  if (layer.length < 2) return [...layer];
 
-    if (indexes.length === 0) return order.get(nodeId) ?? 0;
-    return indexes.reduce((sum, index) => sum + index, 0) / indexes.length;
-  };
+  const referenceOrder = orderIndex(reference);
+  const scores = new Map<NodeId, number>();
+  for (const nodeId of layer) {
+    let sum = 0;
+    let count = 0;
+    for (const neighbor of related.get(nodeId) ?? []) {
+      const index = referenceOrder.get(neighbor);
+      if (index === undefined) continue;
+      sum += index;
+      count += 1;
+    }
+    scores.set(nodeId, count === 0 ? (order.get(nodeId) ?? 0) : sum / count);
+  }
 
   return [...layer].sort((a, b) => {
-    const byScore = score(a) - score(b);
+    const byScore = scores.get(a)! - scores.get(b)!;
     return byScore === 0 ? order.get(a)! - order.get(b)! : byScore;
   });
 }

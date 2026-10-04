@@ -126,6 +126,31 @@ Start `bun run serve:out` after building, and restart it after each rebuild so
 its CSP header hashes match the latest HTML. The browser script uses isolated
 storage and seeds only its test fixtures.
 
+The next performance pass also checks topology, history, clipboard numbering,
+and resumable TikZ export:
+
+```bash
+bun tests/benchmarks/topology-performance.ts --output /tmp/topology.json
+bun tests/benchmarks/history-clipboard-performance.ts --output /tmp/history.json
+bun tests/benchmarks/tikz-performance.ts --output /tmp/tikz.json
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/export-performance-regressions.ts
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/export-rendering-regressions.ts
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/starter-performance-regressions.ts
+bun tests/browser/run-dormant-work.mjs
+bun tests/browser/run-export-lifecycle.mjs
+```
+
+These benchmarks accept `--baseline` to reject changed output signatures.
+Topology accepts `--reference-dir`, and history/clipboard accepts
+`--original-dir`, for saved original modules with imports resolved to this
+checkout. TikZ reports total CPU work and maximum cooperative slices separately.
+Its production browser check reloads before each timing sample to exclude the
+completed-output cache, then checks format switching, copy, download and reopen.
+The starter browser check identifies the built gallery chunk and verifies that
+paste-only use does not fetch it. Both checks use fresh browser contexts; export
+uses a test-local clipboard stub. The temporary React harnesses instrument parser
+calls and task scheduling without modifying the application build.
+
 ## Completion evidence
 
 For implementation work, finish the requested behavior and the checks that
