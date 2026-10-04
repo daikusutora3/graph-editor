@@ -9,7 +9,15 @@ const suites = [
   { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
+  {
+    name: "chrome-subscriptions",
+    path: "tests/verification/chrome-subscriptions.ts",
+  },
   { name: "storage", path: "tests/verification/storage.ts" },
+  {
+    name: "storage-notifications",
+    path: "tests/verification/storage-notifications.ts",
+  },
   { name: "io", path: "tests/verification/io-contracts.ts" },
   { name: "tikz", path: "tests/verification/tikz.ts" },
   { name: "screenshot", path: "tests/verification/screenshot.ts" },

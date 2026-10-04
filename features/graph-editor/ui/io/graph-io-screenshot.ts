@@ -113,6 +113,10 @@ export function useGraphIOScreenshot({
   );
   const debouncedPreviewInput = useDebouncedValue(currentPreviewInput, 150);
   const currentPreviewInputKey = useMemo(
+    () => makeScreenshotInputKey(currentPreviewInput),
+    [currentPreviewInput],
+  );
+  const debouncedPreviewInputKey = useMemo(
     () => makeScreenshotInputKey(debouncedPreviewInput),
     [debouncedPreviewInput],
   );
@@ -123,6 +127,10 @@ export function useGraphIOScreenshot({
     visiblePreview,
     currentPreviewInputKey,
   );
+  // Reopening a pane restores its live revision; wait for those inputs instead
+  // of exporting once with the dormant revision and again after the debounce.
+  const previewReadyToRefresh =
+    currentPreviewInputKey === debouncedPreviewInputKey && previewStale;
 
   const resetFeedback = () => {
     clearTimeoutRef(copyResetTimeoutRef);
@@ -213,7 +221,7 @@ export function useGraphIOScreenshot({
   }
 
   async function refreshPreview() {
-    const inputKey = currentPreviewInputKey;
+    const inputKey = debouncedPreviewInputKey;
     const requestId = previewRequestRef.current + 1;
     previewRequestRef.current = requestId;
 
@@ -440,14 +448,20 @@ export function useGraphIOScreenshot({
   };
 
   useEffect(() => {
-    if (!previewEnabled || isGraphEmpty || !previewStale) {
+    if (!previewEnabled || isGraphEmpty || !previewReadyToRefresh) {
       return;
     }
 
     void refreshPreview();
     // refreshPreview is recreated per render; the key captures its inputs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPreviewInputKey, isGraphEmpty, previewEnabled, previewStale]);
+  }, [
+    currentPreviewInputKey,
+    debouncedPreviewInputKey,
+    isGraphEmpty,
+    previewEnabled,
+    previewReadyToRefresh,
+  ]);
 
   useEffect(
     () => () => {

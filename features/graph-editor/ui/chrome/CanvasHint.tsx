@@ -6,12 +6,15 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
+import { editorModeAtom } from "../../shell/state/editor-atoms";
 import {
-  edgeDraftAtom,
-  editorModeAtom,
-  selectionAtom,
-} from "../../shell/state/editor-atoms";
-import { graphAtom } from "../../shell/state/graph-atoms";
+  edgeDraftSourceLabelAtom,
+  hasSelectionAtom,
+} from "../../shell/state/chrome-atoms";
+import {
+  graphHasEdgesAtom,
+  graphHasNodesAtom,
+} from "../../shell/state/graph-atoms";
 import { HINT_STORAGE_PREFIX, HINTS_RESET_EVENT } from "./hint-storage";
 
 /** How long the user has to sit still before a hint offers help. */
@@ -34,16 +37,11 @@ export function CanvasHint({
 }) {
   const { messages } = useI18n();
   const mode = useAtomValue(editorModeAtom);
-  const edgeDraft = useAtomValue(edgeDraftAtom);
-  const selection = useAtomValue(selectionAtom);
-  const graph = useAtomValue(graphAtom);
-  const hasNodes = graph.nodes.length > 0;
-  const hasEdges = graph.edges.length > 0;
-  const hasSelection =
-    selection.nodeIds.length > 0 || selection.edgeIds.length > 0;
-  const sourceNode = edgeDraft.sourceNodeId
-    ? graph.nodes.find((node) => node.id === edgeDraft.sourceNodeId)
-    : null;
+  const hasNodes = useAtomValue(graphHasNodesAtom);
+  const hasEdges = useAtomValue(graphHasEdgesAtom);
+  const hasSelection = useAtomValue(hasSelectionAtom);
+  const sourceLabel = useAtomValue(edgeDraftSourceLabelAtom);
+  const hasSource = sourceLabel !== null;
 
   const idle = useIdle(HINT_IDLE_MS);
   const showPlaceNode = useStuckHint({
@@ -58,12 +56,12 @@ export function CanvasHint({
   });
   const showEdgeStart = useStuckHint({
     id: "edge-start",
-    active: visible && mode === "edge" && !sourceNode,
-    done: Boolean(sourceNode) || hasEdges,
+    active: visible && mode === "edge" && !hasSource,
+    done: hasSource || hasEdges,
   });
   const showEdgeTarget = useStuckHint({
     id: "edge-target",
-    active: visible && mode === "edge" && Boolean(sourceNode),
+    active: visible && mode === "edge" && hasSource,
     done: hasEdges,
   });
   const showSelect = useStuckHint({
@@ -83,8 +81,8 @@ export function CanvasHint({
       ? messages.chrome.nodeHintConnect
       : showEdgeStart
         ? messages.chrome.edgeHintStart
-        : showEdgeTarget && sourceNode
-          ? messages.chrome.edgeHintTarget(sourceNode.label)
+        : showEdgeTarget && sourceLabel !== null
+          ? messages.chrome.edgeHintTarget(sourceLabel)
           : showSelect
             ? messages.chrome.selectHint
             : null;

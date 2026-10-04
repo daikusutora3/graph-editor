@@ -17,6 +17,15 @@ import type {
 import { estimateNodeWidth } from "../../features/graph-editor/core/graph/node-size";
 import { edgeCurveMidpoint } from "../../features/graph-editor/core/layout/edge-route-geometry";
 import {
+  chooseLoopDirection,
+  createLoopDirectionTask,
+  loopDirectionCandidates,
+  loopSamplePoints,
+  normalizeDegrees,
+  scoreLoopDirection,
+} from "../../features/graph-editor/core/layout/edge-routing-loops";
+import type { ResolvedEdgeRoutingOptions } from "../../features/graph-editor/core/layout/edge-routing-shared";
+import {
   layoutLine,
   layoutTree,
 } from "../../features/graph-editor/layouts/layout-algorithms";
@@ -416,8 +425,139 @@ for (const route of computeEdgeRouting(obstructedGraph).values()) {
 verifyManualRoutingHistoryAndStorage();
 verifyRoutingGeometryWork();
 verifyParallelRoutingHistoryWork();
+verifyLoopRoutingWork();
 
 finish();
+
+function verifyLoopRoutingWork() {
+  const options: ResolvedEdgeRoutingOptions = {
+    avoidNodes: true,
+    work: { units: 0, samples: new Map() },
+    candidateBowPx: [],
+    duplicateBowPx: 36,
+    loopDirectionDeg: -45,
+    loopDirectionStepDeg: 42,
+    loopSweepDeg: 70,
+    loopSweepStepDeg: 16,
+    maxLoopSweepDeg: 120,
+    nodeClearancePx: 42,
+    previousMeta: new Map(),
+    rerouteEdgeIds: null,
+    separateParallelEdges: true,
+    variant: 0,
+  };
+  for (const translation of [0, 1e9, 1e20]) {
+    for (const label of ["A", "長いラベル".repeat(20)]) {
+      const source = {
+        id: "source",
+        label,
+        order: 0,
+        x: translation,
+        y: -translation,
+        measuredWidth: estimateNodeWidth(label),
+      };
+      const nodes = [
+        source,
+        ...Array.from({ length: 180 }, (_, index) => {
+          // Include both sides of the inner/outer clearance boundary, dense
+          // nearby obstacles, and remote nodes that should be pruned.
+          const radii = [
+            0,
+            29.4 - 1e-8,
+            29.4 + 1e-8,
+            71.4,
+            113.4 - 1e-8,
+            113.4 + 1e-8,
+            5000,
+          ];
+          const radius = radii[index % radii.length]!;
+          const angle = index * 0.37;
+          return {
+            id: `n${index}`,
+            label,
+            order: index + 1,
+            x: source.x + Math.cos(angle) * radius,
+            y: source.y + Math.sin(angle) * radius,
+            measuredWidth: estimateNodeWidth(label),
+          };
+        }),
+      ];
+      const exhaustive = loopDirectionCandidates(options).reduce(
+        (best, candidate) => {
+          const points = loopSamplePoints(source, candidate, options);
+          let score =
+            Math.abs(normalizeDegrees(candidate - options.loopDirectionDeg)) *
+            0.01;
+          for (const node of nodes) {
+            if (node.id === source.id) continue;
+            const distance = Math.min(
+              ...points.map((point) =>
+                Math.hypot(node.x - point.x, node.y - point.y),
+              ),
+            );
+            const overlap = Math.max(0, options.nodeClearancePx - distance);
+            score += overlap * overlap;
+          }
+          expect(
+            scoreLoopDirection(candidate, source, nodes, options) === score,
+            "candidate bounds should preserve exhaustive loop collision scores",
+          );
+          return score < best.score ||
+            (score === best.score &&
+              Math.abs(candidate - options.loopDirectionDeg) <
+                Math.abs(best.direction - options.loopDirectionDeg))
+            ? { direction: candidate, score }
+            : best;
+        },
+        { direction: options.loopDirectionDeg, score: Infinity },
+      );
+      expect(
+        chooseLoopDirection(source, nodes, options) === exhaustive.direction,
+        "pruned loop routing should match exhaustive scoring for dense, boundary, translated, and pill-label obstacles",
+      );
+      const task = createLoopDirectionTask(source, nodes, options);
+      let step = task.next();
+      expect(
+        !step.done,
+        "loop direction scoring should yield between candidates",
+      );
+      while (!step.done) step = task.next();
+      expect(
+        step.value === exhaustive.direction,
+        "resuming loop scoring should retain the exhaustive direction",
+      );
+    }
+  }
+
+  let coordinateReads = 0;
+  const source = { id: "source", label: "S", order: 0, x: 0, y: 0 };
+  const distantNodes = Array.from({ length: 600 }, (_, index) => ({
+    id: `far${index}`,
+    order: index + 1,
+    label: "Far",
+    get x() {
+      coordinateReads++;
+      return 10000 + index;
+    },
+    y: 10000,
+  }));
+  expect(
+    chooseLoopDirection(source, distantNodes, options) ===
+      options.loopDirectionDeg,
+    "remote obstacles should preserve the default loop direction",
+  );
+  expect(
+    coordinateReads === distantNodes.length,
+    "each remote loop obstacle should be inspected once rather than once per sample and direction",
+  );
+  expect(
+    chooseLoopDirection(source, distantNodes, {
+      ...options,
+      loopDirectionDeg: -44.5,
+    }) === -44,
+    "unobstructed quality loops should retain rounded fractional direction candidates",
+  );
+}
 
 function verifyRoutingGeometryWork() {
   const label = "長いラベル".repeat(20);

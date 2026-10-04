@@ -7,16 +7,31 @@ export function chooseLoopDirection(
   nodes: GraphNode[],
   options: ResolvedEdgeRoutingOptions,
 ) {
+  const task = createLoopDirectionTask(source, nodes, options);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+/** Keep each direction resumable without rescoring distant nodes 24 times. */
+export function* createLoopDirectionTask(
+  source: GraphNode,
+  nodes: GraphNode[],
+  options: ResolvedEdgeRoutingOptions,
+): Generator<void, number> {
   if (!options.avoidNodes) {
     return options.loopDirectionDeg;
   }
 
+  const nearbyNodes = loopObstacleNodes(source, nodes, options);
+  if (nearbyNodes.length === 0) return Math.round(options.loopDirectionDeg);
   const candidates = loopDirectionCandidates(options);
   let best = candidates[0] ?? options.loopDirectionDeg;
-  let bestScore = scoreLoopDirection(best, source, nodes, options);
+  let bestScore = scoreLoopDirection(best, source, nearbyNodes, options);
 
   for (const candidate of candidates.slice(1)) {
-    const score = scoreLoopDirection(candidate, source, nodes, options);
+    yield;
+    const score = scoreLoopDirection(candidate, source, nearbyNodes, options);
 
     if (
       score < bestScore ||
@@ -31,6 +46,33 @@ export function chooseLoopDirection(
 
   return best;
 }
+
+function loopObstacleNodes(
+  source: GraphNode,
+  nodes: GraphNode[],
+  options: ResolvedEdgeRoutingOptions,
+) {
+  const radius = options.nodeClearancePx * 1.7;
+  // Every sample lies on this circle. Only nodes within its clearance annulus
+  // can contribute a score. Keep floating-point slack for translated drawings
+  // where adding the radius to a large coordinate can lose precision.
+  const slack =
+    Number.EPSILON *
+    Math.max(1, Math.abs(source.x), Math.abs(source.y), radius) *
+    8;
+  const outer = radius + options.nodeClearancePx + slack;
+  const inner = Math.max(0, radius - options.nodeClearancePx - slack);
+  const outerSquared = outer * outer;
+  const innerSquared = inner * inner;
+
+  return nodes.filter((node) => {
+    if (node.id === source.id) return false;
+    const dx = node.x - source.x;
+    const dy = node.y - source.y;
+    const squaredDistance = dx * dx + dy * dy;
+    return squaredDistance <= outerSquared && squaredDistance >= innerSquared;
+  });
+}
 export function loopDirectionCandidates(options: ResolvedEdgeRoutingOptions) {
   return Array.from({ length: 24 }, (_, index) =>
     Math.round(options.loopDirectionDeg + index * 15),
@@ -43,17 +85,27 @@ export function scoreLoopDirection(
   options: ResolvedEdgeRoutingOptions,
 ) {
   const loopPoints = loopSamplePoints(source, directionDeg, options);
+  const slack =
+    Number.EPSILON * Math.max(1, Math.abs(source.x), Math.abs(source.y)) * 8;
+  const reach = options.nodeClearancePx + slack;
+  const minX = Math.min(...loopPoints.map((point) => point.x)) - reach;
+  const maxX = Math.max(...loopPoints.map((point) => point.x)) + reach;
+  const minY = Math.min(...loopPoints.map((point) => point.y)) - reach;
+  const maxY = Math.max(...loopPoints.map((point) => point.y)) + reach;
   let score =
     Math.abs(normalizeDegrees(directionDeg - options.loopDirectionDeg)) * 0.01;
 
   for (const node of nodes) {
     if (node.id === source.id) continue;
+    if (node.x < minX || node.x > maxX || node.y < minY || node.y > maxY)
+      continue;
 
-    const distance = Math.min(
-      ...loopPoints.map((point) =>
+    let distance = Infinity;
+    for (const point of loopPoints)
+      distance = Math.min(
+        distance,
         Math.hypot(node.x - point.x, node.y - point.y),
-      ),
-    );
+      );
     const overlap = Math.max(0, options.nodeClearancePx - distance);
     score += overlap * overlap;
   }

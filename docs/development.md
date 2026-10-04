@@ -81,6 +81,8 @@ bun tests/benchmarks/import-performance.ts --output /tmp/import-before.json
 bun tests/benchmarks/graph-validation-performance.ts --output /tmp/validation-before.json
 bun tests/benchmarks/selection-performance.ts
 bun tests/benchmarks/run-canvas-hitboxes.mjs --output /tmp/canvas-before.json
+bun tests/benchmarks/routing-performance.ts --output /tmp/routing-before.json
+bun tests/benchmarks/interactive-routing-performance.ts --output /tmp/drag-before.json
 ```
 
 After a change, pass `--baseline` with the saved JSON path to the import or
@@ -92,6 +94,23 @@ The hitbox check uses isolated Chromium and React's development Profiler. Pass
 `--baseline /tmp/canvas-before.json` to compare render medians; these exclude
 Cytoscape paint and end-to-end input latency. It also measures real Cytoscape
 hitbox reads and checks that skipped renders still use the latest callbacks.
+
+The routing checks include 600 self-loop sources below the quality-routing
+cutoff, plus 500 dragged obstacles alongside 400 settled edges. The interactive
+check reports the first generator step as well as total work and maximum
+slices; a fast average alone does not establish responsive dragging. Both
+routing runners accept `--baseline` and compare output signatures.
+
+For translated SVG hitboxes, live panel updates, PNG export counts on reopening,
+and drag/history/persistence at 1,000 nodes and 5,000 edges, run:
+
+```bash
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/canvas-performance-regressions.ts
+```
+
+Start `bun run serve:out` after building, and restart it after each rebuild so
+its CSP header hashes match the latest HTML. The browser script uses isolated
+storage and seeds only its test fixtures.
 
 ## Completion evidence
 

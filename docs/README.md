@@ -16,6 +16,7 @@ These record earlier decisions and observations, not current acceptance results
 or instructions to repeat every check on every task.
 
 - [Sample card controls design QA](archive/sample-card-controls-design-qa.md)
+- [Performance evaluation, October 2026](archive/performance-2026-10-04.md)
 - [Redundant-code cleanup, May 2026](archive/redundant-code-cleanup-strategy-2026-05-31.md)
 
 ## Maintaining this documentation

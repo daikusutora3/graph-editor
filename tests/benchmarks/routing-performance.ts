@@ -77,6 +77,32 @@ for (const [name, nodeCount, edgeCount, longLabels] of [
   measure(`${name}: TikZ export`, () => exportTikz(graph));
 }
 
+// 600 loop sources still qualify for quality routing (600² < 400,000).
+// More nodes would exercise the inexpensive fallback and miss loop scoring.
+for (const [name, spacing, longLabels] of [
+  ["loops / grid", 90, false],
+  ["loops / collapsed", 0, false],
+  ["loops / compact long labels", 2, true],
+] as const) {
+  const base = fixture(600, 600, longLabels);
+  const graph: GraphModel = {
+    ...base,
+    settings: { ...base.settings, allowSelfLoops: true },
+    nodes: base.nodes.map((node, index) => ({
+      ...node,
+      x: (index % 32) * spacing,
+      y: Math.floor(index / 32) * spacing,
+    })),
+    edges: base.edges.map((edge) => ({ ...edge, target: edge.source })),
+  };
+  measure(`${name}: core initial`, () =>
+    computeEdgeRouting(graph, { mode: "quality" }),
+  );
+  measureSliced(`${name}: core initial sliced`, () =>
+    createEdgeRoutingTask(graph, { mode: "quality" }),
+  );
+}
+
 const baselinePath = argument("--baseline");
 const baseline = baselinePath
   ? (JSON.parse(readFileSync(baselinePath, "utf8")) as Report)

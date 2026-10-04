@@ -9,7 +9,7 @@ import { evaluateGraphInput } from "../../io/import-graph";
 import type { ImportFormat, ImportOptions } from "../../io/import-utils";
 import type { ImportEvaluation } from "../../io/import-types";
 import type { GraphModel } from "../../core/graph/model";
-import { graphAtom } from "../../shell/state/graph-atoms";
+import { graphSettingsAtom } from "../../shell/state/graph-atoms";
 import { useDebouncedValue } from "../../ui/hooks/use-debounced-value";
 
 import { useApplyGraphModel } from "./use-apply-graph-model";
@@ -27,7 +27,7 @@ export function useGraphStarterState({
   onClose,
   textareaRef,
 }: GraphStarterStateOptions) {
-  const graph = useAtomValue(graphAtom);
+  const graphSettings = useAtomValue(graphSettingsAtom);
   const applyGraphModel = useApplyGraphModel();
   const [inputText, setInputText] = useState("");
   const [issues, setIssues] = useState<ImportWarning[]>([]);
@@ -35,10 +35,10 @@ export function useGraphStarterState({
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const importOptions = useMemo<ImportOptions>(
     () => ({
-      ...graph.settings,
+      ...graphSettings,
       format: importFormat,
     }),
-    [graph.settings, importFormat],
+    [graphSettings, importFormat],
   );
   const debouncedInputText = useDebouncedValue(inputText, 150);
   const previewParseKey = useMemo(
