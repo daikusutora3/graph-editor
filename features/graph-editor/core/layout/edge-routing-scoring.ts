@@ -186,23 +186,14 @@ export function scoreCurveCrossings(
         if (
           !otherStart ||
           !otherEnd ||
-          !segmentsProperlyIntersect(
-            segmentStart,
-            segmentEnd,
-            otherStart,
-            otherEnd,
-          )
+          !segmentsIntersect(segmentStart, segmentEnd, otherStart, otherEnd)
         ) {
           continue;
         }
 
-        const crossingAngle = acuteCrossingAngle(
-          segmentStart,
-          segmentEnd,
-          otherStart,
-          otherEnd,
-        );
-        score += EDGE_CROSSING_SCORE + Math.max(0, 90 - crossingAngle) * 4;
+        // Reducing crossings can justify a bend. Changing only their angle
+        // should not outweigh a clear, shorter straight route.
+        score += EDGE_CROSSING_SCORE;
         crossed = true;
         break;
       }
@@ -265,50 +256,32 @@ export function cachedCurveSamples(
 
   return samples;
 }
-export function segmentsProperlyIntersect(
+export function segmentsIntersect(
   a: { x: number; y: number },
   b: { x: number; y: number },
   c: { x: number; y: number },
   d: { x: number; y: number },
 ) {
-  const abC = orientation(a, b, c);
-  const abD = orientation(a, b, d);
-  const cdA = orientation(c, d, a);
-  const cdB = orientation(c, d, b);
-  const epsilon = 0.001;
+  const abX = b.x - a.x;
+  const abY = b.y - a.y;
+  const cdX = d.x - c.x;
+  const cdY = d.y - c.y;
+  const denominator = abX * cdY - abY * cdX;
+  if (Math.abs(denominator) < 0.001) return false;
 
-  return abC * abD < -epsilon && cdA * cdB < -epsilon;
-}
-export function orientation(
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-  c: { x: number; y: number },
-) {
-  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-}
-export function acuteCrossingAngle(
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-  c: { x: number; y: number },
-  d: { x: number; y: number },
-) {
-  const firstX = b.x - a.x;
-  const firstY = b.y - a.y;
-  const secondX = d.x - c.x;
-  const secondY = d.y - c.y;
-  const denominator = Math.hypot(firstX, firstY) * Math.hypot(secondX, secondY);
-
-  if (denominator === 0) {
-    return 0;
-  }
-
-  const cosine = Math.min(
-    1,
-    Math.max(-1, (firstX * secondX + firstY * secondY) / denominator),
+  const acX = c.x - a.x;
+  const acY = c.y - a.y;
+  const alongAB = (acX * cdY - acY * cdX) / denominator;
+  const alongCD = (acX * abY - acY * abX) / denominator;
+  const epsilon = 1e-9;
+  // Include sample endpoints: a crossing at a curve's internal sample join
+  // is still a crossing. Graph edges sharing a vertex are excluded by callers.
+  return (
+    alongAB >= -epsilon &&
+    alongAB <= 1 + epsilon &&
+    alongCD >= -epsilon &&
+    alongCD <= 1 + epsilon
   );
-  const degrees = (Math.acos(Math.abs(cosine)) * 180) / Math.PI;
-
-  return Math.min(90, degrees);
 }
 export function scoreCurveInstability(
   curve: EdgeCurveGeometry,
