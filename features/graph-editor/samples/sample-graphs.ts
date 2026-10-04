@@ -14,6 +14,7 @@ import {
 } from "./basic-samples";
 import { createEmptyGraphModel, createNode } from "../core/graph/graph-factory";
 import type { GraphModel, GraphSettings, NodeId } from "../core/graph/model";
+import { algorithmicSampleFactories } from "./algorithmic-samples";
 
 type Point = { x: number; y: number };
 type SampleGraphFactory = (settings: Partial<GraphSettings>) => GraphModel;
@@ -137,7 +138,6 @@ function bipartitePositions(
   leftIds: NodeId[],
   rightIds: NodeId[],
 ): Record<NodeId, Point> {
-  const maxRows = Math.max(leftIds.length, rightIds.length, 1);
   const columnGap = 180;
   const rowGap = 92;
   const placeColumn = (nodeIds: NodeId[], x: number) =>
@@ -146,7 +146,7 @@ function bipartitePositions(
         nodeId,
         {
           x,
-          y: (index - (maxRows - 1) / 2) * rowGap,
+          y: (index - (nodeIds.length - 1) / 2) * rowGap,
         },
       ]),
     );
@@ -321,9 +321,10 @@ function friendshipPositions(
   for (let index = 0; index < triangleCount; index += 1) {
     const angle = (Math.PI * 2 * index) / triangleCount - Math.PI / 2;
     const tangent = angle + Math.PI / 2;
+    const radius = Math.max(170, triangleCount * 20);
     const center = {
-      x: Math.round(Math.cos(angle) * 170),
-      y: Math.round(Math.sin(angle) * 170),
+      x: Math.round(Math.cos(angle) * radius),
+      y: Math.round(Math.sin(angle) * radius),
     };
     const first = nodeIds[index * 2 + 1];
     const second = nodeIds[index * 2 + 2];
@@ -2519,6 +2520,7 @@ function createDodecahedralGraph(
 }
 
 const sampleGraphFactories = {
+  ...algorithmicSampleFactories,
   empty: (settings) => createEmptySampleGraph(settings),
   path: (settings) => createPathGraph(6, settings),
   cycle: (settings) => createCycleGraph(6, settings),
@@ -2590,6 +2592,10 @@ const sampleGraphFactories = {
   grotzsch: (settings) => createMycielskiGraph(5, settings),
   moserSpindle: (settings) => createMoserSpindleGraph(settings),
   dodecahedral: (settings) => createDodecahedralGraph(settings),
+  randomTree: (settings) => createRandomTreeGraph(12, 1, settings),
+  randomDag: (settings) => createRandomDagGraph(12, 18, 1, settings),
+  randomConnected: (settings) =>
+    createRandomConnectedGraph(12, 18, 1, settings),
 } satisfies Record<string, SampleGraphFactory>;
 
 export const sampleGraphKinds = Object.keys(
@@ -2669,11 +2675,12 @@ export function createSizedSampleGraph(
   const count = clampSizedSampleNodeCount(kind, nodeCount);
   const model = createSizedSampleGraphModel(kind, count, settings, options);
 
-  if (
-    (kind === "grid" || kind === "knight") &&
-    hasCustomGridDimensions(options)
-  ) {
-    return model;
+  if (kind === "grid" || kind === "knight") {
+    const { columns } = sizedGridDimensions(count, options);
+    return withNodePositions(
+      model,
+      gridPositions(orderedNodeIds(model), columns),
+    );
   }
 
   return applyPreferredSampleLayout(kind, model);
@@ -2704,9 +2711,12 @@ export function clampSizedSampleNodeCount(
     return 6;
   }
 
+  const minNodes = kind === "cycle" ? 3 : kind === "crown" ? 4 : 1;
+  const rounded =
+    kind === "crown" ? Math.round(nodeCount / 2) * 2 : Math.round(nodeCount);
   return Math.min(
     getSizedSampleGraphMaxNodes(kind),
-    Math.max(SIZED_SAMPLE_GRAPH_MIN_NODES, Math.round(nodeCount)),
+    Math.max(minNodes, rounded),
   );
 }
 
@@ -2949,19 +2959,279 @@ function maxBalancedBipartiteNodesForEdgeLimit(maxEdges: number) {
 }
 
 function maxCrownGraphNodesForEdgeLimit(maxEdges: number) {
-  let nodeCount = maxBalancedBipartiteNodesForEdgeLimit(maxEdges);
+  // Crown graphs have two equal parts of size k and exactly k(k - 1) edges.
+  return 2 * Math.floor((1 + Math.sqrt(1 + 4 * maxEdges)) / 2);
+}
 
-  while (nodeCount > SIZED_SAMPLE_GRAPH_MIN_NODES) {
-    const leftCount = Math.ceil(nodeCount / 2);
-    const rightCount = Math.floor(nodeCount / 2);
-    const edgeCount = leftCount * rightCount - Math.min(leftCount, rightCount);
-
-    if (edgeCount <= maxEdges) {
-      return nodeCount;
+/** Called by the parameter API after it has bounded and normalized the inputs. */
+export function createParameterizedSampleGraph(
+  kind: SampleGraphKind,
+  values: Readonly<Record<string, number>>,
+  settings: Partial<GraphSettings> = {},
+): GraphModel {
+  switch (kind) {
+    case "path":
+    case "cycle":
+    case "complete":
+    case "star":
+    case "tree":
+    case "crown":
+      return createSizedSampleGraph(kind, values.nodes, settings);
+    case "edgeless": {
+      const model = createEdgelessGraph(values.nodes, settings);
+      return withNodePositions(model, gridPositions(orderedNodeIds(model)));
     }
-
-    nodeCount -= 1;
+    case "grid": {
+      const model = createGridGraph(values.rows, values.columns, settings);
+      return withNodePositions(
+        model,
+        gridPositions(orderedNodeIds(model), values.columns),
+      );
+    }
+    case "bipartite": {
+      const model = createBipartiteGraph(values.left, values.right, settings);
+      return applyPreferredSampleLayout(kind, model);
+    }
+    case "knight": {
+      const model = createKnightGraph(values.rows, values.columns, settings, [
+        [values.moveX, values.moveY],
+        [values.moveY, values.moveX],
+      ]);
+      return withNodePositions(
+        model,
+        gridPositions(orderedNodeIds(model), values.columns),
+      );
+    }
+    case "ladder":
+      return createLadderGraph(values.rungs, settings);
+    case "wheel":
+      return createWheelGraph(values.rim, settings);
+    case "fan": {
+      const model = createFanGraph(values.path, settings);
+      return withNodePositions(model, fanPositions(orderedNodeIds(model)));
+    }
+    case "friendship": {
+      const model = createFriendshipGraph(values.triangles, settings);
+      return withNodePositions(
+        model,
+        friendshipPositions(orderedNodeIds(model), values.triangles),
+      );
+    }
+    case "caterpillar": {
+      const model = createCaterpillarGraph(values.spine, settings);
+      return withNodePositions(
+        model,
+        caterpillarPositions(orderedNodeIds(model), values.spine),
+      );
+    }
+    case "hypercube": {
+      const model = createHypercubeGraph(values.dimension, settings);
+      return withNodePositions(
+        model,
+        hypercubePositions(orderedNodeIds(model), values.dimension),
+      );
+    }
+    case "turan": {
+      const model = createTuranGraph(values.nodes, values.parts, settings);
+      const partSizes = Array.from({ length: values.parts }, (_, index) =>
+        Math.floor((values.nodes + values.parts - index - 1) / values.parts),
+      );
+      return withNodePositions(
+        model,
+        multipartitePositions(orderedNodeIds(model), partSizes),
+      );
+    }
+    case "generalizedPetersen": {
+      const model = createGeneralizedPetersenGraph(
+        values.outerNodes,
+        values.step,
+        settings,
+      );
+      const radius = Math.max(210, values.outerNodes * 24);
+      return withNodePositions(
+        model,
+        doubleCirclePositions(
+          model.nodes
+            .filter((node) => node.id.startsWith("o"))
+            .map((node) => node.id),
+          model.nodes
+            .filter((node) => node.id.startsWith("i"))
+            .map((node) => node.id),
+          radius,
+          radius / 2,
+        ),
+      );
+    }
+    case "randomTree":
+      return createRandomTreeGraph(values.nodes, values.seed, settings);
+    case "randomDag":
+      return createRandomDagGraph(
+        values.nodes,
+        values.edges,
+        values.seed,
+        settings,
+      );
+    case "randomConnected":
+      return createRandomConnectedGraph(
+        values.nodes,
+        values.edges,
+        values.seed,
+        settings,
+      );
+    default:
+      return createSampleGraph(kind, settings);
   }
+}
 
-  return SIZED_SAMPLE_GRAPH_MIN_NODES;
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = Math.imul(state ^ (state >>> 15), state | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A shuffled recursive tree; every new vertex attaches to an earlier vertex. */
+function randomSpanningTree(
+  nodeCount: number,
+  random: () => number,
+): Array<readonly [number, number]> {
+  const order = Array.from({ length: nodeCount }, (_, index) => index);
+  for (let index = order.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(random() * (index + 1));
+    [order[index], order[swap]] = [order[swap], order[index]];
+  }
+  return order.slice(1).map((target, index) => {
+    const source = order[Math.floor(random() * (index + 1))];
+    return source < target ? [source, target] : [target, source];
+  });
+}
+
+function pairRank(nodeCount: number, source: number, target: number): number {
+  return (source * (2 * nodeCount - source - 1)) / 2 + target - source - 1;
+}
+
+function pairAtRank(
+  nodeCount: number,
+  rank: number,
+): readonly [number, number] {
+  const width = 2 * nodeCount - 1;
+  let source = Math.floor((width - Math.sqrt(width * width - 8 * rank)) / 2);
+  const prefix = (index: number) => (index * (2 * nodeCount - index - 1)) / 2;
+  // The quadratic inverse can land on either side of a boundary after rounding.
+  while (prefix(source) > rank) source -= 1;
+  while (prefix(source + 1) <= rank) source += 1;
+  return [source, source + 1 + rank - prefix(source)];
+}
+
+/** Sample pairs without replacement, including dense graphs without retry loops. */
+function randomSimpleEdges(
+  nodeCount: number,
+  edgeCount: number,
+  random: () => number,
+  initial: Array<readonly [number, number]> = [],
+): Array<readonly [number, number]> {
+  const edges = [...initial];
+  const existing = new Set(
+    initial.map(([source, target]) => pairRank(nodeCount, source, target)),
+  );
+  const total = (nodeCount * (nodeCount - 1)) / 2;
+  const swaps = new Map<number, number>();
+  let remaining = total;
+  while (edges.length < edgeCount && remaining > 0) {
+    const index = Math.floor(random() * remaining);
+    const rank = swaps.get(index) ?? index;
+    remaining -= 1;
+    swaps.set(index, swaps.get(remaining) ?? remaining);
+    swaps.delete(remaining);
+    if (!existing.has(rank)) edges.push(pairAtRank(nodeCount, rank));
+  }
+  return edges;
+}
+
+function treeLayerPositions(model: GraphModel): Record<NodeId, Point> {
+  const ids = orderedNodeIds(model);
+  const neighbors = new Map(ids.map((id) => [id, [] as NodeId[]]));
+  for (const edge of model.edges) {
+    neighbors.get(edge.source)?.push(edge.target);
+    neighbors.get(edge.target)?.push(edge.source);
+  }
+  const layers: NodeId[][] = [];
+  const seen = new Set<NodeId>();
+  let frontier = ids.slice(0, 1);
+  while (frontier.length > 0) {
+    layers.push(frontier);
+    frontier.forEach((id) => seen.add(id));
+    frontier = frontier.flatMap((id) =>
+      (neighbors.get(id) ?? []).filter((neighbor) => !seen.has(neighbor)),
+    );
+  }
+  const positions: Record<NodeId, Point> = {};
+  layers.forEach((layer, depth) => {
+    layer.forEach((id, index) => {
+      positions[id] = {
+        x: (index - (layer.length - 1) / 2) * 100,
+        y: (depth - (layers.length - 1) / 2) * 112,
+      };
+    });
+  });
+  return positions;
+}
+
+function createRandomTreeGraph(
+  nodeCount: number,
+  seed: number,
+  settings: Partial<GraphSettings>,
+): GraphModel {
+  const edges = randomSpanningTree(nodeCount, seededRandom(seed));
+  const model = createGraphFromEdges(nodeCount, edges, {
+    ...settings,
+    directed: false,
+  });
+  return withNodePositions(model, treeLayerPositions(model));
+}
+
+function createRandomDagGraph(
+  nodeCount: number,
+  edgeCount: number,
+  seed: number,
+  settings: Partial<GraphSettings>,
+): GraphModel {
+  const edges = randomSimpleEdges(nodeCount, edgeCount, seededRandom(seed));
+  const model = createGraphFromEdges(nodeCount, edges, {
+    ...settings,
+    directed: true,
+  });
+  const levels = Array<number>(nodeCount).fill(0);
+  const successors = Array.from({ length: nodeCount }, () => [] as number[]);
+  edges.forEach(([source, target]) => successors[source].push(target));
+  for (let source = 0; source < nodeCount; source += 1) {
+    for (const target of successors[source]) {
+      levels[target] = Math.max(levels[target], levels[source] + 1);
+    }
+  }
+  const layers: NodeId[][] = Array.from(
+    { length: Math.max(...levels, 0) + 1 },
+    () => [],
+  );
+  model.nodes.forEach((node, index) => layers[levels[index]].push(node.id));
+  return withNodePositions(model, layeredPositions(layers));
+}
+
+function createRandomConnectedGraph(
+  nodeCount: number,
+  edgeCount: number,
+  seed: number,
+  settings: Partial<GraphSettings>,
+): GraphModel {
+  const random = seededRandom(seed);
+  const tree = randomSpanningTree(nodeCount, random);
+  const edges = randomSimpleEdges(nodeCount, edgeCount, random, tree);
+  const model = createGraphFromEdges(nodeCount, edges, {
+    ...settings,
+    directed: false,
+  });
+  return withNodePositions(model, gridPositions(orderedNodeIds(model)));
 }

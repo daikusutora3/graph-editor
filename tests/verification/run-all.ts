@@ -5,6 +5,14 @@ const suites = [
   { name: "autosave", path: "tests/verification/autosave.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
   { name: "samples", path: "tests/verification/samples.ts" },
+  {
+    name: "sample-parameters",
+    path: "tests/verification/sample-parameters.ts",
+  },
+  {
+    name: "algorithmic-samples",
+    path: "tests/verification/algorithmic-samples.ts",
+  },
   { name: "layouts", path: "tests/verification/layouts.ts" },
   { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },

@@ -34,7 +34,7 @@ const sizeClass: Record<ButtonSize, string> = {
   lg: "h-10 gap-2 px-3.5 text-control touch:h-11",
 };
 
-export type TooltipSide = "bottom" | "bottom-end" | "top";
+export type TooltipSide = "bottom" | "bottom-end" | "top" | "top-start";
 
 type TooltipProps = {
   /** Visible on hover/focus. Replaces the native `title` so pointer users

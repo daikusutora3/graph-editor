@@ -387,8 +387,69 @@ function verifySizedSampleGraphs() {
 
     verifyModelIntegrity(`${kind} sized`, model);
 
-    if (model.nodes.length !== 11) {
-      fail(`${kind}: sized sample should create exactly 11 nodes`);
+    const expectedNodes = kind === "crown" ? 12 : 11;
+    if (model.nodes.length !== expectedNodes) {
+      fail(`${kind}: sized sample should create ${expectedNodes} nodes`);
+    }
+  }
+
+  for (const requestedCount of [0, 1, 2]) {
+    const cycle = createSizedSampleGraph("cycle", requestedCount, {
+      directed: false,
+    });
+    verifyModelIntegrity(`cycle requested ${requestedCount}`, cycle);
+    if (
+      cycle.nodes.length !== 3 ||
+      cycle.edges.length !== 3 ||
+      !isRegular(cycle, 2)
+    ) {
+      fail(
+        "cycle: undersized requests should create a simple three-node cycle",
+      );
+    }
+  }
+
+  for (const requestedCount of [0, 1, 3, 11, 999999]) {
+    const crown = createSizedSampleGraph("crown", requestedCount, {
+      directed: false,
+    });
+    const partSize = crown.nodes.length / 2;
+    const left = crown.nodes.filter((node) => node.id.startsWith("l"));
+    const right = crown.nodes.filter((node) => node.id.startsWith("r"));
+    verifyModelIntegrity(`crown requested ${requestedCount}`, crown);
+    if (
+      crown.nodes.length < 4 ||
+      !Number.isInteger(partSize) ||
+      left.length !== partSize ||
+      right.length !== partSize ||
+      crown.edges.length !== partSize * (partSize - 1) ||
+      !isRegular(crown, partSize - 1) ||
+      !isBipartite(crown) ||
+      crown.edges.length > 5000
+    ) {
+      fail(
+        "crown: every request should preserve equal regular bipartite parts",
+      );
+    }
+  }
+
+  for (const kind of ["weighted", "flowNetwork"] as const) {
+    for (const weightKind of ["none", "string"] as const) {
+      const model = createSampleGraph(kind, { weighted: false, weightKind });
+      if (
+        !model.settings.weighted ||
+        model.settings.weightKind !== "number" ||
+        !model.edges.every(
+          (edge) =>
+            edge.weight != null &&
+            edge.weight.trim() !== "" &&
+            Number.isFinite(Number(edge.weight)),
+        )
+      ) {
+        fail(
+          `${kind}: numeric sample weights should override incoming weight kind ${weightKind}`,
+        );
+      }
     }
   }
 
@@ -520,14 +581,16 @@ function verifyModelIntegrity(kind: string, model: GraphModel): void {
     }
 
     if (edge.source === edge.target) {
-      fail(`${kind}: unexpected self loop on ${edge.source}`);
+      if (!model.settings.allowSelfLoops) {
+        fail(`${kind}: self loop is present while self loops are disabled`);
+      }
       continue;
     }
 
     const edgeKey = model.settings.directed
       ? `${edge.source}\u0000${edge.target}`
       : [edge.source, edge.target].sort().join("\u0000");
-    if (seenEdges.has(edgeKey)) {
+    if (seenEdges.has(edgeKey) && !model.settings.allowMultiEdges) {
       fail(`${kind}: duplicate edge ${edge.source}-${edge.target}`);
     }
     seenEdges.add(edgeKey);
