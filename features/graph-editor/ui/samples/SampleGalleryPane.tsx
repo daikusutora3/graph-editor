@@ -1,9 +1,11 @@
 "use client";
 
-import { useAtomValue } from "jotai";
+import { useStore } from "jotai";
 import { Copy, RotateCcw, Search, X } from "lucide-react";
 import {
   type FocusEvent,
+  memo,
+  useCallback,
   useDeferredValue,
   useEffect,
   useId,
@@ -32,7 +34,7 @@ import {
   type SampleGraphGroupKey,
 } from "../../samples/registry";
 import type { SampleGraphKind } from "../../samples/sample-graphs";
-import { graphAtom } from "../../shell/state/graph-atoms";
+import { graphSettingsAtom } from "../../shell/state/graph-atoms";
 import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
 import {
   Button,
@@ -51,12 +53,13 @@ export function SampleGalleryPane({
 }: {
   onSampleApplied: () => void;
 }) {
-  const graph = useAtomValue(graphAtom);
+  const store = useStore();
   const { messages } = useI18n();
   const applyGraphModel = useApplyGraphModel();
   const [sampleQuery, setSampleQuery] = useState("");
   const [category, setCategory] = useState<SampleGraphGroupKey | "all">("all");
-  const [settings, setSettings] = useState(graph.settings);
+  // Generation settings are a local snapshot when the gallery opens.
+  const [settings, setSettings] = useState(() => store.get(graphSettingsAtom));
   // Keep entered values when a search or category temporarily hides a card.
   const [configurations, setConfigurations] = useState<
     Partial<Record<SampleGraphKind, SampleValues>>
@@ -92,17 +95,26 @@ export function SampleGalleryPane({
     setSampleQuery("");
     setCategory("all");
   };
-  const applyModel = (model: GraphModel) => {
-    if (
-      applyGraphModel(model, {
-        clearEdgeDraft: true,
-        clearSelection: true,
-        fitAfterUpdate: true,
-        selectMode: true,
-      })
-    )
-      onSampleApplied();
-  };
+  const applyModel = useCallback(
+    (model: GraphModel) => {
+      if (
+        applyGraphModel(model, {
+          clearEdgeDraft: true,
+          clearSelection: true,
+          fitAfterUpdate: true,
+          selectMode: true,
+        })
+      )
+        onSampleApplied();
+    },
+    [applyGraphModel, onSampleApplied],
+  );
+  const updateValues = useCallback(
+    (kind: SampleGraphKind, values: SampleValues) => {
+      setConfigurations((current) => ({ ...current, [kind]: values }));
+    },
+    [],
+  );
 
   return (
     <div className="ge-fade-in flex min-h-0 flex-1 flex-col">
@@ -240,12 +252,7 @@ export function SampleGalleryPane({
                     sample={sample}
                     settings={settings}
                     values={configurations[sample.kind]}
-                    onValuesChange={(values) =>
-                      setConfigurations((current) => ({
-                        ...current,
-                        [sample.kind]: values,
-                      }))
-                    }
+                    onValuesChange={updateValues}
                     onApply={applyModel}
                   />
                 ))}
@@ -267,7 +274,7 @@ export function SampleGalleryPane({
   );
 }
 
-function SampleCard({
+const SampleCard = memo(function SampleCard({
   sample,
   settings,
   values,
@@ -277,7 +284,7 @@ function SampleCard({
   sample: SampleGraphItem;
   settings: GraphSettings;
   values?: SampleValues;
-  onValuesChange: (values: SampleValues) => void;
+  onValuesChange: (kind: SampleGraphKind, values: SampleValues) => void;
   onApply: (model: GraphModel) => void;
 }) {
   const { locale, messages } = useI18n();
@@ -457,7 +464,10 @@ function SampleCard({
                 value={rawValues[parameter.key] ?? ""}
                 noticeId={noticeId}
                 onChange={(value) =>
-                  onValuesChange({ ...rawValues, [parameter.key]: value })
+                  onValuesChange(sample.kind, {
+                    ...rawValues,
+                    [parameter.key]: value,
+                  })
                 }
               />
             ))}
@@ -506,7 +516,7 @@ function SampleCard({
               className="self-start"
               disabled={!parametersChanged}
               aria-label={`${title}: ${messages.samples.resetParameters}`}
-              onClick={() => onValuesChange(defaults)}
+              onClick={() => onValuesChange(sample.kind, defaults)}
             >
               <RotateCcw className="size-3.5" aria-hidden="true" />
               {messages.samples.resetParameters}
@@ -556,7 +566,7 @@ function SampleCard({
       </div>
     </form>
   );
-}
+});
 
 function CardNumberInput({
   parameter,

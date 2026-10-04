@@ -3,6 +3,7 @@ import type { Core } from "cytoscape";
 import { chromium } from "playwright";
 
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
+import { serializeGraphModel } from "../../features/graph-editor/core/graph/graph-json";
 
 const browser = await chromium.launch();
 try {
@@ -185,6 +186,181 @@ try {
   assert.deepEqual(errors, []);
   console.log(
     "Canvas pan, selection, modifiers, and live panel regressions passed",
+  );
+
+  const rangePage = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+  });
+  const rangeErrors: string[] = [];
+  rangePage.on("pageerror", (error) => rangeErrors.push(error.message));
+  const rangeGraph = {
+    ...createEmptyGraphModel({ allowSelfLoops: true }),
+    nodes: [
+      { id: "a", label: "A", order: 0, x: 0, y: 0 },
+      { id: "b", label: "B", order: 1, x: 180, y: 0 },
+      { id: "c", label: "C", order: 2, x: 90, y: 160 },
+      { id: "d", label: "D", order: 3, x: 700, y: 500 },
+    ],
+    edges: [
+      { id: "straight", source: "a", target: "b" },
+      {
+        id: "curve",
+        source: "a",
+        target: "c",
+        routing: { bowPx: 180, bowT: 0.5 },
+      },
+      { id: "loop", source: "b", target: "b" },
+      { id: "remote", source: "c", target: "d" },
+    ],
+  };
+  await rangePage.addInitScript((raw) => {
+    localStorage.setItem("graph-editor-graph", raw);
+  }, serializeGraphModel(rangeGraph));
+  await rangePage.goto(process.env.BASE_URL ?? "http://127.0.0.1:3123/en");
+  await rangePage.locator('[data-canvas-ready="true"]').waitFor();
+  const rangeRect = await rangePage.evaluate(() => {
+    const container = [...document.querySelectorAll("div")].find(
+      (element) => "_cyreg" in element,
+    ) as HTMLDivElement & { _cyreg: { cy: Core } };
+    // eslint-disable-next-line no-underscore-dangle
+    const cy = container._cyreg.cy;
+    if (cy.nodes().length !== 4 || cy.edges().length !== 4)
+      throw new Error(
+        "Range selection fixture must load all four nodes and edges",
+      );
+    cy.zoom(1);
+    cy.pan({ x: 400, y: 350 });
+    const rect = container.getBoundingClientRect();
+    return { x: rect.left, y: rect.top };
+  });
+  await rangePage.waitForTimeout(250);
+  async function verifyRangePreview(
+    filter: "all" | "nodes" | "edges",
+    keys: readonly [string, string?],
+  ) {
+    await rangePage.keyboard.down(keys[0]);
+    if (keys[1]) await rangePage.keyboard.down(keys[1]);
+    await rangePage.mouse.move(rangeRect.x + 330, rangeRect.y + 200);
+    await rangePage.mouse.down();
+    await rangePage.mouse.move(rangeRect.x + 800, rangeRect.y + 650, {
+      steps: 6,
+    });
+    await rangePage.waitForTimeout(100);
+    const rangePreview = await rangePage.evaluate((activeFilter) => {
+      const container = [...document.querySelectorAll("div")].find(
+        (element) => "_cyreg" in element,
+      ) as HTMLDivElement & { _cyreg: { cy: Core } };
+      // eslint-disable-next-line no-underscore-dangle
+      const cy = container._cyreg.cy;
+      const box = { x1: 330, y1: 200, x2: 800, y2: 650 };
+      const inside = (point: { x: number; y: number }) =>
+        point.x >= box.x1 &&
+        point.x <= box.x2 &&
+        point.y >= box.y1 &&
+        point.y <= box.y2;
+      const expectedNodes =
+        activeFilter === "edges"
+          ? []
+          : cy
+              .nodes()
+              .filter((node) => {
+                const bounds = node.renderedBoundingBox({
+                  includeNodes: true,
+                  includeEdges: false,
+                  includeLabels: false,
+                  includeOverlays: false,
+                  includeUnderlays: false,
+                });
+                return (
+                  bounds.x1 >= box.x1 &&
+                  bounds.y1 >= box.y1 &&
+                  bounds.x2 <= box.x2 &&
+                  bounds.y2 <= box.y2
+                );
+              })
+              .map((node) => node.id());
+      const expectedEdges =
+        activeFilter === "nodes"
+          ? []
+          : cy
+              .edges()
+              .filter((edge) => {
+                const read = (
+                  method: "renderedControlPoints" | "renderedSegmentPoints",
+                ) => {
+                  try {
+                    return edge[method]() ?? [];
+                  } catch {
+                    return [];
+                  }
+                };
+                return [
+                  edge.renderedSourceEndpoint(),
+                  edge.renderedTargetEndpoint(),
+                  ...read("renderedControlPoints"),
+                  ...read("renderedSegmentPoints"),
+                ]
+                  .filter(
+                    (point) =>
+                      point &&
+                      Number.isFinite(point.x) &&
+                      Number.isFinite(point.y),
+                  )
+                  .every(inside);
+              })
+              .map((edge) => edge.id());
+      return {
+        expectedNodes: expectedNodes.toSorted(),
+        expectedEdges: expectedEdges.toSorted(),
+        actualNodes: cy
+          .nodes(".range-preview")
+          .map((node) => node.id())
+          .toSorted(),
+        actualEdges: cy
+          .edges(".range-preview")
+          .map((edge) => edge.id())
+          .toSorted(),
+      };
+    }, filter);
+    assert.deepEqual(
+      rangePreview.actualNodes,
+      rangePreview.expectedNodes,
+      `${filter} node preview`,
+    );
+    assert.deepEqual(
+      rangePreview.actualEdges,
+      rangePreview.expectedEdges,
+      `${filter} edge preview`,
+    );
+    if (filter !== "nodes") {
+      assert.ok(rangePreview.actualEdges.includes("straight"));
+      assert.ok(rangePreview.actualEdges.includes("loop"));
+      assert.ok(!rangePreview.actualEdges.includes("curve"));
+      assert.ok(!rangePreview.actualEdges.includes("remote"));
+    }
+    await rangePage.mouse.up();
+    if (keys[1]) await rangePage.keyboard.up(keys[1]);
+    await rangePage.keyboard.up(keys[0]);
+    await rangePage.waitForTimeout(50);
+    assert.equal(
+      await rangePage.evaluate(() => {
+        const container = [...document.querySelectorAll("div")].find(
+          (element) => "_cyreg" in element,
+        ) as HTMLDivElement & { _cyreg: { cy: Core } };
+        // eslint-disable-next-line no-underscore-dangle
+        return container._cyreg.cy.elements(".range-preview").length;
+      }),
+      0,
+      "range preview clears on pointer release",
+    );
+  }
+  await verifyRangePreview("all", ["Shift"]);
+  await verifyRangePreview("nodes", ["Control", "Shift"]);
+  await verifyRangePreview("edges", ["Control", "Alt"]);
+  assert.deepEqual(rangeErrors, []);
+  await rangePage.close();
+  console.log(
+    "Range preview all/nodes/edges, curves, loops and cleanup passed",
   );
 
   const largePage = await browser.newPage({

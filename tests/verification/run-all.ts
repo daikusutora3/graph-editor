@@ -14,6 +14,7 @@ const suites = [
     path: "tests/verification/algorithmic-samples.ts",
   },
   { name: "layouts", path: "tests/verification/layouts.ts" },
+  { name: "overlaps", path: "tests/verification/overlaps.ts" },
   { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
@@ -32,6 +33,10 @@ const suites = [
   { name: "privacy", path: "tests/verification/privacy-check.ts" },
   { name: "i18n", path: "tests/verification/i18n-literals.ts" },
   { name: "canvas", path: "tests/verification/canvas-logic.ts" },
+  {
+    name: "range-selection-preview",
+    path: "tests/verification/range-selection-preview.ts",
+  },
 ] as const;
 
 for (const suite of suites) {
