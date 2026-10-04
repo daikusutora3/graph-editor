@@ -19,8 +19,33 @@ import {
   MAX_IMPORT_NODES,
 } from "../../features/graph-editor/io/import-utils";
 import { createVerification } from "./harness";
+import { analyzeGraphInput } from "../../features/graph-editor/io/import-analysis";
+import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 
 const { expect, finish } = createVerification("IO contract");
+
+for (const input of [
+  JSON.stringify(createEmptyGraphModel()),
+  "  " + JSON.stringify(createEmptyGraphModel()),
+  '{"version":1,"nodes":[],"edges":[],"settings":{}}',
+  '{"version":2,"nodes":[],"edges":[],"settings":{}}',
+  "{invalid json}",
+  '{"version":1,"nodes":[{"id":"a"}],"edges":[]}',
+]) {
+  for (const format of ["auto", "json"] as const) {
+    const evaluation = evaluateGraphInput(input, { format });
+    expect(
+      JSON.stringify(evaluation.analysis) ===
+        JSON.stringify(analyzeGraphInput(input, { format })),
+      `${format} JSON import should retain standalone analysis diagnostics`,
+    );
+  }
+}
+expect(
+  evaluateGraphInput(JSON.stringify(createEmptyGraphModel())).result.status ===
+    "empty",
+  "empty JSON documents should still import successfully as empty graphs",
+);
 
 // Keep the copyable guide inputs and their diagrams consistent with real imports.
 for (const example of guideExamples) {

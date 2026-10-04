@@ -20,6 +20,10 @@ import {
   type NodeHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import { readGraphOutOfView } from "../adapters/cytoscape/graph-canvas-viewport";
+import {
+  reconcileEdgeLabelHitboxes,
+  reconcileNodeHitboxes,
+} from "./rendered-hitbox-reconciliation";
 
 type UseRenderedHitboxesOptions = {
   graph: GraphModel;
@@ -56,14 +60,10 @@ export function useRenderedHitboxes({
       const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
 
       setNodeHitboxes((current) =>
-        sameNodeHitboxes(current, nextNodeHitboxes)
-          ? current
-          : nextNodeHitboxes,
+        reconcileNodeHitboxes(current, nextNodeHitboxes),
       );
       setEdgeLabelHitboxes((current) =>
-        sameEdgeLabelHitboxes(current, nextEdgeLabelHitboxes)
-          ? current
-          : nextEdgeLabelHitboxes,
+        reconcileEdgeLabelHitboxes(current, nextEdgeLabelHitboxes),
       );
       setIsGraphOutOfView((current) =>
         current === nextGraphOutOfView ? current : nextGraphOutOfView,
@@ -165,62 +165,4 @@ export function useRenderedHitboxes({
     panRenderedHitboxes,
     updateRenderedHitboxes,
   };
-}
-
-function sameNodeHitboxes(a: NodeHitbox[], b: NodeHitbox[]) {
-  return (
-    a.length === b.length &&
-    a.every((item, index) => {
-      const next = b[index];
-
-      return (
-        next &&
-        item.id === next.id &&
-        item.label === next.label &&
-        item.x === next.x &&
-        item.y === next.y &&
-        item.width === next.width
-      );
-    })
-  );
-}
-
-function sameEdgeLabelHitboxes(a: EdgeLabelHitbox[], b: EdgeLabelHitbox[]) {
-  return (
-    a.length === b.length &&
-    a.every((item, index) => {
-      const next = b[index];
-
-      return (
-        next &&
-        item.id === next.id &&
-        item.label === next.label &&
-        item.sourceX === next.sourceX &&
-        item.sourceY === next.sourceY &&
-        item.targetX === next.targetX &&
-        item.targetY === next.targetY &&
-        item.x === next.x &&
-        item.y === next.y &&
-        item.bowPx === next.bowPx &&
-        sameNumbers(
-          item.controlPointDistancesPx,
-          next.controlPointDistancesPx,
-        ) &&
-        sameNumbers(item.controlPointWeights, next.controlPointWeights)
-      );
-    })
-  );
-}
-
-function sameNumbers(
-  a: readonly number[] | undefined,
-  b: readonly number[] | undefined,
-) {
-  if (a === b) {
-    return true;
-  }
-
-  return (
-    a?.length === b?.length && a?.every((value, index) => value === b?.[index])
-  );
 }

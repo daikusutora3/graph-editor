@@ -13,12 +13,7 @@ import type { GraphModel } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
 
 export type SelectionActionId =
-  | "edit"
-  | "reverse"
-  | "bend-left"
-  | "bend-right"
-  | "reset-curve"
-  | "delete";
+  "edit" | "reverse" | "bend-left" | "bend-right" | "reset-curve" | "delete";
 
 export type SelectionActionDefinition = {
   id: SelectionActionId;
@@ -63,8 +58,9 @@ export function resolveSelectionActions(
   selection: SelectionState,
   messages: Messages,
 ): SelectionActionDefinition[] {
+  const selectedEdgeIds = new Set(selection.edgeIds);
   const selectedEdges = graph.edges.filter((edge) =>
-    selection.edgeIds.includes(edge.id),
+    selectedEdgeIds.has(edge.id),
   );
   const canEditNode =
     selection.nodeIds.length === 1 && selection.edgeIds.length === 0;

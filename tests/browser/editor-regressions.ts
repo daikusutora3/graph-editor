@@ -229,10 +229,75 @@ try {
     return container._cyreg.cy.$("node:selected").length;
   });
   assert.equal(selected, 3, "range selection reconnects after retry");
+
+  // Parent state changes must reach memoized hitboxes and their event handlers.
+  await button("Select node 0").dblclick();
+  const nodeInput = page.getByRole("textbox", { name: "Edit node label" });
+  assert.deepEqual(
+    await nodeInput.evaluate((element) => {
+      const input = element as HTMLInputElement;
+      return [input.value, input.selectionStart, input.selectionEnd];
+    }),
+    ["0", 0, 1],
+    "the existing label is selected before the first input can arrive",
+  );
+  await nodeInput.fill("更新🧭");
+  await nodeInput.pressSequentially(" ABC");
+  assert.deepEqual(
+    await nodeInput.evaluate((element) => {
+      const input = element as HTMLInputElement;
+      return [input.value, input.selectionStart, input.selectionEnd];
+    }),
+    ["更新🧭 ABC", "更新🧭 ABC".length, "更新🧭 ABC".length],
+    "rerenders preserve newly typed text and the caret",
+  );
+  await nodeInput.press("Enter");
+  await settle();
+  assert.equal(JSON.parse((await saved())!).nodes[0].label, "更新🧭 ABC");
+  await button("Select node 更新🧭 ABC").click();
+  const beforeNudge = JSON.parse((await saved())!).nodes[0].x;
+  await page.keyboard.press("ArrowRight");
+  await settle();
+  assert.notEqual(
+    JSON.parse((await saved())!).nodes[0].x,
+    beforeNudge,
+    "a memoized hitbox selects the current node for keyboard movement",
+  );
+  await button("Undo").click();
+  await settle();
+  assert.equal(JSON.parse((await saved())!).nodes[0].x, beforeNudge);
+  assert.equal(JSON.parse((await saved())!).nodes[0].label, "更新🧭 ABC");
+  await button("Zoom out").click();
+  await settle();
+  await button("Edit edge label").dblclick();
+  const edgeInput = page.getByRole("textbox", { name: "Edit edge label" });
+  await edgeInput.fill("最新の辺");
+  await edgeInput.press("Enter");
+  await settle();
+  assert.equal(JSON.parse((await saved())!).edges[0].label, "最新の辺");
+  await button("Undo").click();
+  await settle();
+  assert.equal(JSON.parse((await saved())!).edges[0].label, undefined);
+  await button("Undo").click();
+  await settle();
+  assert.equal(JSON.parse((await saved())!).nodes[0].label, "0");
+  await button("Select node 0").dblclick();
+  await nodeInput.fill("cancelled");
+  await nodeInput.press("Escape");
+  await settle();
+  assert.equal(JSON.parse((await saved())!).nodes[0].label, "0");
+  await button("Select node 0").dblclick();
+  await nodeInput.pressSequentially("Reopened");
+  await nodeInput.press("Enter");
+  await settle();
+  assert.equal(JSON.parse((await saved())!).nodes[0].label, "Reopened");
+  await button("Undo").click();
+  await settle();
+  assert.equal(JSON.parse((await saved())!).nodes[0].label, "0");
   await page.screenshot({ path: "/tmp/graph-editor-review/regressions.png" });
   assert.deepEqual(errors, []);
   console.log(
-    "Browser regressions passed: retry, placement, undo, same JSON fit, same layout, drag, automatic bend, range selection",
+    "Browser regressions passed: retry, placement, undo, same JSON fit, same layout, drag, automatic bend, range selection, inline labels, keyboard movement after edits and zoom",
   );
 } catch (error) {
   console.log(await page.locator("body").innerText());

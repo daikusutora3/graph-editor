@@ -25,6 +25,15 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createEdgeHitboxPath } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { snapPositionToNodeDragGrid } from "../../features/graph-editor/canvas/graph-canvas-html-node-drag";
+import {
+  reconcileEdgeLabelHitboxes,
+  reconcileNodeHitboxes,
+} from "../../features/graph-editor/canvas/rendered-hitbox-reconciliation";
+import type {
+  EdgeLabelHitbox,
+  NodeHitbox,
+} from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
+import { readEdgeLabelHitboxes } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Cytoscape adapter");
@@ -45,8 +54,164 @@ verifyButtonZoomLevels();
 verifySelectionAndArrowStyles();
 verifyEdgeHitboxPaths();
 verifyNodeDragGridSnapping();
+verifyHitboxReconciliation();
+verifySharedEndpointSnapshots();
 
 finish();
+
+function verifySharedEndpointSnapshots() {
+  let sourceX = 0;
+  let sourceWidth = 48;
+  let zoom = 1;
+  const reads = new Map<string, number>();
+  const record = (key: string) => reads.set(key, (reads.get(key) ?? 0) + 1);
+  const node = (id: string, x: number) => ({
+    id: () => id,
+    renderedPosition: () => {
+      record(`${id}:position`);
+      return { x: id === "a" ? sourceX : x, y: 0 };
+    },
+    renderedOuterWidth: () => {
+      record(`${id}:width`);
+      return id === "a" ? sourceWidth : 48;
+    },
+    renderedOuterHeight: () => {
+      record(`${id}:height`);
+      return 48;
+    },
+  });
+  const a = node("a", 0);
+  const b = node("b", 100);
+  const edge = (id: string) => ({
+    id: () => id,
+    source: () => a,
+    target: () => b,
+    renderedMidpoint: () => ({ x: 50, y: 0 }),
+    data: (key: string) => {
+      if (key === "controlPointDistances") return [10];
+      if (key === "controlPointWeights") return [0.5];
+      return undefined;
+    },
+  });
+  const cy = {
+    zoom: () => zoom,
+    edges: () => [edge("ab"), edge("ab2")],
+  } as unknown as Core;
+  const graph = graphFixture();
+  graph.edges.push({ id: "ab2", source: "a", target: "b" });
+  const first = readEdgeLabelHitboxes(cy, graph);
+  expect(
+    first.length === 2 && [...reads.values()].every((count) => count === 1),
+    "shared endpoints should read each node's rendered geometry once per snapshot",
+  );
+  sourceX = 12;
+  sourceWidth = 96;
+  zoom = 2;
+  const second = readEdgeLabelHitboxes(cy, graph);
+  expect(
+    second.every(
+      (hitbox) =>
+        hitbox.sourceX === 12 &&
+        hitbox.sourceWidth === 96 &&
+        hitbox.controlPointDistancesPx?.[0] === 20,
+    ),
+    "new snapshots must reflect moved, resized and zoomed endpoints",
+  );
+  expect(
+    [...reads.values()].every((count) => count === 2),
+    "endpoint geometry must be refreshed on every snapshot",
+  );
+}
+
+function verifyHitboxReconciliation() {
+  const node: NodeHitbox = { id: "a", label: "A", x: 0, y: 0, width: 72 };
+  const secondNode: NodeHitbox = { ...node, id: "b" };
+  const nodes = [node, secondNode];
+  expect(
+    reconcileNodeHitboxes(
+      nodes,
+      nodes.map((item) => ({ ...item })),
+    ) === nodes,
+    "unchanged hitboxes should retain their array reference",
+  );
+  const movedNode = { ...node, x: 10 };
+  const moved = reconcileNodeHitboxes(nodes, [movedNode, { ...secondNode }]);
+  expect(
+    moved !== nodes && moved[0] === movedNode && moved[1] === secondNode,
+    "moving one node should preserve every other node reference",
+  );
+  const reordered = reconcileNodeHitboxes(nodes, [
+    { ...secondNode },
+    { ...node },
+  ]);
+  expect(
+    reordered[0] === secondNode && reordered[1] === node,
+    "reordering hitboxes should retain references by ID",
+  );
+  expect(
+    reconcileNodeHitboxes(nodes, [{ ...secondNode }])[0] === secondNode,
+    "deleting a hitbox should retain the surviving reference",
+  );
+  const edge: EdgeLabelHitbox = {
+    id: "ab",
+    label: "",
+    sourceX: 0,
+    sourceY: 0,
+    targetX: 100,
+    targetY: 100,
+    sourceWidth: 48,
+    targetWidth: 48,
+    nodeHeight: 48,
+    x: 50,
+    y: 50,
+    bowPx: 0,
+    controlPointDistancesPx: [0],
+    controlPointWeights: [0.5],
+    loopDirectionDeg: -45,
+    loopSweepDeg: 70,
+  };
+  const secondEdge = { ...edge, id: "ba" };
+  const edges = [edge, secondEdge];
+  expect(
+    reconcileEdgeLabelHitboxes(
+      edges,
+      edges.map((item) => ({
+        ...item,
+        controlPointDistancesPx: [...item.controlPointDistancesPx!],
+        controlPointWeights: [...item.controlPointWeights!],
+      })),
+    ) === edges,
+    "equal numeric geometry arrays should retain existing hitbox references",
+  );
+  for (const update of [
+    { label: "new" },
+    { sourceX: 1 },
+    { sourceY: 1 },
+    { targetX: 101 },
+    { targetY: 101 },
+    { sourceWidth: 49 },
+    { targetWidth: 49 },
+    { nodeHeight: 49 },
+    { x: 51 },
+    { y: 51 },
+    { bowPx: 1 },
+    { loopDirectionDeg: 45 },
+    { loopSweepDeg: 90 },
+    { controlPointDistancesPx: [1] },
+    { controlPointWeights: [0.6] },
+    { controlPointWeights: undefined },
+  ] satisfies Partial<EdgeLabelHitbox>[]) {
+    const changedEdge = { ...edge, ...update };
+    const reconciled = reconcileEdgeLabelHitboxes(edges, [
+      changedEdge,
+      { ...secondEdge },
+    ]);
+    expect(
+      reconciled[0] === changedEdge && reconciled[1] === secondEdge,
+      `changing ${Object.keys(update)[0]} should update that edge only`,
+    );
+  }
+}
 
 function verifyElementMapping() {
   const elements = graphModelToCytoscapeElements(graphFixture());

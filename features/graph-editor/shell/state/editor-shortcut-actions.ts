@@ -129,9 +129,8 @@ export const nudgeSelectedNodesAtom = atom(
       return false;
     }
 
-    const selected = graph.nodes.filter((node) =>
-      selection.nodeIds.includes(node.id),
-    );
+    const selectedNodeIds = new Set(selection.nodeIds);
+    const selected = graph.nodes.filter((node) => selectedNodeIds.has(node.id));
 
     if (selected.length === 0) {
       return true;

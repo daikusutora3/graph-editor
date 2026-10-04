@@ -67,6 +67,26 @@ For routing performance, use `bun run benchmark:edge-routing`; for editing and
 slicing, use `bun tests/benchmarks/editor-operations.ts`. Compare the same fixtures
 on the same machine. Bun timings do not establish browser paint responsiveness.
 
+The focused performance checks also cover JSON import, Unicode validation,
+history preparation, select-all, and hitbox rendering:
+
+```bash
+bun tests/benchmarks/import-performance.ts --output /tmp/import-before.json
+bun tests/benchmarks/graph-validation-performance.ts --output /tmp/validation-before.json
+bun tests/benchmarks/selection-performance.ts
+bun tests/benchmarks/run-canvas-hitboxes.mjs --output /tmp/canvas-before.json
+```
+
+After a change, pass `--baseline` with the saved JSON path to the import or
+validation benchmark to compare medians and output signatures. Run benchmarks
+sequentially, without concurrent builds, and keep dependencies unchanged between
+versions. The selection check compares the previous array membership scan with
+Set membership in the same run; its toolbar rendering measurement uses SSR.
+The hitbox check uses isolated Chromium and React's development Profiler. Pass
+`--baseline /tmp/canvas-before.json` to compare render medians; these exclude
+Cytoscape paint and end-to-end input latency. It also measures real Cytoscape
+hitbox reads and checks that skipped renders still use the latest callbacks.
+
 ## Completion evidence
 
 For implementation work, finish the requested behavior and the checks that

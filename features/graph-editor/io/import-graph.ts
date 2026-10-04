@@ -20,7 +20,7 @@ import {
   readLines,
   splitTokens,
 } from "./import-utils";
-import { analyzeGraphInput } from "./import-analysis";
+import { analyzeGraphInput, analyzeGraphJsonModel } from "./import-analysis";
 import {
   looksLikeGraphJson,
   parseGraphModelJson,
@@ -33,6 +33,7 @@ import type {
   ImportResult,
   ImportWarning,
 } from "./import-types";
+import type { GraphModel } from "../core/graph/model";
 
 export const WEIGHTED_PARENT_LIST_AMBIGUITY_WARNING: ImportWarning = {
   code: "maybe-weighted-parent-list",
@@ -70,8 +71,14 @@ function evaluateGraphInputInternal(
   }
 
   if (jsonInput) {
-    const result = importGraphJson(input, options);
-    return { analysis: analyzeGraphInput(input, options), result };
+    const model = parseGraphModelJson(input);
+    const result = importGraphJson(model, options);
+    return {
+      analysis: looksLikeGraphJson(input)
+        ? analyzeGraphJsonModel(model)
+        : analyzeGraphInput(input, options),
+      result,
+    };
   }
 
   const lines = readLines(input);
@@ -129,7 +136,7 @@ function parseRequestedFormat(
   const formatOptions = { ...options, format: requestedFormat };
 
   if (requestedFormat === "json") {
-    return importGraphJson(input, formatOptions);
+    return importGraphJson(parseGraphModelJson(input), formatOptions);
   }
 
   if (requestedFormat === "adjacency-matrix") {
@@ -297,9 +304,10 @@ function detectStructuredEdgeListOptions(
   };
 }
 
-function importGraphJson(input: string, options: ImportOptions): ImportResult {
-  const model = parseGraphModelJson(input);
-
+function importGraphJson(
+  model: GraphModel | null,
+  options: ImportOptions,
+): ImportResult {
   if (!model) {
     return importFailure(
       { code: "invalid-format", formatKind: "json" },

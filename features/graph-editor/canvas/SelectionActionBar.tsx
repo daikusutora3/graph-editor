@@ -49,11 +49,13 @@ export function SelectionActionBar({
   onDeleteSelection,
 }: SelectionActionBarProps) {
   const { messages } = useI18n();
+  const selectedNodeIds = new Set(selection.nodeIds);
+  const selectedEdgeIds = new Set(selection.edgeIds);
   const selectedNodes = graph.nodes.filter((node) =>
-    selection.nodeIds.includes(node.id),
+    selectedNodeIds.has(node.id),
   );
   const selectedEdges = graph.edges.filter((edge) =>
-    selection.edgeIds.includes(edge.id),
+    selectedEdgeIds.has(edge.id),
   );
   const nodeColors = new Set(
     selectedNodes.map((node) => node.color ?? "paper"),

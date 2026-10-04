@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 
-import { memo, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -123,21 +123,11 @@ type SelectEdgeHitboxesProps = {
   onSelect: (edgeId: EdgeId, additive: boolean) => void;
 };
 
-export function SelectEdgeHitboxes({
-  edges,
-  selectedEdgeIds,
-  rangeSelectionActive,
-  weighted,
-  onContextMenu,
-  onEdit,
-  onBendCancel,
-  onBendCommit,
-  onBendPreview,
-  onRangeSelectionPointerDown,
-  onSelect,
-  zoom,
-}: SelectEdgeHitboxesProps) {
-  const { messages } = useI18n();
+export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
+  const propsRef = useRef(props);
+  useLayoutEffect(() => {
+    propsRef.current = props;
+  });
   const bendRef = useRef<{
     edge: EdgeLabelHitbox;
     pointerId: number;
@@ -148,115 +138,186 @@ export function SelectEdgeHitboxes({
   } | null>(null);
   const suppressClickRef = useRef(false);
 
-  const containerBounds = (element: Element) =>
-    (
-      element.closest("svg") ?? element
-    ).parentElement?.getBoundingClientRect() ?? null;
+  // Dispatch through committed props so fresh parent callbacks do not force
+  // thousands of hitboxes to render, and skipped renders never use stale ones.
+  const handlers = useMemo<EdgeHitboxHandlers>(
+    () => ({
+      onPointerDown: (edge, event) => {
+        if (
+          event.button !== 0 ||
+          event.shiftKey ||
+          event.metaKey ||
+          event.ctrlKey ||
+          propsRef.current.rangeSelectionActive
+        ) {
+          return;
+        }
 
-  const bendFromPointer = (
+        bendRef.current = {
+          edge,
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          moved: false,
+          bend: null,
+        };
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Synthetic or already-released pointers cannot be captured; the
+          // drag still works while the pointer stays over the element.
+        }
+      },
+      onPointerMove: (edge, event) => {
+        const bend = bendRef.current;
+
+        if (!bend || bend.pointerId !== event.pointerId) {
+          return;
+        }
+
+        if (
+          !bend.moved &&
+          Math.hypot(event.clientX - bend.startX, event.clientY - bend.startY) <
+            4
+        ) {
+          return;
+        }
+
+        if (!bend.moved) {
+          bend.moved = true;
+          propsRef.current.onSelect(edge.id, false);
+        }
+
+        const bounds = (
+          event.currentTarget.closest("svg") ?? event.currentTarget
+        ).parentElement?.getBoundingClientRect();
+        bend.bend = edgeBendFromRenderedPointer(
+          edge,
+          {
+            x: event.clientX - (bounds?.left ?? 0),
+            y: event.clientY - (bounds?.top ?? 0),
+          },
+          propsRef.current.zoom,
+        );
+        propsRef.current.onBendPreview(edge.id, bend.bend);
+      },
+      onPointerUp: (edge, event) => {
+        const bend = bendRef.current;
+
+        if (!bend || bend.pointerId !== event.pointerId) {
+          return;
+        }
+
+        bendRef.current = null;
+        try {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        } catch {
+          // Capture may already be gone.
+        }
+
+        if (bend.moved && bend.bend !== null) {
+          suppressClickRef.current = true;
+          propsRef.current.onBendCommit(edge.id, bend.bend);
+        }
+      },
+      onPointerCancel: (edge, event) => {
+        const bend = bendRef.current;
+
+        if (!bend || bend.pointerId !== event.pointerId) {
+          return;
+        }
+
+        bendRef.current = null;
+
+        if (bend.moved) {
+          suppressClickRef.current = true;
+          propsRef.current.onBendCancel(edge.id);
+        }
+      },
+      onPointerDownCapture: (_edge, event) => {
+        propsRef.current.onRangeSelectionPointerDown(event);
+      },
+      onClick: (edge, event) => {
+        event.stopPropagation();
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          return;
+        }
+        if (event.detail >= 2) {
+          propsRef.current.onEdit(edge.id, { x: edge.x, y: edge.y });
+          return;
+        }
+        propsRef.current.onSelect(edge.id, event.shiftKey);
+      },
+      onDoubleClick: (edge, event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        propsRef.current.onEdit(edge.id, { x: edge.x, y: edge.y });
+      },
+      onContextMenu: (edge, event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        propsRef.current.onContextMenu(edge, event);
+      },
+    }),
+    [],
+  );
+
+  return (
+    <SelectEdgeHitboxList
+      edges={props.edges}
+      selectedEdgeIds={props.selectedEdgeIds}
+      rangeSelectionActive={props.rangeSelectionActive}
+      weighted={props.weighted}
+      handlers={handlers}
+    />
+  );
+}
+
+type EdgeHitboxHandlers = {
+  onPointerDown: (
     edge: EdgeLabelHitbox,
-    element: Element,
-    clientX: number,
-    clientY: number,
-  ) => {
-    const bounds = containerBounds(element);
+    event: ReactPointerEvent<Element>,
+  ) => void;
+  onPointerMove: (
+    edge: EdgeLabelHitbox,
+    event: ReactPointerEvent<Element>,
+  ) => void;
+  onPointerUp: (
+    edge: EdgeLabelHitbox,
+    event: ReactPointerEvent<Element>,
+  ) => void;
+  onPointerCancel: (
+    edge: EdgeLabelHitbox,
+    event: ReactPointerEvent<Element>,
+  ) => void;
+  onPointerDownCapture: (
+    edge: EdgeLabelHitbox,
+    event: ReactPointerEvent<Element>,
+  ) => void;
+  onClick: (edge: EdgeLabelHitbox, event: ReactMouseEvent<Element>) => void;
+  onDoubleClick: (
+    edge: EdgeLabelHitbox,
+    event: ReactMouseEvent<Element>,
+  ) => void;
+  onContextMenu: (
+    edge: EdgeLabelHitbox,
+    event: ReactMouseEvent<Element>,
+  ) => void;
+};
 
-    return edgeBendFromRenderedPointer(
-      edge,
-      { x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) },
-      zoom,
-    );
-  };
-
-  const bendHandlers = (edge: EdgeLabelHitbox) => ({
-    onPointerDown: (event: ReactPointerEvent<Element>) => {
-      if (
-        event.button !== 0 ||
-        event.shiftKey ||
-        event.metaKey ||
-        event.ctrlKey ||
-        rangeSelectionActive
-      ) {
-        return;
-      }
-
-      bendRef.current = {
-        edge,
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        bend: null,
-      };
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } catch {
-        // Synthetic or already-released pointers cannot be captured; the
-        // drag still works while the pointer stays over the element.
-      }
-    },
-    onPointerMove: (event: ReactPointerEvent<Element>) => {
-      const bend = bendRef.current;
-
-      if (!bend || bend.pointerId !== event.pointerId) {
-        return;
-      }
-
-      if (
-        !bend.moved &&
-        Math.hypot(event.clientX - bend.startX, event.clientY - bend.startY) < 4
-      ) {
-        return;
-      }
-
-      if (!bend.moved) {
-        bend.moved = true;
-        onSelect(edge.id, false);
-      }
-
-      bend.bend = bendFromPointer(
-        edge,
-        event.currentTarget,
-        event.clientX,
-        event.clientY,
-      );
-      onBendPreview(edge.id, bend.bend);
-    },
-    onPointerUp: (event: ReactPointerEvent<Element>) => {
-      const bend = bendRef.current;
-
-      if (!bend || bend.pointerId !== event.pointerId) {
-        return;
-      }
-
-      bendRef.current = null;
-      try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      } catch {
-        // Capture may already be gone.
-      }
-
-      if (bend.moved && bend.bend !== null) {
-        suppressClickRef.current = true;
-        onBendCommit(edge.id, bend.bend);
-      }
-    },
-    onPointerCancel: (event: ReactPointerEvent<Element>) => {
-      const bend = bendRef.current;
-
-      if (!bend || bend.pointerId !== event.pointerId) {
-        return;
-      }
-
-      bendRef.current = null;
-
-      if (bend.moved) {
-        suppressClickRef.current = true;
-        onBendCancel(edge.id);
-      }
-    },
-  });
-
+const SelectEdgeHitboxList = memo(function SelectEdgeHitboxList({
+  edges,
+  selectedEdgeIds,
+  rangeSelectionActive,
+  weighted,
+  handlers,
+}: Pick<
+  SelectEdgeHitboxesProps,
+  "edges" | "selectedEdgeIds" | "rangeSelectionActive" | "weighted"
+> & {
+  handlers: EdgeHitboxHandlers;
+}) {
   return (
     <>
       <svg
@@ -264,100 +325,110 @@ export function SelectEdgeHitboxes({
         aria-hidden="true"
       >
         {edges.map((edge) => (
-          <path
-            key={`${edge.id}:path-hitbox`}
-            d={createEdgeHitboxPath(edge)}
-            fill="none"
-            pointerEvents={rangeSelectionActive ? "none" : "stroke"}
-            className="cursor-pointer touch-none stroke-transparent"
-            strokeWidth="18"
-            strokeLinecap="round"
-            onPointerDownCapture={(event) => {
-              onRangeSelectionPointerDown(event);
-            }}
-            {...bendHandlers(edge)}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (suppressClickRef.current) {
-                suppressClickRef.current = false;
-                return;
-              }
-              if (event.detail >= 2) {
-                onEdit(edge.id, { x: edge.x, y: edge.y });
-                return;
-              }
-
-              onSelect(edge.id, event.shiftKey);
-            }}
-            onDoubleClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onEdit(edge.id, { x: edge.x, y: edge.y });
-            }}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onContextMenu(edge, event);
-            }}
+          <SelectEdgePath
+            key={edge.id}
+            edge={edge}
+            rangeSelectionActive={rangeSelectionActive}
+            handlers={handlers}
           />
         ))}
       </svg>
       {edges.map((edge) => (
-        <button
+        <SelectEdgeLabelButton
           key={edge.id}
-          type="button"
-          data-graph-shortcut-target="true"
-          aria-label={
-            weighted
-              ? messages.canvas.editEdgeWeightOf(edge.label)
-              : edge.label
-                ? messages.canvas.editEdgeLabelOf(edge.label)
-                : messages.canvas.editEdgeLabel
-          }
-          aria-pressed={selectedEdgeIds.has(edge.id)}
-          className={cn(
-            "touch:h-11 pointer-events-auto absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none rounded-md",
-            focusRing,
-          )}
-          inert={rangeSelectionActive}
-          style={{
-            left: edge.x,
-            pointerEvents: rangeSelectionActive ? "none" : undefined,
-            top: edge.y,
-            width: edgeLabelHitboxWidth(edge.label),
-          }}
-          {...bendHandlers(edge)}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (suppressClickRef.current) {
-              suppressClickRef.current = false;
-              return;
-            }
-            if (event.detail >= 2) {
-              onEdit(edge.id, { x: edge.x, y: edge.y });
-              return;
-            }
-
-            onSelect(edge.id, event.shiftKey);
-          }}
-          onPointerDownCapture={(event) => {
-            onRangeSelectionPointerDown(event);
-          }}
-          onDoubleClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onEdit(edge.id, { x: edge.x, y: edge.y });
-          }}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onContextMenu(edge, event);
-          }}
+          edge={edge}
+          selected={selectedEdgeIds.has(edge.id)}
+          rangeSelectionActive={rangeSelectionActive}
+          weighted={weighted}
+          handlers={handlers}
         />
       ))}
     </>
   );
+});
+
+type EdgeHitboxProps = {
+  edge: EdgeLabelHitbox;
+  rangeSelectionActive: boolean;
+  handlers: EdgeHitboxHandlers;
+};
+
+function edgeHitboxEventProps(
+  edge: EdgeLabelHitbox,
+  handlers: EdgeHitboxHandlers,
+) {
+  return {
+    onPointerDown: (event: ReactPointerEvent<Element>) =>
+      handlers.onPointerDown(edge, event),
+    onPointerMove: (event: ReactPointerEvent<Element>) =>
+      handlers.onPointerMove(edge, event),
+    onPointerUp: (event: ReactPointerEvent<Element>) =>
+      handlers.onPointerUp(edge, event),
+    onPointerCancel: (event: ReactPointerEvent<Element>) =>
+      handlers.onPointerCancel(edge, event),
+    onPointerDownCapture: (event: ReactPointerEvent<Element>) =>
+      handlers.onPointerDownCapture(edge, event),
+    onClick: (event: ReactMouseEvent<Element>) => handlers.onClick(edge, event),
+    onDoubleClick: (event: ReactMouseEvent<Element>) =>
+      handlers.onDoubleClick(edge, event),
+    onContextMenu: (event: ReactMouseEvent<Element>) =>
+      handlers.onContextMenu(edge, event),
+  };
 }
+
+const SelectEdgePath = memo(function SelectEdgePath({
+  edge,
+  rangeSelectionActive,
+  handlers,
+}: EdgeHitboxProps) {
+  return (
+    <path
+      d={createEdgeHitboxPath(edge)}
+      fill="none"
+      pointerEvents={rangeSelectionActive ? "none" : "stroke"}
+      className="cursor-pointer touch-none stroke-transparent"
+      strokeWidth="18"
+      strokeLinecap="round"
+      {...edgeHitboxEventProps(edge, handlers)}
+    />
+  );
+});
+
+const SelectEdgeLabelButton = memo(function SelectEdgeLabelButton({
+  edge,
+  selected,
+  rangeSelectionActive,
+  weighted,
+  handlers,
+}: EdgeHitboxProps & { selected: boolean; weighted: boolean }) {
+  const { messages } = useI18n();
+  return (
+    <button
+      type="button"
+      data-graph-shortcut-target="true"
+      aria-label={
+        weighted
+          ? messages.canvas.editEdgeWeightOf(edge.label)
+          : edge.label
+            ? messages.canvas.editEdgeLabelOf(edge.label)
+            : messages.canvas.editEdgeLabel
+      }
+      aria-pressed={selected}
+      className={cn(
+        "touch:h-11 pointer-events-auto absolute z-[19] h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-none rounded-md",
+        focusRing,
+      )}
+      inert={rangeSelectionActive}
+      style={{
+        left: edge.x,
+        pointerEvents: rangeSelectionActive ? "none" : undefined,
+        top: edge.y,
+        width: edgeLabelHitboxWidth(edge.label),
+      }}
+      {...edgeHitboxEventProps(edge, handlers)}
+    />
+  );
+});
 
 export type EdgeBend = {
   /** Perpendicular control-point offset in graph px (sign = side). */
@@ -542,74 +613,128 @@ type SelectNodeHitboxesProps = {
   onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void;
 };
 
-export function SelectNodeHitboxes({
+type NodeHitboxHandlers = Omit<
+  SelectNodeHitboxesProps,
+  "nodes" | "selectedNodeIds" | "rangeSelectionActive"
+>;
+
+export function SelectNodeHitboxes(props: SelectNodeHitboxesProps) {
+  const propsRef = useRef(props);
+  useLayoutEffect(() => {
+    propsRef.current = props;
+  });
+  const handlers = useMemo<NodeHitboxHandlers>(
+    () => ({
+      onClick: (node, event) => propsRef.current.onClick(node, event),
+      onContextMenu: (node, event) =>
+        propsRef.current.onContextMenu(node, event),
+      onDoubleClick: (node, event) =>
+        propsRef.current.onDoubleClick(node, event),
+      onPointerCancel: (event) => propsRef.current.onPointerCancel(event),
+      onPointerDown: (nodeId, event) =>
+        propsRef.current.onPointerDown(nodeId, event),
+      onPointerMove: (event) => propsRef.current.onPointerMove(event),
+      onPointerUp: (event) => propsRef.current.onPointerUp(event),
+      onRangeSelectionPointerDown: (event) =>
+        propsRef.current.onRangeSelectionPointerDown(event),
+    }),
+    [],
+  );
+  return (
+    <SelectNodeHitboxList
+      nodes={props.nodes}
+      selectedNodeIds={props.selectedNodeIds}
+      rangeSelectionActive={props.rangeSelectionActive}
+      handlers={handlers}
+    />
+  );
+}
+
+const SelectNodeHitboxList = memo(function SelectNodeHitboxList({
   nodes,
   selectedNodeIds,
   rangeSelectionActive,
-  onClick,
-  onContextMenu,
-  onDoubleClick,
-  onPointerCancel,
-  onPointerDown,
-  onPointerMove,
-  onRangeSelectionPointerDown,
-  onPointerUp,
-}: SelectNodeHitboxesProps) {
-  const { messages } = useI18n();
-
+  handlers,
+}: Pick<
+  SelectNodeHitboxesProps,
+  "nodes" | "selectedNodeIds" | "rangeSelectionActive"
+> & { handlers: NodeHitboxHandlers }) {
   return (
     <>
       {nodes.map((node) => (
-        <button
+        <SelectNodeButton
           key={node.id}
-          type="button"
-          data-graph-shortcut-target="true"
-          aria-label={messages.canvas.selectNode(
-            accessibleNodeName(node.label, messages),
-          )}
-          aria-pressed={selectedNodeIds.has(node.id)}
-          className={cn(
-            "pointer-events-auto absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full active:cursor-grabbing",
-            focusRing,
-          )}
-          inert={rangeSelectionActive}
-          style={{
-            height: NODE_HITBOX_SIZE,
-            left: node.x,
-            pointerEvents: rangeSelectionActive ? "none" : undefined,
-            top: node.y,
-            width: node.width,
-          }}
-          onPointerDown={(event) => {
-            if (onRangeSelectionPointerDown(event)) {
-              return;
-            }
-
-            event.stopPropagation();
-            onPointerDown(node.id, event);
-          }}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerCancel}
-          onClick={(event) => {
-            event.stopPropagation();
-            onClick(node, event);
-          }}
-          onDoubleClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onDoubleClick(node, event);
-          }}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onContextMenu(node, event);
-          }}
+          node={node}
+          selected={selectedNodeIds.has(node.id)}
+          rangeSelectionActive={rangeSelectionActive}
+          handlers={handlers}
         />
       ))}
     </>
   );
-}
+});
+
+const SelectNodeButton = memo(function SelectNodeButton({
+  node,
+  selected,
+  rangeSelectionActive,
+  handlers,
+}: {
+  node: NodeHitbox;
+  selected: boolean;
+  rangeSelectionActive: boolean;
+  handlers: NodeHitboxHandlers;
+}) {
+  const { messages } = useI18n();
+
+  return (
+    <button
+      type="button"
+      data-graph-shortcut-target="true"
+      aria-label={messages.canvas.selectNode(
+        accessibleNodeName(node.label, messages),
+      )}
+      aria-pressed={selected}
+      className={cn(
+        "pointer-events-auto absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none rounded-full active:cursor-grabbing",
+        focusRing,
+      )}
+      inert={rangeSelectionActive}
+      style={{
+        height: NODE_HITBOX_SIZE,
+        left: node.x,
+        pointerEvents: rangeSelectionActive ? "none" : undefined,
+        top: node.y,
+        width: node.width,
+      }}
+      onPointerDown={(event) => {
+        if (handlers.onRangeSelectionPointerDown(event)) {
+          return;
+        }
+
+        event.stopPropagation();
+        handlers.onPointerDown(node.id, event);
+      }}
+      onPointerMove={handlers.onPointerMove}
+      onPointerUp={handlers.onPointerUp}
+      onPointerCancel={handlers.onPointerCancel}
+      onClick={(event) => {
+        event.stopPropagation();
+        handlers.onClick(node, event);
+      }}
+      onDoubleClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        handlers.onDoubleClick(node, event);
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        handlers.onContextMenu(node, event);
+      }}
+    />
+  );
+});
 
 function accessibleNodeName(label: string, messages: Messages) {
   return label

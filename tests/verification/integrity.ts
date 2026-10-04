@@ -12,6 +12,7 @@ import {
   parseGraphModelJson,
   serializeGraphModel,
 } from "../../features/graph-editor/core/graph/graph-json";
+import { isGraphText } from "../../features/graph-editor/core/graph/graph-limits";
 import {
   replaceModelCommand,
   updateNodeCommand,
@@ -38,6 +39,23 @@ import {
 } from "../../features/graph-editor/core/layout/edge-routing";
 import { createVerification } from "./harness";
 const { expect, finish } = createVerification("Integrity");
+for (const [value, valid] of [
+  [null, false],
+  [123, false],
+  ["", true],
+  ["長".repeat(256), true],
+  ["長".repeat(257), false],
+  ["🧭".repeat(256), true],
+  ["🧭".repeat(257), false],
+  ["長".repeat(128) + "🧭".repeat(128), true],
+  ["長".repeat(129) + "🧭".repeat(128), false],
+  ["\ud800".repeat(256), true],
+  ["\ud800".repeat(257), false],
+  ["\udc00".repeat(256), true],
+  ["\udc00".repeat(257), false],
+] as const) {
+  expect(isGraphText(value) === valid, "text limits count Unicode code points");
+}
 const graph: GraphModel = {
   ...createEmptyGraphModel(),
   nodes: [
