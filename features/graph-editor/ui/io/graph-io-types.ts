@@ -12,11 +12,7 @@ export const MAX_LONG_EDGE_PX = 3840;
 export const MIN_PADDING_PX = 0;
 export const MAX_PADDING_PX = 160;
 export type ScreenshotCopyState =
-  | "idle"
-  | "copying"
-  | "copied"
-  | "saved"
-  | "blocked";
+  "idle" | "copying" | "copied" | "saved" | "blocked";
 export type ScreenshotDownloadState = "idle" | "saving" | "saved" | "failed";
 type ScreenshotPreviewState = "empty" | "loading" | "ready" | "failed";
 export type ScreenshotPreview = {

@@ -18,11 +18,7 @@ import { HINT_STORAGE_PREFIX, HINTS_RESET_EVENT } from "./hint-storage";
 const HINT_IDLE_MS = 2500;
 
 type HintId =
-  | "place-node"
-  | "connect"
-  | "edge-start"
-  | "edge-target"
-  | "select";
+  "place-node" | "connect" | "edge-start" | "edge-target" | "select";
 
 /**
  * Quiet guidance pill under the toolbar. Hints stay hidden while the user is

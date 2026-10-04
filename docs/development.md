@@ -52,6 +52,12 @@ only applies where that execution path actually exists.
 | Canvas recovery, fit, history, or bends     | Use the browser regression command below and the [consistency contracts](verification/editor-consistency.md)                       |
 
 The browser regressions and audits run separately from `check` and `check:all`.
+Oxlint's React Compiler rules for refs, effect state updates, and dependency
+minimization are explicitly disabled to retain the lint coverage used before the
+dependency update. Adopting them requires a separate migration of the canvas ref
+cache, client hydration, and effect invalidation patterns. The existing Rules of
+Hooks and exhaustive-deps checks remain enabled.
+
 For the English-locale regression suite, start the dev server, then run in another
 terminal (adjust the port to the running server):
 

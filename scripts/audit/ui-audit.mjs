@@ -7,7 +7,8 @@ import { chromium } from "playwright";
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const AUDIT = `(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const main = document.querySelector("main");
+  const main = document.querySelector("main [data-layout]");
+  if (!main) throw new Error("Editor layout container is missing");
   const findings = [];
   const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
   const parse = (s) => { const c = document.createElement("canvas").getContext("2d"); c.fillStyle = "#000"; c.fillStyle = s; c.fillRect(0,0,1,1); return [...c.getImageData(0,0,1,1).data]; };
@@ -71,11 +72,11 @@ for (const width of [375, 414, 600, 768, 900, 1100, 1280, 1440, 1920]) {
   await page.goto(BASE_URL, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
   // load a sample so selection / layouts have content
-  const sample = page.getByRole("button", { name: /Cycle/ });
-  if (await sample.count()) {
-    await sample.first().click();
-    await page.waitForTimeout(800);
-  }
+  const sample = page.getByRole("button", { name: /cycle/i });
+  await sample.first().click();
+  await page.locator('[data-canvas-ready="true"]').waitFor();
+  await page.locator('button[class*="cursor-grab"]').first().waitFor();
+  await page.waitForTimeout(800);
   const res = await page.evaluate(AUDIT);
   all.push(...res);
   await ctx.close();
