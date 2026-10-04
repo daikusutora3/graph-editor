@@ -103,9 +103,11 @@ function createPastedNodes(
   nodeIdMap: Map<NodeId, NodeId>,
 ) {
   const usedOrders = new Set(graph.nodes.map((node) => node.order));
+  let nextOrder = 0;
 
   return payload.nodes.map((node) => {
-    const order = takeNextOrder(usedOrders);
+    while (usedOrders.has(nextOrder)) nextOrder += 1;
+    const order = nextOrder++;
     const id = nanoid();
     nodeIdMap.set(node.id, id);
 
@@ -179,15 +181,4 @@ function cloneEdge(edge: GraphEdge, source: NodeId, target: NodeId) {
     color: edge.color,
     routing: edge.routing ? { ...edge.routing } : undefined,
   });
-}
-
-function takeNextOrder(usedOrders: Set<number>) {
-  let order = 0;
-
-  while (usedOrders.has(order)) {
-    order += 1;
-  }
-
-  usedOrders.add(order);
-  return order;
 }

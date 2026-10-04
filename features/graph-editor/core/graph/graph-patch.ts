@@ -6,43 +6,37 @@ export function applyGraphPatch(
   model: GraphModel,
   patch: GraphPatch,
 ): GraphModel {
-  const existingNodeIds = new Set(model.nodes.map((node) => node.id));
-  const existingEdgeIds = new Set(model.edges.map((edge) => edge.id));
-  const removedNodeIds = new Set(patch.nodes?.remove ?? []);
-  const removedEdgeIds = new Set(patch.edges?.remove ?? []);
-  const nodePuts = new Map(
-    (patch.nodes?.put ?? []).map((node) => [node.id, node]),
-  );
-  const edgePuts = new Map(
-    (patch.edges?.put ?? []).map((edge) => [edge.id, edge]),
-  );
-  const nodes = reorderById(
-    [
-      ...model.nodes
-        .filter((node) => !removedNodeIds.has(node.id))
-        .map((node) => nodePuts.get(node.id) ?? node),
-      ...[...nodePuts.values()].filter((node) => !existingNodeIds.has(node.id)),
-    ],
-    patch.nodes?.order,
-  );
-  const edges = reorderById(
-    [
-      ...model.edges
-        .filter((edge) => !removedEdgeIds.has(edge.id))
-        .map((edge) => edgePuts.get(edge.id) ?? edge),
-      ...[...edgePuts.values()].filter((edge) => !existingEdgeIds.has(edge.id)),
-    ],
-    patch.edges?.order,
-  );
+  return prepareGraphPatch(model, patch).after;
+}
+
+/** Validates the restored model once and retains its JSON for the save queue. */
+export function prepareGraphPatch(model: GraphModel, patch: GraphPatch) {
   const next: GraphModel = {
     ...model,
-    nodes,
-    edges,
+    nodes: patch.nodes ? patchElements(model.nodes, patch.nodes) : model.nodes,
+    edges: patch.edges ? patchElements(model.edges, patch.edges) : model.edges,
     settings: patch.settings ?? model.settings,
   };
 
-  assertValidGraphModel(next);
-  return next;
+  return { after: next, serialized: assertValidGraphModel(next) };
+}
+
+function patchElements<T extends { id: string }>(
+  items: T[],
+  patch: { remove?: string[]; put?: T[]; order?: string[] },
+) {
+  const existingIds = new Set(items.map((item) => item.id));
+  const removedIds = new Set(patch.remove ?? []);
+  const puts = new Map((patch.put ?? []).map((item) => [item.id, item]));
+  return reorderById(
+    [
+      ...items
+        .filter((item) => !removedIds.has(item.id))
+        .map((item) => puts.get(item.id) ?? item),
+      ...[...puts.values()].filter((item) => !existingIds.has(item.id)),
+    ],
+    patch.order,
+  );
 }
 
 export function diffGraphModels(

@@ -18,12 +18,15 @@ export type StarterTab = "paste" | "sample";
 
 type GraphStarterStateOptions = {
   open: boolean;
+  /** Keep enabled through the paste panel's closing animation. */
+  previewEnabled?: boolean;
   onClose: () => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 };
 
 export function useGraphStarterState({
   open,
+  previewEnabled = true,
   onClose,
   textareaRef,
 }: GraphStarterStateOptions) {
@@ -42,11 +45,14 @@ export function useGraphStarterState({
   );
   const debouncedInputText = useDebouncedValue(inputText, 150);
   const previewParseKey = useMemo(
-    () => makeStarterParseKey(debouncedInputText, importOptions),
-    [debouncedInputText, importOptions],
+    () =>
+      previewEnabled
+        ? makeStarterParseKey(debouncedInputText, importOptions)
+        : null,
+    [debouncedInputText, importOptions, previewEnabled],
   );
   const parsedPreview = useMemo<StarterParseResult | null>(() => {
-    if (!debouncedInputText.trim()) {
+    if (previewParseKey === null || !debouncedInputText.trim()) {
       return null;
     }
 

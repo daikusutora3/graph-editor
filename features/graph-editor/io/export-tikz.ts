@@ -1,6 +1,6 @@
 import type { GraphColor, GraphModel } from "../core/graph/model";
 import { estimateNodeWidth, NODE_SIZE_PX } from "../core/graph/node-size";
-import { computeEdgeRouting } from "../core/layout/edge-routing";
+import { createEdgeRoutingTask } from "../core/layout/edge-routing";
 import {
   edgeCurveSegments,
   type EdgeCurvePoint,
@@ -64,6 +64,16 @@ function borderAnchor(
 
 /** A pasteable picture, also usable as \input{graph.tex} inside a document. */
 export function exportTikz(model: GraphModel): string {
+  const task = createTikzExportTask(model);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
+}
+
+/** Keeps the exact export output while allowing the UI to yield between steps. */
+export function* createTikzExportTask(
+  model: GraphModel,
+): Generator<void, string> {
   if (model.nodes.length === 0) return "";
 
   // Normalize translation and bound the drawing to 12 cm on its longest axis.
@@ -79,7 +89,7 @@ export function exportTikz(model: GraphModel): string {
   const nodes = new Map(
     model.nodes.map((node, index) => [node.id, { node, name: `v${index}` }]),
   );
-  const routes = computeEdgeRouting(model, {
+  const routes = yield* createEdgeRoutingTask(model, {
     mode: model.settings.autoEdgeRouting ? "quality" : "simple",
   });
   const lines = [
@@ -102,6 +112,7 @@ export function exportTikz(model: GraphModel): string {
   ];
 
   for (const { node, name } of nodes.values()) {
+    yield;
     const label = model.settings.showNodeLabels ? node.label : "";
     const color = node.color ?? "paper";
     const width = estimateNodeWidth(label);
@@ -112,6 +123,7 @@ export function exportTikz(model: GraphModel): string {
   }
 
   for (const edge of model.edges) {
+    yield;
     const source = nodes.get(edge.source);
     const target = nodes.get(edge.target);
     const route = routes.get(edge.id);

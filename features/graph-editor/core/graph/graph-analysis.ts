@@ -68,8 +68,8 @@ export function connectedComponents(model: GraphModel) {
     const queue = [start];
     visited.add(start);
 
-    while (queue.length > 0) {
-      const current = queue.shift()!;
+    for (let head = 0; head < queue.length; head += 1) {
+      const current = queue[head]!;
       component.push(current);
 
       const neighbors = [...(adjacency.get(current) ?? [])].sort(
@@ -91,12 +91,14 @@ export function connectedComponents(model: GraphModel) {
 
 export function stronglyConnectedComponents(model: GraphModel) {
   const nodeIds = orderedNodeIds(model);
+  const order = orderIndex(nodeIds);
   const adjacency = directedAdjacency(model);
   const indexByNode = new Map<NodeId, number>();
   const lowLink = new Map<NodeId, number>();
   const stack: NodeId[] = [];
   const onStack = new Set<NodeId>();
   const components: NodeId[][] = [];
+  const firstOrderByComponent = new Map<NodeId[], number>();
   let index = 0;
 
   const visit = (nodeId: NodeId) => {
@@ -124,6 +126,7 @@ export function stronglyConnectedComponents(model: GraphModel) {
     if (lowLink.get(nodeId) !== indexByNode.get(nodeId)) return;
 
     const component: NodeId[] = [];
+    let firstOrder = Infinity;
     let current: NodeId | undefined;
 
     do {
@@ -131,9 +134,11 @@ export function stronglyConnectedComponents(model: GraphModel) {
       if (!current) break;
       onStack.delete(current);
       component.push(current);
+      firstOrder = Math.min(firstOrder, order.get(current)!);
     } while (current !== nodeId);
 
     components.push(component);
+    firstOrderByComponent.set(component, firstOrder);
   };
 
   for (const nodeId of nodeIds) {
@@ -142,11 +147,9 @@ export function stronglyConnectedComponents(model: GraphModel) {
     }
   }
 
-  return components.sort((a, b) => {
-    const firstA = Math.min(...a.map((nodeId) => nodeIds.indexOf(nodeId)));
-    const firstB = Math.min(...b.map((nodeId) => nodeIds.indexOf(nodeId)));
-    return firstA - firstB;
-  });
+  return components.sort(
+    (a, b) => firstOrderByComponent.get(a)! - firstOrderByComponent.get(b)!,
+  );
 }
 
 export function degreeMap(model: GraphModel) {
@@ -178,8 +181,8 @@ export function isBipartite(model: GraphModel) {
     const queue = [nodeId];
     color.set(nodeId, 0);
 
-    while (queue.length > 0) {
-      const current = queue.shift()!;
+    for (let head = 0; head < queue.length; head += 1) {
+      const current = queue[head]!;
       const nextColor = color.get(current) === 0 ? 1 : 0;
 
       for (const neighbor of adjacency.get(current) ?? []) {
@@ -251,13 +254,12 @@ export function isDirectedAcyclic(model: GraphModel) {
     indegree.set(edge.target, indegree.get(edge.target)! + 1);
   }
 
-  const order = orderIndex(nodeIds);
   const queue = nodeIds.filter((nodeId) => indegree.get(nodeId) === 0);
   let visitedCount = 0;
 
-  while (queue.length > 0) {
-    queue.sort((a, b) => order.get(a)! - order.get(b)!);
-    const current = queue.shift()!;
+  // Kahn's cycle test depends on visited count, not the choice of ready node.
+  for (let head = 0; head < queue.length; head += 1) {
+    const current = queue[head]!;
     visitedCount += 1;
 
     for (const neighbor of outgoing.get(current) ?? []) {

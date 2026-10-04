@@ -119,6 +119,7 @@ type Messages = {
     title: string;
     formatAria: string;
     emptyPlaceholder: string;
+    preparing: string;
     exportedAria: (label: string) => string;
     copyAria: (label: string, state: "idle" | "copied" | "blocked") => string;
     adjacencyLossWarning: string;
@@ -688,6 +689,7 @@ const ja: Messages = {
     title: "書き出し",
     formatAria: "書き出し形式",
     emptyPlaceholder: "グラフを入力すると、ここに出力が表示されます",
+    preparing: "書き出しを準備中",
     exportedAria: (label: string) => `書き出した${label}`,
     copyAria: (label: string, state: "idle" | "copied" | "blocked") =>
       state === "copied"
@@ -1193,6 +1195,7 @@ const en: Messages = {
     title: "Export",
     formatAria: "Export format",
     emptyPlaceholder: "Graph output appears here after you create a graph.",
+    preparing: "Preparing export",
     exportedAria: (label: string) => `Exported ${label}`,
     copyAria: (label: string, state: "idle" | "copied" | "blocked") =>
       state === "copied"
@@ -1697,6 +1700,7 @@ const zhHans: Messages = {
     title: "导出",
     formatAria: "导出格式",
     emptyPlaceholder: "创建图后，输出会显示在这里。",
+    preparing: "正在准备导出",
     exportedAria: (label: string) => `已导出的${label}`,
     copyAria: (label: string, state: "idle" | "copied" | "blocked") =>
       state === "copied"

@@ -14,10 +14,15 @@ const suites = [
     path: "tests/verification/algorithmic-samples.ts",
   },
   { name: "layouts", path: "tests/verification/layouts.ts" },
+  { name: "layout-topology", path: "tests/verification/layout-topology.ts" },
   { name: "overlaps", path: "tests/verification/overlaps.ts" },
   { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
+  {
+    name: "history-clipboard",
+    path: "tests/verification/history-clipboard.ts",
+  },
   {
     name: "chrome-subscriptions",
     path: "tests/verification/chrome-subscriptions.ts",

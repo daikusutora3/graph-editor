@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 
 import { deleteSelectionCommand } from "../../core/graph/graph-intents";
-import { applyGraphPatch } from "../../core/graph/graph-patch";
+import { prepareGraphPatch } from "../../core/graph/graph-patch";
 import { prepareGraphTransaction } from "../../core/graph/graph-transaction";
 import type {
   GraphModel,
@@ -79,8 +79,11 @@ export const undoAtom = atom(null, (get, set) => {
     return;
   }
 
-  const nextGraph = applyGraphPatch(graph, transaction.backward);
-  set(commitGraphAtom, nextGraph);
+  const { after: nextGraph, serialized } = prepareGraphPatch(
+    graph,
+    transaction.backward,
+  );
+  set(commitGraphAtom, nextGraph, serialized);
   set(graphRevisionAtom, transaction.beforeRevision);
   set(edgeDraftAtom, createEmptyEdgeDraft());
   set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
@@ -104,8 +107,11 @@ export const redoAtom = atom(null, (get, set) => {
     return;
   }
 
-  const nextGraph = applyGraphPatch(graph, transaction.forward);
-  set(commitGraphAtom, nextGraph);
+  const { after: nextGraph, serialized } = prepareGraphPatch(
+    graph,
+    transaction.forward,
+  );
+  set(commitGraphAtom, nextGraph, serialized);
   set(graphRevisionAtom, transaction.afterRevision);
   set(edgeDraftAtom, createEmptyEdgeDraft());
   set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
