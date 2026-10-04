@@ -253,16 +253,14 @@ function verifyNamedSampleGeometry(
   if (houseX) {
     const nodes = nodePositionByOrder(houseX);
 
-    if (
-      !(
-        nodes[4].y < nodes[2].y &&
-        nodes[4].y < nodes[3].y &&
-        nodes[2].y < nodes[0].y &&
-        nodes[3].y < nodes[1].y &&
-        nodes[0].x < nodes[1].x &&
-        nodes[3].x < nodes[2].x
-      )
-    ) {
+    if (!(
+      nodes[4].y < nodes[2].y &&
+      nodes[4].y < nodes[3].y &&
+      nodes[2].y < nodes[0].y &&
+      nodes[3].y < nodes[1].y &&
+      nodes[0].x < nodes[1].x &&
+      nodes[3].x < nodes[2].x
+    )) {
       fail("houseX sample should keep a recognizable house layout");
     }
   }

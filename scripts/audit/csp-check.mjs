@@ -1,5 +1,6 @@
 // Loads the served export and fails on any CSP violation or page error.
 // Usage: bun scripts/audit/serve-out.mjs & bun scripts/audit/csp-check.mjs
+import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3123";
@@ -11,6 +12,14 @@ const page = await (
   })
 ).newPage();
 const errors = [];
+const violations = [];
+async function collectViolations(route) {
+  const routeViolations = await page.evaluate(() => window.cspViolations);
+  console.log(`violations on ${route}:`, JSON.stringify(routeViolations));
+  violations.push(
+    ...routeViolations.map((violation) => ({ route, ...violation })),
+  );
+}
 let expectNotFound = false;
 page.on("console", (m) => {
   if (expectNotFound && /status of 404/.test(m.text())) return;
@@ -33,7 +42,8 @@ page.on("pageerror", (e) =>
 );
 await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle" });
 await page.waitForTimeout(1500);
-await page.getByRole("button", { name: /Cycle/ }).first().click();
+await page.getByRole("button", { name: /cycle/i }).first().click();
+await page.locator('button[class*="cursor-grab"]').first().waitFor();
 await page.waitForTimeout(1000);
 console.log(
   "nodes rendered:",
@@ -41,12 +51,16 @@ console.log(
 );
 await page.getByRole("button", { name: "PNG 画像" }).click();
 await page.waitForTimeout(2000);
-console.log("png preview:", await page.locator("img").count());
-await page.keyboard.press("Escape");
-console.log(
-  "violations on /:",
-  JSON.stringify(await page.evaluate(() => window.cspViolations)),
+const preview = page.locator('img[src^="blob:"]').first();
+await preview.waitFor();
+assert.equal(
+  await preview.evaluate((image) => image.complete && image.naturalWidth > 0),
+  true,
+  "PNG preview should load the exported image",
 );
+console.log("png preview: loaded");
+await page.keyboard.press("Escape");
+await collectViolations("/");
 for (const route of [
   "/en",
   "/zh-hans",
@@ -59,13 +73,11 @@ for (const route of [
   await page.goto(`${BASE_URL}${route}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(500);
   console.log(`${route} title:`, await page.title());
+  await collectViolations(route);
 }
 console.log("console errors:", errors.length ? errors : "none");
-console.log(
-  "violations:",
-  JSON.stringify(await page.evaluate(() => window.cspViolations)),
-);
+console.log("violations:", JSON.stringify(violations));
 await browser.close();
-if (errors.length > 0) {
+if (errors.length > 0 || violations.length > 0) {
   process.exit(1);
 }

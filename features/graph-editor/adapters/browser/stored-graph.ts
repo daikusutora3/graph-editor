@@ -16,12 +16,7 @@ export const MAX_STORED_GRAPH_EDGES = GRAPH_MAX_EDGES;
 export const STORAGE_SKIPPED_EVENT = "graph-editor:storage-skipped";
 export const STORAGE_STATE_EVENT = "graph-editor:storage-state";
 export type SaveStatus =
-  | "saved"
-  | "pending"
-  | "failed"
-  | "conflict"
-  | "unavailable"
-  | "invalid";
+  "saved" | "pending" | "failed" | "conflict" | "unavailable" | "invalid";
 export type StorageSnapshot = { status: SaveStatus; raw: string | null };
 let snapshot: StorageSnapshot = { status: "saved", raw: null };
 let baseline: string | null = null;

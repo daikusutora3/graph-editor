@@ -6,11 +6,7 @@ import { getExportNodeEntries } from "./export-node-labels";
 import { serializeGraphModel } from "../core/graph/graph-json";
 
 export type GraphExportFormat =
-  | "edge-list"
-  | "adjacency-list"
-  | "adjacency-matrix"
-  | "json"
-  | "tikz";
+  "edge-list" | "adjacency-list" | "adjacency-matrix" | "json" | "tikz";
 
 export const GRAPH_EXPORT_FORMATS: Array<{
   value: GraphExportFormat;

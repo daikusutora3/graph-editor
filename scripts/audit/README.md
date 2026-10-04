@@ -41,10 +41,9 @@ BASE_URL=http://localhost:3123 bun run audit:csp
 
 The server applies `out/_headers`. The browser script visits localized app and
 guide routes plus a missing route, exercises PNG preview, and reports CSP
-violations, console errors, and page errors. It fails on collected console/page
-errors; the separate CSP violation arrays are logged, not directly asserted,
-and are not accumulated across all navigations. Review the output for the
-affected route rather than treating exit status alone as complete CSP coverage.
+violations, console errors, and page errors. It requires a rendered sample and
+a loaded PNG preview, accumulates CSP violations across every navigation, and
+fails on any collected violation or console/page error.
 Stop the local server with Ctrl-C when finished.
 
 For editor recovery/history regressions and broader build checks, see the
