@@ -29,8 +29,10 @@ User guide: <https://graph-editor.daikusutora3.workers.dev/en/guide>
 - **Built for graph theory**: switch between directed/undirected and
   weighted/unweighted modes, change the index base, allow self-loops, and keep
   multi-edges readable.
-- **68 ready-made samples**: explore paths, cycles, trees, planar graphs,
-  Petersen-style examples, DAGs, SCC demos, flow networks, and more.
+- **79 ready-made samples**: explore graph families and algorithm examples,
+  including 0–1 BFS, negative cycles, matching, bridges, and functional graphs.
+  Adjust 21 families, generate reproducible random trees/DAGs/connected graphs,
+  search by algorithm or category, and copy contest input directly from a sample.
 - **Layout tools**: apply force-directed, BFS, tree, DAG, bipartite, SCC,
   radial, circular, grid, line, concentric, and spread layouts.
 - **Export options**: copy or save edge lists, adjacency lists, adjacency

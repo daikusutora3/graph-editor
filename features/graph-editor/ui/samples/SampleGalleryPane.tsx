@@ -1,145 +1,217 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { Search, X } from "lucide-react";
-import { type FocusEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Copy, RotateCcw, Search, X } from "lucide-react";
+import {
+  type FocusEvent,
+  useDeferredValue,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import { cn } from "@/lib/utils";
-
-import type { GraphModel } from "../../core/graph/model";
+import { copyTextToClipboard } from "../../adapters/browser/file-actions";
+import type { GraphModel, GraphSettings } from "../../core/graph/model";
 import { useI18n } from "../../i18n/I18nProvider";
+import { messagesByLocale } from "../../i18n/messages";
+import { exportEdgeList } from "../../io/export-edge-list";
 import {
-  clampSizedSampleNodeCount,
-  createSampleGraph,
-  createSizedSampleGraph,
-  getSizedSampleGraphMaxNodes,
-  isSizedSampleGraphKind,
-  type SampleGraphKind,
-  type SizedSampleGraphKind,
-} from "../../samples/sample-graphs";
+  createConfiguredSampleGraph,
+  getSampleParameters,
+  normalizeSampleParameterInput,
+  normalizeSampleParameters,
+  type SampleParameter,
+} from "../../samples/sample-parameters";
+import { matchesSampleQuery } from "../../samples/sample-search";
 import {
-  sampleDefaultNodeCount,
   sampleGraphCount,
   sampleGraphGroups,
   type SampleGraphItem,
+  type SampleGraphGroupKey,
 } from "../../samples/registry";
+import type { SampleGraphKind } from "../../samples/sample-graphs";
 import { graphAtom } from "../../shell/state/graph-atoms";
 import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
-import { Button, SectionLabel, TextInput, focusRing } from "../primitives";
+import {
+  Button,
+  SectionLabel,
+  Select,
+  TextInput,
+  focusRing,
+} from "../primitives";
 import { SampleGraphPreview } from "./SampleGraphPreview";
-
 import { SAMPLE_GALLERY_GRID_CLASS } from "./sample-gallery-layout";
 
-type SampleGalleryPaneProps = {
+type SampleValues = Record<string, string>;
+
+export function SampleGalleryPane({
+  onSampleApplied,
+}: {
   onSampleApplied: () => void;
-};
-
-type SizedSampleValues = {
-  bipartiteLeft: number;
-  bipartiteRight: number;
-  columns: number;
-  knightMoveX: number;
-  knightMoveY: number;
-  nodeCount: number;
-  rows: number;
-};
-
-const POSITIVE_INTEGER_INPUT_PATTERN = /^\d*$/;
-
-export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
+}) {
   const graph = useAtomValue(graphAtom);
-  const { locale, messages } = useI18n();
+  const { messages } = useI18n();
   const applyGraphModel = useApplyGraphModel();
   const [sampleQuery, setSampleQuery] = useState("");
-  const filteredSampleGroups = useMemo(() => {
-    const query = sampleQuery.trim().toLowerCase();
-
-    return sampleGraphGroups
-      .map((group) => ({
-        ...group,
-        samples: group.samples.filter((sample) => {
-          if (!query) {
-            return true;
-          }
-
-          const groupCopy = messages.samples.group[group.key];
-          const sampleCopy = messages.samples.item[sample.kind];
-          const sampleTitle = sampleCopy?.title ?? sample.label;
-          const sampleSubtitle =
-            sampleCopy?.subtitle ??
-            (locale === "ja"
-              ? sample.subtitle
-              : humanizeSampleKind(sample.kind));
-          const haystack =
-            `${groupCopy.label} ${groupCopy.note} ${sample.kind} ${sampleTitle} ${sampleSubtitle}`.toLowerCase();
-
-          return haystack.includes(query);
-        }),
-      }))
-      .filter((group) => group.samples.length > 0);
-  }, [locale, messages, sampleQuery]);
+  const [category, setCategory] = useState<SampleGraphGroupKey | "all">("all");
+  const [settings, setSettings] = useState(graph.settings);
+  // Keep entered values when a search or category temporarily hides a card.
+  const [configurations, setConfigurations] = useState<
+    Partial<Record<SampleGraphKind, SampleValues>>
+  >({});
+  const filteredSampleGroups = useMemo(
+    () =>
+      sampleGraphGroups
+        .filter((group) => category === "all" || group.key === category)
+        .map((group) => ({
+          ...group,
+          samples: group.samples.filter((sample) =>
+            matchesSampleQuery(sampleQuery, [
+              sample.kind,
+              sample.label,
+              sample.subtitle,
+              sample.searchTerms ?? "",
+              ...Object.values(messagesByLocale).flatMap((copy) => [
+                copy.samples.group[group.key].label,
+                copy.samples.item[sample.kind]?.title ?? "",
+                copy.samples.item[sample.kind]?.subtitle ?? "",
+              ]),
+            ]),
+          ),
+        }))
+        .filter((group) => group.samples.length > 0),
+    [category, sampleQuery],
+  );
   const filteredSampleCount = filteredSampleGroups.reduce(
     (count, group) => count + group.samples.length,
     0,
   );
-
+  const clearFilters = () => {
+    setSampleQuery("");
+    setCategory("all");
+  };
   const applyModel = (model: GraphModel) => {
-    const applied = applyGraphModel(model, {
-      clearEdgeDraft: true,
-      clearSelection: true,
-      fitAfterUpdate: true,
-      selectMode: true,
-    });
-    if (applied) onSampleApplied();
-  };
-  const generateSample = (kind: SampleGraphKind) => {
-    applyModel(createSampleGraph(kind, graph.settings));
-  };
-  const generateSizedSample = (
-    kind: SizedSampleGraphKind,
-    values: SizedSampleValues,
-  ) => {
-    const usesGridDimensions = kind === "grid" || kind === "knight";
-    const nodeCount = clampSizedSampleNodeCount(
-      kind,
-      usesGridDimensions
-        ? values.rows * values.columns
-        : kind === "bipartite"
-          ? values.bipartiteLeft + values.bipartiteRight
-          : values.nodeCount,
-    );
-
-    applyModel(
-      createSizedSampleGraph(
-        kind,
-        nodeCount,
-        graph.settings,
-        usesGridDimensions
-          ? {
-              columns: values.columns,
-              knightMoveX: values.knightMoveX,
-              knightMoveY: values.knightMoveY,
-              rows: values.rows,
-            }
-          : kind === "bipartite"
-            ? {
-                bipartiteLeft: values.bipartiteLeft,
-                bipartiteRight: values.bipartiteRight,
-              }
-            : undefined,
-      ),
-    );
+    if (
+      applyGraphModel(model, {
+        clearEdgeDraft: true,
+        clearSelection: true,
+        fitAfterUpdate: true,
+        selectMode: true,
+      })
+    )
+      onSampleApplied();
   };
 
   return (
     <div className="ge-fade-in flex min-h-0 flex-1 flex-col">
-      <SampleGalleryFilter
-        query={sampleQuery}
-        total={sampleGraphCount}
-        shown={filteredSampleCount}
-        onQueryChange={setSampleQuery}
-      />
-
+      <div className="flex shrink-0 flex-col gap-2 px-4 pt-3.5 pb-3">
+        <div className="flex items-center gap-3">
+          <label className="ge-focus touch:h-11 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
+            <Search className="size-3.5 shrink-0" aria-hidden="true" />
+            <input
+              type="search"
+              name="sample-search"
+              value={sampleQuery}
+              autoComplete="off"
+              onChange={(event) => setSampleQuery(event.target.value)}
+              placeholder={messages.samples.searchPlaceholder}
+              aria-label={messages.samples.searchAria}
+              className="text-control h-full min-w-0 flex-1 bg-transparent font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)] [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {sampleQuery ? (
+              <button
+                type="button"
+                aria-label={messages.samples.clearSearch}
+                onClick={() => setSampleQuery("")}
+                className={`touch:size-11 -mr-2 grid size-8 shrink-0 place-items-center rounded-md ${focusRing}`}
+              >
+                <X className="size-3.5" aria-hidden="true" />
+              </button>
+            ) : null}
+          </label>
+          <output
+            className="font-mono text-xs font-semibold text-[var(--muted)] tabular-nums"
+            aria-live="polite"
+          >
+            {filteredSampleCount}/{sampleGraphCount}
+          </output>
+        </div>
+        <Select
+          aria-label={messages.samples.category}
+          value={category}
+          onChange={(event) =>
+            setCategory(event.target.value as SampleGraphGroupKey | "all")
+          }
+        >
+          <option value="all">{messages.samples.allCategories}</option>
+          {sampleGraphGroups.map((group) => (
+            <option key={group.key} value={group.key}>
+              {messages.samples.group[group.key].label}
+            </option>
+          ))}
+        </Select>
+        <details className="text-xs text-[var(--muted)]">
+          <summary
+            className={`touch:min-h-11 flex min-h-8 cursor-pointer items-center rounded-md font-semibold ${focusRing}`}
+          >
+            {messages.samples.generationSettings}
+          </summary>
+          <div className="flex flex-wrap gap-2 pt-1 pb-2">
+            <label className="min-w-20 flex-1">
+              <SectionLabel>{messages.settings.direction}</SectionLabel>
+              <Select
+                aria-label={messages.settings.direction}
+                value={String(settings.directed)}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    directed: event.target.value === "true",
+                  })
+                }
+              >
+                <option value="false">{messages.settings.undirected}</option>
+                <option value="true">{messages.settings.directed}</option>
+              </Select>
+            </label>
+            <label className="min-w-20 flex-1">
+              <SectionLabel>{messages.settings.weight}</SectionLabel>
+              <Select
+                aria-label={messages.settings.weight}
+                value={String(settings.weighted)}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    weighted: event.target.value === "true",
+                    weightKind: "number",
+                  })
+                }
+              >
+                <option value="false">{messages.settings.unweighted}</option>
+                <option value="true">{messages.settings.weighted}</option>
+              </Select>
+            </label>
+            <label className="min-w-20 flex-1">
+              <SectionLabel>{messages.settings.indexBase}</SectionLabel>
+              <Select
+                aria-label={messages.settings.indexBase}
+                value={settings.indexBase}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    indexBase: event.target.value === "1" ? 1 : 0,
+                  })
+                }
+              >
+                <option value="0">0-indexed</option>
+                <option value="1">1-indexed</option>
+              </Select>
+            </label>
+          </div>
+          <p>{messages.samples.requiredSettings}</p>
+        </details>
+      </div>
       <div
         data-sample-scroll
         tabIndex={0}
@@ -166,9 +238,15 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
                   <SampleCard
                     key={sample.kind}
                     sample={sample}
-                    settings={graph.settings}
-                    onApply={() => generateSample(sample.kind)}
-                    onApplySized={generateSizedSample}
+                    settings={settings}
+                    values={configurations[sample.kind]}
+                    onValuesChange={(values) =>
+                      setConfigurations((current) => ({
+                        ...current,
+                        [sample.kind]: values,
+                      }))
+                    }
+                    onApply={applyModel}
                   />
                 ))}
               </div>
@@ -179,8 +257,8 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
             <div className="text-sm font-bold text-[var(--text)]">
               {messages.samples.empty}
             </div>
-            <Button variant="secondary" onClick={() => setSampleQuery("")}>
-              {messages.samples.clearSearch}
+            <Button variant="secondary" onClick={clearFilters}>
+              {messages.samples.clearFilters}
             </Button>
           </div>
         )}
@@ -189,72 +267,74 @@ export function SampleGalleryPane({ onSampleApplied }: SampleGalleryPaneProps) {
   );
 }
 
-function SampleGalleryFilter({
-  query,
-  total,
-  shown,
-  onQueryChange,
-}: {
-  query: string;
-  total: number;
-  shown: number;
-  onQueryChange: (query: string) => void;
-}) {
-  const { messages } = useI18n();
-
-  return (
-    <div className="flex shrink-0 items-center gap-3 px-4 pt-3.5 pb-3">
-      <label className="ge-focus touch:h-11 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
-        <Search className="size-3.5 shrink-0" aria-hidden="true" />
-        <input
-          type="search"
-          name="sample-search"
-          value={query}
-          autoComplete="off"
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder={messages.samples.searchPlaceholder}
-          aria-label={messages.samples.searchAria}
-          className="text-control h-full min-w-0 flex-1 bg-transparent font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
-        />
-        {query ? (
-          <button
-            type="button"
-            aria-label={messages.samples.clearSearch}
-            onClick={() => onQueryChange("")}
-            className={cn(
-              "touch:size-11 grid size-5 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]",
-              focusRing,
-            )}
-          >
-            <X className="size-3" aria-hidden="true" />
-          </button>
-        ) : null}
-      </label>
-      <div className="text-meta shrink-0 font-mono font-semibold text-[var(--muted)] tabular-nums">
-        {shown} / {total}
-      </div>
-    </div>
-  );
-}
-
 function SampleCard({
   sample,
   settings,
+  values,
+  onValuesChange,
   onApply,
-  onApplySized,
 }: {
   sample: SampleGraphItem;
-  settings: GraphModel["settings"];
-  onApply: () => void;
-  onApplySized: (kind: SizedSampleGraphKind, values: SizedSampleValues) => void;
+  settings: GraphSettings;
+  values?: SampleValues;
+  onValuesChange: (values: SampleValues) => void;
+  onApply: (model: GraphModel) => void;
 }) {
   const { locale, messages } = useI18n();
   const title = messages.samples.item[sample.kind]?.title ?? sample.label;
   const subtitle =
     messages.samples.item[sample.kind]?.subtitle ??
-    (locale === "ja" ? sample.subtitle : humanizeSampleKind(sample.kind));
+    (locale === "ja" ? sample.subtitle : sample.label);
+  const parameters = useMemo(
+    () => getSampleParameters(sample.kind),
+    [sample.kind],
+  );
+  const defaults = useMemo(
+    () =>
+      Object.fromEntries(
+        parameters.map((parameter) => [
+          parameter.key,
+          String(parameter.defaultValue),
+        ]),
+      ),
+    [parameters],
+  );
+  const rawValues = values ?? defaults;
+  const parametersChanged = parameters.some(
+    (parameter) => rawValues[parameter.key] !== defaults[parameter.key],
+  );
+  const normalized = useMemo(
+    () => normalizeSampleParameters(sample.kind, rawValues),
+    [sample.kind, rawValues],
+  );
+  const deferredValues = useDeferredValue(normalized);
+  const previewUpdating = deferredValues !== normalized;
+  const missingValue = parameters.some(
+    (parameter) => !rawValues[parameter.key]?.trim(),
+  );
+  const invalidValue = parameters.some((parameter) => {
+    const value = normalizeSampleParameterInput(rawValues[parameter.key] ?? "");
+    return value !== "" && !/^\d+$/.test(value);
+  });
+  const adjustments = parameters
+    .filter(
+      (parameter) =>
+        Number(
+          normalizeSampleParameterInput(rawValues[parameter.key] ?? ""),
+        ) !== normalized[parameter.key],
+    )
+    .map(
+      (parameter) =>
+        `${messages.samples.parameterLabels[parameter.labelKey]} = ${normalized[parameter.key]}`,
+    );
   const previewRef = useRef<HTMLSpanElement | null>(null);
   const [visible, setVisible] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<
+    "idle" | "copying" | "copied" | "failed"
+  >("idle");
+  const copyVersion = useRef(0);
+  const isComposingRef = useRef(false);
+  const noticeId = useId();
   useEffect(() => {
     const element = previewRef.current;
     if (!element || visible) return;
@@ -278,68 +358,69 @@ function SampleCard({
     return () => observer.disconnect();
   }, [visible]);
   const model = useMemo(
-    () => (visible ? createSampleGraph(sample.kind, settings) : null),
-    [visible, sample.kind, settings],
+    () =>
+      visible
+        ? createConfiguredSampleGraph(sample.kind, deferredValues, settings)
+        : null,
+    [visible, sample.kind, deferredValues, settings],
   );
-  const [nodeCount, setNodeCount] = useState(() =>
-    String(sampleDefaultNodeCount(sample.kind)),
-  );
-  const [rows, setRows] = useState(() => (sample.kind === "grid" ? "3" : "4"));
-  const [columns, setColumns] = useState(() =>
-    sample.kind === "grid" ? "3" : "4",
-  );
-  const [knightMoveX, setKnightMoveX] = useState("1");
-  const [knightMoveY, setKnightMoveY] = useState("2");
-  const [bipartiteLeft, setBipartiteLeft] = useState("3");
-  const [bipartiteRight, setBipartiteRight] = useState("3");
-  const sizedKind = isSizedSampleGraphKind(sample.kind) ? sample.kind : null;
-  const usesGridDimensions = sizedKind === "grid" || sizedKind === "knight";
+  useEffect(() => {
+    copyVersion.current += 1;
+    setCopyStatus("idle");
+  }, [rawValues, settings]);
+  useEffect(() => {
+    if (copyStatus !== "copied" && copyStatus !== "failed") return;
+    const timeout = window.setTimeout(() => setCopyStatus("idle"), 2400);
+    return () => window.clearTimeout(timeout);
+  }, [copyStatus]);
+  const currentModel = () =>
+    createConfiguredSampleGraph(sample.kind, normalized, settings);
+  const copyHelp = model
+    ? messages.samples.copyInputHelp(
+        model.settings.indexBase,
+        model.settings.weighted,
+      )
+    : undefined;
+  const copyInput = async () => {
+    const version = ++copyVersion.current;
+    setCopyStatus("copying");
+    const copied = await copyTextToClipboard(exportEdgeList(currentModel()));
+    if (version === copyVersion.current) {
+      setCopyStatus(copied ? "copied" : "failed");
+    }
+  };
 
   return (
     <form
+      data-sample-kind={sample.kind}
+      aria-label={title}
       noValidate
       className="flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] shadow-[var(--shadow)]"
+      onCompositionStart={() => {
+        isComposingRef.current = true;
+      }}
+      onCompositionEnd={() => {
+        isComposingRef.current = false;
+      }}
+      onKeyDown={(event) => {
+        if (
+          event.key === "Enter" &&
+          (isComposingRef.current ||
+            event.nativeEvent.isComposing ||
+            event.nativeEvent.keyCode === 229)
+        ) {
+          event.preventDefault();
+        }
+      }}
       onSubmit={(event) => {
         event.preventDefault();
-
-        if (!sizedKind) {
-          onApply();
-          return;
-        }
-
-        const normalizedRows = clampPositiveInteger(Number(rows), 4);
-        const normalizedColumns = Math.min(
-          clampPositiveInteger(Number(columns), 4),
-          Math.floor(1000 / normalizedRows),
-        );
-        const normalizedMoveX = clampPositiveInteger(Number(knightMoveX), 1);
-        const normalizedMoveY = clampPositiveInteger(Number(knightMoveY), 2);
-        const normalizedLeft = clampPositiveInteger(Number(bipartiteLeft), 3);
-        const normalizedRight = Math.min(
-          clampPositiveInteger(Number(bipartiteRight), 3),
-          Math.floor(5000 / normalizedLeft),
-        );
-        const normalizedNodeCount = clampSizedSampleNodeCount(
-          sizedKind,
-          Number(nodeCount),
-        );
-
-        setNodeCount(String(normalizedNodeCount));
-        setRows(String(normalizedRows));
-        setColumns(String(normalizedColumns));
-        setKnightMoveX(String(normalizedMoveX));
-        setKnightMoveY(String(normalizedMoveY));
-        setBipartiteLeft(String(normalizedLeft));
-        setBipartiteRight(String(normalizedRight));
-        onApplySized(sizedKind, {
-          bipartiteLeft: normalizedLeft,
-          bipartiteRight: normalizedRight,
-          columns: normalizedColumns,
-          knightMoveX: normalizedMoveX,
-          knightMoveY: normalizedMoveY,
-          nodeCount: normalizedNodeCount,
-          rows: normalizedRows,
-        });
+        if (
+          !isComposingRef.current &&
+          !missingValue &&
+          !invalidValue &&
+          !previewUpdating
+        )
+          onApply(currentModel());
       }}
     >
       <div className="grid grid-cols-[106px_minmax(0,1fr)] items-center gap-3 p-3">
@@ -347,7 +428,7 @@ function SampleCard({
           ref={previewRef}
           className="grid h-[88px] w-[106px] place-items-center overflow-hidden rounded-lg bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:12px_12px]"
         >
-          {model ? (
+          {model && !missingValue && !invalidValue && !previewUpdating ? (
             <SampleGraphPreview
               model={model}
               sampleKind={sample.kind}
@@ -365,143 +446,155 @@ function SampleCard({
           </span>
         </span>
       </div>
-      <div
-        className={cn(
-          "flex flex-wrap gap-2 border-t border-[var(--hair)] px-3 py-2.5",
-          sizedKind ? "items-end" : "items-center",
-        )}
-      >
-        {sizedKind ? (
-          usesGridDimensions ? (
+      <div className="flex flex-1 flex-col gap-2 border-t border-[var(--hair)] px-3 py-2.5">
+        {parameters.length > 0 ? (
+          <div className="flex flex-wrap items-end gap-2">
+            {parameters.map((parameter) => (
+              <CardNumberInput
+                key={parameter.key}
+                parameter={parameter}
+                label={messages.samples.parameterLabels[parameter.labelKey]}
+                value={rawValues[parameter.key] ?? ""}
+                noticeId={noticeId}
+                onChange={(value) =>
+                  onValuesChange({ ...rawValues, [parameter.key]: value })
+                }
+              />
+            ))}
+          </div>
+        ) : null}
+        <div
+          id={noticeId}
+          className="text-xs leading-snug text-[var(--muted)]"
+          aria-live="polite"
+        >
+          {missingValue ? (
+            messages.samples.fillParameters
+          ) : invalidValue ? (
+            messages.samples.integerParameters
+          ) : previewUpdating ? (
+            messages.samples.updatingPreview
+          ) : (
             <>
-              <CardNumberInput
-                label={messages.samples.sizedRowsLabel}
-                value={rows}
-                onChange={setRows}
-              />
-              <CardNumberInput
-                label={messages.samples.sizedColumnsLabel}
-                value={columns}
-                onChange={setColumns}
-              />
-              {sizedKind === "knight" ? (
-                <>
-                  <CardNumberInput
-                    label={messages.samples.sizedKnightMoveXLabel}
-                    value={knightMoveX}
-                    onChange={setKnightMoveX}
-                  />
-                  <CardNumberInput
-                    label={messages.samples.sizedKnightMoveYLabel}
-                    value={knightMoveY}
-                    onChange={setKnightMoveY}
-                  />
-                </>
+              {model ? (
+                <span data-sample-stats className="font-mono tabular-nums">
+                  {messages.starter.previewStats(
+                    model.nodes.length,
+                    model.edges.length,
+                  )}{" "}
+                  ·{" "}
+                  {model.settings.directed
+                    ? messages.settings.directed
+                    : messages.settings.undirected}
+                  {model.settings.weighted
+                    ? ` · ${messages.settings.weighted}`
+                    : ""}
+                </span>
+              ) : null}
+              {adjustments.length > 0 ? (
+                <p data-sample-adjustments className="mt-1">
+                  {messages.samples.adjustedParameters(adjustments.join(", "))}
+                </p>
               ) : null}
             </>
-          ) : sizedKind === "bipartite" ? (
-            <>
-              <CardNumberInput
-                label={messages.samples.sizedBipartiteLeftLabel}
-                value={bipartiteLeft}
-                onChange={setBipartiteLeft}
-              />
-              <CardNumberInput
-                label={messages.samples.sizedBipartiteRightLabel}
-                value={bipartiteRight}
-                onChange={setBipartiteRight}
-              />
-            </>
-          ) : (
-            <CardNumberInput
-              label={messages.samples.sizedNodeCountLabel}
-              value={nodeCount}
-              max={getSizedSampleGraphMaxNodes(sizedKind)}
-              onChange={setNodeCount}
-            />
-          )
-        ) : null}
-        <Button
-          type="submit"
-          aria-label={`${title}: ${messages.samples.sizedCreate}`}
-          title={`${title} (${subtitle})`}
-          size="sm"
-          variant="secondary"
-          className="ml-auto px-3"
-        >
-          {messages.samples.sizedCreate}
-        </Button>
+          )}
+        </div>
+        <div className="mt-auto flex flex-col gap-1.5">
+          {parameters.length > 0 ? (
+            <Button
+              size="sm"
+              className="self-start"
+              disabled={!parametersChanged}
+              aria-label={`${title}: ${messages.samples.resetParameters}`}
+              onClick={() => onValuesChange(defaults)}
+            >
+              <RotateCcw className="size-3.5" aria-hidden="true" />
+              {messages.samples.resetParameters}
+            </Button>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={
+                missingValue ||
+                invalidValue ||
+                previewUpdating ||
+                copyStatus === "copying"
+              }
+              aria-label={`${title}: ${messages.samples.copyInput}`}
+              aria-description={copyHelp}
+              tooltip={copyHelp}
+              tooltipSide="top-start"
+              onClick={() => {
+                void copyInput();
+              }}
+            >
+              <Copy className="size-3.5" aria-hidden="true" />
+              <span role="status">
+                {copyStatus === "copied"
+                  ? messages.common.copied
+                  : copyStatus === "failed"
+                    ? messages.common.failed
+                    : copyStatus === "copying"
+                      ? messages.common.copying
+                      : messages.samples.copyInput}
+              </span>
+            </Button>
+            <Button
+              type="submit"
+              disabled={missingValue || invalidValue || previewUpdating}
+              aria-label={`${title}: ${messages.samples.sizedCreate}`}
+              size="sm"
+              variant="secondary"
+              className="ml-auto px-3"
+            >
+              {messages.samples.sizedCreate}
+            </Button>
+          </div>
+        </div>
       </div>
     </form>
   );
 }
 
 function CardNumberInput({
+  parameter,
   label,
-  max = 100,
-  onChange,
   value,
+  noticeId,
+  onChange,
 }: {
+  parameter: SampleParameter;
   label: string;
-  max?: number;
-  onChange: (value: string) => void;
   value: string;
+  noticeId: string;
+  onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex min-w-[68px] flex-[1_1_68px] flex-col gap-1">
+    <label className="flex min-w-[80px] flex-[1_1_80px] flex-col gap-1">
       <SectionLabel>{label}</SectionLabel>
       <TextInput
         type="text"
         inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={String(max).length}
         value={value}
         aria-label={label}
+        aria-describedby={noticeId}
+        aria-invalid={!/^\d+$/.test(normalizeSampleParameterInput(value))}
+        title={`${parameter.min}–${parameter.max}${parameter.step && parameter.step > 1 ? ` (step ${parameter.step})` : ""}`}
         onFocus={selectInputValueOnFocus}
-        onChange={(event) => {
-          const nextValue = event.target.value;
-          if (POSITIVE_INTEGER_INPUT_PATTERN.test(nextValue)) {
-            onChange(nextValue);
-          }
-        }}
+        onChange={(event) => onChange(event.target.value)}
         className="font-mono tabular-nums"
       />
     </label>
   );
 }
 
-function clampPositiveInteger(value: number, fallback: number) {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-
-  return Math.max(1, Math.min(100, Math.round(value)));
-}
-
 function selectInputValueOnFocus(event: FocusEvent<HTMLInputElement>) {
   const input = event.currentTarget;
-
+  const valueOnFocus = input.value;
   window.requestAnimationFrame(() => {
-    if (document.activeElement === input) {
+    if (document.activeElement === input && input.value === valueOnFocus)
       input.select();
-    }
   });
-}
-
-function humanizeSampleKind(kind: SampleGraphKind) {
-  return kind
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
-    .replace(/K Tree/g, "k-tree")
-    .replace(/\bdag\b/i, "DAG")
-    .replace(/\bscc\b/i, "SCC")
-    .toLowerCase()
-    .replace(/\b(dag|scc)\b/g, (match) => match.toUpperCase())
-    .replace(
-      /\b(petersen|paley|kneser|johnson|moser|mobius)\b/g,
-      (match) => match[0].toUpperCase() + match.slice(1),
-    )
-    .replace(/\bk-tree\b/g, "k-tree")
-    .replace(/\bx\b/g, "X")
-    .replace(/^\w/, (letter) => letter.toUpperCase());
 }

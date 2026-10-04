@@ -3,6 +3,7 @@ import type { InlineEditErrorCode } from "../core/graph/edit-values";
 import type { GraphExportFormat } from "../io/export-graph";
 import type { ImportFormatKind } from "../io/import-types";
 import type { SampleGraphKind } from "../samples/sample-graphs";
+import type { SampleParameterLabelKey } from "../samples/sample-parameters";
 import type { SampleGraphGroupKey } from "../samples/registry";
 import type { Locale } from "./locale";
 import { appLocaleMetadata } from "@/lib/site-metadata";
@@ -327,6 +328,19 @@ type Messages = {
     sizedKnightMoveYLabel: string;
     sizedKnightMoveLabel: string;
     sizedKnightMoves: Record<"standard" | "long" | "camel", string>;
+    category: string;
+    allCategories: string;
+    clearFilters: string;
+    generationSettings: string;
+    requiredSettings: string;
+    fillParameters: string;
+    integerParameters: string;
+    updatingPreview: string;
+    adjustedParameters: (values: string) => string;
+    parameterLabels: Record<SampleParameterLabelKey, string>;
+    resetParameters: string;
+    copyInput: string;
+    copyInputHelp: (indexBase: number, weighted: boolean) => string;
     sizedCreate: string;
     group: Record<SampleGraphGroupKey, { label: string; note: string }>;
     item: Partial<
@@ -343,21 +357,65 @@ type Messages = {
 };
 
 const enSampleItems = {
-  path: { subtitle: "6-node path P6" },
-  cycle: { subtitle: "6-node cycle C6" },
-  edgeless: { subtitle: "Edgeless graph E6" },
-  complete: { subtitle: "Complete graph K5" },
-  star: { subtitle: "Star graph K1,5" },
+  zeroOne: {
+    title: "0–1 BFS",
+    subtitle: "Zero and unit weights for deque-based shortest paths",
+  },
+  negativeEdges: {
+    title: "Negative edges",
+    subtitle: "Bellman–Ford: negative edges without a negative cycle",
+  },
+  negativeCycle: {
+    title: "Negative cycle",
+    subtitle: "A reachable negative cycle for Bellman–Ford",
+  },
+  multigraph: {
+    title: "Multigraph",
+    subtitle: "Parallel edges and a self-loop",
+  },
+  bridges: {
+    title: "Bridges and articulation points",
+    subtitle: "Cycles joined by bridges",
+  },
+  bipartiteMatching: {
+    title: "Bipartite matching",
+    subtitle: "A sparse bipartite graph with an augmenting path",
+  },
+  eulerTrail: {
+    title: "Euler trail",
+    subtitle: "Exactly two odd-degree vertices",
+  },
+  functional: {
+    title: "Functional graph",
+    subtitle: "One outgoing edge per vertex; trees leading to cycles",
+  },
+  randomTree: {
+    title: "Random tree",
+    subtitle: "A connected tree reproducible by seed",
+  },
+  randomDag: {
+    title: "Random DAG",
+    subtitle: "A simple directed acyclic graph reproducible by seed",
+  },
+  randomConnected: {
+    title: "Random connected graph",
+    subtitle: "A simple connected graph reproducible by seed",
+  },
+  path: { subtitle: "Path graph" },
+  cycle: { subtitle: "Cycle graph" },
+  edgeless: { subtitle: "Isolated vertices" },
+  complete: { subtitle: "Every pair of vertices is adjacent" },
+  star: { subtitle: "A center connected to every leaf" },
   tree: { subtitle: "Binary tree" },
   caterpillar: { subtitle: "A tree with a spine and leaves" },
-  grid: { subtitle: "3x3 grid graph" },
+  grid: { subtitle: "Rectangular grid graph" },
   disconnected: { subtitle: "Two connected components" },
-  bipartite: { subtitle: "Complete bipartite graph K3,3" },
+  bipartite: { subtitle: "Every pair across the two parts is adjacent" },
   multipartite: { subtitle: "Complete 3-partite graph K1,2,3" },
-  turan: { subtitle: "T3(8): balanced 3-partite graph" },
+  turan: { subtitle: "Balanced complete multipartite graph" },
   crown: { subtitle: "Bipartite graph without matching pairs" },
   chain: { subtitle: "Bipartite graph with nested neighborhoods" },
-  knight: { subtitle: "4x4 knight-move graph" },
+  knight: { subtitle: "Board graph with configurable moves" },
   chordal: { subtitle: "No long induced cycles" },
   interval: { subtitle: "Intersection graph of intervals" },
   split: { subtitle: "Clique plus independent set" },
@@ -386,7 +444,7 @@ const enSampleItems = {
   circularArc: { subtitle: "Intersection graph of circular arcs" },
   unitDisk: { subtitle: "Edges by a distance threshold" },
   cube: { subtitle: "Cube graph" },
-  hypercube: { subtitle: "4-bit hypercube" },
+  hypercube: { subtitle: "Bit strings joined at Hamming distance one" },
   prism: { subtitle: "Triangular prism" },
   tetrahedral: { subtitle: "Tetrahedral graph" },
   octahedral: { subtitle: "Octahedral graph" },
@@ -396,7 +454,9 @@ const enSampleItems = {
   heawood: { subtitle: "Points and lines of the Fano plane" },
   clebsch: { subtitle: "4-bit vertices with antipodal edges" },
   mobiusLadder: { subtitle: "C8 plus antipodal edges" },
-  generalizedPetersen: { subtitle: "G(7,2): outer cycle plus inner star" },
+  generalizedPetersen: {
+    subtitle: "Outer cycle, spokes, and inner step edges",
+  },
   kneser: { subtitle: "Disjoint 2-subsets of a 6-set" },
   johnson: { subtitle: "2-subsets meeting in one element" },
   paley: { subtitle: "Quadratic residues modulo 13" },
@@ -414,21 +474,41 @@ const enSampleItems = {
 } satisfies Messages["samples"]["item"];
 
 const zhHansSampleItems = {
-  path: { title: "路径", subtitle: "6 个顶点的路径 P6" },
-  cycle: { title: "环", subtitle: "6 个顶点的环 C6" },
-  edgeless: { title: "空图", subtitle: "6 个孤立点 E6" },
-  complete: { title: "完全图", subtitle: "完全图 K5" },
-  star: { title: "星图", subtitle: "星图 K1,5" },
+  zeroOne: { title: "0–1 BFS", subtitle: "用于双端队列最短路的 0/1 边权" },
+  negativeEdges: {
+    title: "负权边",
+    subtitle: "Bellman–Ford：含负权边但无负环",
+  },
+  negativeCycle: { title: "负环", subtitle: "用于 Bellman–Ford 的可达负环" },
+  multigraph: { title: "多重图", subtitle: "平行边和自环" },
+  bridges: { title: "桥与割点", subtitle: "由桥连接的环" },
+  bipartiteMatching: {
+    title: "二分图匹配",
+    subtitle: "包含增广路的稀疏二分图",
+  },
+  eulerTrail: { title: "欧拉通路", subtitle: "恰有两个奇数度顶点" },
+  functional: { title: "函数图", subtitle: "每个顶点恰有一条出边；树汇入环" },
+  randomTree: { title: "随机树", subtitle: "可通过种子复现的连通树" },
+  randomDag: { title: "随机 DAG", subtitle: "可通过种子复现的简单有向无环图" },
+  randomConnected: {
+    title: "随机连通图",
+    subtitle: "可通过种子复现的简单连通图",
+  },
+  path: { title: "路径", subtitle: "路径图" },
+  cycle: { title: "环", subtitle: "环图" },
+  edgeless: { title: "空图", subtitle: "孤立顶点" },
+  complete: { title: "完全图", subtitle: "每对顶点均相邻" },
+  star: { title: "星图", subtitle: "一个中心连接所有叶子" },
   tree: { title: "树", subtitle: "二叉树" },
   caterpillar: { title: "毛虫树", subtitle: "带主干和叶子的树" },
-  grid: { title: "网格图", subtitle: "3x3 网格图" },
+  grid: { title: "网格图", subtitle: "矩形网格图" },
   disconnected: { title: "非连通图", subtitle: "2 个连通分量" },
-  bipartite: { title: "二分图", subtitle: "完全二分图 K3,3" },
+  bipartite: { title: "二分图", subtitle: "两个分部之间完全连接" },
   multipartite: { title: "多部图", subtitle: "完全 3 部图 K1,2,3" },
-  turan: { title: "Turán 图", subtitle: "T3(8)：均衡 3 部图" },
-  crown: { title: "冠图 H5", subtitle: "去掉对应匹配边的二分图" },
+  turan: { title: "Turán 图", subtitle: "均衡完全多部图" },
+  crown: { title: "冠图", subtitle: "去掉对应匹配边的二分图" },
   chain: { title: "链图", subtitle: "邻域嵌套的二分图" },
-  knight: { title: "骑士图", subtitle: "4x4 棋盘骑士移动图" },
+  knight: { title: "骑士图", subtitle: "可设置步长的棋盘图" },
   chordal: { title: "弦图", subtitle: "没有长诱导环" },
   interval: { title: "区间图", subtitle: "区间相交图" },
   split: { title: "分裂图", subtitle: "团和独立集" },
@@ -457,7 +537,7 @@ const zhHansSampleItems = {
   circularArc: { title: "圆弧图", subtitle: "圆弧相交图" },
   unitDisk: { title: "单位圆盘图", subtitle: "按距离阈值连边" },
   cube: { title: "立方体图", subtitle: "立方体结构" },
-  hypercube: { title: "超立方体 Q4", subtitle: "4-bit 超立方体" },
+  hypercube: { title: "超立方体", subtitle: "汉明距离为一的比特串相连" },
   prism: { title: "棱柱图", subtitle: "三棱柱" },
   tetrahedral: { title: "四面体图", subtitle: "四面体结构" },
   octahedral: { title: "八面体图", subtitle: "八面体结构" },
@@ -469,7 +549,7 @@ const zhHansSampleItems = {
   mobiusLadder: { title: "Möbius 梯图", subtitle: "C8 加对径边" },
   generalizedPetersen: {
     title: "广义 Petersen 图",
-    subtitle: "G(7,2)：外环加内星",
+    subtitle: "外环、辐条与内圈步长边",
   },
   kneser: {
     title: "Kneser 图 KG(6,2)",
@@ -901,8 +981,8 @@ const ja: Messages = {
     },
   },
   samples: {
-    searchPlaceholder: "サンプルを検索…",
-    searchAria: "サンプルを名前で検索",
+    searchPlaceholder: "名前・用途で検索（例: BFS、最短路）",
+    searchAria: "サンプルを名前やアルゴリズムで検索",
     clearSearch: "検索をクリア",
     empty: "該当するサンプルはありません",
     sizedKindLabel: "形",
@@ -920,6 +1000,40 @@ const ja: Messages = {
       long: "長距離 (1,3)",
       camel: "キャメル (2,3)",
     },
+    category: "カテゴリ",
+    allCategories: "すべてのカテゴリ",
+    clearFilters: "絞り込みをクリア",
+    generationSettings: "生成設定 ▾",
+    requiredSettings:
+      "有向・重み付きなど、サンプルの特徴に必要な設定は優先されます。",
+    fillParameters: "すべての値を入力してください。",
+    integerParameters: "0以上の整数を入力してください（全角数字も使えます）。",
+    updatingPreview: "プレビューを更新中…",
+    adjustedParameters: (values: string) => `適用値: ${values}`,
+    parameterLabels: {
+      nodes: "頂点数",
+      rows: "行",
+      columns: "列",
+      left: "左の頂点数",
+      right: "右の頂点数",
+      moveX: "移動 X",
+      moveY: "移動 Y",
+      rungs: "段数",
+      rim: "外周の頂点数",
+      path: "道の頂点数",
+      triangles: "三角形の数",
+      spine: "背骨の頂点数",
+      dimension: "次元",
+      parts: "部の数",
+      outerNodes: "外周の頂点数",
+      step: "ステップ",
+      edges: "辺数",
+      seed: "乱数シード",
+    },
+    resetParameters: "初期値に戻す",
+    copyInput: "辺リストをコピー",
+    copyInputHelp: (indexBase: number, weighted: boolean) =>
+      `1行目に頂点数と辺数、以降に各辺の両端の頂点番号${weighted ? "と重み" : ""}をコピー（頂点番号は${indexBase}始まり）`,
     sizedCreate: "作成",
     group: {
       basics: {
@@ -1371,8 +1485,8 @@ const en: Messages = {
     },
   },
   samples: {
-    searchPlaceholder: "Search samples…",
-    searchAria: "Search samples by name",
+    searchPlaceholder: "Search names or uses (e.g. BFS, shortest path)",
+    searchAria: "Search samples by name or algorithm",
     clearSearch: "Clear search",
     empty: "No matching samples",
     sizedKindLabel: "Shape",
@@ -1390,6 +1504,41 @@ const en: Messages = {
       long: "Long (1,3)",
       camel: "Camel (2,3)",
     },
+    category: "Category",
+    allCategories: "All categories",
+    clearFilters: "Clear filters",
+    generationSettings: "Generation settings ▾",
+    requiredSettings:
+      "Settings required by a sample, such as direction or weights, take precedence.",
+    fillParameters: "Enter a value in every field.",
+    integerParameters:
+      "Enter a non-negative integer (full-width digits work too).",
+    updatingPreview: "Updating preview…",
+    adjustedParameters: (values: string) => `Values to use: ${values}`,
+    parameterLabels: {
+      nodes: "Nodes",
+      rows: "Rows",
+      columns: "Columns",
+      left: "Left vertices",
+      right: "Right vertices",
+      moveX: "Move X",
+      moveY: "Move Y",
+      rungs: "Rungs",
+      rim: "Rim vertices",
+      path: "Path vertices",
+      triangles: "Triangles",
+      spine: "Spine vertices",
+      dimension: "Dimension",
+      parts: "Parts",
+      outerNodes: "Outer vertices",
+      step: "Step",
+      edges: "Edges",
+      seed: "Random seed",
+    },
+    resetParameters: "Reset parameters",
+    copyInput: "Copy edge list",
+    copyInputHelp: (indexBase: number, weighted: boolean) =>
+      `Copy node and edge counts on the first line, then each edge's endpoints${weighted ? " and weight" : ""} (${indexBase}-indexed)`,
     sizedCreate: "Create",
     group: {
       basics: { label: "Basic families", note: "Common starting shapes" },
@@ -1824,8 +1973,8 @@ const zhHans: Messages = {
   },
   samples: {
     ...en.samples,
-    searchPlaceholder: "搜索示例…",
-    searchAria: "按名称搜索示例",
+    searchPlaceholder: "按名称或用途搜索（如 BFS、最短路）",
+    searchAria: "按名称或算法搜索示例",
     clearSearch: "清除搜索",
     empty: "没有匹配的示例",
     sizedKindLabel: "形状",
@@ -1843,6 +1992,39 @@ const zhHans: Messages = {
       long: "长步 (1,3)",
       camel: "骆驼 (2,3)",
     },
+    category: "类别",
+    allCategories: "所有类别",
+    clearFilters: "清除筛选",
+    generationSettings: "生成设置 ▾",
+    requiredSettings: "示例所需的方向或权重等设置优先。",
+    fillParameters: "请填写所有参数。",
+    integerParameters: "请输入非负整数（也可使用全角数字）。",
+    updatingPreview: "正在更新预览…",
+    adjustedParameters: (values: string) => `实际使用的值：${values}`,
+    parameterLabels: {
+      nodes: "顶点数",
+      rows: "行",
+      columns: "列",
+      left: "左侧顶点数",
+      right: "右侧顶点数",
+      moveX: "移动 X",
+      moveY: "移动 Y",
+      rungs: "梯级数",
+      rim: "外圈顶点数",
+      path: "路径顶点数",
+      triangles: "三角形数",
+      spine: "主干顶点数",
+      dimension: "维数",
+      parts: "分部数",
+      outerNodes: "外圈顶点数",
+      step: "步长",
+      edges: "边数",
+      seed: "随机种子",
+    },
+    resetParameters: "重置参数",
+    copyInput: "复制边列表",
+    copyInputHelp: (indexBase: number, weighted: boolean) =>
+      `复制第一行的顶点数和边数，以及后续每条边的两个端点编号${weighted ? "和权重" : ""}（顶点编号从 ${indexBase} 开始）`,
     sizedCreate: "创建",
     group: {
       basics: { label: "基础图族", note: "常见的起始形状" },

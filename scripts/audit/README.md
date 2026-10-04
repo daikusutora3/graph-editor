@@ -48,3 +48,22 @@ Stop the local server with Ctrl-C when finished.
 
 For editor recovery/history regressions and broader build checks, see the
 [development guide](../../docs/development.md#choose-checks-for-the-change).
+
+## Sample gallery
+
+Start the dev server on port 3310, then run:
+
+```bash
+BASE_URL=http://127.0.0.1:3310 bun tests/browser/sample-gallery.ts
+```
+
+Pass the root URL, without a locale suffix. This uses isolated browser contexts
+to verify search aliases, category filtering, parameter retention, live previews,
+normalized values, input copying, creation, Undo/Redo, and persistence. It also
+checks that the large-graph preview finishes before Create becomes available,
+and renders Japanese, English, and Chinese at 375 px in light and dark themes.
+Screenshots are written to `/tmp/graph-editor-sample-review`.
+
+Graph properties and generation limits are covered by `bun run test`, including
+shortest paths, negative cycles, matching, bridges, seeded generation, and
+configurable graph families.

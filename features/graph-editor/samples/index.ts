@@ -1,5 +1,12 @@
 export { sampleGraphDefinitions } from "./registry";
 export {
+  createConfiguredSampleGraph,
+  getSampleParameters,
+  normalizeSampleParameters,
+  type SampleParameter,
+  type SampleParameterValues,
+} from "./sample-parameters";
+export {
   createSampleGraph,
   createSizedSampleGraph,
   getSizedSampleGraphMaxNodes,

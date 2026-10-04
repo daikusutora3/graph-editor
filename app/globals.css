@@ -371,6 +371,16 @@
   bottom: calc(100% + 8px);
 }
 
+[data-tooltip][data-tooltip-side="top-start"]::after {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  max-width: 216px;
+  text-align: left;
+  white-space: normal;
+  transform: translate(0, -2px);
+}
+
 @media (hover: hover) {
   [data-tooltip]:hover::after,
   [data-tooltip]:focus-visible::after {
@@ -380,7 +390,9 @@
   }
 
   [data-tooltip][data-tooltip-side="bottom-end"]:hover::after,
-  [data-tooltip][data-tooltip-side="bottom-end"]:focus-visible::after {
+  [data-tooltip][data-tooltip-side="bottom-end"]:focus-visible::after,
+  [data-tooltip][data-tooltip-side="top-start"]:hover::after,
+  [data-tooltip][data-tooltip-side="top-start"]:focus-visible::after {
     transform: translate(0, 0);
   }
 }
