@@ -46,6 +46,7 @@ verifyDiffSyncCanSkipDraggedNodePositions();
 verifyEdgeTopologyChangesAreRecreated();
 verifyEdgeRoutingCanFollowDraggedNodePositions();
 verifyInteractiveRoutingRechecksDepartedObstacles();
+verifyInteractiveRoutingSlicesAndPillObstacles();
 verifySelfLoopRoutingCanFollowDraggedNodePositions();
 verifyEdgeRoutingSyncPreservesModelData();
 verifyEdgeRoutingSyncCanRestorePreviewData();
@@ -58,6 +59,68 @@ verifyHitboxReconciliation();
 verifySharedEndpointSnapshots();
 
 finish();
+
+function verifyInteractiveRoutingSlicesAndPillObstacles() {
+  const graph: GraphModel = {
+    ...createEmptyGraphModel({ autoEdgeRouting: true }),
+    nodes: [
+      { id: "a", order: 0, label: "A", x: 0, y: 0 },
+      { id: "b", order: 1, label: "B", x: 200, y: 0 },
+      { id: "pill", order: 2, label: "W".repeat(100), x: 650, y: 200 },
+    ],
+    edges: [{ id: "ab", source: "a", target: "b", routing: { bowPx: 0 } }],
+  };
+  for (const [beforeY, afterY, shouldReroute] of [
+    [200, 83.9999, true],
+    [200, 84.0001, false],
+    [83.9999, 200, true],
+  ] as const) {
+    const before = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === "pill" ? { ...node, y: beforeY } : node,
+      ),
+    };
+    const previous = computeCytoscapeEdgeRoutingMeta(before);
+    const cy = createCy(before, { edgeRoutingMeta: previous });
+    try {
+      cy.getElementById("pill").position({ x: 650, y: afterY });
+      const task = createCytoscapeRoutingTask(
+        cy,
+        before,
+        { mode: "quality" },
+        {
+          movedNodeIds: new Set(["pill"]),
+          previousMeta: previous,
+        },
+      );
+      let step = task.next();
+      expect(
+        !step.done,
+        "interactive routing should yield before checking moved obstacle distances",
+      );
+      let yieldCount = 1;
+      while (!step.done) {
+        step = task.next();
+        if (!step.done) yieldCount++;
+      }
+      expect(
+        (step.value.get("ab") !== previous.get("ab")) === shouldReroute,
+        "interactive pruning should include old and new wide capsule boundaries at the reroute distance",
+      );
+      expect(
+        yieldCount > 1,
+        "interactive routing should retain sliced progress after obstacle classification",
+      );
+      expect(
+        before.nodes.every((node) => !("measuredWidth" in node)),
+        "interactive obstacle width caches must remain outside the editable model",
+      );
+    } finally {
+      cy.destroy();
+    }
+  }
+}
 
 function verifySharedEndpointSnapshots() {
   let sourceX = 0;

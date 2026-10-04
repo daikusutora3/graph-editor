@@ -1,6 +1,6 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import {
   getStorageSnapshot,
   parseStoredGraph,
@@ -30,7 +30,7 @@ export function StorageNotice() {
     getStorageSnapshot,
     () => serverSnapshot,
   );
-  const graph = useAtomValue(graphAtom);
+  const store = useStore();
   const error = useAtomValue(commandErrorAtom);
   const resolveConflict = useSetAtom(resolveStorageConflictAtom);
   const retrySave = useSetAtom(retryGraphSaveAtom);
@@ -61,7 +61,10 @@ export function StorageNotice() {
           <Button
             size="sm"
             onClick={() =>
-              download(serializeGraphModel(graph), "graph-backup.json")
+              download(
+                serializeGraphModel(store.get(graphAtom)),
+                "graph-backup.json",
+              )
             }
           >
             {copy.backup}

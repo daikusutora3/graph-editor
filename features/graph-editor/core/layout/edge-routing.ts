@@ -1,6 +1,6 @@
 import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
-import { chooseLoopDirection } from "./edge-routing-loops";
+import { createLoopDirectionTask } from "./edge-routing-loops";
 import { clamp } from "./edge-routing-shared";
 import { compareCurvePreference } from "./edge-routing-scoring";
 import { scoreCandidateCurve } from "./edge-routing-scoring";
@@ -162,7 +162,7 @@ export function* createEdgeRoutingTask(
       const center = (edges.length - 1) / 2;
       const source = nodesById.get(edges[0]?.source ?? "");
       const loopDirectionDeg = source
-        ? chooseLoopDirection(source, model.nodes, resolvedOptions)
+        ? yield* createLoopDirectionTask(source, model.nodes, resolvedOptions)
         : resolvedOptions.loopDirectionDeg;
 
       for (const [index, edge] of edges.entries()) {

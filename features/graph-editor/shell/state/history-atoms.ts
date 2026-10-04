@@ -24,6 +24,8 @@ export const commandErrorAtom = atom<string | null>(null);
 
 export const historyAtom = atom<GraphTransaction[]>([]);
 export const futureAtom = atom<GraphTransaction[]>([]);
+export const canUndoAtom = atom((get) => get(historyAtom).length > 0);
+export const canRedoAtom = atom((get) => get(futureAtom).length > 0);
 
 const MAX_HISTORY_ENTRIES = 150;
 

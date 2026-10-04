@@ -320,19 +320,11 @@ const SelectEdgeHitboxList = memo(function SelectEdgeHitboxList({
 }) {
   return (
     <>
-      <svg
-        className="pointer-events-none absolute inset-0 z-[18] h-full w-full"
-        aria-hidden="true"
-      >
-        {edges.map((edge) => (
-          <SelectEdgePath
-            key={edge.id}
-            edge={edge}
-            rangeSelectionActive={rangeSelectionActive}
-            handlers={handlers}
-          />
-        ))}
-      </svg>
+      <SelectEdgePaths
+        edges={edges}
+        rangeSelectionActive={rangeSelectionActive}
+        handlers={handlers}
+      />
       {edges.map((edge) => (
         <SelectEdgeLabelButton
           key={edge.id}
@@ -344,6 +336,32 @@ const SelectEdgeHitboxList = memo(function SelectEdgeHitboxList({
         />
       ))}
     </>
+  );
+});
+
+// Paths do not depend on selection. Keep their list stable when a label or
+// node is selected so React does not traverse thousands of unchanged paths.
+const SelectEdgePaths = memo(function SelectEdgePaths({
+  edges,
+  rangeSelectionActive,
+  handlers,
+}: Pick<SelectEdgeHitboxesProps, "edges" | "rangeSelectionActive"> & {
+  handlers: EdgeHitboxHandlers;
+}) {
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 z-[18] h-full w-full overflow-visible"
+      aria-hidden="true"
+    >
+      {edges.map((edge) => (
+        <SelectEdgePath
+          key={edge.id}
+          edge={edge}
+          rangeSelectionActive={rangeSelectionActive}
+          handlers={handlers}
+        />
+      ))}
+    </svg>
   );
 });
 

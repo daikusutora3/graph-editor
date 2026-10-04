@@ -44,6 +44,10 @@ export const graphIsEmptyAtom = atom((get) => {
 /** Read-only view of the graph; every change goes through the history atoms. */
 export const graphAtom = atom((get) => get(storedGraphAtom).graph);
 
+export const graphSettingsAtom = atom((get) => get(graphAtom).settings);
+export const graphHasNodesAtom = atom((get) => get(graphAtom).nodes.length > 0);
+export const graphHasEdgesAtom = atom((get) => get(graphAtom).edges.length > 0);
+
 /** Write path reserved for the command/history layer. */
 export const commitGraphAtom = atom(
   null,

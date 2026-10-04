@@ -17,7 +17,8 @@ import {
   type EdgeRoutingMeta,
   type EdgeRoutingOptions,
 } from "../../core/layout/edge-routing";
-import { minimumCurveDistanceToNode } from "../../core/layout/edge-route-geometry";
+import { createCurveNodeDistance } from "../../core/layout/edge-route-geometry";
+import { nodeGeometryWidth, NODE_SIZE_PX } from "../../core/graph/node-size";
 import type {
   EdgeId,
   GraphColor,
@@ -168,7 +169,7 @@ export function* createCytoscapeRoutingTask(
 ): Generator<void, Map<EdgeId, EdgeRoutingMeta>> {
   const positionedModel = graphModelWithCytoscapeNodePositions(cy, model);
   const rerouteEdgeIds = interaction
-    ? interactiveRerouteEdgeIds(
+    ? yield* interactiveRerouteEdgeIdsTask(
         {
           ...positionedModel,
           nodes: [
@@ -216,20 +217,26 @@ export function applyCytoscapeRoutingMeta(
   });
 }
 
-function interactiveRerouteEdgeIds(
+function* interactiveRerouteEdgeIdsTask(
   model: GraphModel,
   previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
   movedNodeIds: ReadonlySet<NodeId>,
-) {
+): Generator<void, Set<EdgeId> | null> {
   if (previousMeta.size === 0 || movedNodeIds.size === 0) {
     return null;
   }
 
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
-  const movedNodes = model.nodes.filter((node) => movedNodeIds.has(node.id));
+  const movedNodes: Array<GraphNode & { measuredWidth: number }> = [];
+  for (const [index, node] of model.nodes.entries()) {
+    if (index % 64 === 0) yield;
+    if (movedNodeIds.has(node.id))
+      movedNodes.push({ ...node, measuredWidth: nodeGeometryWidth(node) });
+  }
   const reroute = new Set<EdgeId>();
 
   for (const edge of model.edges) {
+    yield;
     const previous = previousMeta.get(edge.id);
 
     if (
@@ -253,13 +260,43 @@ function interactiveRerouteEdgeIds(
       continue;
     }
 
-    if (
-      movedNodes.some(
-        (node) =>
-          minimumCurveDistanceToNode(source, target, previous, node) < 84,
+    const distanceToNode = createCurveNodeDistance(source, target, previous);
+    // Straight single-control routes stay inside their endpoint box, so remote
+    // capsules cannot affect the reroute decision. Other geometry stays exact.
+    const isStraight =
+      previous.controlPointDistancesPx.every((distance) => distance === 0) &&
+      previous.controlPointWeights.every(
+        (weight) => weight >= 0 && weight <= 1,
+      );
+    // The extra pixel includes the distance solver's subdivision tolerance;
+    // translated drawings also need slack for floating-point cancellation.
+    const margin =
+      85 +
+      Number.EPSILON *
+        Math.max(
+          1,
+          Math.abs(source.x),
+          Math.abs(source.y),
+          Math.abs(target.x),
+          Math.abs(target.y),
+        ) *
+        8;
+    const x1 = Math.min(source.x, target.x) - margin;
+    const x2 = Math.max(source.x, target.x) + margin;
+    const y1 = Math.min(source.y, target.y) - margin;
+    const y2 = Math.max(source.y, target.y) + margin;
+    for (const [index, node] of movedNodes.entries()) {
+      if (index % 64 === 0) yield;
+      const span = Math.max(0, (node.measuredWidth - NODE_SIZE_PX) / 2);
+      if (
+        isStraight &&
+        (node.x + span < x1 || node.x - span > x2 || node.y < y1 || node.y > y2)
       )
-    ) {
-      reroute.add(edge.id);
+        continue;
+      if (distanceToNode(node) < 84) {
+        reroute.add(edge.id);
+        break;
+      }
     }
   }
 

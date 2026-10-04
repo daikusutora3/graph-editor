@@ -1,7 +1,7 @@
 "use client";
 import { integrityCopy } from "../../i18n/integrity-copy";
 
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
@@ -37,11 +37,15 @@ import {
   graphRevisionAtom,
 } from "../../shell/state/graph-atoms";
 import {
-  futureAtom,
-  historyAtom,
+  canRedoAtom,
+  canUndoAtom,
   redoAtom,
   undoAtom,
 } from "../../shell/state/history-atoms";
+import {
+  createChromeGraphAtom,
+  inactiveGraphRevisionAtom,
+} from "../../shell/state/chrome-atoms";
 import { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
 import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
 import { useEditorPanel } from "./editor-chrome-state";
@@ -82,12 +86,21 @@ export function EditorChrome() {
   const layout = useAtomValue(editorLayoutAtom);
   const mobile = layout === "mobile";
   const wide = layout === "desktop";
-  const graph = useAtomValue(graphAtom);
-  const graphRevision = useAtomValue(graphRevisionAtom);
+  const { close, open, panel, presence, toggle } = useEditorPanel();
+  const visiblePanel = presence.value;
+  const graphReadAtom = useMemo(
+    () => createChromeGraphAtom(visiblePanel),
+    [visiblePanel],
+  );
+  const graph = useAtomValue(graphReadAtom);
+  const graphRevision = useAtomValue(
+    visiblePanel === "png" ? graphRevisionAtom : inactiveGraphRevisionAtom,
+  );
+  const store = useStore();
   const graphIsEmpty = useAtomValue(graphIsEmptyAtom);
   const mode = useAtomValue(editorModeAtom);
-  const history = useAtomValue(historyAtom);
-  const future = useAtomValue(futureAtom);
+  const canUndo = useAtomValue(canUndoAtom);
+  const canRedo = useAtomValue(canRedoAtom);
   const setMode = useSetAtom(setEditorModeAtom);
   const undo = useSetAtom(undoAtom);
   const redo = useSetAtom(redoAtom);
@@ -98,7 +111,6 @@ export function EditorChrome() {
   const clearGraph = useSetAtom(clearGraphAtom);
   const { requestFit } = useGraphCanvasApi();
   const applyGraphModel = useApplyGraphModel();
-  const { close, open, panel, presence, toggle } = useEditorPanel();
   const { theme, setTheme } = useThemeMode();
   const shortcutPlatform = useShortcutPlatform();
   const showShortcutHints = shortcutPlatform !== "touch";
@@ -118,10 +130,9 @@ export function EditorChrome() {
   const [starterView, setStarterView] = useState<StarterView>("paste");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isGraphEmpty = graphIsEmpty;
-  const visiblePanel = presence.value;
   const exportVisible = panel === "export" || visiblePanel === "export";
   const exportResult = useMemo(() => {
-    if (!exportVisible) return { text: "", blocked: false };
+    if (!exportVisible || !graph) return { text: "", blocked: false };
     try {
       return { text: exportGraph(graph, exportFormat), blocked: false };
     } catch {
@@ -213,8 +224,10 @@ export function EditorChrome() {
   );
 
   const toggleOffsetEdges = useCallback(() => {
-    updateGraphSettings({ autoEdgeRouting: !graph.settings.autoEdgeRouting });
-  }, [graph.settings.autoEdgeRouting, updateGraphSettings]);
+    updateGraphSettings({
+      autoEdgeRouting: !store.get(graphAtom).settings.autoEdgeRouting,
+    });
+  }, [store, updateGraphSettings]);
 
   useEffect(() => {
     const onSkipped = () => setToast(messages.chrome.storageSkippedToast);
@@ -283,10 +296,12 @@ export function EditorChrome() {
     [applyGraphModel, close],
   );
 
-  const nodeEdgeMeta = `N=${graph.nodes.length} M=${graph.edges.length}`;
+  const nodeEdgeMeta = graph
+    ? `N=${graph.nodes.length} M=${graph.edges.length}`
+    : "";
   const toolbarProps = {
-    canRedo: future.length > 0,
-    canUndo: history.length > 0,
+    canRedo,
+    canUndo,
     mode,
     panel,
     redoShortcut,
@@ -317,6 +332,7 @@ export function EditorChrome() {
           </EditorPanelShell>
         );
       case "layouts":
+        if (!graph) return null;
         return (
           <EditorPanelShell {...shellProps} title={messages.chrome.layouts}>
             <LayoutsPanel
@@ -328,6 +344,7 @@ export function EditorChrome() {
           </EditorPanelShell>
         );
       case "settings":
+        if (!graph) return null;
         return (
           <EditorPanelShell {...shellProps} title={messages.chrome.settings}>
             <SettingsPanel
@@ -342,6 +359,7 @@ export function EditorChrome() {
           </EditorPanelShell>
         );
       case "menu":
+        if (!graph) return null;
         return (
           <EditorPanelShell {...shellProps} title={messages.chrome.menu}>
             <LayoutsPanel
@@ -478,7 +496,7 @@ export function EditorChrome() {
   return (
     <>
       <StorageNotice />
-      {graphIsEmpty && !visiblePanel && mode === "select" ? (
+      {graph && graphIsEmpty && !visiblePanel && mode === "select" ? (
         <EmptyState
           graph={graph}
           mobile={mobile}

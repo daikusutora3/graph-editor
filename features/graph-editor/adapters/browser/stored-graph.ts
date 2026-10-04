@@ -27,6 +27,7 @@ let timer: number | null = null;
 let installed = false;
 
 function notify(status: SaveStatus, raw = snapshot.raw) {
+  if (snapshot.status === status && snapshot.raw === raw) return;
   snapshot = { status, raw };
   if (
     typeof window !== "undefined" &&
