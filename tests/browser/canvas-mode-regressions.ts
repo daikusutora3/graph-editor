@@ -279,6 +279,96 @@ try {
       saved.edges.find((edge: { id: string }) => edge.id === "e").routing,
       undefined,
     );
+    // Modifier keys can make a captured pointer's ancestor inert. Releasing
+    // under that modifier must still finish the existing drag and clear it.
+    await page.evaluate(
+      (zoom) => {
+        window.modeTestCy.zoom(zoom);
+        window.modeTestCy.pan({ x: 100, y: 350 });
+      },
+      width === 390 ? 0.7 : 1,
+    );
+    await page.waitForTimeout(150);
+    for (const modifier of ["Shift", "Meta", "Control"]) {
+      const bounds = await page
+        .getByRole("button", { name: "Select node A", exact: true })
+        .boundingBox();
+      assert.ok(bounds);
+      const point = {
+        x: bounds.x + bounds.width / 2,
+        y: bounds.y + bounds.height / 2,
+      };
+      await page.mouse.move(point.x, point.y);
+      await page.mouse.down();
+      await page.mouse.move(point.x + 25, point.y + 30, { steps: 3 });
+      const preview = await page.evaluate(() => ({
+        ...window.modeTestCy.getElementById("a").position(),
+      }));
+      await page.keyboard.down(modifier);
+      await page.waitForFunction(() =>
+        document.querySelector(".ge-select-node-hitbox")?.closest("[inert]"),
+      );
+      await page.mouse.up();
+      await page.keyboard.up(modifier);
+      await page.waitForFunction((position) => {
+        const current = JSON.parse(
+          localStorage.getItem("graph-editor-graph")!,
+        ).nodes.find((node: { id: string }) => node.id === "a");
+        return current.x === position.x && current.y === position.y;
+      }, preview);
+      await page.getByRole("button", { name: "Undo", exact: true }).click();
+      await page.waitForFunction((position) => {
+        const current = window.modeTestCy.getElementById("a").position();
+        return current.x === position.x && current.y === position.y;
+      }, beforeMove);
+      await page.waitForTimeout(150);
+
+      const stroke = await page.evaluate(() => {
+        const cy = window.modeTestCy;
+        const rect = cy.container()!.getBoundingClientRect();
+        const source = cy.getElementById("a").renderedPosition();
+        const target = cy.getElementById("b").renderedPosition();
+        const x = rect.x + source.x + (target.x - source.x) * 0.3;
+        const y = rect.y + source.y + (target.y - source.y) * 0.3;
+        return { x, y, target: document.elementFromPoint(x, y)?.tagName };
+      });
+      assert.equal(stroke.target, "path");
+      await page.mouse.move(stroke.x, stroke.y);
+      await page.mouse.down();
+      await page.mouse.move(stroke.x + 10, stroke.y + 50, { steps: 3 });
+      const previewBow = await page.evaluate(() =>
+        window.modeTestCy.getElementById("e").data("bow"),
+      );
+      assert.notEqual(previewBow, originalBow);
+      await page.keyboard.down(modifier);
+      await page.waitForFunction(() =>
+        document.querySelector(".ge-select-edge-hitbox")?.closest("[inert]"),
+      );
+      await page.mouse.up();
+      await page.keyboard.up(modifier);
+      await page.waitForFunction(
+        (bow) =>
+          JSON.parse(localStorage.getItem("graph-editor-graph")!).edges.find(
+            (edge: { id: string }) => edge.id === "e",
+          ).routing?.bowPx === bow,
+        previewBow,
+      );
+      await page.getByRole("button", { name: "Undo", exact: true }).click();
+      await page.waitForFunction(
+        (bow) => window.modeTestCy.getElementById("e").data("bow") === bow,
+        originalBow,
+      );
+      await page.waitForTimeout(150);
+      await page.locator(".ge-select-edge-hitbox").click();
+      await page.locator(".ge-select-edge-hitbox").click();
+      assert.equal(
+        await page
+          .locator(".ge-select-edge-hitbox")
+          .getAttribute("aria-pressed"),
+        "true",
+        "a modifier held during pointer-up leaves no stale bend session",
+      );
+    }
     for (const key of ["e", "v", "e", "v"]) await page.keyboard.press(key);
     await page
       .getByRole("button", { name: "Select node A", exact: true })

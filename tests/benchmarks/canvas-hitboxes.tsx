@@ -64,6 +64,7 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
   );
   let selectedNodes = new Set<string>();
   let selectedEdges = new Set<string>();
+  let rangeSelectionActive = false;
   let commitDuration = 0;
   let callbackRevision = 0;
   let observedRevision = -1;
@@ -87,7 +88,7 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
             <SelectNodeHitboxes
               nodes={nodes}
               selectedNodeIds={selectedNodes}
-              rangeSelectionActive={false}
+              rangeSelectionActive={rangeSelectionActive}
               onClick={observe}
               onContextMenu={observe}
               onDoubleClick={observe}
@@ -100,7 +101,7 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
             <SelectEdgeHitboxes
               edges={edges}
               selectedEdgeIds={selectedEdges}
-              rangeSelectionActive={false}
+              rangeSelectionActive={rangeSelectionActive}
               weighted={false}
               zoom={1}
               onContextMenu={observe}
@@ -149,7 +150,11 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
         edgeIndex === 0 ? { ...edge, sourceX: index } : edge,
       );
     }),
+    measure("range-selection modifier change", (index) => {
+      rangeSelectionActive = index % 2 === 0;
+    }),
   ];
+  rangeSelectionActive = false;
 
   // A skipped render must still dispatch the callback from the latest commit.
   render();

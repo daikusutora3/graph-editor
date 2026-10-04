@@ -251,6 +251,7 @@ export function* createNodeClearanceTask(
 ): Generator<void, Record<NodeId, { x: number; y: number }>> {
   const halfHeight = NODE_SIZE_PX / 2;
   const gap = LAYOUT_NODE_CLEARANCE - NODE_SIZE_PX;
+  const required = halfHeight * 2 + gap;
   const halfWidths = new Map(
     nodes.map((node) => [node.id, nodeGeometryWidth(node) / 2]),
   );
@@ -269,6 +270,9 @@ export function* createNodeClearanceTask(
       const [idB, b] = entries[j]!;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
+      // Scaling only increases vertical separation. All pills share the same
+      // height, so these pairs already have clearance regardless of label width.
+      if (Math.abs(dy) * scale >= required) continue;
       const distanceSquared = dx * dx + dy * dy;
 
       if (distanceSquared === 0 || distanceSquared > maxRequiredSquared) {
@@ -278,7 +282,6 @@ export function* createNodeClearanceTask(
       const span =
         Math.max(0, (halfWidths.get(idA) ?? halfHeight) - halfHeight) +
         Math.max(0, (halfWidths.get(idB) ?? halfHeight) - halfHeight);
-      const required = halfHeight * 2 + gap;
       const distanceAt = (factor: number) =>
         Math.hypot(Math.max(0, Math.abs(dx) * factor - span), dy * factor);
       if (distanceAt(scale) >= required) continue;

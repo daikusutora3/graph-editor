@@ -4,6 +4,16 @@ import { chromium } from "playwright";
 
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import { serializeGraphModel } from "../../features/graph-editor/core/graph/graph-json";
+import {
+  edgeControlPathInBoxReference,
+  readRangeSelectionPreviewReference,
+} from "../fixtures/range-selection-preview-reference";
+
+declare global {
+  interface Window {
+    frozenRangePreview: typeof readRangeSelectionPreviewReference;
+  }
+}
 
 const browser = await chromium.launch();
 try {
@@ -116,7 +126,7 @@ try {
         const button = document.querySelector<HTMLButtonElement>(
           'button[aria-label="Select node A"]',
         )!;
-        const edge = button.parentElement!.querySelector("svg + button")!;
+        const edge = document.querySelector(".ge-select-edge-hitbox")!;
         const bounds = button.getBoundingClientRect();
         const edgeBounds = edge.getBoundingClientRect();
         const midpoint = cy.getElementById("e").renderedMidpoint();
@@ -274,6 +284,11 @@ try {
   const rangePage = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
   });
+  // Load the frozen pre-optimization reader before navigation, using the
+  // test browser's script API without changing production CSP.
+  await rangePage.addInitScript({
+    content: `const edgeControlPathInBoxReference = ${edgeControlPathInBoxReference.toString()}; window.frozenRangePreview = ${readRangeSelectionPreviewReference.toString()};`,
+  });
   const rangeErrors: string[] = [];
   rangePage.on("pageerror", (error) => rangeErrors.push(error.message));
   const rangeGraph = {
@@ -336,6 +351,7 @@ try {
       // eslint-disable-next-line no-underscore-dangle
       const cy = container._cyreg.cy;
       const box = { x1: 330, y1: 200, x2: 800, y2: 650 };
+      const original = window.frozenRangePreview(cy, box, activeFilter);
       const inside = (point: { x: number; y: number }) =>
         point.x >= box.x1 &&
         point.x <= box.x2 &&
@@ -393,6 +409,8 @@ try {
               })
               .map((edge) => edge.id());
       return {
+        originalNodes: [...original.nodeIds].toSorted(),
+        originalEdges: [...original.edgeIds].toSorted(),
         expectedNodes: expectedNodes.toSorted(),
         expectedEdges: expectedEdges.toSorted(),
         actualNodes: cy
@@ -415,6 +433,16 @@ try {
       rangePreview.expectedEdges,
       `${filter} edge preview`,
     );
+    assert.deepEqual(
+      rangePreview.actualNodes,
+      rangePreview.originalNodes,
+      `${filter} preview retains the frozen original node containment`,
+    );
+    assert.deepEqual(
+      rangePreview.actualEdges,
+      rangePreview.originalEdges,
+      `${filter} preview retains the frozen original control-point containment`,
+    );
     if (filter !== "nodes") {
       assert.ok(rangePreview.actualEdges.includes("straight"));
       assert.ok(rangePreview.actualEdges.includes("loop"));
@@ -425,6 +453,35 @@ try {
     if (keys[1]) await rangePage.keyboard.up(keys[1]);
     await rangePage.keyboard.up(keys[0]);
     await rangePage.waitForTimeout(50);
+    const committed = await rangePage.evaluate(() => {
+      const container = [...document.querySelectorAll("div")].find(
+        (element) => "_cyreg" in element,
+      ) as HTMLDivElement & { _cyreg: { cy: Core } };
+      // eslint-disable-next-line no-underscore-dangle
+      const cy = container._cyreg.cy;
+      return {
+        nodes: cy
+          .nodes(":selected")
+          .map((node) => node.id())
+          .toSorted(),
+        edges: cy
+          .edges(":selected")
+          .map((edge) => edge.id())
+          .toSorted(),
+      };
+    });
+    assert.deepEqual(
+      committed.nodes,
+      rangePreview.expectedNodes,
+      `${filter} committed nodes match the live range preview`,
+    );
+    assert.deepEqual(
+      committed.edges,
+      // Native selection checks the rendered curve. The conservative preview
+      // also requires its control points to be contained by the box.
+      filter === "nodes" ? [] : ["curve", "loop", "straight"],
+      `${filter} range release completes native edge selection and filtering`,
+    );
     assert.equal(
       await rangePage.evaluate(() => {
         const container = [...document.querySelectorAll("div")].find(
@@ -487,6 +544,58 @@ try {
     cy.pan({ x: 200, y: 250 });
   });
   await largePage.waitForTimeout(250);
+  const retainedNode = await largePage
+    .locator(".ge-select-node-hitbox")
+    .first()
+    .elementHandle();
+  const retainedPath = await largePage
+    .locator("[data-selection-hitboxes] path")
+    .first()
+    .elementHandle();
+  assert.ok(retainedNode && retainedPath);
+  await retainedNode.evaluate((element) => element.focus());
+  await largePage.keyboard.down("Shift");
+  await largePage.waitForFunction(() =>
+    document.querySelector(".ge-select-node-hitbox")?.closest("[inert]"),
+  );
+  await retainedNode.evaluate((element) => element.blur());
+  await retainedNode.evaluate((element) => element.focus());
+  assert.equal(
+    await retainedNode.evaluate(
+      (element) => document.activeElement === element,
+    ),
+    false,
+    "range-selection modifiers exclude all retained node targets from focus",
+  );
+  await largePage.keyboard.up("Shift");
+  await largePage.waitForFunction(
+    () => !document.querySelector(".ge-select-node-hitbox")?.closest("[inert]"),
+  );
+  await retainedNode.evaluate((element) => element.focus());
+  assert.equal(
+    await retainedNode.evaluate(
+      (element) => document.activeElement === element,
+    ),
+    true,
+    "node targets regain focus when range-selection modifiers are released",
+  );
+  assert.equal(
+    await retainedNode.evaluate(
+      (element) => element === document.querySelector(".ge-select-node-hitbox"),
+    ),
+    true,
+    "modifier changes retain node target DOM identity at the graph limits",
+  );
+  assert.equal(
+    await retainedPath.evaluate(
+      (element) =>
+        element === document.querySelector("[data-selection-hitboxes] path"),
+    ),
+    true,
+    "modifier changes retain SVG stroke DOM identity at the graph limits",
+  );
+  await retainedNode.dispose();
+  await retainedPath.dispose();
   const node = largePage.getByRole("button", {
     name: "Select node 0",
     exact: true,

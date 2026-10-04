@@ -7,6 +7,10 @@ import {
   layoutDefinitions,
   manualLayoutDisabledReasonCode,
 } from "../../features/graph-editor/layouts";
+import {
+  createNodeClearanceTask,
+  ensureNodeClearance,
+} from "../../features/graph-editor/layouts/layout-geometry";
 import { createVerification } from "./harness";
 
 const { expect, fail, finish } = createVerification("Layout");
@@ -275,6 +279,62 @@ expect(
     treeBipartiteCommand.after["5"].y < treeBipartiteCommand.after["6"].y &&
     treeBipartiteCommand.after["1"].y < treeBipartiteCommand.after["2"].y,
   "bipartite layout should keep each side in natural node order",
+);
+
+// Long horizontal pills retain their fixed height. Vertical boundary pairs,
+// and pairs that become separated as the shared scale grows, must keep the
+// exact original clearance result and leave the caller's positions untouched.
+const clearancePositions = {
+  a: { x: 0, y: 0 },
+  b: { x: 0, y: 104 },
+  c: { x: 0, y: 52 },
+  d: { x: 120, y: 0 },
+};
+const clearanceNodes = Object.keys(clearancePositions).map((id) => ({
+  id,
+  label: "長".repeat(20),
+}));
+const clearanceBefore = JSON.stringify(clearancePositions);
+const expectedClearance = {
+  a: { x: 0, y: 0 },
+  b: { x: 0, y: 350.1333333333333 },
+  c: { x: 0, y: 175.06666666666666 },
+  d: { x: 404, y: 0 },
+};
+expect(
+  JSON.stringify(ensureNodeClearance(clearancePositions, clearanceNodes)) ===
+    JSON.stringify(expectedClearance),
+  "wide-label clearance retains exact boundary and accumulated-scale results",
+);
+const clearanceTask = createNodeClearanceTask(
+  clearancePositions,
+  clearanceNodes,
+);
+let clearanceStep = clearanceTask.next();
+while (!clearanceStep.done) clearanceStep = clearanceTask.next();
+expect(
+  JSON.stringify(clearanceStep.value) === JSON.stringify(expectedClearance),
+  "resuming wide-label clearance retains the synchronous output",
+);
+expect(
+  JSON.stringify(clearancePositions) === clearanceBefore,
+  "clearance leaves the source positions unchanged",
+);
+const separatedPills = Object.fromEntries(
+  Array.from({ length: 1000 }, (_, index) => [
+    `n${index}`,
+    { x: (index % 32) * 10000, y: Math.floor(index / 32) * 104 },
+  ]),
+);
+expect(
+  ensureNodeClearance(
+    separatedPills,
+    Object.keys(separatedPills).map((id) => ({
+      id,
+      label: "長".repeat(256),
+    })),
+  ) === separatedPills,
+  "already separated maximum-length pills retain the original positions",
 );
 
 finish(`Layout verification passed (${layoutDefinitions.length} kinds)`);

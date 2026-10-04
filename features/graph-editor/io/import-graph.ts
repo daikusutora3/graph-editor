@@ -176,7 +176,7 @@ function parseRequestedFormat(
 
   if (requestedFormat === "edge-pairs") {
     return (
-      tryImportLooseEdgeList(lines, formatOptions) ??
+      tryImportLooseEdgeList(lines, formatOptions, source) ??
       importFailure(
         { code: "invalid-format", formatKind: "edge-pairs" },
         formatOptions,

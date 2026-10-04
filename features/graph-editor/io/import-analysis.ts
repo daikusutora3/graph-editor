@@ -212,6 +212,7 @@ function pushCandidate(
 function probeAdjacencyList(source: ImportSource): ImportCandidate | null {
   let expectedSeparator: string | undefined;
   const labels = new Set<string>();
+  const rowScan = {};
   let edgeCount = 0;
 
   for (const line of source.lines) {
@@ -228,6 +229,9 @@ function probeAdjacencyList(source: ImportSource): ImportCandidate | null {
       return null;
     }
 
+    edgeCount += row.targetTokens.length;
+    if (row.lastScan === rowScan) continue;
+    row.lastScan = rowScan;
     labels.add(sourceLabel);
     for (const token of row.targetTokens) {
       const match = token.match(/^(.+?)(?:\(([^()]*)\))?$/);
@@ -236,7 +240,6 @@ function probeAdjacencyList(source: ImportSource): ImportCandidate | null {
         return null;
       }
       labels.add(targetLabel);
-      edgeCount += 1;
     }
   }
 
@@ -458,7 +461,11 @@ function probeLooseEdgeList(
     return null;
   }
 
-  const labels = new Set(source.rows.flatMap((row) => row.slice(0, 2)));
+  const labels = new Set<string>();
+  for (const row of source.rows) {
+    labels.add(row[0]!);
+    labels.add(row[1]!);
+  }
   const couldBeWeightedSquareRows =
     source.rows.length === 3 &&
     source.rows.every((row) => row.length === 3) &&
