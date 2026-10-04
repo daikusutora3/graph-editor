@@ -63,6 +63,28 @@ export function readEdgeLabelHitboxes(
 ): EdgeLabelHitbox[] {
   const edges = new Map(graph.edges.map((edge) => [edge.id, edge]));
   const hitboxes: EdgeLabelHitbox[] = [];
+  const zoom = cy.zoom();
+  const nodeGeometry = new Map<
+    string,
+    {
+      position: Position;
+      width: number;
+      height: number;
+    }
+  >();
+  // Shared endpoints are read once per snapshot. This cache cannot outlive
+  // the call, so dragging, zoom, label resizing and theme changes stay live.
+  const geometryFor = (node: NodeSingular) => {
+    const cached = nodeGeometry.get(node.id());
+    if (cached) return cached;
+    const geometry = {
+      position: node.renderedPosition(),
+      width: node.renderedOuterWidth(),
+      height: node.renderedOuterHeight(),
+    };
+    nodeGeometry.set(node.id(), geometry);
+    return geometry;
+  };
 
   cy.edges().forEach((edge) => {
     const graphEdge = edges.get(edge.id());
@@ -72,21 +94,21 @@ export function readEdgeLabelHitboxes(
     }
 
     const position = readEdgeRenderedLabelPosition(edge);
-    const source = edge.source().renderedPosition();
-    const target = edge.target().renderedPosition();
+    const source = geometryFor(edge.source());
+    const target = geometryFor(edge.target());
 
     hitboxes.push({
       id: edge.id(),
       label: graph.settings.weighted
         ? (graphEdge.weight ?? "1")
         : (graphEdge.label ?? ""),
-      sourceX: source.x,
-      sourceY: source.y,
-      targetX: target.x,
-      targetY: target.y,
-      sourceWidth: edge.source().renderedOuterWidth(),
-      targetWidth: edge.target().renderedOuterWidth(),
-      nodeHeight: edge.source().renderedOuterHeight(),
+      sourceX: source.position.x,
+      sourceY: source.position.y,
+      targetX: target.position.x,
+      targetY: target.position.y,
+      sourceWidth: source.width,
+      targetWidth: target.width,
+      nodeHeight: source.height,
       x: position.x,
       y: position.y,
       bowPx: readNumericEdgeData(edge, "bow", 0),
@@ -94,7 +116,7 @@ export function readEdgeLabelHitboxes(
         edge,
         "controlPointDistances",
         [readNumericEdgeData(edge, "bow", 0)],
-      ).map((distance) => distance * cy.zoom()),
+      ).map((distance) => distance * zoom),
       controlPointWeights: readNumericArrayEdgeData(
         edge,
         "controlPointWeights",

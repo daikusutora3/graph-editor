@@ -152,6 +152,31 @@ expect(
     .join(",") === "edit,delete",
   "a single node should offer edit and delete only",
 );
+const directedGraph: GraphModel = {
+  ...graph,
+  settings: { ...graph.settings, directed: true },
+  edges: [...graph.edges, { id: "loop", source: "a", target: "a" }],
+};
+expect(
+  resolveSelectionActions(
+    directedGraph,
+    { nodeIds: ["a"], edgeIds: ["missing", "bc", "loop", "bc"] },
+    messages,
+  )
+    .map((action) => action.id)
+    .join(",") === "reverse,delete",
+  "mixed selections should offer reversal for an existing non-loop edge even with stale and duplicate ids",
+);
+expect(
+  resolveSelectionActions(
+    directedGraph,
+    { nodeIds: [], edgeIds: ["missing", "loop", "loop"] },
+    messages,
+  )
+    .map((action) => action.id)
+    .join(",") === "delete",
+  "stale and repeated loop ids should not offer reversal or single-edge actions",
+);
 
 expect(
   describeSelection(graph, { nodeIds: ["a"], edgeIds: [] }, messages) ===

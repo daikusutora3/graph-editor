@@ -2,7 +2,14 @@
 
 import type { Core } from "cytoscape";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { GraphIntent } from "../core/graph/model";
 import type { EdgeId, GraphModel, NodeId } from "../core/graph/model";
@@ -78,7 +85,7 @@ export function useGraphInlineEdit({
         ? `edge:${inlineEdit.edgeId}:${inlineEdit.kind}`
         : null;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!focusKey) {
       focusKeyRef.current = null;
       return;
@@ -86,16 +93,11 @@ export function useGraphInlineEdit({
 
     const shouldSelect = focusKeyRef.current !== focusKey;
     focusKeyRef.current = focusKey;
-    const animationFrameId = window.requestAnimationFrame(() => {
-      const input = inputRef.current;
-
-      input?.focus();
-      if (shouldSelect) {
-        input?.select();
-      }
-    });
-
-    return () => window.cancelAnimationFrame(animationFrameId);
+    // Select the existing label before input can arrive. A deferred selection
+    // can otherwise select newly typed text and replace it on the next key.
+    const input = inputRef.current;
+    input?.focus();
+    if (shouldSelect) input?.select();
   }, [focusKey]);
 
   const openNodeLabelEdit = useCallback(

@@ -14,6 +14,10 @@ import {
 import { reduceGraphIntent } from "../../features/graph-editor/core/graph/graph-reducer";
 import { prepareGraphTransaction } from "../../features/graph-editor/core/graph/graph-transaction";
 import {
+  applyGraphPatch,
+  diffGraphModels,
+} from "../../features/graph-editor/core/graph/graph-patch";
+import {
   computeEdgeRouting,
   resolveRoutingMode,
   shouldAvoidNodesForEdgeRouting,
@@ -120,6 +124,40 @@ expect(
     preparedNodeUpdate.transaction.beforeRevision === 4 &&
     preparedNodeUpdate.transaction.afterRevision === 5,
   "prepared transactions should retain the completed after model and revision patch",
+);
+if (preparedNodeUpdate) {
+  expect(
+    JSON.stringify(
+      applyGraphPatch(
+        preparedNodeUpdate.after,
+        preparedNodeUpdate.transaction.backward,
+      ),
+    ) === JSON.stringify(constrainedModel),
+    "node-only history restores the complete graph including untouched edges",
+  );
+}
+const replacementModel: GraphModel = {
+  ...constrainedModel,
+  nodes: [
+    { ...constrainedModel.nodes[1]!, label: "Changed" },
+    { id: "c", label: "C", order: 2, x: 200, y: 0 },
+  ],
+  edges: [{ id: "bc", source: "b", target: "c", weight: "2" }],
+};
+expect(
+  JSON.stringify(
+    applyGraphPatch(
+      constrainedModel,
+      diffGraphModels(constrainedModel, replacementModel),
+    ),
+  ) === JSON.stringify(replacementModel) &&
+    JSON.stringify(
+      applyGraphPatch(
+        replacementModel,
+        diffGraphModels(replacementModel, constrainedModel),
+      ),
+    ) === JSON.stringify(constrainedModel),
+  "replacement history preserves inserted, removed, edited and ordered elements in both directions",
 );
 
 const reversedConflictModel: GraphModel = {

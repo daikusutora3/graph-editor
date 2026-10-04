@@ -1,5 +1,6 @@
 import { GRAPH_MAX_JSON_CHARS } from "../core/graph/graph-limits";
 import { MAX_IMPORT_NODES } from "./import-utils";
+import type { GraphModel } from "../core/graph/model";
 import {
   looksLikeGraphJson,
   parseGraphModelJson,
@@ -68,34 +69,7 @@ export function analyzeGraphInput(
   }
 
   if (looksLikeGraphJson(input)) {
-    const model = parseGraphModelJson(input);
-
-    return model
-      ? {
-          status: "detected",
-          recommendedFormat: "json",
-          candidates: [
-            {
-              formatKind: "json",
-              strength: "exact",
-              evidence: ["json-document"],
-              nodeCount: model.nodes.length,
-              edgeCount: model.edges.length,
-            },
-          ],
-          diagnostics: [],
-        }
-      : {
-          status: "invalid",
-          candidates: [],
-          diagnostics: [
-            {
-              code: "invalid-format",
-              severity: "error",
-              message: "Input is not a valid Graph Editor JSON document.",
-            },
-          ],
-        };
+    return analyzeGraphJsonModel(parseGraphModelJson(input));
   }
 
   const lines = readLines(input);
@@ -176,6 +150,38 @@ export function analyzeGraphInput(
         ]
       : [],
   };
+}
+
+/** Reuse the validated document when analysis accompanies a JSON import. */
+export function analyzeGraphJsonModel(
+  model: GraphModel | null,
+): ImportAnalysis {
+  return model
+    ? {
+        status: "detected",
+        recommendedFormat: "json",
+        candidates: [
+          {
+            formatKind: "json",
+            strength: "exact",
+            evidence: ["json-document"],
+            nodeCount: model.nodes.length,
+            edgeCount: model.edges.length,
+          },
+        ],
+        diagnostics: [],
+      }
+    : {
+        status: "invalid",
+        candidates: [],
+        diagnostics: [
+          {
+            code: "invalid-format",
+            severity: "error",
+            message: "Input is not a valid Graph Editor JSON document.",
+          },
+        ],
+      };
 }
 
 function collectCandidates(

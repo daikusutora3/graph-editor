@@ -783,6 +783,29 @@ function verifyShortcutActions() {
     emptyStore.get(historyAtom).length === historyBeforeStaleNudge,
     "stale nudge should not create history",
   );
+
+  const sparseNudgeStore = createStore();
+  sparseNudgeStore.set(syncExternalGraphAtom, graphFixture());
+  sparseNudgeStore.set(selectionAtom, {
+    nodeIds: ["missing", "b", "b"],
+    edgeIds: ["ab"],
+  });
+  sparseNudgeStore.set(nudgeSelectedNodesAtom, { dx: 5, dy: -2 });
+  const nudgedGraph = sparseNudgeStore.get(graphAtom);
+  expect(
+    nudgedGraph.nodes[0]?.x === 0 &&
+      nudgedGraph.nodes[0]?.y === 0 &&
+      nudgedGraph.nodes[1]?.x === 125 &&
+      nudgedGraph.nodes[1]?.y === -2 &&
+      sparseNudgeStore.get(historyAtom).length === 1,
+    "nudge should move only existing selected nodes once despite stale or duplicate ids",
+  );
+  sparseNudgeStore.set(undoAtom);
+  expect(
+    sparseNudgeStore.get(graphAtom).nodes[1]?.x === 120 &&
+      sparseNudgeStore.get(graphAtom).nodes[1]?.y === 0,
+    "one undo should restore a nudge with stale or duplicate ids",
+  );
 }
 
 function graphFixture(): GraphModel {
