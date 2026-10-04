@@ -283,14 +283,20 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
     [],
   );
 
+  // Disable the complete interaction layer at its boundary. Modifier changes
+  // then retain the memoized buttons and SVG paths instead of rerendering them.
   return (
-    <SelectEdgeHitboxList
-      edges={props.edges}
-      selectedEdgeIds={props.selectedEdgeIds}
-      rangeSelectionActive={props.rangeSelectionActive}
-      weighted={props.weighted}
-      handlers={handlers}
-    />
+    <div
+      className="pointer-events-none absolute inset-0"
+      inert={props.rangeSelectionActive}
+    >
+      <SelectEdgeHitboxList
+        edges={props.edges}
+        selectedEdgeIds={props.selectedEdgeIds}
+        weighted={props.weighted}
+        handlers={handlers}
+      />
+    </div>
   );
 }
 
@@ -329,28 +335,19 @@ type EdgeHitboxHandlers = {
 const SelectEdgeHitboxList = memo(function SelectEdgeHitboxList({
   edges,
   selectedEdgeIds,
-  rangeSelectionActive,
   weighted,
   handlers,
-}: Pick<
-  SelectEdgeHitboxesProps,
-  "edges" | "selectedEdgeIds" | "rangeSelectionActive" | "weighted"
-> & {
+}: Pick<SelectEdgeHitboxesProps, "edges" | "selectedEdgeIds" | "weighted"> & {
   handlers: EdgeHitboxHandlers;
 }) {
   return (
     <>
-      <SelectEdgePaths
-        edges={edges}
-        rangeSelectionActive={rangeSelectionActive}
-        handlers={handlers}
-      />
+      <SelectEdgePaths edges={edges} handlers={handlers} />
       {edges.map((edge) => (
         <SelectEdgeLabelButton
           key={edge.id}
           edge={edge}
           selected={selectedEdgeIds.has(edge.id)}
-          rangeSelectionActive={rangeSelectionActive}
           weighted={weighted}
           handlers={handlers}
         />
@@ -363,9 +360,8 @@ const SelectEdgeHitboxList = memo(function SelectEdgeHitboxList({
 // node is selected so React does not traverse thousands of unchanged paths.
 const SelectEdgePaths = memo(function SelectEdgePaths({
   edges,
-  rangeSelectionActive,
   handlers,
-}: Pick<SelectEdgeHitboxesProps, "edges" | "rangeSelectionActive"> & {
+}: Pick<SelectEdgeHitboxesProps, "edges"> & {
   handlers: EdgeHitboxHandlers;
 }) {
   return (
@@ -374,12 +370,7 @@ const SelectEdgePaths = memo(function SelectEdgePaths({
       aria-hidden="true"
     >
       {edges.map((edge) => (
-        <SelectEdgePath
-          key={edge.id}
-          edge={edge}
-          rangeSelectionActive={rangeSelectionActive}
-          handlers={handlers}
-        />
+        <SelectEdgePath key={edge.id} edge={edge} handlers={handlers} />
       ))}
     </svg>
   );
@@ -387,7 +378,6 @@ const SelectEdgePaths = memo(function SelectEdgePaths({
 
 type EdgeHitboxProps = {
   edge: EdgeLabelHitbox;
-  rangeSelectionActive: boolean;
   handlers: EdgeHitboxHandlers;
 };
 
@@ -416,14 +406,13 @@ function edgeHitboxEventProps(
 
 const SelectEdgePath = memo(function SelectEdgePath({
   edge,
-  rangeSelectionActive,
   handlers,
 }: EdgeHitboxProps) {
   return (
     <path
       d={createEdgeHitboxPath(edge)}
       fill="none"
-      pointerEvents={rangeSelectionActive ? "none" : "stroke"}
+      pointerEvents="stroke"
       className="cursor-pointer touch-none stroke-transparent"
       strokeWidth="18"
       strokeLinecap="round"
@@ -435,7 +424,6 @@ const SelectEdgePath = memo(function SelectEdgePath({
 const SelectEdgeLabelButton = memo(function SelectEdgeLabelButton({
   edge,
   selected,
-  rangeSelectionActive,
   weighted,
   handlers,
 }: EdgeHitboxProps & { selected: boolean; weighted: boolean }) {
@@ -453,10 +441,8 @@ const SelectEdgeLabelButton = memo(function SelectEdgeLabelButton({
       }
       aria-pressed={selected}
       className="ge-select-edge-hitbox"
-      inert={rangeSelectionActive}
       style={{
         left: 0,
-        pointerEvents: rangeSelectionActive ? "none" : undefined,
         top: 0,
         translate: `${edge.x}px ${edge.y}px`,
         width: edgeLabelHitboxWidth(edge.label),
@@ -676,25 +662,29 @@ export function SelectNodeHitboxes(props: SelectNodeHitboxesProps) {
     }),
     [],
   );
+  // The wrapper matches the canvas frame, including the pointer coordinates
+  // used by the edge layer, and inert excludes every descendant from focus.
   return (
-    <SelectNodeHitboxList
-      nodes={props.nodes}
-      selectedNodeIds={props.selectedNodeIds}
-      rangeSelectionActive={props.rangeSelectionActive}
-      handlers={handlers}
-    />
+    <div
+      className="pointer-events-none absolute inset-0"
+      inert={props.rangeSelectionActive}
+    >
+      <SelectNodeHitboxList
+        nodes={props.nodes}
+        selectedNodeIds={props.selectedNodeIds}
+        handlers={handlers}
+      />
+    </div>
   );
 }
 
 const SelectNodeHitboxList = memo(function SelectNodeHitboxList({
   nodes,
   selectedNodeIds,
-  rangeSelectionActive,
   handlers,
-}: Pick<
-  SelectNodeHitboxesProps,
-  "nodes" | "selectedNodeIds" | "rangeSelectionActive"
-> & { handlers: NodeHitboxHandlers }) {
+}: Pick<SelectNodeHitboxesProps, "nodes" | "selectedNodeIds"> & {
+  handlers: NodeHitboxHandlers;
+}) {
   return (
     <>
       {nodes.map((node) => (
@@ -702,7 +692,6 @@ const SelectNodeHitboxList = memo(function SelectNodeHitboxList({
           key={node.id}
           node={node}
           selected={selectedNodeIds.has(node.id)}
-          rangeSelectionActive={rangeSelectionActive}
           handlers={handlers}
         />
       ))}
@@ -713,12 +702,10 @@ const SelectNodeHitboxList = memo(function SelectNodeHitboxList({
 const SelectNodeButton = memo(function SelectNodeButton({
   node,
   selected,
-  rangeSelectionActive,
   handlers,
 }: {
   node: NodeHitbox;
   selected: boolean;
-  rangeSelectionActive: boolean;
   handlers: NodeHitboxHandlers;
 }) {
   const { messages } = useI18n();
@@ -732,11 +719,9 @@ const SelectNodeButton = memo(function SelectNodeButton({
       )}
       aria-pressed={selected}
       className="ge-select-node-hitbox"
-      inert={rangeSelectionActive}
       style={{
         height: NODE_HITBOX_SIZE,
         left: 0,
-        pointerEvents: rangeSelectionActive ? "none" : undefined,
         top: 0,
         translate: `${node.x}px ${node.y}px`,
         width: node.width,

@@ -149,6 +149,14 @@ try {
     await page.waitForTimeout(220);
     await page.getByRole("button", { name: "Export", exact: true }).click();
     assert.equal(await format.inputValue(), "json");
+    // Reopening remounts the long single-line layout. Its cooperative font
+    // measurement exposes the existing Preparing state before the text.
+    await page.waitForFunction(
+      (text) =>
+        document.querySelector("pre[aria-label^='Exported']")?.textContent ===
+        text,
+      serializeGraphModel(model),
+    );
     assert.ok(
       (await output.textContent()) === serializeGraphModel(model),
       "exact JSON after reopen",

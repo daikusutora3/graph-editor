@@ -141,6 +141,7 @@ and resumable TikZ export:
 bun tests/benchmarks/topology-performance.ts --output /tmp/topology.json
 bun tests/benchmarks/history-clipboard-performance.ts --output /tmp/history.json
 bun tests/benchmarks/tikz-performance.ts --output /tmp/tikz.json
+bun tests/benchmarks/run-export-matrix.mjs --output /tmp/export-matrix.json
 BASE_URL=http://127.0.0.1:3123/en bun tests/browser/export-performance-regressions.ts
 BASE_URL=http://127.0.0.1:3123/en bun tests/browser/export-rendering-regressions.ts
 BASE_URL=http://127.0.0.1:3123/en bun tests/browser/starter-performance-regressions.ts
@@ -168,6 +169,7 @@ the stress evaluation also has these checks:
 bun tests/benchmarks/import-performance.ts --output /tmp/import-stress.json
 BASE_URL=http://127.0.0.1:3123/en bun tests/benchmarks/canvas-viewport-performance.ts --output /tmp/viewport.json
 BASE_URL=http://127.0.0.1:3123/en bun tests/benchmarks/canvas-mode-performance.mjs --output /tmp/modes.json
+BASE_URL=http://127.0.0.1:3123/en bun tests/benchmarks/canvas-modifier-performance.mjs --output /tmp/modifiers.json
 BASE_URL=http://127.0.0.1:3123/en bun tests/browser/canvas-mode-regressions.ts
 BASE_URL=http://127.0.0.1:3123/en bun tests/browser/preview-performance-regressions.ts
 BASE_URL=http://127.0.0.1:3123/en bun tests/browser/export-line-layout-regressions.ts
@@ -181,6 +183,10 @@ copy/download while exercising preparation, cancellation and scrolling.
 The mode benchmark measures actual keyboard and toolbar interactions across five
 fresh pages at the graph limits. Its regression check covers retained hitboxes,
 hidden focus exclusion, live geometry, draft highlights and drag/bend cancellation.
+The modifier benchmark measures Shift press/release at the same limits. Canvas
+regressions also exercise captured node/stroke drags while Shift, Meta or Control
+is held on release. The matrix benchmark compares the previous dense allocation
+with current output in Chromium, including sparse and dense weighted graphs.
 
 For implementation work, finish the requested behavior and the checks that
 exercise it, fixing failures introduced by the change. For UI changes, include

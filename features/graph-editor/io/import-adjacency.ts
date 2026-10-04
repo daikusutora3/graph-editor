@@ -174,15 +174,18 @@ export function tryImportAdjacencyList(
   let edgeCount = 0;
   let hasWeightedTargets = false;
   const uniqueLabels = new Set<string>();
+  const rowScan = {};
   for (const line of lines) {
     const row = importSource.readAdjacencyRow(line.text);
     if (!row || (separator !== undefined && separator !== row.separator)) {
       return null;
     }
     separator = row.separator;
-    uniqueLabels.add(row.sourceLabel);
     const targets = row.targetTokens;
     edgeCount += targets.length;
+    if (row.lastScan === rowScan) continue;
+    row.lastScan = rowScan;
+    uniqueLabels.add(row.sourceLabel);
     for (const token of targets) {
       const target = parseAdjacencyTarget(token);
       uniqueLabels.add(target.label);

@@ -172,8 +172,13 @@ function exportAdjacencyMatrix(model: GraphModel): string {
   const orderIndex = new Map(
     entries.map((entry, index) => [entry.node.id, index]),
   );
-  const matrix = Array.from({ length: entries.length }, () =>
-    Array.from({ length: entries.length }, () => "0"),
+  // Preserve the original direct writes for dense graphs. Here the number of
+  // allocated cells is less than twice the edge count, so it stays bounded.
+  if (entries.length ** 2 < model.edges.length * 2)
+    return exportDenseAdjacencyMatrix(model, orderIndex, entries.length);
+  const rows = Array.from(
+    { length: entries.length },
+    () => new Map<number, string>(),
   );
 
   for (const edge of model.edges) {
@@ -182,18 +187,57 @@ function exportAdjacencyMatrix(model: GraphModel): string {
     if (source == null || target == null) continue;
 
     const value = model.settings.weighted ? (edge.weight ?? "1") : "1";
-    const sourceRow = matrix[source];
-    const targetRow = matrix[target];
+    const sourceRow = rows[source];
+    const targetRow = rows[target];
 
     if (!sourceRow || !targetRow) continue;
 
-    sourceRow[target] = value;
+    sourceRow.set(target, value);
 
     if (!model.settings.directed) {
-      targetRow[source] = value;
+      targetRow.set(source, value);
     }
   }
 
+  if (entries.length === 0) return "";
+  const emptyRow = "0 ".repeat(entries.length - 1) + "0";
+  return rows
+    .map((row) => {
+      if (row.size === 0) return emptyRow;
+      let cursor = 0;
+      let text = "";
+      // The output is dense, but only existing edges need cell objects.
+      for (const [column, value] of [...row].sort(([a], [b]) => a - b)) {
+        text += "0 ".repeat(column - cursor) + value;
+        cursor = column + 1;
+        if (cursor < entries.length) text += " ";
+      }
+      if (cursor < entries.length)
+        text += "0 ".repeat(entries.length - cursor - 1) + "0";
+      return text;
+    })
+    .join("\n");
+}
+
+function exportDenseAdjacencyMatrix(
+  model: GraphModel,
+  orderIndex: Map<string, number>,
+  nodeCount: number,
+) {
+  const matrix = Array.from({ length: nodeCount }, () =>
+    Array.from({ length: nodeCount }, () => "0"),
+  );
+  for (const edge of model.edges) {
+    const source = orderIndex.get(edge.source);
+    const target = orderIndex.get(edge.target);
+    if (source == null || target == null) continue;
+    const value = model.settings.weighted ? (edge.weight ?? "1") : "1";
+    const sourceRow = matrix[source];
+    const targetRow = matrix[target];
+    if (!sourceRow || !targetRow) continue;
+    sourceRow[target] = value;
+    if (!model.settings.directed) targetRow[source] = value;
+  }
   return matrix.map((row) => row.join(" ")).join("\n");
 }
 

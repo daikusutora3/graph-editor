@@ -75,6 +75,7 @@ for (const metric of report.metrics) {
         : {}),
     }),
   );
+  if (before && before.signature !== metric.signature) process.exitCode = 1;
 }
 const outputPath = argument("--output");
 if (outputPath) writeFileSync(outputPath, JSON.stringify(report, null, 2));

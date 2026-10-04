@@ -21,7 +21,12 @@ import {
   splitTokens,
 } from "../../features/graph-editor/io/import-utils";
 import { createVerification } from "./harness";
-import { analyzeGraphInput } from "../../features/graph-editor/io/import-analysis";
+import {
+  analyzeGraphInput,
+  analyzeGraphSource,
+} from "../../features/graph-editor/io/import-analysis";
+import { createImportSource } from "../../features/graph-editor/io/import-source";
+import { tryImportAdjacencyList } from "../../features/graph-editor/io/import-adjacency";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 
 const { expect, finish } = createVerification("IO contract");
@@ -88,6 +93,57 @@ expect(
     repeatedSourceEvaluation.result.warnings.length === 0,
   "near-limit repeated adjacency sources should remain a valid one-node graph",
 );
+
+for (const format of ["auto", "adjacency-list"] as const) {
+  const rowCount = 111_111;
+  const repeatedTargets = evaluateGraphInput("a: b c d\n".repeat(rowCount), {
+    format,
+  });
+  expect(
+    repeatedTargets.result.status === "failure" &&
+      JSON.stringify(repeatedTargets.result.warnings) ===
+        JSON.stringify([
+          {
+            code: "too-large",
+            kind: "edges",
+            count: rowCount * 3,
+            limit: MAX_IMPORT_EDGES,
+          },
+        ]) &&
+      (format !== "auto" ||
+        (repeatedTargets.analysis.candidates[0]?.nodeCount === 4 &&
+          repeatedTargets.analysis.candidates[0]?.edgeCount === rowCount * 3)),
+    "repeated adjacency rows should preserve exact counts and limit diagnostics",
+  );
+}
+
+const sharedAdjacencyInput = "a -> b(2)\na -> b(NaN)\na -> b(2)\na -> b(NaN)";
+const sharedAdjacencyLines = readLines(sharedAdjacencyInput);
+const sharedAdjacencySource = createImportSource(sharedAdjacencyLines);
+const sharedAnalysis = JSON.stringify(
+  analyzeGraphSource(sharedAdjacencySource),
+);
+for (const weightKind of ["number", "string", "number"] as const) {
+  const options = { weighted: true, weightKind };
+  const imported = tryImportAdjacencyList(
+    sharedAdjacencyLines,
+    options,
+    sharedAdjacencySource,
+  );
+  expect(
+    JSON.stringify(imported) ===
+      JSON.stringify(tryImportAdjacencyList(sharedAdjacencyLines, options)) &&
+      imported?.model.edges.length === (weightKind === "number" ? 2 : 4) &&
+      JSON.stringify(
+        imported.warnings.map((warning) =>
+          "line" in warning ? warning.line : undefined,
+        ),
+      ) === JSON.stringify(weightKind === "number" ? [2, 4] : []) &&
+      JSON.stringify(analyzeGraphSource(sharedAdjacencySource)) ===
+        sharedAnalysis,
+    "reusing a parsed adjacency source across scans preserves options, counts, repeated edges and per-line warnings",
+  );
+}
 
 for (const separator of [
   " ",
@@ -318,6 +374,116 @@ expect(
   exportGraph(relabeledUndirectedModel, "adjacency-matrix") ===
     "0 0 1\n0 0 0\n1 0 0",
   "adjacency-matrix export should order rows and columns by numeric node labels",
+);
+
+const preciseWeightedMatrix: GraphModel = {
+  ...weightedDirectedModel,
+  settings: { ...weightedDirectedModel.settings, allowSelfLoops: true },
+  nodes: [
+    { id: "n0", label: "02", order: 0, x: 0, y: 0 },
+    { id: "n1", label: "1", order: 2, x: 120, y: 0 },
+    { id: "n2", label: "00", order: 1, x: 240, y: 0 },
+  ],
+  edges: [
+    { id: "loop", source: "n0", target: "n0", weight: "2.00" },
+    { id: "negative", source: "n0", target: "n1", weight: "-1e2" },
+    { id: "default", source: "n1", target: "n2" },
+    { id: "fraction", source: "n2", target: "n1", weight: "0.0001" },
+  ],
+};
+expect(
+  exportGraph(preciseWeightedMatrix, "adjacency-matrix") ===
+    "0 0.0001 0\n1 0 0\n0 -1e2 2.00",
+  "matrix export should preserve exact weight tokens, default weights, loops and contiguous numeric labels before node order",
+);
+expect(
+  exportGraph(
+    {
+      ...preciseWeightedMatrix,
+      settings: { ...preciseWeightedMatrix.settings, directed: false },
+      edges: [
+        ...preciseWeightedMatrix.edges.slice(0, 3),
+        { id: "hex-loop", source: "n2", target: "n2", weight: "0x10" },
+      ],
+    },
+    "adjacency-matrix",
+  ) === "0x10 1 0\n1 0 -1e2\n0 -1e2 2.00",
+  "undirected matrix export should mirror weights without repeating self-loops",
+);
+expect(
+  exportGraph(createEmptyGraphModel(), "adjacency-matrix") === "",
+  "an empty matrix export should contain no rows or delimiters",
+);
+
+for (const weight of ["0", "-0", "+0", "0.0", "NaN", "Infinity", "-Infinity"]) {
+  expectMatrixExportError(
+    {
+      ...weightedDirectedModel,
+      edges: [{ id: "bad", source: "n0", target: "n1", weight }],
+    },
+    "matrix-weight",
+  );
+}
+expectMatrixExportError(
+  {
+    ...weightedDirectedModel,
+    edges: [...weightedDirectedModel.edges, weightedDirectedModel.edges[0]!],
+  },
+  "parallel-edges",
+);
+expectMatrixExportError(
+  {
+    ...weightedDirectedModel,
+    settings: { ...weightedDirectedModel.settings, directed: false },
+    edges: [
+      { id: "forward", source: "n0", target: "n1", weight: "2" },
+      { id: "backward", source: "n1", target: "n0", weight: "3" },
+    ],
+  },
+  "parallel-edges",
+);
+
+const largestPlainMatrix: GraphModel = {
+  ...createEmptyGraphModel(),
+  nodes: Array.from({ length: 707 }, (_, index) => ({
+    id: `n${index}`,
+    order: index,
+    label: String(index),
+    x: index,
+    y: 0,
+  })),
+};
+expect(
+  exportGraph(largestPlainMatrix, "adjacency-matrix") ===
+    Array.from({ length: 707 }, () => Array(707).fill("0").join(" ")).join(
+      "\n",
+    ),
+  "the largest plain matrix within the output limit should retain every zero cell and row delimiter",
+);
+expectMatrixExportError(
+  {
+    ...largestPlainMatrix,
+    nodes: [
+      ...largestPlainMatrix.nodes,
+      { id: "extra", label: "707", order: 707, x: 0, y: 0 },
+    ],
+  },
+  "input-limit",
+);
+expectMatrixExportError(
+  {
+    ...largestPlainMatrix,
+    settings: { ...largestPlainMatrix.settings, weighted: true },
+    edges: [
+      {
+        id: "long-weight",
+        source: "n0",
+        target: "n1",
+        weight: "1" + "0".repeat(255),
+      },
+    ],
+  },
+  "input-limit",
 );
 
 expect(
@@ -955,6 +1121,10 @@ for (let bits = 0; bits < 512; bits += 1) {
             ),
         `binary matrix ${bits} should enumerate edges with directed=${forceDirected}, weighted=${weighted}`,
       );
+      expect(
+        exportGraph(result.model, "adjacency-matrix") === input,
+        `binary matrix ${bits} should export every original cell and delimiter with directed=${forceDirected}, weighted=${weighted}`,
+      );
     }
     expect(
       JSON.stringify(
@@ -990,6 +1160,19 @@ for (const directed of [false, true]) {
 }
 
 finish();
+
+function expectMatrixExportError(model: GraphModel, problem: string) {
+  let caught: unknown;
+  try {
+    exportGraph(model, "adjacency-matrix");
+  } catch (error) {
+    caught = error;
+  }
+  expect(
+    caught instanceof Error && caught.message === problem,
+    `matrix export should preserve ${problem} rejection`,
+  );
+}
 
 function assertRoundTrip(model: GraphModel, format: GraphExportFormat) {
   const text = exportGraph(model, format);

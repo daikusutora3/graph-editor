@@ -90,6 +90,28 @@ measure("near-limit blank lines automatic", "\n".repeat(999_999));
 measure("near-limit comment lines automatic", "#\n".repeat(499_999));
 measure("near-limit repeated source rows automatic", "a:\n".repeat(333_333));
 measure(
+  "near-limit repeated adjacency targets automatic",
+  "a: b c d\n".repeat(111_111),
+);
+measure(
+  "near-limit repeated weighted adjacency targets automatic",
+  "a -> b(2) c(3)\n".repeat(66_666),
+);
+measure(
+  "near-limit repeated adjacency targets explicit",
+  "a: b c d\n".repeat(111_111),
+  { format: "adjacency-list" },
+);
+measure(
+  "near-limit distinct adjacency rows automatic",
+  Array.from({ length: 60_000 }, (_, index) => `n${index}: target`).join("\n"),
+);
+measure(
+  "near-limit distinct adjacency rows explicit",
+  Array.from({ length: 60_000 }, (_, index) => `n${index}: target`).join("\n"),
+  { format: "adjacency-list" },
+);
+measure(
   "near-limit invalid single-token rows automatic",
   "a\n".repeat(499_999),
 );

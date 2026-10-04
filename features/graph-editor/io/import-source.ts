@@ -4,6 +4,9 @@ type AdjacencyRow = {
   separator: string;
   sourceLabel: string;
   targetTokens: string[];
+  // Each synchronous scan owns a fresh token. Repeated cached rows can skip
+  // label work without allocating WeakSet entries for uncached, distinct rows.
+  lastScan: object | undefined;
 };
 
 type NumericMatrix = {
@@ -67,6 +70,7 @@ function readAdjacencyRow(text: string): AdjacencyRow | null {
     separator,
     sourceLabel: text.slice(0, separatorIndex).trim(),
     targetTokens: splitTokens(text.slice(separatorIndex + separator.length)),
+    lastScan: undefined,
   };
 }
 

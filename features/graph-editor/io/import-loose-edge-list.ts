@@ -10,16 +10,17 @@ import {
   type ParsedLine,
   readImportSettings,
   shouldRequireNumericWeights,
-  splitTokens,
 } from "./import-utils";
+import { createImportSource, type ImportSource } from "./import-source";
 import type { NodeId } from "../core/graph/model";
 import type { ImportResult, ImportWarning } from "./import-types";
 
 export function tryImportLooseEdgeList(
   lines: ParsedLine[],
   options: ImportOptions,
+  preparedSource?: ImportSource,
 ): ImportResult | null {
-  const rows = lines.map((line) => splitTokens(line.text));
+  const { rows } = preparedSource ?? createImportSource(lines);
 
   if (
     rows.length === 0 ||
@@ -40,8 +41,13 @@ export function tryImportLooseEdgeList(
   }
 
   const hasWeights = rows.some((row) => row.length === 3);
-  const labels = rows.flatMap((row) => row.slice(0, 2));
-  const nodeCount = new Set(labels).size;
+  const uniqueLabels = new Set<string>();
+  for (const row of rows) {
+    uniqueLabels.add(row[0]!);
+    uniqueLabels.add(row[1]!);
+  }
+  const labels = [...uniqueLabels];
+  const nodeCount = uniqueLabels.size;
 
   if (nodeCount > MAX_IMPORT_NODES) {
     return importLimitFailure(
