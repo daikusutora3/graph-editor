@@ -183,6 +183,82 @@ expect(
   "deleting one parallel edge should preserve the remaining relative side order",
 );
 
+const hexagonWithChords: GraphModel = {
+  ...graphFixture([]),
+  nodes: [
+    [0, -150],
+    [130, -75],
+    [130, 75],
+    [0, 150],
+    [-130, 75],
+    [-130, -75],
+  ].map(([x, y], order) => ({
+    id: `n${order}`,
+    label: String(order),
+    order,
+    x,
+    y,
+  })),
+  edges: [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0],
+    [0, 1],
+    [1, 5],
+    [0, 2],
+    [1, 4],
+    [2, 5],
+    [3, 5],
+  ].map(([source, target], index) => ({
+    id: `e${index}`,
+    source: `n${source}`,
+    target: `n${target}`,
+  })),
+};
+const hexagonRoutes = computeEdgeRouting(hexagonWithChords);
+expect(
+  hexagonRoutes.get("e7")?.bowPx === 0,
+  "hexagon chord 1–5 should stay straight when bending does not remove a crossing or avoid a node",
+);
+expect(
+  hexagonRoutes.get("e0")?.bowPx !== hexagonRoutes.get("e6")?.bowPx,
+  "keeping an unobstructed hexagon chord straight must still separate its parallel boundary edges",
+);
+const previouslyBentHexagon = new Map(hexagonRoutes);
+previouslyBentHexagon.set("e7", routeMeta(-128));
+const straightenedHexagonRoutes = computeEdgeRouting(hexagonWithChords, {
+  previousMeta: previouslyBentHexagon,
+});
+expect(
+  straightenedHexagonRoutes.get("e7")?.bowPx === 0,
+  "hexagon chord 1–5 should return to straight instead of retaining an unnecessary previous bend",
+);
+expect(
+  straightenedHexagonRoutes.get("e0")?.bowPx !==
+    straightenedHexagonRoutes.get("e6")?.bowPx,
+  "straightening a hexagon chord must preserve distinct parallel routes",
+);
+
+const crossingAtSampleBoundary: GraphModel = {
+  ...graphFixture([
+    { id: "ab", source: "a", target: "b" },
+    { id: "cd", source: "c", target: "d" },
+  ]),
+  nodes: [
+    { id: "a", label: "A", order: 0, x: -130, y: 0 },
+    { id: "b", label: "B", order: 1, x: 130, y: 0 },
+    { id: "c", label: "C", order: 2, x: -100, y: -104 },
+    { id: "d", label: "D", order: 3, x: 100, y: 136 },
+  ],
+};
+expect(
+  computeEdgeRouting(crossingAtSampleBoundary).get("ab")?.bowPx === 0,
+  "a crossing on a curve-sampling boundary must not introduce a bend when the crossing count is unchanged",
+);
+
 const obstructedGraph: GraphModel = {
   ...graphFixture([{ id: "ab", source: "a", target: "b" }]),
   nodes: [
