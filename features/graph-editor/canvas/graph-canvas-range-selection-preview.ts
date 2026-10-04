@@ -1,6 +1,6 @@
 "use client";
 
-import type { Core, EdgeSingular } from "cytoscape";
+import type { Core } from "cytoscape";
 import type {
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
@@ -10,17 +10,14 @@ import { useCallback, useEffect, useRef } from "react";
 
 import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import type { RangeSelectionFilter } from "./range-selection-filter";
+import {
+  readRangeSelectionPreview,
+  type RangeSelectionBox,
+} from "./range-selection-preview-geometry";
 
 type RenderedPoint = {
   x: number;
   y: number;
-};
-
-type RenderedBox = {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
 };
 
 type RangePreviewSession = {
@@ -80,30 +77,8 @@ export function useRangeSelectionPreview({
     session.frame = 0;
 
     const box = renderedBoxFromPoints(session.start, session.current);
-    const nextNodeIds = new Set<string>();
-    const nextEdgeIds = new Set<string>();
-
-    if (session.filter !== "edges")
-      cy.nodes().forEach((node) => {
-        const nodeBox = node.renderedBoundingBox({
-          includeNodes: true,
-          includeEdges: false,
-          includeLabels: false,
-          includeOverlays: false,
-          includeUnderlays: false,
-        });
-
-        if (boxContains(box, nodeBox)) {
-          nextNodeIds.add(node.id());
-        }
-      });
-
-    if (session.filter !== "nodes")
-      cy.edges().forEach((edge) => {
-        if (edgeControlPathInBox(box, edge)) {
-          nextEdgeIds.add(edge.id());
-        }
-      });
+    const { nodeIds: nextNodeIds, edgeIds: nextEdgeIds } =
+      readRangeSelectionPreview(cy, box, session.filter);
 
     withCytoscapeBatch(cy, () => {
       applyPreviewClassDiff(cy, session.nodeIds, nextNodeIds);
@@ -226,66 +201,13 @@ function renderedPointFromPointer(
 function renderedBoxFromPoints(
   start: RenderedPoint,
   current: RenderedPoint,
-): RenderedBox {
+): RangeSelectionBox {
   return {
     x1: Math.min(start.x, current.x),
     y1: Math.min(start.y, current.y),
     x2: Math.max(start.x, current.x),
     y2: Math.max(start.y, current.y),
   };
-}
-
-function boxContains(
-  a: RenderedBox,
-  b: { x1: number; y1: number; x2: number; y2: number },
-) {
-  return a.x1 <= b.x1 && a.y1 <= b.y1 && a.x2 >= b.x2 && a.y2 >= b.y2;
-}
-
-function edgeControlPathInBox(box: RenderedBox, edge: EdgeSingular) {
-  const points = [
-    edge.renderedSourceEndpoint(),
-    edge.renderedTargetEndpoint(),
-    ...readRenderedEdgePoints(edge, "renderedControlPoints"),
-    ...readRenderedEdgePoints(edge, "renderedSegmentPoints"),
-  ].filter(isRenderedPoint);
-
-  return points.every((point) => pointInBox(box, point));
-}
-
-function readRenderedEdgePoints(
-  edge: EdgeSingular,
-  method: "renderedControlPoints" | "renderedSegmentPoints",
-) {
-  try {
-    const points = edge[method]();
-
-    return Array.isArray(points) ? points : [];
-  } catch {
-    return [];
-  }
-}
-
-function isRenderedPoint(point: unknown): point is RenderedPoint {
-  return (
-    typeof point === "object" &&
-    point !== null &&
-    "x" in point &&
-    "y" in point &&
-    typeof point.x === "number" &&
-    typeof point.y === "number" &&
-    Number.isFinite(point.x) &&
-    Number.isFinite(point.y)
-  );
-}
-
-function pointInBox(box: RenderedBox, point: RenderedPoint) {
-  return (
-    point.x >= box.x1 &&
-    point.x <= box.x2 &&
-    point.y >= box.y1 &&
-    point.y <= box.y2
-  );
 }
 
 function applyPreviewClassDiff(

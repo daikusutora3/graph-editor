@@ -38,8 +38,36 @@ export function* createOverlapTask(
   );
   const required = NODE_SIZE_PX + OVERLAP_GAP_PX;
   let changed = false;
-  function* scan(move: boolean): Generator<void, number> {
+  function* scan(move: boolean, limit = Infinity): Generator<void, number> {
     let remaining = 0;
+    if (!move) {
+      // Pills all have the same height. Only neighbors less than the required
+      // gap apart vertically can collide, regardless of their label widths.
+      const verticalOrder = nodes
+        .map((node, index) => ({ index, point: positions[node.id]! }))
+        .sort((a, b) => a.point.y - b.point.y);
+      for (let i = 0; i < verticalOrder.length; i++) {
+        yield;
+        const a = verticalOrder[i]!;
+        for (let j = i + 1; j < verticalOrder.length; j++) {
+          const b = verticalOrder[j]!;
+          const dy = b.point.y - a.point.y;
+          if (dy >= required) break;
+          if (j % 64 === 0) yield;
+          const first = Math.min(a.index, b.index);
+          const second = Math.max(a.index, b.index);
+          const gapX = Math.max(
+            0,
+            Math.abs(b.point.x - a.point.x) - spans[first]! - spans[second]!,
+          );
+          if (gapX >= required) continue;
+          if (Math.hypot(gapX, dy) >= required - 0.00001) continue;
+          remaining++;
+          if (remaining >= limit) return remaining;
+        }
+      }
+      return remaining;
+    }
     for (let i = 0; i < nodes.length; i++)
       for (let j = i + 1; j < nodes.length; j++) {
         if (j % 64 === 0) yield;
@@ -52,7 +80,6 @@ export function* createOverlapTask(
         const distance = Math.hypot(gapX, dy);
         if (distance >= required - 0.00001) continue;
         remaining++;
-        if (!move) continue;
         // Overlapping center segments separate vertically; disjoint segments use their closest points.
         const ux = distance > 0.00001 ? (Math.sign(dx) * gapX) / distance : 0;
         const uy = distance > 0.00001 ? dy / distance : (i + j) % 2 ? 1 : -1;
@@ -77,6 +104,11 @@ export function* createOverlapTask(
         changed = true;
       }
     return remaining;
+  }
+  // Separated graphs need no relaxation. Keep the moving scan in stable node
+  // order so resolving an actual collision produces identical coordinates.
+  if ((yield* scan(false, 1)) === 0) {
+    return { positions, remainingPairs: 0, status: "unchanged" };
   }
   for (let step = 0; step < 128; step++) if ((yield* scan(true)) === 0) break;
   // Dense clusters can converge slowly under symmetric relaxation. Finish only

@@ -83,6 +83,9 @@ bun tests/benchmarks/selection-performance.ts
 bun tests/benchmarks/run-canvas-hitboxes.mjs --output /tmp/canvas-before.json
 bun tests/benchmarks/routing-performance.ts --output /tmp/routing-before.json
 bun tests/benchmarks/interactive-routing-performance.ts --output /tmp/drag-before.json
+bun tests/benchmarks/overlap-performance.ts --output /tmp/overlaps.json
+bun tests/benchmarks/run-sample-gallery.mjs --output /tmp/gallery.json
+bun tests/benchmarks/run-range-selection.mjs --output /tmp/range.json
 ```
 
 After a change, pass `--baseline` with the saved JSON path to the import or
@@ -100,6 +103,17 @@ cutoff, plus 500 dragged obstacles alongside 400 settled edges. The interactive
 check reports the first generator step as well as total work and maximum
 slices; a fast average alone does not establish responsive dragging. Both
 routing runners accept `--baseline` and compare output signatures.
+
+The overlap benchmark covers separated grids and lines, a single collision,
+coincident nodes, and wide labels. Its `--reference` option compares a saved
+original module with imports rebased to the same checkout. The gallery runner
+can compare an original `SampleGalleryPane.tsx` using `--gallery-source`; it
+counts rendered cards and measures React work with all previews visited. The
+range runner compares the frozen previous containment implementation on the
+same real Cytoscape canvas, covering small and enclosing boxes and all selection
+filters. It measures geometry reads, excluding preview class application and
+paint. Gallery and range runners use isolated Chromium and do not change browser
+profiles; overlap calculation runs in Bun.
 
 For translated SVG hitboxes, live panel updates, PNG export counts on reopening,
 and drag/history/persistence at 1,000 nodes and 5,000 edges, run:
