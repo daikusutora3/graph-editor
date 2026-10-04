@@ -68,6 +68,22 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   const lastIndex = Math.max(0, model.nodes.length - 1);
   const showLabels = editorLike && nodeCount <= 12;
   const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
+  const context: PreviewContext = {
+    model,
+    markerId,
+    nodeById,
+    edgeRouting,
+    toPoint,
+    radius,
+    scale,
+    edgeStrokeWidth,
+    nodeStrokeWidth,
+    veryDense,
+    dense,
+    editorLike,
+    lastIndex,
+    showLabels,
+  };
 
   return (
     <svg
@@ -92,83 +108,161 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
           </marker>
         </defs>
       ) : null}
-      {model.edges.map((edge) => {
-        const source = nodeById.get(edge.source);
-        const target = nodeById.get(edge.target);
-
-        if (!source || !target) {
-          return null;
-        }
-
-        const a = toPoint(source.x, source.y);
-        const b = toPoint(target.x, target.y);
-        const path = createPreviewEdgePath({
-          directed: model.settings.directed,
-          radius,
-          routing:
-            edgeRouting.get(edge.id) ??
-            edgeRouting.get(edge.id as EdgeId) ??
-            undefined,
-          scale,
-          source: a,
-          target: b,
-        });
-
-        return (
-          <path
-            key={edge.id}
-            d={path}
-            fill="none"
-            stroke="var(--canvas-edge)"
-            strokeLinecap="round"
-            strokeWidth={edgeStrokeWidth}
-            opacity={veryDense ? 0.56 : dense ? 0.68 : 0.78}
-            markerEnd={
-              model.settings.directed ? `url(#${markerId})` : undefined
-            }
-          />
-        );
-      })}
-      {model.nodes.map((node, index) => {
-        const point = toPoint(node.x, node.y);
-        const fill = editorLike
-          ? "var(--canvas-node)"
-          : index === 0
-            ? "var(--canvas-node-yellow)"
-            : index === lastIndex && model.nodes.length > 2
-              ? "var(--canvas-node-blue)"
-              : "var(--canvas-node)";
-
-        return (
-          <g key={node.id}>
-            <circle
-              cx={point.x}
-              cy={point.y}
-              r={radius}
-              fill={fill}
-              stroke="var(--canvas-node-border)"
-              strokeWidth={nodeStrokeWidth}
-            />
-            {showLabels ? (
-              <text
-                x={point.x}
-                y={point.y}
-                fill="var(--canvas-node-text)"
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontFamily="var(--font-ui)"
-                fontSize={Math.max(8, radius * 0.92)}
-                fontWeight={600}
-              >
-                {node.label}
-              </text>
-            ) : null}
-          </g>
-        );
-      })}
+      {chunkPreviewItems(model.edges).map((edges) => (
+        <PreviewEdges
+          key={`edges-${edges[0]!.id}`}
+          edges={edges}
+          context={context}
+        />
+      ))}
+      {chunkPreviewItems(model.nodes).map((nodes, index) => (
+        <PreviewNodes
+          key={`nodes-${nodes[0]!.id}`}
+          nodes={nodes}
+          startIndex={index * PREVIEW_CHUNK_SIZE}
+          context={context}
+        />
+      ))}
     </svg>
   );
 });
+
+// Bound the work performed by each React component so concurrent preview
+// updates can yield between chunks without changing the final SVG markup.
+const PREVIEW_CHUNK_SIZE = 128;
+
+function chunkPreviewItems<T>(items: readonly T[]) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += PREVIEW_CHUNK_SIZE) {
+    chunks.push(items.slice(index, index + PREVIEW_CHUNK_SIZE));
+  }
+  return chunks;
+}
+
+type PreviewContext = {
+  model: GraphModel;
+  markerId: string;
+  nodeById: Map<string, GraphModel["nodes"][number]>;
+  edgeRouting: ReturnType<typeof computeEdgeRouting>;
+  toPoint: (x: number, y: number) => { x: number; y: number };
+  radius: number;
+  scale: number;
+  edgeStrokeWidth: number;
+  nodeStrokeWidth: number;
+  veryDense: boolean;
+  dense: boolean;
+  editorLike: boolean;
+  lastIndex: number;
+  showLabels: boolean;
+};
+
+function PreviewEdges({
+  edges,
+  context,
+}: {
+  edges: GraphModel["edges"];
+  context: PreviewContext;
+}) {
+  const {
+    model,
+    markerId,
+    nodeById,
+    edgeRouting,
+    toPoint,
+    radius,
+    scale,
+    edgeStrokeWidth,
+    veryDense,
+    dense,
+  } = context;
+  return edges.map((edge) => {
+    const source = nodeById.get(edge.source);
+    const target = nodeById.get(edge.target);
+    if (!source || !target) return null;
+    const a = toPoint(source.x, source.y);
+    const b = toPoint(target.x, target.y);
+    const path = createPreviewEdgePath({
+      directed: model.settings.directed,
+      radius,
+      routing:
+        edgeRouting.get(edge.id) ??
+        edgeRouting.get(edge.id as EdgeId) ??
+        undefined,
+      scale,
+      source: a,
+      target: b,
+    });
+    return (
+      <path
+        key={edge.id}
+        d={path}
+        fill="none"
+        stroke="var(--canvas-edge)"
+        strokeLinecap="round"
+        strokeWidth={edgeStrokeWidth}
+        opacity={veryDense ? 0.56 : dense ? 0.68 : 0.78}
+        markerEnd={model.settings.directed ? `url(#${markerId})` : undefined}
+      />
+    );
+  });
+}
+
+function PreviewNodes({
+  nodes,
+  startIndex,
+  context,
+}: {
+  nodes: GraphModel["nodes"];
+  startIndex: number;
+  context: PreviewContext;
+}) {
+  const {
+    model,
+    toPoint,
+    radius,
+    nodeStrokeWidth,
+    editorLike,
+    lastIndex,
+    showLabels,
+  } = context;
+  return nodes.map((node, offset) => {
+    const index = startIndex + offset;
+    const point = toPoint(node.x, node.y);
+    const fill = editorLike
+      ? "var(--canvas-node)"
+      : index === 0
+        ? "var(--canvas-node-yellow)"
+        : index === lastIndex && model.nodes.length > 2
+          ? "var(--canvas-node-blue)"
+          : "var(--canvas-node)";
+    return (
+      <g key={node.id}>
+        <circle
+          cx={point.x}
+          cy={point.y}
+          r={radius}
+          fill={fill}
+          stroke="var(--canvas-node-border)"
+          strokeWidth={nodeStrokeWidth}
+        />
+        {showLabels ? (
+          <text
+            x={point.x}
+            y={point.y}
+            fill="var(--canvas-node-text)"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontFamily="var(--font-ui)"
+            fontSize={Math.max(8, radius * 0.92)}
+            fontWeight={600}
+          >
+            {node.label}
+          </text>
+        ) : null}
+      </g>
+    );
+  });
+}
 
 export function createPreviewEdgePath({
   directed,

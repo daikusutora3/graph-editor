@@ -43,6 +43,8 @@ type UseGraphCanvasLifecycleOptions = {
   completeFit: (id: number) => void;
   flushRenderedHitboxes: (cy: Core) => void;
   setZoomPercent: (value: number) => void;
+  notifyViewportSignature: (value: string) => void;
+  notifyExportScaleSignature: (value: string) => void;
   suppressSelectionSyncRef: MutableRefObject<boolean>;
   updateRenderedHitboxes: (cy: Core) => void;
   panRenderedHitboxes: (cy: Core) => void;
@@ -63,6 +65,8 @@ export function useGraphCanvasLifecycle({
   completeFit,
   flushRenderedHitboxes,
   setZoomPercent,
+  notifyViewportSignature,
+  notifyExportScaleSignature,
   suppressSelectionSyncRef,
   updateRenderedHitboxes,
   panRenderedHitboxes,
@@ -74,12 +78,16 @@ export function useGraphCanvasLifecycle({
   const arrowScaleRef = useRef(graph.settings.arrowScale);
   const flushRenderedHitboxesRef = useRef(flushRenderedHitboxes);
   const setZoomPercentRef = useRef(setZoomPercent);
+  const notifyViewportSignatureRef = useRef(notifyViewportSignature);
+  const notifyExportScaleSignatureRef = useRef(notifyExportScaleSignature);
   const chromeRef = useRef(chrome);
   const updateRenderedHitboxesRef = useRef(updateRenderedHitboxes);
   const panRenderedHitboxesRef = useRef(panRenderedHitboxes);
   arrowScaleRef.current = graph.settings.arrowScale;
   flushRenderedHitboxesRef.current = flushRenderedHitboxes;
   setZoomPercentRef.current = setZoomPercent;
+  notifyViewportSignatureRef.current = notifyViewportSignature;
+  notifyExportScaleSignatureRef.current = notifyExportScaleSignature;
   chromeRef.current = chrome;
   updateRenderedHitboxesRef.current = updateRenderedHitboxes;
   panRenderedHitboxesRef.current = panRenderedHitboxes;
@@ -318,12 +326,18 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
+    const updateExportSnapshots = () => {
+      if (cy.destroyed()) return;
+      notifyViewportSignatureRef.current(readViewportSignature(cy));
+      notifyExportScaleSignatureRef.current(readExportScaleSignature(cy));
+    };
     const updateCanvasOverlay = () => {
       if (cy.destroyed()) {
         return;
       }
 
       panRenderedHitboxesRef.current(cy);
+      notifyViewportSignatureRef.current(readViewportSignature(cy));
     };
     const updateZoomOverlay = () => {
       if (cy.destroyed()) {
@@ -332,12 +346,34 @@ export function useGraphCanvasLifecycle({
 
       updateRenderedHitboxesRef.current(cy);
       setZoomPercentRef.current(readZoomPercent(cy));
+      updateExportSnapshots();
     };
 
+    const canvasWindow = cy.container()?.ownerDocument.defaultView ?? window;
+    let resolutionQuery: MediaQueryList | null = null;
+    const watchResolution = () => {
+      resolutionQuery?.removeEventListener("change", updateResolution);
+      resolutionQuery = canvasWindow.matchMedia(
+        `(resolution: ${readCanvasPixelRatio(cy)}dppx)`,
+      );
+      resolutionQuery.addEventListener("change", updateResolution);
+    };
+    const updateResolution = () => {
+      updateExportSnapshots();
+      // The previous density query stays false after the first change. Rebind
+      // at the new density so later monitor or browser zoom changes also notify.
+      watchResolution();
+    };
+
+    updateExportSnapshots();
+    watchResolution();
+    canvasWindow.addEventListener("resize", updateExportSnapshots);
     cy.on("pan", updateCanvasOverlay);
     cy.on("zoom resize", updateZoomOverlay);
 
     return () => {
+      canvasWindow.removeEventListener("resize", updateExportSnapshots);
+      resolutionQuery?.removeEventListener("change", updateResolution);
       if (!cy.destroyed()) {
         cy.off("pan", updateCanvasOverlay);
         cy.off("zoom resize", updateZoomOverlay);
@@ -348,4 +384,26 @@ export function useGraphCanvasLifecycle({
     displayReady,
     displayError,
   };
+}
+
+function readViewportSignature(cy: Core) {
+  const pan = cy.pan();
+  // Stable primitive values avoid notifying on unchanged resize events and
+  // retain zoom precision beyond the rounded percentage used by the controls.
+  return JSON.stringify([
+    cy.zoom(),
+    pan.x,
+    pan.y,
+    cy.width(),
+    cy.height(),
+    readCanvasPixelRatio(cy),
+  ]);
+}
+
+function readExportScaleSignature(cy: Core) {
+  return JSON.stringify([cy.zoom(), readCanvasPixelRatio(cy)]);
+}
+
+function readCanvasPixelRatio(cy: Core) {
+  return cy.container()?.ownerDocument.defaultView?.devicePixelRatio || 1;
 }

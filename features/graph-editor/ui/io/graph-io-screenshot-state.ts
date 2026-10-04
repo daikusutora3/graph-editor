@@ -25,6 +25,8 @@ export type ScreenshotPreviewInput = {
   scope: PngExportScope;
   theme: ThemeMode;
   zoomPercent?: number;
+  viewportSignature?: string;
+  exportScaleSignature?: string;
 };
 
 export function createEmptyScreenshotPreview(): ScreenshotPreview {
@@ -47,6 +49,8 @@ export function makeScreenshotInputKey({
   scope,
   theme,
   zoomPercent,
+  viewportSignature,
+  exportScaleSignature,
 }: ScreenshotPreviewInput) {
   return JSON.stringify({
     background,
@@ -57,7 +61,13 @@ export function makeScreenshotInputKey({
     paddingPx,
     scope,
     theme,
-    zoomPercent,
+    // Fixed-size full exports use graph bounds, independently of canvas zoom.
+    zoomPercent: scope === "full" ? undefined : zoomPercent,
+    viewportSignature: scope === "viewport" ? viewportSignature : undefined,
+    exportScaleSignature:
+      scope === "natural" || scope === "natural-fixed"
+        ? exportScaleSignature
+        : undefined,
   });
 }
 

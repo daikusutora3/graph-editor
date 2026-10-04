@@ -89,6 +89,89 @@ try {
     "edge interaction returns after range-selection modifiers are released",
   );
 
+  // Hit areas keep their screen-space sizes as graph geometry zooms. Verify
+  // both desktop and mobile, including the pill's wider area at maximum zoom.
+  /* eslint-disable no-await-in-loop -- Viewport and zoom changes must settle in order. */
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.waitForTimeout(250);
+    for (const zoom of [0.04, 0.35, 1.5]) {
+      await page.evaluate((nextZoom) => {
+        const container = [...document.querySelectorAll("div")].find(
+          (element) => "_cyreg" in element,
+        ) as HTMLDivElement & { _cyreg: { cy: Core } };
+        // eslint-disable-next-line no-underscore-dangle
+        container._cyreg.cy.zoom(nextZoom);
+      }, zoom);
+      await page.waitForTimeout(100);
+      const geometry = await page.evaluate(() => {
+        const container = [...document.querySelectorAll("div")].find(
+          (element) => "_cyreg" in element,
+        ) as HTMLDivElement & { _cyreg: { cy: Core } };
+        // eslint-disable-next-line no-underscore-dangle
+        const cy = container._cyreg.cy;
+        const offset = container.getBoundingClientRect();
+        const node = cy.getElementById("a");
+        const position = node.renderedPosition();
+        const button = document.querySelector<HTMLButtonElement>(
+          'button[aria-label="Select node A"]',
+        )!;
+        const edge = button.parentElement!.querySelector("svg + button")!;
+        const bounds = button.getBoundingClientRect();
+        const edgeBounds = edge.getBoundingClientRect();
+        const midpoint = cy.getElementById("e").renderedMidpoint();
+        return {
+          nodeDx: bounds.x + bounds.width / 2 - offset.x - position.x,
+          nodeDy: bounds.y + bounds.height / 2 - offset.y - position.y,
+          nodeWidth: bounds.width,
+          expectedWidth: Math.max(72, node.renderedOuterWidth() + 24),
+          nodeHeight: bounds.height,
+          edgeDx: edgeBounds.x + edgeBounds.width / 2 - offset.x - midpoint.x,
+          edgeDy: edgeBounds.y + edgeBounds.height / 2 - offset.y - midpoint.y,
+          edgeWidth: edgeBounds.width,
+          edgeHeight: edgeBounds.height,
+          cursor: getComputedStyle(button).cursor,
+          touchAction: getComputedStyle(button).touchAction,
+        };
+      });
+      for (const offset of [
+        geometry.nodeDx,
+        geometry.nodeDy,
+        geometry.edgeDx,
+        geometry.edgeDy,
+      ]) {
+        assert.ok(Math.abs(offset) < 0.02, "zoomed hitbox stays centered");
+      }
+      assert.ok(Math.abs(geometry.nodeWidth - geometry.expectedWidth) < 0.02);
+      assert.equal(geometry.nodeHeight, 72);
+      assert.equal(geometry.edgeWidth, 44);
+      assert.equal(geometry.edgeHeight, width === 390 ? 44 : 32);
+      assert.equal(geometry.cursor, "grab");
+      assert.equal(geometry.touchAction, "none");
+    }
+  }
+  /* eslint-enable no-await-in-loop */
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => {
+    const container = [...document.querySelectorAll("div")].find(
+      (element) => "_cyreg" in element,
+    ) as HTMLDivElement & { _cyreg: { cy: Core } };
+    // eslint-disable-next-line no-underscore-dangle
+    const cy = container._cyreg.cy;
+    cy.zoom(1);
+    cy.pan({ x: 400, y: 300 });
+  });
+  await page.waitForTimeout(100);
+  await page.keyboard.press("Tab");
+  const focusRingWidth = await page.evaluate(() => {
+    const node = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Select node A"]',
+    )!;
+    node.focus({ preventScroll: true });
+    return getComputedStyle(node).boxShadow;
+  });
+  assert.ok(focusRingWidth.includes("3px"), "keyboard focus remains visible");
+
   // Opening a panel must switch its graph subscriptions back on. Settings,
   // history and exported text continue to reflect edits made with chrome idle.
   await page.getByRole("button", { name: "Settings", exact: true }).click();

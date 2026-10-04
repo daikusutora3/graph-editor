@@ -20,7 +20,12 @@ import {
   readLines,
   splitTokens,
 } from "./import-utils";
-import { analyzeGraphInput, analyzeGraphJsonModel } from "./import-analysis";
+import {
+  analyzeGraphInput,
+  analyzeGraphJsonModel,
+  analyzeGraphSource,
+} from "./import-analysis";
+import { createImportSource, type ImportSource } from "./import-source";
 import {
   looksLikeGraphJson,
   parseGraphModelJson,
@@ -86,7 +91,7 @@ function evaluateGraphInputInternal(
   if (lines.length === 0) {
     const result = importFailure({ code: "empty-input" }, options);
     return {
-      analysis: analyzeGraphInput(input, options),
+      analysis: analyzeGraphSource(createImportSource(lines), options),
       result,
     };
   }
@@ -100,7 +105,8 @@ function evaluateGraphInputInternal(
     };
   }
 
-  const analysis = analyzeGraphInput(input, options);
+  const source = createImportSource(lines);
+  const analysis = analyzeGraphSource(source, options);
   const recommendedFormat = analysis.recommendedFormat;
   if (!recommendedFormat) {
     const warning: ImportWarning =
@@ -118,6 +124,7 @@ function evaluateGraphInputInternal(
     lines,
     recommendedFormat,
     options,
+    source,
   );
   const result =
     analysis.status === "ambiguous"
@@ -132,6 +139,7 @@ function parseRequestedFormat(
   lines: ParsedLine[],
   requestedFormat: ImportFormatKind,
   options: ImportOptions,
+  source?: ImportSource,
 ): ImportResult {
   const formatOptions = { ...options, format: requestedFormat };
 
@@ -141,7 +149,7 @@ function parseRequestedFormat(
 
   if (requestedFormat === "adjacency-matrix") {
     return (
-      tryImportAdjacencyMatrix(lines, formatOptions) ??
+      tryImportAdjacencyMatrix(lines, formatOptions, source) ??
       importFailure(
         { code: "invalid-format", formatKind: "adjacency-matrix" },
         formatOptions,
@@ -151,7 +159,7 @@ function parseRequestedFormat(
 
   if (requestedFormat === "adjacency-list") {
     return (
-      tryImportAdjacencyList(lines, formatOptions) ??
+      tryImportAdjacencyList(lines, formatOptions, source) ??
       importFailure(
         { code: "invalid-format", formatKind: "adjacency-list" },
         formatOptions,

@@ -56,15 +56,18 @@ export function useRenderedHitboxes({
       readPanRef.current = { x: pan.x, y: pan.y };
       const nextNodeHitboxes = readNodeHitboxes(cy, graph);
       const nextEdgeLabelHitboxes =
-        mode === "select" ? readEdgeLabelHitboxes(cy, graph) : [];
+        mode === "select" ? readEdgeLabelHitboxes(cy, graph) : null;
       const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
 
       setNodeHitboxes((current) =>
         reconcileNodeHitboxes(current, nextNodeHitboxes),
       );
-      setEdgeLabelHitboxes((current) =>
-        reconcileEdgeLabelHitboxes(current, nextEdgeLabelHitboxes),
-      );
+      // The hidden selection overlay retains its DOM between mode changes.
+      // Leave its snapshot dormant until select mode needs live geometry again.
+      if (nextEdgeLabelHitboxes)
+        setEdgeLabelHitboxes((current) =>
+          reconcileEdgeLabelHitboxes(current, nextEdgeLabelHitboxes),
+        );
       setIsGraphOutOfView((current) =>
         current === nextGraphOutOfView ? current : nextGraphOutOfView,
       );

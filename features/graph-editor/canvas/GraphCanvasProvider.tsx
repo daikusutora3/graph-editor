@@ -27,6 +27,8 @@ type GraphCanvasApi = {
 
 type GraphCanvasApiContextValue = GraphCanvasApi & {
   notifyZoomPercent: (value: number) => void;
+  notifyViewportSignature: (value: string) => void;
+  notifyExportScaleSignature: (value: string) => void;
   requestFit: (graph: GraphModel) => void;
   completeFit: (id: number) => void;
   registerGraphCanvasApi: (api: GraphCanvasApi | null) => void;
@@ -47,34 +49,43 @@ const GraphCanvasFitContext = createContext<
   CanvasFitRequest | null | undefined
 >(undefined);
 
-function createZoomStore() {
-  let zoomPercent = 100;
+function createSnapshotStore<T>(initialSnapshot: T) {
+  let snapshot = initialSnapshot;
   const listeners = new Set<() => void>();
   return {
-    getSnapshot: () => zoomPercent,
+    getSnapshot: () => snapshot,
     subscribe: (listener: () => void) => {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
       };
     },
-    set: (nextZoomPercent: number) => {
-      if (zoomPercent === nextZoomPercent) return;
-      zoomPercent = nextZoomPercent;
+    set: (nextSnapshot: T) => {
+      if (snapshot === nextSnapshot) return;
+      snapshot = nextSnapshot;
       listeners.forEach((listener) => listener());
     },
   };
 }
 
 const GraphCanvasZoomContext = createContext<ReturnType<
-  typeof createZoomStore
+  typeof createSnapshotStore<number>
+> | null>(null);
+const GraphCanvasViewportContext = createContext<ReturnType<
+  typeof createSnapshotStore<string>
+> | null>(null);
+const GraphCanvasExportScaleContext = createContext<ReturnType<
+  typeof createSnapshotStore<string>
 > | null>(null);
 const defaultZoomSnapshot = () => 100;
+const defaultViewportSnapshot = () => "";
 const skipZoomSubscription = () => () => {};
 
 export function GraphCanvasProvider({ children }: { children: ReactNode }) {
   const [fitRequest, setFitRequest] = useState<CanvasFitRequest | null>(null);
-  const [zoomStore] = useState(createZoomStore);
+  const [zoomStore] = useState(() => createSnapshotStore(100));
+  const [viewportStore] = useState(() => createSnapshotStore(""));
+  const [exportScaleStore] = useState(() => createSnapshotStore(""));
   const fitId = useRef(0);
   const requestFit = useCallback((graph: GraphModel) => {
     setFitRequest({ id: ++fitId.current, graph });
@@ -100,19 +111,33 @@ export function GraphCanvasProvider({ children }: { children: ReactNode }) {
       isGraphOutOfView: () => callApi((api) => api.isGraphOutOfView()),
       resetZoom: () => callApi((api) => api.resetZoom()),
       notifyZoomPercent: zoomStore.set,
+      notifyViewportSignature: viewportStore.set,
+      notifyExportScaleSignature: exportScaleStore.set,
       requestFit,
       completeFit,
       exportPng: (detail) => callApi((api) => api.exportPng(detail)),
       registerGraphCanvasApi,
     }),
-    [callApi, requestFit, completeFit, registerGraphCanvasApi, zoomStore],
+    [
+      callApi,
+      requestFit,
+      completeFit,
+      registerGraphCanvasApi,
+      zoomStore,
+      viewportStore,
+      exportScaleStore,
+    ],
   );
 
   return (
     <GraphCanvasApiContext.Provider value={value}>
       <GraphCanvasFitContext.Provider value={fitRequest}>
         <GraphCanvasZoomContext.Provider value={zoomStore}>
-          {children}
+          <GraphCanvasViewportContext.Provider value={viewportStore}>
+            <GraphCanvasExportScaleContext.Provider value={exportScaleStore}>
+              {children}
+            </GraphCanvasExportScaleContext.Provider>
+          </GraphCanvasViewportContext.Provider>
         </GraphCanvasZoomContext.Provider>
       </GraphCanvasFitContext.Provider>
     </GraphCanvasApiContext.Provider>
@@ -153,5 +178,35 @@ export function useGraphCanvasZoomPercent(enabled = true) {
     enabled ? store.subscribe : skipZoomSubscription,
     enabled ? store.getSnapshot : defaultZoomSnapshot,
     defaultZoomSnapshot,
+  );
+}
+
+/** Viewport exports also depend on pan, exact zoom and canvas dimensions. */
+export function useGraphCanvasViewportSignature(enabled = true) {
+  const store = useContext(GraphCanvasViewportContext);
+  if (!store) {
+    throw new Error(
+      "useGraphCanvasViewportSignature must be used within GraphCanvasProvider",
+    );
+  }
+  return useSyncExternalStore(
+    enabled ? store.subscribe : skipZoomSubscription,
+    enabled ? store.getSnapshot : defaultViewportSnapshot,
+    defaultViewportSnapshot,
+  );
+}
+
+/** Natural exports depend on precise zoom and screen pixel density. */
+export function useGraphCanvasExportScaleSignature(enabled = true) {
+  const store = useContext(GraphCanvasExportScaleContext);
+  if (!store) {
+    throw new Error(
+      "useGraphCanvasExportScaleSignature must be used within GraphCanvasProvider",
+    );
+  }
+  return useSyncExternalStore(
+    enabled ? store.subscribe : skipZoomSubscription,
+    enabled ? store.getSnapshot : defaultViewportSnapshot,
+    defaultViewportSnapshot,
   );
 }

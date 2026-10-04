@@ -14,19 +14,13 @@ import type {
 import {
   MAX_IMPORT_INPUT_CHARS,
   type ImportOptions,
-  type ParsedLine,
   readLines,
-  splitTokens,
 } from "./import-utils";
+import { createImportSource, type ImportSource } from "./import-source";
 import {
   isRootedParentTreeLabels,
   isUndirectedTreeLabels,
 } from "./import-tree-validation";
-
-type ImportSource = {
-  lines: ParsedLine[];
-  rows: string[][];
-};
 
 const strengthRank: Record<ImportMatchStrength, number> = {
   exact: 3,
@@ -73,6 +67,15 @@ export function analyzeGraphInput(
   }
 
   const lines = readLines(input);
+  return analyzeGraphSource(createImportSource(lines), options);
+}
+
+/** Analyze the same rows that the importer will consume in this evaluation. */
+export function analyzeGraphSource(
+  source: ImportSource,
+  options: ImportOptions = {},
+): ImportAnalysis {
+  const { lines } = source;
   if (lines.length === 0) {
     return {
       status: "invalid",
@@ -87,10 +90,6 @@ export function analyzeGraphInput(
     };
   }
 
-  const source: ImportSource = {
-    lines,
-    rows: lines.map((line) => splitTokens(line.text)),
-  };
   const candidates = collectCandidates(source, options).sort(
     (left, right) =>
       strengthRank[right.strength] - strengthRank[left.strength] ||
@@ -211,31 +210,26 @@ function pushCandidate(
 }
 
 function probeAdjacencyList(source: ImportSource): ImportCandidate | null {
-  const separators = source.lines.map((line) =>
-    line.text.match(/->|:/g)?.map(String),
-  );
-
-  if (
-    separators.some((matches) => matches?.length !== 1) ||
-    new Set(separators.map((matches) => matches?.[0])).size !== 1
-  ) {
-    return null;
-  }
-
+  let expectedSeparator: string | undefined;
   const labels = new Set<string>();
   let edgeCount = 0;
 
   for (const line of source.lines) {
-    const separator = line.text.includes("->") ? "->" : ":";
-    const separatorIndex = line.text.indexOf(separator);
-    const sourceLabel = line.text.slice(0, separatorIndex).trim();
-    const targetText = line.text.slice(separatorIndex + separator.length);
+    const row = source.readAdjacencyRow(line.text);
+    if (
+      !row ||
+      (expectedSeparator !== undefined && expectedSeparator !== row.separator)
+    ) {
+      return null;
+    }
+    expectedSeparator = row.separator;
+    const { sourceLabel } = row;
     if (!sourceLabel) {
       return null;
     }
 
     labels.add(sourceLabel);
-    for (const token of splitTokens(targetText)) {
+    for (const token of row.targetTokens) {
       const match = token.match(/^(.+?)(?:\(([^()]*)\))?$/);
       const targetLabel = match?.[1]?.trim();
       if (!targetLabel) {
@@ -259,34 +253,16 @@ function probeAdjacencyMatrix(
   source: ImportSource,
   options: ImportOptions,
 ): ImportCandidate | null {
-  const size = source.rows.length;
-  if (
-    size < 2 ||
-    source.rows.some((row) => row.length !== size) ||
-    source.rows.some((row) =>
-      row.some((token) => !Number.isFinite(Number(token))),
-    )
-  ) {
-    return null;
-  }
-
-  const values = source.rows.map((row) => row.map(Number));
-  const isBinary = values.every((row) =>
-    row.every((value) => value === 0 || value === 1),
-  );
-  const isSymmetric = values.every((row, sourceIndex) =>
-    row.every(
-      (value, targetIndex) => value === values[targetIndex]?.[sourceIndex],
-    ),
-  );
+  const size = source.lines.length;
+  if (size < 2 || source.firstRow.length !== size) return null;
+  const matrix = source.matrix;
+  if (!matrix) return null;
+  const { isBinary, isSymmetric, hasWeightedValue } = matrix;
 
   if (size === 2 && (!isBinary || (!options.directed && !isSymmetric))) {
     return null;
   }
 
-  const hasWeightedValue = values.some((row) =>
-    row.some((value) => value !== 0 && value !== 1),
-  );
   if (
     hasWeightedValue &&
     source.rows.every((row) => row.length === 3) &&
@@ -296,15 +272,9 @@ function probeAdjacencyMatrix(
   }
 
   const directed = !isSymmetric;
-  const edgeCount = values.reduce(
-    (count, row, sourceIndex) =>
-      count +
-      row.filter(
-        (value, targetIndex) =>
-          value !== 0 && (directed || targetIndex >= sourceIndex),
-      ).length,
-    0,
-  );
+  const edgeCount = directed
+    ? matrix.directedEdgeCount
+    : matrix.undirectedEdgeCount;
 
   return {
     formatKind: "adjacency-matrix",
@@ -427,7 +397,7 @@ function probeWeightedParentList(
 }
 
 function probeStructuredEdgeList(source: ImportSource): ImportCandidate | null {
-  const header = source.rows[0];
+  const header = source.firstRow;
   const nodeCount = Number(header?.[0]);
   const edgeCount = Number(header?.[1]);
   if (
@@ -470,7 +440,8 @@ function probeLooseEdgeList(
   options: ImportOptions,
 ): ImportCandidate | null {
   if (
-    source.rows.length === 0 ||
+    source.firstRow.length < 2 ||
+    source.firstRow.length > 3 ||
     source.rows.some((row) => row.length < 2 || row.length > 3)
   ) {
     return null;
@@ -538,7 +509,7 @@ function looksLikeOutOfRangeWeightedEdgeRows(
 }
 
 function readSingleCountHeader(source: ImportSource) {
-  const header = source.rows[0];
+  const header = source.firstRow;
   const nodeCount = Number(header?.[0]);
   return header?.length === 1 && Number.isInteger(nodeCount) ? nodeCount : null;
 }

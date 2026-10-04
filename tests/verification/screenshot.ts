@@ -150,6 +150,64 @@ function verifyPreviewInputKey() {
       }),
     "current-zoom preview should update when zoom changes",
   );
+  for (const scope of [
+    "full",
+    "viewport",
+    "natural",
+    "natural-fixed",
+  ] as const) {
+    const input = {
+      background: "white" as const,
+      graphRevision: 7,
+      longEdgePx: 1920,
+      paddingPx: 24,
+      scope,
+      theme: "light" as const,
+    };
+    expect(
+      (makeScreenshotInputKey({ ...input, zoomPercent: 50 }) ===
+        makeScreenshotInputKey({ ...input, zoomPercent: 125 })) ===
+        (scope === "full"),
+      "only fixed-size full previews should remain current after zooming",
+    );
+    const snapshots = {
+      ...input,
+      viewportSignature: "[0.5,0,0,1440,1000,1]",
+      exportScaleSignature: "[0.5,1]",
+    };
+    const initialKey = makeScreenshotInputKey(snapshots);
+    expect(
+      (initialKey ===
+        makeScreenshotInputKey({
+          ...snapshots,
+          viewportSignature: "[0.504,0,0,1440,1000,1]",
+          exportScaleSignature: "[0.504,1]",
+        })) ===
+        (scope === "full"),
+      "non-fixed-size previews must notice exact zoom changes within a rounded percent",
+    );
+    expect(
+      (initialKey ===
+        makeScreenshotInputKey({
+          ...snapshots,
+          viewportSignature: "[0.5,0,0,1440,1000,2]",
+          exportScaleSignature: "[0.5,2]",
+        })) ===
+        (scope === "full"),
+      "only fixed-size full previews ignore screen pixel density changes",
+    );
+    for (const viewportSignature of [
+      "[0.5,80,40,1440,1000,1]",
+      "[0.5,0,0,1400,900,1]",
+    ]) {
+      expect(
+        (initialKey ===
+          makeScreenshotInputKey({ ...snapshots, viewportSignature })) ===
+          (scope !== "viewport"),
+        "only viewport previews depend on canvas pan and dimensions",
+      );
+    }
+  }
   expect(
     makeScreenshotInputKey({
       background: "transparent",

@@ -17,12 +17,118 @@ import {
   MAX_IMPORT_EDGES,
   MAX_IMPORT_INPUT_CHARS,
   MAX_IMPORT_NODES,
+  readLines,
+  splitTokens,
 } from "../../features/graph-editor/io/import-utils";
 import { createVerification } from "./harness";
 import { analyzeGraphInput } from "../../features/graph-editor/io/import-analysis";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 
 const { expect, finish } = createVerification("IO contract");
+
+for (const [input, expected] of [
+  ["", []],
+  ["\n\r\n \t\n# comment\n// comment\n", []],
+  [
+    "\r\n 0 1 # ignored\r\n // blank\r\n2 3// ignored\n\n4 5\r",
+    [
+      { number: 2, text: "0 1" },
+      { number: 4, text: "2 3" },
+      { number: 6, text: "4 5" },
+    ],
+  ],
+  [
+    "a\rb\nx\ry\n",
+    [
+      { number: 1, text: "a\rb" },
+      { number: 2, text: "x\ry" },
+    ],
+  ],
+  [
+    "v# comment// ignored\n w// comment# ignored",
+    [
+      { number: 1, text: "v" },
+      { number: 2, text: "w" },
+    ],
+  ],
+  [
+    "α\u2028β\n\u2028\ufeff γ \u00a0\r\n\ud800\n🧭 \udfff",
+    [
+      { number: 1, text: "α\u2028β" },
+      { number: 2, text: "γ" },
+      { number: 3, text: "\ud800" },
+      { number: 4, text: "🧭 \udfff" },
+    ],
+  ],
+] as const) {
+  expect(
+    JSON.stringify(readLines(input)) === JSON.stringify(expected),
+    "import lines should retain original line numbers, comments, CR/LF and Unicode text",
+  );
+}
+
+const blankNearLimitInput = "\n".repeat(MAX_IMPORT_INPUT_CHARS - 1);
+const blankEvaluation = evaluateGraphInput(blankNearLimitInput);
+expect(
+  blankEvaluation.result.status === "failure" &&
+    blankEvaluation.result.warnings[0]?.code === "empty-input" &&
+    JSON.stringify(blankEvaluation.analysis) ===
+      JSON.stringify(analyzeGraphInput(blankNearLimitInput)),
+  "a near-limit blank import should preserve empty-input analysis and diagnostics",
+);
+const repeatedSourceEvaluation = evaluateGraphInput(
+  "a:\n".repeat(Math.floor(MAX_IMPORT_INPUT_CHARS / 3)),
+);
+expect(
+  repeatedSourceEvaluation.result.status === "success" &&
+    repeatedSourceEvaluation.analysis.recommendedFormat === "adjacency-list" &&
+    repeatedSourceEvaluation.result.model.nodes.length === 1 &&
+    repeatedSourceEvaluation.result.model.nodes[0]?.label === "a" &&
+    repeatedSourceEvaluation.result.model.edges.length === 0 &&
+    repeatedSourceEvaluation.result.warnings.length === 0,
+  "near-limit repeated adjacency sources should remain a valid one-node graph",
+);
+
+for (const separator of [
+  " ",
+  "\t",
+  "\r",
+  "\n",
+  "\v",
+  "\f",
+  "\u00a0",
+  "\u1680",
+  "\u2000",
+  "\u2001",
+  "\u2002",
+  "\u2003",
+  "\u2004",
+  "\u2005",
+  "\u2006",
+  "\u2007",
+  "\u2008",
+  "\u2009",
+  "\u200a",
+  "\u2028",
+  "\u2029",
+  "\u202f",
+  "\u205f",
+  "\u3000",
+  "\ufeff",
+  ",",
+]) {
+  expect(
+    JSON.stringify(
+      splitTokens(`${separator}始点${separator}${separator}終点${separator}`),
+    ) === JSON.stringify(["始点", "終点"]),
+    `import tokens should split Unicode whitespace/comma U+${separator.charCodeAt(0).toString(16)}`,
+  );
+}
+expect(
+  splitTokens("\u0085α\u180e, 🧭,\ud800").join("|") ===
+    "\u0085α\u180e|🧭|\ud800" && splitTokens(" , , \t").length === 0,
+  "import tokenization should preserve non-whitespace Unicode, astral and lone-surrogate text while dropping empty tokens",
+);
 
 for (const input of [
   JSON.stringify(createEmptyGraphModel()),
@@ -241,6 +347,26 @@ expect(
     arrowAdjacencyList.model.settings.directed &&
     arrowAdjacencyList.model.edges.length === 2,
   "arrow adjacency-list syntax should imply directed import",
+);
+
+const repeatedAdjacencySources = importGraphInput(
+  "\n: 1(abc)\n0: 1(2) 0(3)\n1: 0(4)\n0:\n",
+  { format: "adjacency-list", indexBase: 1 },
+);
+expect(
+  repeatedAdjacencySources.status === "partial" &&
+    repeatedAdjacencySources.model.settings.indexBase === 1 &&
+    repeatedAdjacencySources.model.settings.weighted &&
+    repeatedAdjacencySources.model.nodes.map((node) => node.label).join(",") ===
+      "0,1" &&
+    JSON.stringify(repeatedAdjacencySources.model.edges) ===
+      JSON.stringify([
+        { id: "e0", source: "n0", target: "n1", weight: "2" },
+        { id: "e1", source: "n0", target: "n0", weight: "3" },
+      ]) &&
+    JSON.stringify(repeatedAdjacencySources.warnings) ===
+      JSON.stringify([{ code: "missing-source", line: 2 }]),
+  "repeated adjacency sources should preserve encounter order, inferred weights, fallback index base, undirected deduplication and warning line numbers",
 );
 
 const ambiguousStructuredEdgeList = importGraphInput("2 1\n0 1", {
@@ -785,6 +911,83 @@ expect(
     oversizedRawInput.warnings[0]?.code === "too-large",
   "import should reject oversized raw input before parsing lines",
 );
+
+// Exhaust the small binary matrices against an independent edge enumeration.
+// Directed overrides must affect the import without changing format evidence.
+for (let bits = 0; bits < 512; bits += 1) {
+  const values = Array.from({ length: 3 }, (_, source) =>
+    Array.from(
+      { length: 3 },
+      (_unusedTarget, target) => (bits >> (source * 3 + target)) & 1,
+    ),
+  );
+  const input = values.map((row) => row.join(" ")).join("\n");
+  const symmetric = values.every((row, source) =>
+    row.every((value, target) => value === values[target]?.[source]),
+  );
+  for (const forceDirected of [false, true]) {
+    const directed = forceDirected || !symmetric;
+    const expectedEdges = values.flatMap((row, source) =>
+      row.flatMap((value, target) =>
+        value && (directed || target >= source)
+          ? [{ source: `n${source}`, target: `n${target}` }]
+          : [],
+      ),
+    );
+    for (const weighted of [false, true]) {
+      const result = importGraphInput(input, {
+        format: "adjacency-matrix",
+        directed: forceDirected,
+        weighted,
+      });
+      expect(
+        result.warnings.length === 0 &&
+          result.model.nodes.length === 3 &&
+          result.model.settings.directed === directed &&
+          result.model.settings.weighted === weighted &&
+          JSON.stringify(result.model.edges) ===
+            JSON.stringify(
+              expectedEdges.map((edge, index) => ({
+                id: `e${index}`,
+                ...edge,
+                ...(weighted ? { weight: "1" } : {}),
+              })),
+            ),
+        `binary matrix ${bits} should enumerate edges with directed=${forceDirected}, weighted=${weighted}`,
+      );
+    }
+    expect(
+      JSON.stringify(
+        evaluateGraphInput(input, { directed: forceDirected }).analysis,
+      ) ===
+        JSON.stringify(analyzeGraphInput(input, { directed: forceDirected })),
+      `binary matrix ${bits} should preserve standalone analysis with directed=${forceDirected}`,
+    );
+  }
+}
+
+const nearLimitMatrix = Array.from({ length: 700 }, (_, source) =>
+  Array.from({ length: 700 }, (_unusedTarget, target) =>
+    Math.abs(source - target) === 1 ? "1" : "0",
+  ).join(" "),
+).join("\n");
+for (const directed of [false, true]) {
+  const automatic = evaluateGraphInput(nearLimitMatrix, { directed });
+  const explicit = importGraphInput(nearLimitMatrix, {
+    format: "adjacency-matrix",
+    directed,
+  });
+  expect(
+    automatic.result.status === "success" &&
+      automatic.result.model.nodes.length === 700 &&
+      automatic.result.model.edges.length === (directed ? 1398 : 699) &&
+      JSON.stringify(automatic.result.model) ===
+        JSON.stringify(explicit.model) &&
+      JSON.stringify(automatic.analysis) ===
+        JSON.stringify(analyzeGraphInput(nearLimitMatrix, { directed })),
+    `near-input-limit matrix should preserve automatic/explicit results and format evidence with directed=${directed}`,
+  );
+}
 
 finish();
 

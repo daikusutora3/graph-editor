@@ -5,7 +5,15 @@ import type { Core } from "cytoscape";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Activity,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { graphModelToCytoscapeElements } from "../adapters/cytoscape/cytoscape-adapter";
 import { updateEdgeCommand } from "../core/graph/graph-intents";
@@ -109,8 +117,13 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const setSelection = useSetAtom(selectionAtom);
   const executeCommand = useSetAtom(executeCommandAtom);
   const deleteSelection = useSetAtom(deleteSelectionAtom);
-  const { registerGraphCanvasApi, completeFit, notifyZoomPercent } =
-    useGraphCanvasApi();
+  const {
+    registerGraphCanvasApi,
+    completeFit,
+    notifyZoomPercent,
+    notifyViewportSignature,
+    notifyExportScaleSignature,
+  } = useGraphCanvasApi();
   const fitRequest = useGraphCanvasFitRequest();
 
   const selectionRef = useRef(selection);
@@ -202,6 +215,8 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     selectionRef,
     flushRenderedHitboxes,
     setZoomPercent: updateZoomPercent,
+    notifyViewportSignature,
+    notifyExportScaleSignature,
     suppressSelectionSyncRef,
     updateRenderedHitboxes,
     panRenderedHitboxes,
@@ -257,11 +272,12 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     updateRenderedHitboxes,
   });
 
-  useEffect(() => {
+  const cancelHtmlNodeDrag = htmlNodeDrag.cancel;
+  useLayoutEffect(() => {
     if (mode !== "select") {
-      htmlNodeDrag.cancel();
+      cancelHtmlNodeDrag();
     }
-  }, [htmlNodeDrag, mode]);
+  }, [cancelHtmlNodeDrag, mode]);
 
   const { fitView, maxZoom, minZoom, resetCanvasZoom, zoomCanvas, zoomStep } =
     useGraphCanvasViewportActions({
@@ -322,13 +338,23 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     resetCanvasZoom,
   ]);
 
+  const flushModeHitboxesRef = useRef(flushRenderedHitboxes);
+  flushModeHitboxesRef.current = flushRenderedHitboxes;
+  // A retained overlay may have been hidden through zoom, pan and graph edits.
+  // Refresh before its first visible paint, rather than exposing stale targets.
+  useLayoutEffect(() => {
+    const cy = cyRef.current;
+    if (mode === "select" && cy && !cy.destroyed())
+      flushModeHitboxesRef.current(cy);
+  }, [mode]);
+
   useEffect(() => {
     const cy = cyRef.current;
 
     if (cy && !cy.destroyed()) {
-      flushRenderedHitboxes(cy);
+      flushModeHitboxesRef.current(cy);
     }
-  }, [flushRenderedHitboxes, mode]);
+  }, [graph]);
 
   const {
     deleteContextSelection,
@@ -640,8 +666,12 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
               onContextMenu={handleEdgeNodeContextMenu}
             />
           ) : null}
-          {mode === "select" ? (
-            <>
+          <Activity mode={mode === "select" ? "visible" : "hidden"}>
+            <div
+              data-selection-hitboxes
+              className="pointer-events-none absolute inset-0"
+              inert={mode !== "select"}
+            >
               <SelectEdgeHitboxes
                 edges={edgeLabelHitboxes}
                 selectedEdgeIds={selectedEdgeIdSet}
@@ -704,8 +734,8 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
                   openNodeContextMenu(node.id, { x: node.x, y: node.y })
                 }
               />
-            </>
-          ) : null}
+            </div>
+          </Activity>
         </div>
         {contextMenuPresence.value ? (
           <GraphContextMenu

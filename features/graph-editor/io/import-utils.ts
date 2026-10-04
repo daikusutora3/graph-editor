@@ -41,20 +41,25 @@ export const MAX_IMPORT_NODES = GRAPH_MAX_NODES;
 export const MAX_IMPORT_EDGES = GRAPH_MAX_EDGES;
 
 export function readLines(input: string): ParsedLine[] {
-  return input
-    .split(/\r?\n/)
-    .map((line, index) => ({
-      number: index + 1,
-      text: stripComment(line).trim(),
-    }))
-    .filter((line) => line.text.length > 0);
+  const lines: ParsedLine[] = [];
+  let start = 0;
+  let number = 1;
+  while (start <= input.length) {
+    const newline = input.indexOf("\n", start);
+    const end = newline < 0 ? input.length : newline;
+    const text = stripComment(input.slice(start, end)).trim();
+    if (text) lines.push({ number, text });
+    if (newline < 0) break;
+    start = newline + 1;
+    number += 1;
+  }
+  return lines;
 }
 
 export function splitTokens(text: string) {
-  return text
-    .split(/[\s,]+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
+  // Matching non-separators omits empty tokens without a second trim/filter
+  // pass over every cell of a large adjacency matrix.
+  return text.match(/[^\s,]+/g) ?? [];
 }
 
 export function arrangeNodes(model: GraphModel) {
@@ -163,9 +168,11 @@ export function shouldRequireNumericWeights(
 function stripComment(line: string): string {
   const hashIndex = line.indexOf("#");
   const slashIndex = line.indexOf("//");
-  const cutIndex = [hashIndex, slashIndex]
-    .filter((index) => index >= 0)
-    .sort((a, b) => a - b)[0];
-
-  return cutIndex == null ? line : line.slice(0, cutIndex);
+  const cutIndex =
+    hashIndex < 0
+      ? slashIndex
+      : slashIndex < 0
+        ? hashIndex
+        : Math.min(hashIndex, slashIndex);
+  return cutIndex < 0 ? line : line.slice(0, cutIndex);
 }

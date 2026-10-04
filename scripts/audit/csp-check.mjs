@@ -43,7 +43,7 @@ page.on("pageerror", (e) =>
 await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle" });
 await page.waitForTimeout(1500);
 await page.getByRole("button", { name: /cycle/i }).first().click();
-await page.locator('button[class*="cursor-grab"]').first().waitFor();
+await page.locator("button.ge-select-node-hitbox").first().waitFor();
 await page.waitForTimeout(1000);
 console.log(
   "nodes rendered:",

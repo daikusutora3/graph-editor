@@ -120,11 +120,19 @@ and drag/history/persistence at 1,000 nodes and 5,000 edges, run:
 
 ```bash
 BASE_URL=http://127.0.0.1:3123/en bun tests/browser/canvas-performance-regressions.ts
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/png-preview-regressions.ts
 ```
 
 Start `bun run serve:out` after building, and restart it after each rebuild so
 its CSP header hashes match the latest HTML. The browser script uses isolated
 storage and seeds only its test fixtures.
+The PNG check verifies that fixed-size full previews survive zooming, panning and
+reopening, that saved bytes match the preview, and that dependent scopes refresh
+after fractional zoom, pan and viewport resize on desktop and mobile.
+It also compares downloaded bytes after display-density changes. Headless CDP
+changes the density without its standard resolution event, so the test supplies
+that event to the real media-query listener; it does not test a physical display
+handoff.
 
 The next performance pass also checks topology, history, clipboard numbering,
 and resumable TikZ export:
@@ -152,6 +160,27 @@ uses a test-local clipboard stub. The temporary React harnesses instrument parse
 calls and task scheduling without modifying the application build.
 
 ## Completion evidence
+
+For near-limit matrix input, paste previews, canvas zoom and single-line JSON,
+the stress evaluation also has these checks:
+
+```bash
+bun tests/benchmarks/import-performance.ts --output /tmp/import-stress.json
+BASE_URL=http://127.0.0.1:3123/en bun tests/benchmarks/canvas-viewport-performance.ts --output /tmp/viewport.json
+BASE_URL=http://127.0.0.1:3123/en bun tests/benchmarks/canvas-mode-performance.mjs --output /tmp/modes.json
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/canvas-mode-regressions.ts
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/preview-performance-regressions.ts
+BASE_URL=http://127.0.0.1:3123/en bun tests/browser/export-line-layout-regressions.ts
+```
+
+Run timings sequentially. The viewport benchmark reports frame gaps and browser
+long tasks. Preview verification compares the full original SVG markup and
+exercises input/format replacement, close/reopen and persisted Apply on desktop
+and mobile. Long-line export checks retain exact source text, selection and
+copy/download while exercising preparation, cancellation and scrolling.
+The mode benchmark measures actual keyboard and toolbar interactions across five
+fresh pages at the graph limits. Its regression check covers retained hitboxes,
+hidden focus exclusion, live geometry, draft highlights and drag/bend cancellation.
 
 For implementation work, finish the requested behavior and the checks that
 exercise it, fixing failures introduced by the change. For UI changes, include
