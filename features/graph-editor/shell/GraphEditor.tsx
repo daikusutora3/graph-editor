@@ -18,6 +18,7 @@ import {
   useGraphEditorShortcuts,
   useGraphExternalStorageSync,
 } from "../workflows/editing/graph-editor-hooks";
+import { useVisualViewport } from "../ui/hooks/use-visual-viewport";
 import { useEditorLayoutObserver } from "../ui/chrome/editor-chrome-state";
 import { EditorChrome } from "../ui/chrome/EditorChrome";
 import { I18nProvider, useI18n } from "../i18n/I18nProvider";
@@ -38,6 +39,8 @@ function GraphEditorContent() {
   const { locale, messages } = useI18n();
   const graphStorageReady = useAtomValue(graphStorageReadyAtom);
   const layout = useAtomValue(editorLayoutAtom);
+  const viewportRef = useRef<HTMLElement | null>(null);
+  useVisualViewport(viewportRef);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEditorLayoutObserver(rootRef);
@@ -45,7 +48,10 @@ function GraphEditorContent() {
   useGraphExternalStorageSync();
 
   return (
-    <main className="flex h-dvh min-h-0 flex-col bg-[var(--bg)] text-[var(--text)]">
+    <main
+      ref={viewportRef}
+      className="fixed inset-x-0 top-[var(--ge-viewport-top,0px)] flex h-[var(--ge-viewport-height,100dvh)] min-h-0 flex-col bg-[var(--bg)] text-[var(--text)]"
+    >
       <a
         href={appGuidePaths[locale]}
         className="absolute -top-20 left-3 z-[100] inline-flex min-h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow)] focus:top-3 focus:outline-2 focus:outline-offset-2"

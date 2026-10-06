@@ -36,6 +36,34 @@ tools and do not route them through Issue actions.
 This policy remains in force until the user explicitly requests that this file
 be changed.
 
+## Local UI verification exception
+
+Agents may test this application's local preview in the installed Safari using
+Apple's `safaridriver` through `tests/browser/safari-workflow.py`.
+The approved preview origin for this task is `http://127.0.0.1:3323`;
+only `/`, `/en`, and `/zh-hans` may be navigated to by this test.
+Agents may enter graph test data, operate editor controls, capture screenshots,
+and save generated test exports in the test output directory. Use an isolated
+WebDriver session, preserve the user's normal browsing data, and close the test
+session afterward.
+
+The user additionally authorized enabling Safari remote automation on
+2026-10-06. Native Safari interaction may be used solely to open Safari
+Settings and enable that setting; approved literal calls must be added to the
+hook individually. This does not authorize general browsing or changes to
+other settings. Do not request or enter the user's administrator password.
+
+All GitHub Issue restrictions above remain in force. Unrelated applications,
+accounts, websites, settings changes, and messages are outside this exception.
+Keep the hook enabled. General computer-use calls remain restricted; this
+exception does not authorize an unrestricted Safari app binding. The runner
+must reject navigation to GitHub Issues and every other origin or path, and
+its policy checks must be tested before the Safari session is opened.
+
+Browser verification for this task covers desktop Safari and viewport
+simulations. First-use observation requires a real participant; an agent's
+walkthrough must be described as an expert review.
+
 ## Enforcement
 
 The project-local Codex `PreToolUse` hook in `.codex/config.toml` rejects known

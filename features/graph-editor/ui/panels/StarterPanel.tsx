@@ -101,10 +101,10 @@ export function StarterPasteBody({
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <p className="m-0 min-w-[220px] flex-1 text-xs leading-relaxed font-semibold text-[var(--muted)]">
+        <p className="m-0 min-w-0 flex-1 basis-[220px] text-xs leading-relaxed font-semibold text-[var(--muted)]">
           {messages.chrome.starterHelp}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           <Select
             aria-label={messages.starter.formatLabel}
             value={importFormat}
@@ -134,7 +134,7 @@ export function StarterPasteBody({
           </span>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_176px]">
+      <div className="ge-paste-grid grid min-h-[352px] flex-1 grid-cols-1 gap-3 sm:min-h-[220px] sm:grid-cols-[minmax(0,1fr)_176px]">
         <textarea
           ref={textareaRef}
           name="graph-input"
@@ -156,7 +156,7 @@ export function StarterPasteBody({
         />
         <div
           aria-label={messages.starter.preview}
-          className="grid min-h-[120px] place-items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:16px_16px] sm:min-h-0"
+          className="ge-paste-preview grid min-h-[120px] place-items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:16px_16px] sm:min-h-0"
         >
           {canApply && previewModel ? (
             <SampleGraphPreview
@@ -232,13 +232,19 @@ export function StarterPasteFooter({
   };
 
   return (
-    <div className="flex w-full items-center gap-2">
-      <Button size="lg" variant="secondary" onClick={onUseSample}>
+    <div className="grid w-full min-w-0 grid-cols-2 items-center gap-2 @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap">
+      <Button
+        size="lg"
+        variant="secondary"
+        className="touch:min-h-11 h-auto min-h-10 min-w-0 py-2 whitespace-normal"
+        onClick={onUseSample}
+      >
         {messages.chrome.starterUseSample}
       </Button>
       <Button
         size="lg"
         variant="secondary"
+        className="touch:min-h-11 h-auto min-h-10 min-w-0 py-2 whitespace-normal [&>svg]:shrink-0"
         onClick={() => fileInputRef.current?.click()}
       >
         <FolderOpen className="size-icon-sm" aria-hidden="true" />
@@ -256,12 +262,11 @@ export function StarterPasteFooter({
           event.currentTarget.value = "";
         }}
       />
-      <span className="flex-1" />
       <Button
         disabled={!canApply}
         size="lg"
         variant={canApply ? "primary" : "disabled"}
-        className="px-4"
+        className="touch:min-h-11 col-span-2 h-auto min-h-10 max-w-full min-w-0 px-4 py-2 whitespace-normal @min-[640px]/editor:ml-auto [&>svg]:shrink-0"
         onClick={() => starter.applyText()}
       >
         <FileInput className="size-icon-sm" aria-hidden="true" />

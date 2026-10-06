@@ -1,7 +1,13 @@
 "use client";
 import { integrityCopy } from "../../i18n/integrity-copy";
 
-import { ClipboardCopy, Download } from "lucide-react";
+import {
+  Camera,
+  ClipboardCopy,
+  Download,
+  FileJson,
+  FileText,
+} from "lucide-react";
 import { memo, useMemo } from "react";
 
 import {
@@ -20,6 +26,7 @@ export function ExportPanelBody({
   mobile,
   pending = false,
   onExportFormatChange,
+  onOpenImage,
 }: {
   exportFormat: GraphExportFormat;
   exportText: string;
@@ -27,6 +34,7 @@ export function ExportPanelBody({
   mobile: boolean;
   pending?: boolean;
   onExportFormatChange: (format: GraphExportFormat) => void;
+  onOpenImage: () => void;
 }) {
   const { messages, locale } = useI18n();
   const lineLayout = useExportLineLayout(exportText);
@@ -41,6 +49,48 @@ export function ExportPanelBody({
 
   return (
     <>
+      <div
+        role="group"
+        aria-label={messages.exportPanel.purpose}
+        className="grid grid-cols-3 gap-1.5"
+      >
+        {[
+          {
+            label: messages.exportPanel.purposes.save,
+            detail: "JSON",
+            icon: FileJson,
+            active: exportFormat === "json",
+            onClick: () => onExportFormatChange("json"),
+          },
+          {
+            label: messages.exportPanel.purposes.data,
+            detail: "TXT / TeX",
+            icon: FileText,
+            active: exportFormat !== "json",
+            onClick: () => onExportFormatChange("edge-list"),
+          },
+          {
+            label: messages.exportPanel.purposes.image,
+            detail: "PNG",
+            icon: Camera,
+            active: false,
+            onClick: onOpenImage,
+          },
+        ].map(({ label, detail, icon: Icon, active, onClick }) => (
+          <Button
+            key={label}
+            aria-label={label}
+            aria-pressed={detail === "PNG" ? undefined : active}
+            active={active}
+            className="h-auto min-h-20 min-w-0 flex-col gap-1 px-1 py-2 text-center whitespace-normal"
+            onClick={onClick}
+          >
+            <Icon className="size-4 shrink-0" aria-hidden="true" />
+            <span className="text-xs leading-snug">{label}</span>
+            <span className="text-[10px] font-normal">{detail}</span>
+          </Button>
+        ))}
+      </div>
       <label className="grid shrink-0 gap-1.5 text-xs text-[var(--muted)]">
         {messages.exportPanel.formatAria}
         <Select
@@ -174,14 +224,15 @@ export function ExportPanelFooter({
   const { messages } = useI18n();
 
   return (
-    <div className="flex w-full justify-end gap-2">
+    <div className="grid w-full grid-cols-2 gap-2">
       <Button
+        className="h-auto min-h-11 min-w-0 px-2 py-2 whitespace-normal"
         disabled={disabled}
         size="lg"
         variant={disabled ? "disabled" : "secondary"}
         onClick={onSaveTxt}
       >
-        <Download className="size-icon-sm" aria-hidden="true" />
+        <Download className="size-icon-sm shrink-0" aria-hidden="true" />
         {messages.chrome.saveAs(extension)}
       </Button>
       <Button
@@ -196,10 +247,10 @@ export function ExportPanelFooter({
                 ? "warning"
                 : "primary"
         }
-        className="px-4"
+        className="h-auto min-h-11 min-w-0 px-2 py-2 whitespace-normal"
         onClick={onCopy}
       >
-        <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
+        <ClipboardCopy className="size-icon-sm shrink-0" aria-hidden="true" />
         {copyState === "copied"
           ? messages.chrome.copied
           : copyState === "blocked"

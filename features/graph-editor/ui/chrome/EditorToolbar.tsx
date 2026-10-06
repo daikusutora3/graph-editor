@@ -136,7 +136,7 @@ function BrandPill({
       {wide || mobile ? (
         <span
           translate="no"
-          className="text-sm font-bold whitespace-nowrap @max-[399px]/editor:hidden"
+          className="text-sm font-bold whitespace-nowrap @max-[599px]/editor:hidden"
         >
           {messages.app.title}
         </span>
@@ -315,36 +315,43 @@ function MobileTopRail({
       className={cn(floating, TOP_BAR_HEIGHT, "gap-0.5 px-1")}
     >
       <ThemeButton theme={theme} iconSize={17} onClick={onToggleTheme} />
-      <IconButton
-        active={panel === "starter"}
-        aria-expanded={panel === "starter"}
-        data-graph-shortcut-target="true"
-        label={messages.chrome.openStarter}
-        tooltipSide="bottom-end"
-        onClick={onOpenStarter}
-      >
-        <FileInput className="size-icon-md" aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        active={panel === "export"}
-        aria-expanded={panel === "export"}
-        data-graph-shortcut-target="true"
-        label={messages.chrome.export}
-        tooltipSide="bottom-end"
-        onClick={() => onTogglePanel("export")}
-      >
-        <Download className="size-icon-md" aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        active={panel === "png"}
-        aria-expanded={panel === "png"}
-        data-graph-shortcut-target="true"
-        label={messages.chrome.png}
-        tooltipSide="bottom-end"
-        onClick={() => onTogglePanel("png")}
-      >
-        <Camera className="size-icon-md" aria-hidden="true" />
-      </IconButton>
+      {[
+        {
+          panel: "starter",
+          icon: FileInput,
+          label: messages.chrome.openStarter,
+          text: messages.chrome.load,
+          onClick: onOpenStarter,
+        },
+        {
+          panel: "export",
+          icon: Download,
+          label: messages.chrome.export,
+          text: messages.chrome.export,
+          onClick: () => onTogglePanel("export"),
+        },
+        {
+          panel: "png",
+          icon: Camera,
+          label: messages.chrome.png,
+          text: messages.chrome.pngShort,
+          onClick: () => onTogglePanel("png"),
+        },
+      ].map(({ panel: target, icon: Icon, label, text, onClick }) => (
+        <Button
+          key={target}
+          active={panel === target}
+          aria-expanded={panel === target}
+          aria-label={label}
+          data-graph-shortcut-target="true"
+          className="h-11 min-w-11 flex-col gap-1"
+          style={{ paddingInline: 6 }}
+          onClick={onClick}
+        >
+          <Icon className="size-4" aria-hidden="true" />
+          <span className="text-[10px] leading-none">{text}</span>
+        </Button>
+      ))}
     </div>
   );
 }
@@ -368,7 +375,7 @@ export function MobileBottomBar({
       data-editor-chrome-control="true"
       className={cn(
         floating,
-        "absolute right-3 bottom-4 left-3 z-[70] h-16 gap-0.5 rounded-2xl px-1.5 backdrop-blur-[24px]",
+        "absolute right-3 bottom-4 left-3 z-[70] h-16 gap-0.5 rounded-2xl px-1.5 backdrop-blur-[24px] @max-[359px]/editor:gap-0",
       )}
     >
       {editorModes.map(({ mode: itemMode, icon: Icon }) => (
@@ -509,7 +516,7 @@ function MobileBarButton({
       disabled={disabled}
       className={cn(
         "h-[52px] flex-col gap-[3px] rounded-lg px-0",
-        wide ? "min-w-0 flex-1" : "w-11",
+        wide ? "min-w-11 flex-1" : "w-11",
       )}
       onClick={onClick}
     >
@@ -533,7 +540,7 @@ function Divider({ tall = false }: { tall?: boolean }) {
       aria-hidden="true"
       className={cn(
         "shrink-0 bg-[var(--line)]",
-        tall ? "mx-1 h-7 w-px" : "mx-1.5 h-6 w-px",
+        tall ? "mx-0.5 h-7 w-px" : "mx-1.5 h-6 w-px",
       )}
     />
   );

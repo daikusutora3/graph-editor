@@ -268,6 +268,24 @@
   animation: ge-sheet 200ms ease-out both;
 }
 
+/* Modal content needs the available height in landscape and short windows.
+ * Its header/footer stay visible while the body or gallery scrolls. */
+@media (max-height: 500px) {
+  .ge-modal-panel {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .ge-modal-panel[data-editor-panel="starter"] {
+    height: calc(100dvh - 24px);
+  }
+
+  /* The toolbar's aria-label retains the selection description. Give the
+   * graph room above the touch controls in a short mobile viewport. */
+  [data-layout="mobile"] .ge-selection-summary {
+    display: none;
+  }
+}
+
 .ge-sheet[data-panel-state="closing"] {
   pointer-events: none;
   animation: ge-sheet-out 200ms ease-out both;
@@ -728,5 +746,28 @@
   .ge-fade-in,
   .ge-skeleton {
     animation: none;
+  }
+}
+
+/* Keep mobile input readable and leave room for editing above the keyboard. */
+@media (max-width: 767px) {
+  [data-editor-panel] input,
+  [data-editor-panel] textarea,
+  [data-editor-panel] select {
+    font-size: 16px;
+  }
+
+  [data-keyboard-open="true"] .ge-paste-grid {
+    min-height: 120px;
+    flex: none;
+  }
+
+  [data-keyboard-open="true"] .ge-paste-grid textarea {
+    height: 120px;
+    min-height: 120px;
+  }
+
+  [data-keyboard-open="true"] .ge-paste-preview {
+    display: none;
   }
 }
