@@ -110,6 +110,14 @@ export function EditorPanelShell({
         ? document.activeElement
         : null;
     const focusTimeout = window.setTimeout(() => {
+      // A user may start typing before this delayed initial focus runs.
+      // Preserve any control they have already focused inside the panel.
+      if (
+        document.activeElement !== section &&
+        section?.contains(document.activeElement)
+      ) {
+        return;
+      }
       const first = firstFocusable(section);
       (first ?? section)?.focus({ preventScroll: true });
     }, 30);
@@ -229,19 +237,19 @@ export function EditorPanelShell({
             "flex min-h-0 flex-col overflow-hidden",
             scrollOwner === "child" &&
               !fullscreen &&
-              "h-[min(760px,calc(100dvh-80px))]",
+              "h-[min(760px,calc(var(--ge-viewport-height,100dvh)-80px))]",
             mobile
               ? cn(
                   "ge-sheet bg-[var(--panel-solid)] shadow-[0_-12px_40px_-20px_rgb(17_24_39/0.3)]",
                   fullscreen
                     ? "h-full max-h-full rounded-none"
-                    : "max-h-[84dvh] rounded-t-[20px]",
+                    : "max-h-[calc(var(--ge-viewport-height,100dvh)*0.84)] rounded-t-[20px]",
                 )
               : cn(
                   "ge-popover ge-panel rounded-xl shadow-[var(--shadow-lg)] backdrop-blur-[16px]",
                   modal
-                    ? "max-h-[calc(100dvh-80px)]"
-                    : "max-h-[calc(100dvh-100px)]",
+                    ? "ge-modal-panel max-h-[calc(var(--ge-viewport-height,100dvh)-80px)]"
+                    : "max-h-[calc(var(--ge-viewport-height,100dvh)-100px)]",
                 ),
           )}
           tabIndex={-1}
@@ -293,7 +301,6 @@ export function EditorPanelShell({
                 ? "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 pb-4 [&>*]:shrink-0"
                 : "flex min-h-0 flex-1 flex-col overflow-hidden",
               bodyClassName,
-              (scrollOwner = "body"),
             )}
           >
             {children}

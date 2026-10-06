@@ -118,6 +118,8 @@ type Messages = {
   exportPanel: {
     title: string;
     formatAria: string;
+    purpose: string;
+    purposes: { save: string; data: string; image: string };
     emptyPlaceholder: string;
     preparing: string;
     exportedAria: (label: string) => string;
@@ -687,6 +689,12 @@ const ja: Messages = {
   },
   exportPanel: {
     title: "書き出し",
+    purpose: "用途を選ぶ",
+    purposes: {
+      save: "再編集用に保存",
+      data: "データを使う",
+      image: "画像にする",
+    },
     formatAria: "書き出し形式",
     emptyPlaceholder: "グラフを入力すると、ここに出力が表示されます",
     preparing: "書き出しを準備中",
@@ -942,8 +950,7 @@ const ja: Messages = {
     edgeHintStart: "始点の頂点をクリック",
     edgeHintTarget: (label: string) =>
       `頂点 ${label} → 終点をクリック（Esc で解除）`,
-    selectHint:
-      "頂点ドラッグで移動 · 空白ドラッグで画面移動 · Shift+ドラッグで範囲選択",
+    selectHint: "頂点を選ぶと色やラベルを編集できます · ドラッグで移動",
     clearedToast: (shortcut: string) =>
       `グラフをクリアしました（${shortcut} で戻す）`,
     selection: {
@@ -1193,6 +1200,12 @@ const en: Messages = {
   },
   exportPanel: {
     title: "Export",
+    purpose: "Choose what to export",
+    purposes: {
+      save: "Save for editing",
+      data: "Use graph data",
+      image: "Create an image",
+    },
     formatAria: "Export format",
     emptyPlaceholder: "Graph output appears here after you create a graph.",
     preparing: "Preparing export",
@@ -1448,8 +1461,7 @@ const en: Messages = {
     edgeHintStart: "Click the source node",
     edgeHintTarget: (label: string) =>
       `Node ${label} → click the target (Esc to cancel)`,
-    selectHint:
-      "Drag nodes to move · Drag empty space to pan · Shift+drag to box select",
+    selectHint: "Select a node to edit its color or label · Drag to move",
     clearedToast: (shortcut: string) => `Graph cleared (${shortcut} to undo)`,
     selection: {
       node: (label: string) => `Node ${label}`,
@@ -1698,6 +1710,8 @@ const zhHans: Messages = {
   },
   exportPanel: {
     title: "导出",
+    purpose: "选择导出用途",
+    purposes: { save: "保存以便再编辑", data: "使用图数据", image: "生成图像" },
     formatAria: "导出格式",
     emptyPlaceholder: "创建图后，输出会显示在这里。",
     preparing: "正在准备导出",
@@ -1937,7 +1951,7 @@ const zhHans: Messages = {
     nodeHintConnect: "切换到边模式（E）连接顶点",
     edgeHintStart: "点击起点顶点",
     edgeHintTarget: (label: string) => `顶点 ${label} → 点击终点（Esc 取消）`,
-    selectHint: "拖动顶点可移动 · 拖动空白处可平移画布 · Shift+拖动框选",
+    selectHint: "选择顶点可编辑颜色或标签 · 拖动可移动",
     clearedToast: (shortcut: string) => `已清空图（${shortcut} 撤销）`,
     selection: {
       node: (label: string) => `顶点 ${label}`,

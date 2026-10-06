@@ -66,8 +66,7 @@ export function CanvasHint({
   });
   const showSelect = useStuckHint({
     id: "select",
-    active:
-      visible && !mobile && mode === "select" && hasNodes && !hasSelection,
+    active: visible && mode === "select" && hasNodes && !hasSelection,
     done: hasSelection,
   });
 
@@ -222,11 +221,13 @@ function HintPill({
         className={cn(
           "ge-pop inline-flex max-w-full items-center gap-2 rounded-full px-3 text-xs font-semibold shadow-[var(--shadow)]",
           tone === "hint"
-            ? "h-[30px] bg-[var(--primary)] text-[var(--primary-text)]"
+            ? "min-h-[30px] bg-[var(--primary)] py-1.5 text-center leading-relaxed text-[var(--primary-text)]"
             : "ge-panel h-9 text-[var(--text)] backdrop-blur-[12px]",
         )}
       >
-        <span className="truncate">{text}</span>
+        <span className={tone === "hint" ? "whitespace-normal" : "truncate"}>
+          {text}
+        </span>
       </span>
     </div>
   );

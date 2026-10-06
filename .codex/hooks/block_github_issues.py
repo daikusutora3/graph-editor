@@ -96,6 +96,9 @@ def _command_from(tool_input: Any) -> str:
     return str(command or "")
 
 
+LOCAL_SAFARI_RUN = re.compile(r"\s*(?:/usr/bin/)?python3\s+tests/browser/safari-workflow\.py\s*")
+
+
 def should_block(tool_name: str, tool_input: Any) -> bool:
     """Return True for Issue access outside permitted read-only browsing."""
 
@@ -128,8 +131,13 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
     if "github" in name and "issue" in name:
         return True
 
-    if name == "bash":
+    if name in ("bash", "exec_command", "functions__exec_command"):
         command = _command_from(tool_input)
+        # The reviewed Safari runner enforces the local origin and paths itself.
+        # Do not allow command prefixes, arguments or chained shell actions to
+        # turn this exception into arbitrary browser automation.
+        if re.search(r"(?:^|\s)(?:/usr/bin/)?python3\s+tests/browser/safari-workflow\.py", command):
+            return not bool(LOCAL_SAFARI_RUN.fullmatch(command))
         if GH_ISSUE_COMMAND.search(command) or GITHUB_ISSUE_URL.search(command):
             return True
         if GH_API_COMMAND.search(command) and ISSUE_API_SIGNAL.search(command):
@@ -179,6 +187,12 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "await sitemapTab.click(1);"}),
         ("mcp__cua_repl__js", {"code": "await cua.createBrowserTab('iab', 'https://github.com/daikusutora3/graph-editor/issues', { visible: true }); await issueTab.click(1);"}),
     ]
+    blocked.extend([
+        ("Bash", {"command": "BASE_URL=https://github.com/owner/repo/issues python3 tests/browser/safari-workflow.py"}),
+        ("exec_command", {"cmd": "python3 tests/browser/safari-workflow.py; open https://example.com"}),
+        ("mcp__cua_repl__js", {"code": "let safari = await cua.getApp('Safari');"}),
+        ("mcp__cua_repl__js", {"code": "await safariSettings.click(1);"}),
+    ])
     allowed = [
         ("Bash", {"command": "rg issue AGENTS.md"}),
         ("Bash", {"command": "gh pr view 12"}),
@@ -196,6 +210,13 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "let sitemapTab = await cua.createBrowserTab('2', 'https://search.google.com/search-console/sitemaps?resource_id=https%3A%2F%2Fgraph-editor.daikusutora3.workers.dev%2F');"}),
         ("mcp__cua_repl__js", {"code": "await sitemapTab.getAXState();"}),
     ]
+
+    allowed.extend([
+        ("Bash", {"command": "/usr/bin/python3 tests/browser/safari-workflow.py"}),
+        ("exec_command", {"cmd": "python3 tests/browser/safari-workflow.py"}),
+    ])
+
+    blocked.append(("mcp__cua_repl__js", {"code": "let safariSettings = await cua.getApp(\"Safari\");"}))
 
     for tool_name, tool_input in blocked:
         assert should_block(tool_name, tool_input), (tool_name, tool_input)

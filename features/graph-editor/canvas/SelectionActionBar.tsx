@@ -107,7 +107,7 @@ export function SelectionActionBar({
         aria-label={description}
         className="ge-panel ge-pop touch:rounded-2xl touch:py-1.5 pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pr-1.5 pl-3 backdrop-blur-[12px]"
       >
-        <span className="pr-2.5 text-xs font-semibold whitespace-nowrap text-[var(--muted)]">
+        <span className="ge-selection-summary pr-2.5 text-xs font-semibold whitespace-nowrap text-[var(--muted)]">
           {description}
         </span>
         <span
@@ -119,8 +119,10 @@ export function SelectionActionBar({
           }
           onKeyDown={rovingFocusKeyDown}
           className={cn(
-            "flex items-center border-x border-[var(--line)] px-2.5 py-1",
-            chrome.layout === "mobile" ? "gap-0 px-1" : "gap-0 px-1.5",
+            "flex max-w-full items-center border-[var(--line)]",
+            chrome.layout === "mobile"
+              ? "flex-wrap justify-center gap-y-1 border-x py-1"
+              : "gap-0 border-x px-1.5 py-1",
           )}
         >
           {(swatchKind === "node"

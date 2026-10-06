@@ -164,7 +164,13 @@ export function SampleGalleryPane({
             </option>
           ))}
         </Select>
-        <details className="text-xs text-[var(--muted)]">
+      </div>
+      <div
+        data-sample-scroll
+        tabIndex={0}
+        className="ge-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pb-4"
+      >
+        <details className="shrink-0 text-xs text-[var(--muted)]">
           <summary
             className={`touch:min-h-11 flex min-h-8 cursor-pointer items-center rounded-md font-semibold ${focusRing}`}
           >
@@ -223,12 +229,6 @@ export function SampleGalleryPane({
           </div>
           <p>{messages.samples.requiredSettings}</p>
         </details>
-      </div>
-      <div
-        data-sample-scroll
-        tabIndex={0}
-        className="ge-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pb-4"
-      >
         {filteredSampleGroups.length > 0 ? (
           filteredSampleGroups.map((group) => (
             <section key={group.key} className="flex shrink-0 flex-col gap-2.5">

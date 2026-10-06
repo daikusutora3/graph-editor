@@ -139,43 +139,53 @@ export function EmptyState({
           </details>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-3">
-          <EmptyCard
-            body={cards.paste.body}
-            icon={
-              <FileInput
-                className="size-6"
-                strokeWidth={1.75}
-                aria-hidden="true"
-              />
-            }
-            title={cards.paste.title}
-            onClick={onOpenPaste}
-          />
-          <EmptyCard
-            body={cards.sample.body}
-            icon={
-              <Shapes
-                className="size-6"
-                strokeWidth={1.75}
-                aria-hidden="true"
-              />
-            }
-            title={cards.sample.title}
-            onClick={onOpenSamples}
-          />
-          <EmptyCard
-            body={cards.draw.body}
-            icon={
-              <PenTool
-                className="size-6"
-                strokeWidth={1.75}
-                aria-hidden="true"
-              />
-            }
-            title={cards.draw.title}
-            onClick={onDraw}
-          />
+        <div className="grid w-full gap-3">
+          <div className="text-center">
+            <p className="text-base font-semibold text-[var(--text)]">
+              {messages.chrome.emptyHeading}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+              {messages.chrome.emptyTagline}
+            </p>
+          </div>
+          <div className="grid w-full gap-2 sm:grid-cols-3">
+            <EmptyCard
+              body={cards.paste.body}
+              icon={
+                <FileInput
+                  className="size-6"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              }
+              title={cards.paste.title}
+              onClick={onOpenPaste}
+            />
+            <EmptyCard
+              body={cards.sample.body}
+              icon={
+                <Shapes
+                  className="size-6"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              }
+              title={cards.sample.title}
+              onClick={onOpenSamples}
+            />
+            <EmptyCard
+              body={cards.draw.body}
+              icon={
+                <PenTool
+                  className="size-6"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              }
+              title={cards.draw.title}
+              onClick={onDraw}
+            />
+          </div>
         </div>
 
         <div

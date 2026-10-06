@@ -417,6 +417,7 @@ export function EditorChrome() {
             }
           >
             <ExportPanelBody
+              onOpenImage={() => open("png")}
               pending={exportResult.pending}
               exportFormat={exportFormat}
               exportText={exportText}
