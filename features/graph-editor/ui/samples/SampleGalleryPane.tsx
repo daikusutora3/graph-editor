@@ -455,7 +455,13 @@ const SampleCard = memo(function SampleCard({
       </div>
       <div className="flex flex-1 flex-col gap-2 border-t border-[var(--hair)] px-3 py-2.5">
         {parameters.length > 0 ? (
-          <div className="flex flex-wrap items-end gap-2">
+          <div
+            className={
+              sample.kind === "knight"
+                ? "grid grid-cols-2 items-end gap-2"
+                : "flex flex-wrap items-end gap-2"
+            }
+          >
             {parameters.map((parameter) => (
               <CardNumberInput
                 key={parameter.key}
