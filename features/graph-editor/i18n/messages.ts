@@ -167,6 +167,14 @@ type Messages = {
     downloading: string;
   };
   canvas: {
+    rangeSelection: {
+      label: string;
+      target: string;
+      all: string;
+      nodes: string;
+      edges: string;
+      hint: (modifier: string) => string;
+    };
     fitGraph: string;
     fitGraphTitle: string;
     zoomOut: string;
@@ -757,6 +765,14 @@ const ja: Messages = {
     downloading: "ダウンロード中",
   },
   canvas: {
+    rangeSelection: {
+      label: "範囲選択",
+      target: "範囲選択の対象",
+      all: "すべて",
+      nodes: "頂点だけ",
+      edges: "辺だけ",
+      hint: (modifier: string) => `${modifier} / Shift + ドラッグ`,
+    },
     fitGraph: "画面外にあるグラフを表示領域に戻す",
     fitGraphTitle: "グラフを表示領域に戻す",
     zoomOut: "表示を縮小",
@@ -973,7 +989,7 @@ const ja: Messages = {
       undo: "戻す",
       redo: "進む",
       selectAll: "すべて選択",
-      rangeAll: "範囲選択: 全て",
+      rangeAll: "範囲選択: 選択中の対象",
       rangeNodes: "範囲選択: 頂点のみ",
       rangeEdges: "範囲選択: 辺のみ",
       copy: "コピー",
@@ -1268,6 +1284,14 @@ const en: Messages = {
     downloading: "Downloading",
   },
   canvas: {
+    rangeSelection: {
+      label: "Box select",
+      target: "Box selection target",
+      all: "All",
+      nodes: "Nodes only",
+      edges: "Edges only",
+      hint: (modifier: string) => `${modifier} / Shift + drag`,
+    },
     fitGraph: "Bring off-screen graph back into view",
     fitGraphTitle: "Fit graph to view",
     zoomOut: "Zoom out",
@@ -1483,7 +1507,7 @@ const en: Messages = {
       undo: "Undo",
       redo: "Redo",
       selectAll: "Select all",
-      rangeAll: "Box select all",
+      rangeAll: "Box select current target",
       rangeNodes: "Box select nodes",
       rangeEdges: "Box select edges",
       copy: "Copy",
@@ -1774,6 +1798,14 @@ const zhHans: Messages = {
   },
   canvas: {
     ...en.canvas,
+    rangeSelection: {
+      label: "框选",
+      target: "框选对象",
+      all: "全部",
+      nodes: "仅顶点",
+      edges: "仅边",
+      hint: (modifier: string) => `${modifier} / Shift + 拖动`,
+    },
     fitGraph: "将画布外的图移回视图",
     fitGraphTitle: "适应视图",
     zoomOut: "缩小",
@@ -1973,7 +2005,7 @@ const zhHans: Messages = {
       undo: "撤销",
       redo: "重做",
       selectAll: "全选",
-      rangeAll: "框选全部",
+      rangeAll: "框选当前对象",
       rangeNodes: "仅框选顶点",
       rangeEdges: "仅框选边",
       copy: "复制",

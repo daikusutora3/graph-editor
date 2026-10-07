@@ -1,4 +1,5 @@
 export type EditorMode = "select" | "node" | "edge";
+export type RangeSelectionFilter = "all" | "nodes" | "edges";
 
 export type {
   EdgeDraft,

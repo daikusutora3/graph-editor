@@ -24,6 +24,8 @@ import { BrandLogo } from "../brand/BrandLogo";
 import { Button, IconButton, Kbd, focusRing } from "../primitives";
 import type { ThemeMode } from "../theme/theme";
 import { editorModes } from "./editor-chrome-state";
+import { RangeSelectionMenu } from "./RangeSelectionMenu";
+import { useShortcutPlatform } from "../hooks/shortcut-platform";
 
 type ToolbarSharedProps = {
   canRedo: boolean;
@@ -166,6 +168,7 @@ function DesktopToolbar({
   onUndo,
 }: ToolbarSharedProps & { wide: boolean }) {
   const { messages } = useI18n();
+  const showRangeMenu = useShortcutPlatform() !== "touch";
   const modeButtonClass = cn(
     "h-10 text-control",
     wide ? "gap-2 pr-2.5 pl-3" : "gap-1.5 px-2.5",
@@ -183,22 +186,29 @@ function DesktopToolbar({
       )}
     >
       {editorModes.map(({ mode: itemMode, keyHint, icon: Icon }) => (
-        <Button
-          key={itemMode}
-          active={mode === itemMode}
-          aria-label={messages.toolbar.modes[itemMode].label}
-          aria-pressed={mode === itemMode}
-          data-graph-shortcut-target="true"
-          tooltip={`${messages.toolbar.modes[itemMode].tooltip} (${keyHint})`}
-          className={modeButtonClass}
-          onClick={() => onModeChange(itemMode)}
-        >
-          <Icon className="size-4" aria-hidden="true" />
-          <span className={wide ? undefined : "@max-[959px]/editor:hidden"}>
-            {messages.toolbar.modes[itemMode].label}
-          </span>
-          {wide ? <Kbd>{keyHint}</Kbd> : null}
-        </Button>
+        <div key={itemMode} className="flex items-center">
+          <Button
+            active={mode === itemMode}
+            aria-label={messages.toolbar.modes[itemMode].label}
+            aria-pressed={mode === itemMode}
+            data-graph-shortcut-target="true"
+            tooltip={`${messages.toolbar.modes[itemMode].tooltip} (${keyHint})`}
+            className={cn(
+              modeButtonClass,
+              itemMode === "select" && showRangeMenu && "rounded-r-none pr-1",
+            )}
+            onClick={() => onModeChange(itemMode)}
+          >
+            <Icon className="size-4" aria-hidden="true" />
+            <span className={wide ? undefined : "@max-[959px]/editor:hidden"}>
+              {messages.toolbar.modes[itemMode].label}
+            </span>
+            {wide ? <Kbd>{keyHint}</Kbd> : null}
+          </Button>
+          {itemMode === "select" ? (
+            <RangeSelectionMenu onOpen={() => onModeChange("select")} />
+          ) : null}
+        </div>
       ))}
       <Divider />
       <IconButton
@@ -379,19 +389,23 @@ export function MobileBottomBar({
       )}
     >
       {editorModes.map(({ mode: itemMode, icon: Icon }) => (
-        <MobileBarButton
-          key={itemMode}
-          active={mode === itemMode}
-          label={messages.toolbar.modes[itemMode].label}
-          pressed={mode === itemMode}
-          wide
-          onClick={() => onModeChange(itemMode)}
-        >
-          <Icon className="size-icon-lg" aria-hidden="true" />
-          <span className="text-meta leading-none">
-            {messages.toolbar.modes[itemMode].label}
-          </span>
-        </MobileBarButton>
+        <div key={itemMode} className="flex min-w-0 flex-1 items-center">
+          <MobileBarButton
+            active={mode === itemMode}
+            label={messages.toolbar.modes[itemMode].label}
+            pressed={mode === itemMode}
+            wide
+            onClick={() => onModeChange(itemMode)}
+          >
+            <Icon className="size-icon-lg" aria-hidden="true" />
+            <span className="text-meta leading-none">
+              {messages.toolbar.modes[itemMode].label}
+            </span>
+          </MobileBarButton>
+          {itemMode === "select" ? (
+            <RangeSelectionMenu above onOpen={() => onModeChange("select")} />
+          ) : null}
+        </div>
       ))}
       <Divider tall />
       <MobileBarButton

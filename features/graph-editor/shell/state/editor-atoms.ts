@@ -7,12 +7,14 @@ import {
   createEmptySelection,
   type EdgeDraft,
   type EditorMode,
+  type RangeSelectionFilter,
   type SelectionState,
 } from "./editor-state";
 
 export const selectionAtom = atom<SelectionState>(createEmptySelection());
 
 export const editorModeAtom = atom<EditorMode>("select");
+export const rangeSelectionFilterAtom = atom<RangeSelectionFilter>("all");
 
 export const edgeDraftAtom = atom<EdgeDraft>(createEmptyEdgeDraft());
 

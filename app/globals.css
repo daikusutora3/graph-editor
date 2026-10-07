@@ -415,6 +415,11 @@
   }
 }
 
+/* An open selection menu takes precedence over nearby toolbar hints. */
+[role="toolbar"]:has([data-range-selection-controls]) [data-tooltip]::after {
+  display: none;
+}
+
 /* ---------------------------------------------------------------------------
  * Form controls that need pseudo-elements
  * ------------------------------------------------------------------------- */
