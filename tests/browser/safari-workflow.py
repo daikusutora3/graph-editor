@@ -174,6 +174,114 @@ def run(session):
     return results
 
 
+def routing_snapshot(session):
+    """Read the actual canvas routes rather than persisted manual overrides."""
+    return session.js("""
+        const container = [...document.querySelectorAll('div')].find(e => '_cyreg' in e);
+        const cy = container?._cyreg?.cy;
+        const graph = JSON.parse(localStorage.getItem('graph-editor-graph') || 'null');
+        if (!cy || !graph || cy.nodes().length !== 7 || cy.edges().length !== 6) return null;
+        return {
+            settings: graph.settings,
+            nodes: graph.nodes.map(({id, x, y}) => ({id, x, y})),
+            edges: cy.edges().map(e => ({
+                id: e.id(), source: e.data('source'), target: e.data('target'),
+                bow: e.data('bow'), distances: e.data('controlPointDistances'),
+                weights: e.data('controlPointWeights'),
+                controlPoints: e.controlPoints(),
+            })),
+        };
+    """)
+
+
+def settled_routing(session):
+    # Require the saved layout and renderer data to remain unchanged for half a
+    # second, so a provisional frame cannot produce either a pass or a failure.
+    deadline = time.monotonic() + 15
+    previous = None
+    stable_since = None
+    while time.monotonic() < deadline:
+        snapshot = routing_snapshot(session)
+        if snapshot is not None and snapshot == previous:
+            if time.monotonic() - stable_since >= 0.5:
+                return snapshot
+        else:
+            previous = snapshot
+            stable_since = time.monotonic()
+        time.sleep(0.1)
+    raise AssertionError("The seven-node tree canvas routing did not settle")
+
+
+def run_edge_routing_regression(session):
+    """Issue #45: sample -> offset enabled -> line -> tree, using real controls."""
+    results = []
+    failures = []
+    # Check the attached report's weighted, directed graph first. The other
+    # combinations establish whether the regression depends on visible weights
+    # or arrows, without changing any routing metadata from the test.
+    for weighted, directed in ((True, True), (False, False), (True, False), (False, True)):
+        session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
+        session.navigate("/en")
+        session.js("localStorage.clear(); localStorage.setItem('graph-editor-theme','light');")
+        session.command("POST", "/refresh", {})
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+        settings = session.button("Settings")
+        session.js("arguments[0].focus();", {ELEMENT: settings})
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+            {"type": "keyDown", "value": "\ue007"}, {"type": "keyUp", "value": "\ue007"}]}]})
+        session.wait("return !!document.querySelector('[data-editor-panel=settings]')")
+        session.click(session.button("Weighted" if weighted else "Unweighted"))
+        session.click(session.button("Directed" if directed else "Undirected"))
+        session.click(session.button("Settings"))
+        session.click(session.button("Load a graph"))
+        session.click(session.button("Use a sample"))
+        tree_card = session.element('[data-sample-kind="tree"]')
+        session.js("arguments[0].scrollIntoView({block:'center'});", {ELEMENT: tree_card})
+        assert session.js("return arguments[0].querySelector('input').value;", {ELEMENT: tree_card}) == "7", "Tree sample defaults to seven nodes"
+        session.wait("return !!document.querySelector('[data-sample-kind=tree] [data-sample-stats]')")
+        session.click(session.element('[data-sample-kind="tree"] button[type="submit"]'))
+        session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===7&&!document.querySelector('[data-editor-panel=starter]')")
+        session.click(session.button("Layout"))
+        offset = session.button("Offset overlapping edges")
+        if session.command("GET", f"/element/{offset}/attribute/aria-checked") != "true":
+            session.click(offset)
+        variant = f"{'weighted' if weighted else 'unweighted'}-{'directed' if directed else 'undirected'}"
+        snapshots = []
+
+        def record(stage, expect_straight):
+            snapshot = settled_routing(session)
+            assert snapshot["settings"]["weighted"] == weighted and snapshot["settings"]["directed"] == directed
+            assert snapshot["settings"]["autoEdgeRouting"] is True, "Edge offset remains enabled"
+            curved = [edge for edge in snapshot["edges"] if any(abs(distance) > 0.001 for distance in edge["distances"])]
+            snapshot.update({"stage": stage, "curvedEdges": curved})
+            snapshots.append(snapshot)
+            (OUTPUT / f"issue-45-{variant}-{stage}.json").write_text(json.dumps(snapshot, indent=2))
+            session.screenshot(f"issue-45-{variant}-{stage}")
+            if expect_straight and curved:
+                failures.append({"variant": variant, "stage": stage, "curvedEdges": curved})
+            if not expect_straight and not curved:
+                failures.append({"variant": variant, "stage": stage, "error": "Line layout must trigger automatic bends to exercise the regression"})
+            print(f"Issue #45 {variant} {stage}: {len(curved)} curved edges, offset enabled", flush=True)
+            return snapshot
+
+        record("sample", True)
+        for cycle in (1, 2):
+            session.click(session.button("Line: Input order"))
+            record(f"line-{cycle}", False)
+            session.click(session.button("Tree: Root downward"))
+            record(f"tree-{cycle}", True)
+        session.click(session.button("Layout"))
+        session.wait("return !document.querySelector('[data-editor-panel=layouts]')")
+        record("tree-restored", True)
+        session.command("POST", "/refresh", {})
+        session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===7")
+        record("tree-reloaded", True)
+        results.append({"scenario": "issue-45-edge-routing", "variant": variant, "snapshots": snapshots})
+    (OUTPUT / "issue-45-results.json").write_text(json.dumps({"status": "failed" if failures else "passed", "results": results, "failures": failures}, indent=2))
+    assert not failures, "Issue #45 edge routing regression: " + json.dumps(failures)
+    return results
+
+
 def main():
     assert len(sys.argv) == 1, "This runner accepts no URL or command overrides"
     policy_checks()
@@ -191,7 +299,7 @@ def main():
                 time.sleep(0.1)
         session = Session()
         (OUTPUT / "capabilities.json").write_text(json.dumps(session.capabilities, indent=2))
-        results = run(session)
+        results = run_edge_routing_regression(session) + run(session)
         (OUTPUT / "results.json").write_text(json.dumps({"status": "passed", "capabilities": session.capabilities, "results": results, "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}, indent=2))
     except Exception as error:
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))

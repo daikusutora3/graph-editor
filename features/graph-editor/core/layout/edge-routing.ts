@@ -136,18 +136,37 @@ export function* createEdgeRoutingTask(
     model.edges.map((edge, index) => [edge.id, index]),
   );
 
+  if (resolvedOptions.rerouteEdgeIds) {
+    // Compare against old curves only when their entire group stays unchanged.
+    // Collect them first so earlier groups can see later retained routes.
+    const retainedMeta = new Map<EdgeId, EdgeRoutingMeta>();
+    for (const edges of routeGroups.values()) {
+      yield;
+      if (
+        !edges.every(
+          (edge) =>
+            !resolvedOptions.rerouteEdgeIds?.has(edge.id) &&
+            resolvedOptions.previousMeta.has(edge.id),
+        )
+      ) {
+        continue;
+      }
+      for (const edge of edges) {
+        const previous = resolvedOptions.previousMeta.get(edge.id);
+        if (previous) retainedMeta.set(edge.id, previous);
+      }
+    }
+    resolvedOptions.retainedMeta = retainedMeta;
+  }
+
   for (const edges of routeGroups.values()) {
     yield;
     if (
-      resolvedOptions.rerouteEdgeIds &&
-      edges.every(
-        (edge) =>
-          !resolvedOptions.rerouteEdgeIds?.has(edge.id) &&
-          resolvedOptions.previousMeta.has(edge.id),
-      )
+      resolvedOptions.retainedMeta &&
+      edges.every((edge) => resolvedOptions.retainedMeta?.has(edge.id))
     ) {
       for (const edge of edges) {
-        const previous = resolvedOptions.previousMeta.get(edge.id);
+        const previous = resolvedOptions.retainedMeta.get(edge.id);
 
         if (previous) {
           meta.set(edge.id, previous);

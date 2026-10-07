@@ -215,7 +215,7 @@ export function routeForEdge(
     return singleBowCurve(edge.routing.bowPx, edge.routing.bowT);
   return (
     resolvedMeta.get(edge.id) ??
-    options.previousMeta.get(edge.id) ??
+    options.retainedMeta?.get(edge.id) ??
     STRAIGHT_CURVE
   );
 }
