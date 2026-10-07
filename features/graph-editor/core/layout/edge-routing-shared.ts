@@ -21,6 +21,8 @@ export type ResolvedEdgeRoutingOptions = {
   maxLoopSweepDeg: number;
   nodeClearancePx: number;
   previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
+  /** Previous routes belonging to whole groups retained in this pass. */
+  retainedMeta?: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
   /** The current group's previous route, oriented and centred for scoring. */
   previousRoute?: EdgeRoutingMeta;
   rerouteEdgeIds: ReadonlySet<EdgeId> | null;

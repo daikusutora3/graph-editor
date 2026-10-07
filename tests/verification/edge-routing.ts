@@ -113,35 +113,62 @@ const dragStartGraph: GraphModel = {
 };
 const dragStartRoutes = computeEdgeRouting(dragStartGraph);
 
-const sevenNodeTree = createSizedSampleGraph("tree", 7, {
-  autoEdgeRouting: true,
-});
-const linePositions = layoutLine(sevenNodeTree);
-const lineTree = {
-  ...sevenNodeTree,
-  nodes: sevenNodeTree.nodes.map((node) => ({
-    ...node,
-    ...linePositions[node.id],
-  })),
-};
-const treePositions = layoutTree(sevenNodeTree);
-const restoredTree = {
-  ...sevenNodeTree,
-  nodes: sevenNodeTree.nodes.map((node) => ({
-    ...node,
-    ...treePositions[node.id],
-  })),
-};
-const lineRoutes = computeEdgeRouting(lineTree, {
-  previousMeta: computeEdgeRouting(sevenNodeTree),
-});
-const restoredRoutes = computeEdgeRouting(restoredTree, {
-  previousMeta: lineRoutes,
-});
-expect(
-  [...restoredRoutes.values()].every((route) => route.bowPx === 0),
-  "returning from line to tree layout should clear unnecessary automatic bends",
-);
+for (const directed of [false, true]) {
+  for (const labelKind of ["none", "weight", "label"] as const) {
+    for (const reverseOrder of [false, true]) {
+      const sample = createSizedSampleGraph("tree", 7, {
+        autoEdgeRouting: true,
+        directed,
+        weighted: labelKind === "weight",
+      });
+      const sevenNodeTree = {
+        ...sample,
+        edges: (reverseOrder ? sample.edges.toReversed() : sample.edges).map(
+          (edge) => (labelKind === "label" ? { ...edge, label: "1" } : edge),
+        ),
+      };
+      const linePositions = layoutLine(sevenNodeTree);
+      const lineTree = {
+        ...sevenNodeTree,
+        nodes: sevenNodeTree.nodes.map((node) => ({
+          ...node,
+          ...linePositions[node.id],
+        })),
+      };
+      const treePositions = layoutTree(sevenNodeTree);
+      const restoredTree = {
+        ...sevenNodeTree,
+        nodes: sevenNodeTree.nodes.map((node) => ({
+          ...node,
+          ...treePositions[node.id],
+        })),
+      };
+      const freshTreeRoutes = computeEdgeRouting(restoredTree);
+      let routes = computeEdgeRouting(sevenNodeTree);
+      for (let cycle = 0; cycle < 3; cycle++) {
+        const lineRoutes = computeEdgeRouting(lineTree, {
+          previousMeta: routes,
+        });
+        expect(
+          [...lineRoutes.values()].some((route) => route.bowPx !== 0),
+          "line layout should still bend tree edges to avoid intervening nodes",
+        );
+        routes = computeEdgeRouting(restoredTree, { previousMeta: lineRoutes });
+        const context = `${directed ? "directed" : "undirected"}, ${labelKind}, ${reverseOrder ? "reverse" : "original"} edge order, cycle ${cycle + 1}`;
+        expect(
+          [...routes.values()].every((route) =>
+            route.controlPointDistancesPx.every((distance) => distance === 0),
+          ),
+          `returning from line to tree should clear unnecessary bends (${context})`,
+        );
+        expect(
+          routingSignature(routes) === routingSignature(freshTreeRoutes),
+          `restored tree routes should match a fresh tree (${context})`,
+        );
+      }
+    }
+  }
+}
 const dragEndGraph: GraphModel = {
   ...dragStartGraph,
   nodes: dragStartGraph.nodes.map((node) =>
@@ -406,6 +433,69 @@ const curvedCrossingGraph: GraphModel = {
 expect(
   computeEdgeRouting(curvedCrossingGraph).get("candidate")?.bowPx !== 0,
   "crossing evaluation should account for the other edge's curved route",
+);
+
+const automaticCrossingGraph: GraphModel = {
+  ...curvedCrossingGraph,
+  edges: [
+    curvedCrossingGraph.edges[1]!,
+    { ...curvedCrossingGraph.edges[0]!, routing: undefined },
+  ],
+};
+const previousCrossingRoutes = new Map([["curved", routeMeta(100)]]);
+expect(
+  computeEdgeRouting(automaticCrossingGraph, {
+    previousMeta: previousCrossingRoutes,
+  }).get("candidate")?.bowPx === 0,
+  "a recomputed edge should not bend to avoid another edge's stale curve",
+);
+const partiallyRoutedCrossing = computeEdgeRouting(automaticCrossingGraph, {
+  previousMeta: previousCrossingRoutes,
+  rerouteEdgeIds: new Set(["candidate"]),
+});
+expect(
+  partiallyRoutedCrossing.get("candidate")?.bowPx !== 0 &&
+    partiallyRoutedCrossing.get("curved") ===
+      previousCrossingRoutes.get("curved"),
+  "partial rerouting should avoid the actual curve of a later untouched edge",
+);
+expect(
+  [...partiallyRoutedCrossing.keys()].join(",") === "candidate,curved",
+  "preserving obstacles should not change output edge order",
+);
+expect(
+  computeEdgeRouting({
+    ...curvedCrossingGraph,
+    edges: curvedCrossingGraph.edges.toReversed(),
+  }).get("candidate")?.bowPx !== 0,
+  "a later manual bend should remain an obstacle during full rerouting",
+);
+
+const parallelCrossingGraph: GraphModel = {
+  ...automaticCrossingGraph,
+  edges: [
+    automaticCrossingGraph.edges[0]!,
+    { id: "curved-1", source: "a", target: "b" },
+    { id: "curved-2", source: "a", target: "b" },
+  ],
+};
+const previousParallelCrossings = new Map([
+  ["curved-1", routeMeta(64)],
+  ["curved-2", routeMeta(100)],
+]);
+expect(
+  computeEdgeRouting(parallelCrossingGraph, {
+    previousMeta: previousParallelCrossings,
+    rerouteEdgeIds: new Set(["candidate", "curved-1"]),
+  }).get("candidate")?.bowPx === 0,
+  "rerouting one parallel edge should discard stale obstacles for its whole group",
+);
+expect(
+  computeEdgeRouting(parallelCrossingGraph, {
+    previousMeta: new Map([["curved-1", routeMeta(100)]]),
+    rerouteEdgeIds: new Set(["candidate"]),
+  }).get("candidate")?.bowPx === 0,
+  "a group missing previous routes should be recomputed rather than preserved as obstacles",
 );
 
 const curvedLabelGraph: GraphModel = {
