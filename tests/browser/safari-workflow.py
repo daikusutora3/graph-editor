@@ -99,7 +99,7 @@ class Session:
         self.command("DELETE", "", check=False)
 
 
-def run(session):
+def run_editor_review(session):
     messages = {
         "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "save": "再編集用に保存", "image": "画像にする"},
         "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "save": "Save for editing", "image": "Create an image"},
@@ -282,6 +282,303 @@ def run_edge_routing_regression(session):
     return results
 
 
+RANGE_CY = """
+const container = [...document.querySelectorAll('div')].find(e => '_cyreg' in e);
+if (!container) throw new Error('Cytoscape container missing');
+const cy = container._cyreg.cy;
+"""
+
+RANGE_FIXTURE = {
+    "version": 1,
+    "settings": {"directed": False, "weighted": False, "indexBase": 0,
+                 "allowSelfLoops": True, "allowMultiEdges": True,
+                 "autoEdgeRouting": False, "snapToGrid": False,
+                 "showNodeLabels": True, "arrowScale": 1, "weightKind": "number"},
+    "nodes": [
+        {"id": "a", "label": "A", "order": 0, "x": -160, "y": -90},
+        {"id": "b", "label": "B", "order": 1, "x": 20, "y": -90},
+        {"id": "c", "label": "C", "order": 2, "x": -160, "y": 90},
+        {"id": "d", "label": "D", "order": 3, "x": 260, "y": 180},
+    ],
+    "edges": [
+        {"id": "ab", "source": "a", "target": "b", "label": "AB"},
+        {"id": "ac", "source": "a", "target": "c", "label": "AC"},
+        {"id": "cd", "source": "c", "target": "d", "label": "CD"},
+    ],
+}
+
+RANGE_KEYS = {"shift": "\ue008", "ctrl": "\ue009", "alt": "\ue00a", "meta": "\ue03d"}
+
+
+def range_snapshot(session):
+    return session.js(RANGE_CY + """
+return {
+    nodes: cy.nodes(':selected').map(e => e.id()).sort(),
+    edges: cy.edges(':selected').map(e => e.id()).sort(),
+    previewNodes: cy.nodes('.range-preview').map(e => e.id()).sort(),
+    previewEdges: cy.edges('.range-preview').map(e => e.id()).sort(),
+    pressedNodes: [...document.querySelectorAll('.ge-select-node-hitbox')].map(e => e.getAttribute('aria-pressed') === 'true'),
+    pressedEdges: [...document.querySelectorAll('.ge-select-edge-hitbox')].map(e => e.getAttribute('aria-pressed') === 'true'),
+    summary: document.querySelector('.ge-selection-summary')?.textContent.trim() ?? '',
+    menuVisible: !!document.querySelector('[data-range-selection-controls]'),
+    triggerExpanded: document.querySelector('[data-range-selection-trigger]')?.getAttribute('aria-expanded'),
+    triggerFocused: document.activeElement?.matches('[data-range-selection-trigger]') ?? false,
+    items: [...document.querySelectorAll('[data-range-selection-controls] [role=menuitemradio]')].map(e => ({
+        label: e.textContent.trim() || e.getAttribute('aria-label'),
+        checked: e.getAttribute('aria-checked') === 'true', tabIndex: e.tabIndex,
+        focused: e === document.activeElement,
+    })),
+};
+""")
+
+
+def range_key(session, value):
+    session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+        {"type": "keyDown", "value": value}, {"type": "keyUp", "value": value}]}]})
+
+
+def choose_range_target(session, label):
+    open_range_menu(session)
+    element = session.js("""return [...document.querySelectorAll('[data-range-selection-controls] [role=menuitemradio]')]
+        .find(e => e.getAttribute('aria-label') === arguments[0] || e.textContent.trim() === arguments[0]);""", label)
+    assert element, f"Range target menu item missing: {label}"
+    session.click(element[ELEMENT])
+    session.wait("return !document.querySelector('[data-range-selection-controls]')")
+    assert_range_menu_closed(session, restore_focus=True)
+    inspect_range_target(session, label)
+
+
+def assert_range_menu_closed(session, restore_focus=False):
+    snapshot = range_snapshot(session)
+    assert not snapshot["menuVisible"] and not snapshot["items"], snapshot
+    assert snapshot["triggerExpanded"] == "false", snapshot
+    if restore_focus:
+        assert snapshot["triggerFocused"], snapshot
+
+
+def open_range_menu(session):
+    assert_range_menu_closed(session)
+    trigger = session.element("[data-range-selection-trigger]")
+    assert session.command("GET", f"/element/{trigger}/attribute/aria-haspopup") == "menu"
+    session.click(trigger)
+    session.wait("return !!document.querySelector('[data-range-selection-controls][role=menu]')")
+
+
+def assert_range_menu(session, checked_label, focused_label=None):
+    snapshot = range_snapshot(session)
+    items = snapshot["items"]
+    checked = [item for item in items if item["checked"]]
+    assert snapshot["menuVisible"] and snapshot["triggerExpanded"] == "true", snapshot
+    assert len(items) == 3 and len(checked) == 1 and checked[0]["label"] == checked_label, items
+    if focused_label is not None:
+        assert [item["label"] for item in items if item["focused"]] == [focused_label], items
+
+
+def inspect_range_target(session, label):
+    open_range_menu(session)
+    assert_range_menu(session, label)
+    range_key(session, "\ue00c")
+    session.wait("return !document.querySelector('[data-range-selection-controls]')")
+    assert_range_menu_closed(session, restore_focus=True)
+
+
+def range_drag(session, points, keys, expected_nodes, expected_edges, summary,
+               name, release_before_up=False):
+    assert_range_menu_closed(session)
+    # Separate actions let us inspect the actual drag preview before release.
+    session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+        {"type": "keyDown", "value": RANGE_KEYS[key]} for key in keys]}]})
+    session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+        {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(points[0]["x"]), "y": round(points[0]["y"])},
+        {"type": "pointerDown", "button": 0},
+        {"type": "pointerMove", "duration": 400, "origin": "viewport", "x": round(points[1]["x"]), "y": round(points[1]["y"])},
+    ]}]})
+    session.wait(RANGE_CY + "return cy.nodes('.range-preview').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_nodes)) +
+                 " && cy.edges('.range-preview').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_edges)))
+    preview = range_snapshot(session)
+    assert preview["previewNodes"] == expected_nodes and preview["previewEdges"] == expected_edges, (name, preview)
+    if release_before_up:
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+            {"type": "keyUp", "value": RANGE_KEYS[key]} for key in reversed(keys)]}]})
+    session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+        {"type": "pointerUp", "button": 0}]}]})
+    if not release_before_up:
+        # Safari's release-actions endpoint can retain stale modifier flags.
+        # Send real keyUp events before clearing the remaining action sources.
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+            {"type": "keyUp", "value": RANGE_KEYS[key]} for key in reversed(keys)]}]})
+    session.command("DELETE", "/actions")
+    session.wait(RANGE_CY + "return cy.nodes(':selected').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_nodes)) +
+                 " && cy.edges(':selected').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_edges)) +
+                 " && document.querySelector('.ge-selection-summary')?.textContent.trim() === " + json.dumps(summary))
+    committed = range_snapshot(session)
+    assert committed["nodes"] == expected_nodes and committed["edges"] == expected_edges, (name, committed)
+    assert not committed["previewNodes"] and not committed["previewEdges"], (name, committed)
+    assert committed["pressedNodes"] == [n["id"] in expected_nodes for n in RANGE_FIXTURE["nodes"]], (name, committed)
+    assert committed["pressedEdges"] == [e["id"] in expected_edges for e in RANGE_FIXTURE["edges"]], (name, committed)
+    assert committed["summary"] == summary, (name, committed)
+    assert_range_menu_closed(session)
+    print(f"{name}: preview, selected IDs and visible selection passed", flush=True)
+    return {"name": name, "keys": list(keys), "releaseModifiersBeforePointerUp": release_before_up,
+            "nodes": committed["nodes"], "edges": committed["edges"], "summary": committed["summary"]}
+
+
+def run_range_selection(session):
+    messages = {
+        "ja": {"path": "/", "group": "範囲選択の対象", "targets": ["すべて", "頂点だけ", "辺だけ"],
+               "select": "選択", "node": "頂点", "mixed": "3 頂点 · 2 辺", "nodes": "3 頂点", "edges": "2 辺"},
+        "en": {"path": "/en", "group": "Box selection target", "targets": ["All", "Nodes only", "Edges only"],
+               "select": "Select", "node": "Node", "mixed": "3 nodes · 2 edges", "nodes": "3 nodes", "edges": "2 edges"},
+        "zh-hans": {"path": "/zh-hans", "group": "框选对象", "targets": ["全部", "仅顶点", "仅边"],
+                    "select": "选择", "node": "顶点", "mixed": "3 个顶点 · 2 条边", "nodes": "3 个顶点", "edges": "2 条边"},
+    }
+    results = []
+    cases = [(locale, 1440) for locale in messages] + [("en", 600)]
+    for locale, width in cases:
+        m = messages[locale]
+        session.command("POST", "/window/rect", {"width": width, "height": 1000}, check=False)
+        session.navigate(m["path"])
+        # Only the isolated WebDriver session's local application data is reset.
+        session.js("localStorage.clear(); localStorage.setItem('graph-editor-graph', arguments[0]);", json.dumps(RANGE_FIXTURE))
+        session.command("POST", "/refresh", {})
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length === 4 && !!document.querySelector('[data-range-selection-trigger]')")
+        session.js("""window.__rangeEvents=[]; for(const type of ['keydown','keyup']) window.addEventListener(type,e=>window.__rangeEvents.push({type,key:e.key,ctrl:e.ctrlKey,meta:e.metaKey,shift:e.shiftKey}));""")
+        assert_range_menu_closed(session)
+        geometry = session.js(RANGE_CY + """
+cy.zoom(1); cy.pan({x: container.clientWidth / 2, y: 400});
+const rect = container.getBoundingClientRect();
+const point = (p) => ({x: p.x + rect.left, y: p.y + rect.top});
+const a = cy.getElementById('a').renderedPosition();
+const b = cy.getElementById('b').renderedPosition();
+const c = cy.getElementById('c').renderedPosition();
+return {viewport: {width: innerWidth, height: innerHeight},
+    background: [point({x: a.x - 60, y: a.y - 60}), point({x: b.x + 60, y: c.y + 60})],
+    nodeStart: [point(cy.getElementById('d').renderedPosition()), point({x: a.x - 60, y: a.y - 60})],
+    edgeStart: [point(cy.getElementById('cd').renderedMidpoint()), point({x: a.x - 60, y: a.y - 60})]};
+""")
+        session.wait("return [...document.querySelectorAll('.ge-select-node-hitbox')].every(e => e.getBoundingClientRect().width > 0)")
+        prefix = f"safari-range-{locale}-{width}"
+        all_label, nodes_label, edges_label = m["targets"]
+        session.screenshot(prefix + "-default")
+        inspect_range_target(session, all_label)
+        checks = [range_drag(session, geometry["background"], ["ctrl"], ["a", "b", "c"], ["ab", "ac"], m["mixed"], prefix + "-default-all")]
+        trigger = session.element("[data-range-selection-trigger]")
+        session.js("arguments[0].focus()", {ELEMENT: trigger})
+        range_key(session, "\ue015")
+        session.wait("return !!document.querySelector('[data-range-selection-controls]')")
+        assert_range_menu(session, all_label, focused_label=all_label)
+        # Menu arrows move focus; only Enter commits a target.
+        for key, target in [("\ue015", nodes_label), ("\ue015", edges_label), ("\ue011", all_label),
+                            ("\ue010", edges_label), ("\ue013", nodes_label)]:
+            range_key(session, key)
+            assert_range_menu(session, all_label, focused_label=target)
+        range_key(session, "\ue007")
+        session.wait("return !document.querySelector('[data-range-selection-controls]')")
+        assert_range_menu_closed(session, restore_focus=True)
+        inspect_range_target(session, nodes_label)
+        open_range_menu(session)
+        assert_range_menu(session, nodes_label, focused_label=nodes_label)
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+            {"type": "keyDown", "value": RANGE_KEYS["shift"]},
+            {"type": "keyDown", "value": "\ue004"}, {"type": "keyUp", "value": "\ue004"},
+            {"type": "keyUp", "value": RANGE_KEYS["shift"]}]}]})
+        session.wait("return !document.querySelector('[data-range-selection-controls]')")
+        assert_range_menu_closed(session)
+        assert session.js("return !document.activeElement.closest('[role=menu]')"), "Shift+Tab leaves the menu"
+        inspect_range_target(session, nodes_label)
+        choose_range_target(session, edges_label)
+        open_range_menu(session)
+        assert_range_menu(session, edges_label)
+        session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+            {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(geometry["background"][0]["x"]), "y": round(geometry["background"][0]["y"])},
+            {"type": "pointerDown", "button": 0}, {"type": "pointerUp", "button": 0}]}]})
+        session.command("DELETE", "/actions")
+        session.wait("return !document.querySelector('[data-range-selection-controls]')")
+        assert_range_menu_closed(session)
+        inspect_range_target(session, edges_label)
+        checks.append(range_drag(session, geometry["background"], ["shift"], [], ["ab", "ac"], m["edges"], prefix + "-edges-shift"))
+        session.screenshot(prefix + "-edges")
+        choose_range_target(session, nodes_label)
+        checks.append(range_drag(session, geometry["background"], ["ctrl"], ["a", "b", "c"], [], m["nodes"], prefix + "-nodes-ctrl"))
+        checks.append(range_drag(session, geometry["background"], ["meta"], ["a", "b", "c"], [], m["nodes"], prefix + "-nodes-meta", release_before_up=True))
+        session.screenshot(prefix + "-nodes")
+        checks.append(range_drag(session, geometry["nodeStart"], ["ctrl"], ["a", "b", "c"], [], m["nodes"], prefix + "-node-start"))
+        checks.append(range_drag(session, geometry["background"], ["ctrl", "alt"], [], ["ab", "ac"], m["edges"], prefix + "-edge-shortcut-override"))
+        inspect_range_target(session, nodes_label)
+        choose_range_target(session, edges_label)
+        checks.append(range_drag(session, geometry["background"], ["meta", "shift"], ["a", "b", "c"], [], m["nodes"], prefix + "-node-shortcut-override"))
+        inspect_range_target(session, edges_label)
+        checks.append(range_drag(session, geometry["edgeStart"], ["ctrl"], [], ["ab", "ac"], m["edges"], prefix + "-edge-start"))
+        session.click(session.button(m["node"]))
+        assert_range_menu_closed(session)
+        session.click(session.button(m["select"]))
+        session.wait("return document.querySelectorAll('.ge-select-node-hitbox').length === 4 && !document.querySelector('.ge-select-node-hitbox')?.closest('[inert]')")
+        inspect_range_target(session, edges_label)
+        choose_range_target(session, all_label)
+        checks.append(range_drag(session, geometry["background"], ["shift"], ["a", "b", "c"], ["ab", "ac"], m["mixed"], prefix + "-reset-all"))
+        inspect_range_target(session, all_label)
+        open_range_menu(session)
+        assert_range_menu(session, all_label)
+        assert session.js("return document.querySelector('[data-range-selection-controls]')?.getAttribute('aria-label')") == m["group"]
+        controls = session.js("""const e = document.querySelector('[data-range-selection-controls]'); const r = e.getBoundingClientRect();
+return {x: r.x, y: r.y, width: r.width, height: r.height, viewportWidth: innerWidth, viewportHeight: innerHeight,
+    items: [...e.querySelectorAll('[role=menuitemradio]')].map(e => ({label: e.textContent.trim(), x: e.getBoundingClientRect().x, right: e.getBoundingClientRect().right}))};""")
+        assert controls["x"] >= 0 and controls["x"] + controls["width"] <= controls["viewportWidth"] + 1, controls
+        assert controls["y"] >= 0 and controls["y"] + controls["height"] <= controls["viewportHeight"] + 1, controls
+        assert all(item["x"] >= 0 and item["right"] <= controls["viewportWidth"] + 1 for item in controls["items"]), controls
+        session.screenshot(prefix + "-menu")
+        range_key(session, "\ue00c")
+        session.wait("return !document.querySelector('[data-range-selection-controls]')")
+        assert_range_menu_closed(session, restore_focus=True)
+        session.screenshot(prefix + "-reset")
+        results.append({"locale": locale, "requestedWindowWidth": width, "viewport": geometry["viewport"], "controls": controls,
+                        "checks": checks, "keyboardMenuNavigation": "passed", "menuHiddenBetweenDrags": "passed",
+                        "escapeAndOutsideDismiss": "passed", "shiftTabDismiss": "passed", "toolSwitchRetainsTarget": "passed"})
+        print(f"{prefix}: all range-selection checks passed", flush=True)
+    return results
+
+
+def run_range_menu_review(session):
+    results = []
+    for locale, path, width in (("ja", "/", 896), ("en", "/en", 600), ("zh-hans", "/zh-hans", 960)):
+        session.command("POST", "/window/rect", {"width": width, "height": 984}, check=False)
+        session.navigate(path)
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]') && !!document.querySelector('[data-range-selection-trigger]')")
+        trigger = session.element("[data-range-selection-trigger]")
+
+        def hover(element):
+            session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+                {"type": "pointerMove", "duration": 0, "origin": {ELEMENT: element}, "x": 0, "y": 0}]}]})
+            time.sleep(0.6)
+
+        hover(trigger)
+        session.wait("const t=document.querySelector('[data-range-selection-trigger]');const s=getComputedStyle(t,'::after');return s.display!=='none' && Number(s.opacity)===1")
+        session.click(trigger)
+        session.wait("return !!document.querySelector('[data-range-selection-controls]')")
+        toolbar = session.js("return document.querySelector('[data-range-selection-trigger]').closest('[role=toolbar]')")
+        neighbor = session.js("return arguments[0].querySelector('[data-tooltip]:not([data-range-selection-trigger])')", toolbar)
+        hover(neighbor[ELEMENT] if neighbor else trigger)
+        layout = session.js("""const menu=document.querySelector('[data-range-selection-controls]');const footer=menu.lastElementChild;
+const text=document.createRange();text.selectNodeContents(footer);const rect=menu.getBoundingClientRect();
+const toolbar=document.querySelector('[data-range-selection-trigger]').closest('[role=toolbar]');
+return {hint:footer.textContent,lines:text.getClientRects().length,footerWidth:footer.clientWidth,textWidth:footer.scrollWidth,
+    x:rect.x,y:rect.y,right:rect.right,bottom:rect.bottom,viewportWidth:innerWidth,viewportHeight:innerHeight,
+    tooltipsHidden:[...toolbar.querySelectorAll('[data-tooltip]')].every(e=>getComputedStyle(e,'::after').display==='none')};""")
+        assert layout["lines"] == 1 and layout["textWidth"] <= layout["footerWidth"] + 1, layout
+        assert layout["tooltipsHidden"], layout
+        assert layout["x"] >= 0 and layout["right"] <= layout["viewportWidth"] + 1, layout
+        assert layout["y"] >= 0 and layout["bottom"] <= layout["viewportHeight"] + 1, layout
+        session.screenshot(f"safari-range-menu-{locale}-{width}")
+        range_key(session, "\ue00c")
+        session.wait("return !document.querySelector('[data-range-selection-controls]')")
+        hover(trigger)
+        session.wait("const t=document.querySelector('[data-range-selection-trigger]');const s=getComputedStyle(t,'::after');return s.display!=='none' && Number(s.opacity)===1")
+        session.command("DELETE", "/actions")
+        results.append({"locale": locale, "requestedWindowWidth": width, **layout, "closedTooltipRestored": True})
+        print(f"safari-range-menu-{locale}-{width}: single-line hint and tooltip open/close passed", flush=True)
+    return results
+
+
 def main():
     assert len(sys.argv) == 1, "This runner accepts no URL or command overrides"
     policy_checks()
@@ -299,13 +596,19 @@ def main():
                 time.sleep(0.1)
         session = Session()
         (OUTPUT / "capabilities.json").write_text(json.dumps(session.capabilities, indent=2))
-        results = run_edge_routing_regression(session) + run(session)
+        menu_results = run_range_menu_review(session)
+        (OUTPUT / "range-menu-review.json").write_text(json.dumps({"status": "passed", "results": menu_results}, indent=2))
+        results = run_range_selection(session)
+        (OUTPUT / "range-selection-results.json").write_text(json.dumps({"status": "passed", "results": results}, indent=2))
+        results += run_edge_routing_regression(session) + run_editor_review(session)
+        results = menu_results + results
         (OUTPUT / "results.json").write_text(json.dumps({"status": "passed", "capabilities": session.capabilities, "results": results, "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}, indent=2))
     except Exception as error:
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))
         if session:
             try:
-                (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {trace:window.__focusTrace,active:document.activeElement.tagName,input:document.querySelector('textarea')?.value}"), indent=2))
+                (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {trace:window.__focusTrace,active:document.activeElement.tagName,input:document.querySelector('textarea')?.value,panels:[...document.querySelectorAll('[data-editor-panel]')].map(e=>({panel:e.dataset.editorPanel,state:e.dataset.panelState})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.textContent,label:e.getAttribute('aria-label'),expanded:e.getAttribute('aria-expanded')}))}"), indent=2))
+                (OUTPUT / "range-failure-state.json").write_text(json.dumps(session.js("return {events:window.__rangeEvents, nodes:[...document.querySelectorAll('.ge-select-node-hitbox')].map(e=>({label:e.getAttribute('aria-label'),inert:e.closest('[inert]')?.outerHTML.slice(0,400)})), modes:[...document.querySelectorAll('[data-graph-shortcut-target][aria-pressed]')].map(e=>({label:e.getAttribute('aria-label'),pressed:e.getAttribute('aria-pressed')}))}"), indent=2))
                 session.screenshot("failure")
             except Exception:
                 pass

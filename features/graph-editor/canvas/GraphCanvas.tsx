@@ -24,6 +24,7 @@ import {
   editorLayoutAtom,
   editorModeAtom,
   editorPanelAtom,
+  rangeSelectionFilterAtom,
   selectionAtom,
 } from "../shell/state/editor-atoms";
 import { graphAtom } from "../shell/state/graph-atoms";
@@ -101,6 +102,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const [edgeCursor, setEdgeCursor] = useState<RenderedPoint | null>(null);
   const [edgeHoverNodeId, setEdgeHoverNodeId] = useState<NodeId | null>(null);
   const rangeSelectionKeyActive = useRangeSelectionKey();
+  const rangeSelectionFilter = useAtomValue(rangeSelectionFilterAtom);
   const [zoomPercent, setZoomPercent] = useState(100);
   const {
     openValue: contextMenuTarget,
@@ -515,12 +517,18 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   });
   const handleRangeSelectionPointerDown = useCallback(
     (event: ReactPointerEvent<Element>) => {
-      rangeSelectionFilterRef.current =
-        rangeSelectionFilterFromModifiers(event);
+      rangeSelectionFilterRef.current = rangeSelectionFilterFromModifiers(
+        event,
+        rangeSelectionFilter,
+      );
       previewRangeSelectionPointerDown(event);
       return forwardRangeSelectionPointerDown(event);
     },
-    [forwardRangeSelectionPointerDown, previewRangeSelectionPointerDown],
+    [
+      forwardRangeSelectionPointerDown,
+      previewRangeSelectionPointerDown,
+      rangeSelectionFilter,
+    ],
   );
 
   return (
@@ -559,8 +567,10 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
           ref={containerRef}
           className="relative z-10 h-full w-full"
           onPointerDownCapture={(event) => {
-            rangeSelectionFilterRef.current =
-              rangeSelectionFilterFromModifiers(event);
+            rangeSelectionFilterRef.current = rangeSelectionFilterFromModifiers(
+              event,
+              rangeSelectionFilter,
+            );
             previewRangeSelectionPointerDown(event);
           }}
         />

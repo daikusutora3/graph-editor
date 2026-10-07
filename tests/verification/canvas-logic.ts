@@ -44,6 +44,38 @@ expect(
     rangeSelectionFilterFromModifiers(rangeModifiers(false, true)) === "edges",
   "range selection modifiers should distinguish all, nodes, and edges",
 );
+for (const filter of ["all", "nodes", "edges"] as const) {
+  for (const modifier of ["ctrlKey", "metaKey", "shiftKey"] as const) {
+    const event = {
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      [modifier]: true,
+    };
+    expect(
+      rangeSelectionFilterFromModifiers(event, filter) === filter,
+      `${modifier} range drag should use the chosen ${filter} target`,
+    );
+  }
+  for (const modifier of ["ctrlKey", "metaKey"] as const) {
+    const event = {
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: true,
+      [modifier]: true,
+    };
+    expect(
+      rangeSelectionFilterFromModifiers(event, filter) === "nodes" &&
+        rangeSelectionFilterFromModifiers(
+          { ...event, shiftKey: false, altKey: true },
+          filter,
+        ) === "edges",
+      `${modifier} shortcuts should temporarily override the ${filter} target`,
+    );
+  }
+}
 
 // --- edge creation state machine -------------------------------------------
 const pickSource = resolveEdgeCreation({

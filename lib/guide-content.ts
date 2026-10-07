@@ -84,6 +84,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           "頂点モード（N）で空いている場所をタップすると頂点を置けます。",
           "辺モード（E）で始点、終点の順にクリックすると辺を結べます。",
           "選択モード（V）で頂点をドラッグして移動、辺をドラッグして曲げられます。曲線はカーソルの位置を通ります。",
+          "範囲選択の対象は「選択」ツール横の ▾ から「すべて」「頂点だけ」「辺だけ」を選べます。Ctrl（Mac は ⌘）または Shift を押しながらドラッグして選択します。",
           "ダブルクリックでラベルや重みを編集、右クリックでメニューを開きます。",
         ],
       },
@@ -173,6 +174,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           "In edge mode (E), click the source and then the target to connect them.",
           "In select mode (V), drag nodes to move them and drag an edge to bend it; the curve passes through the cursor.",
           "Double-click to edit a label or weight; right-click for the menu.",
+          "Open the ▾ beside Select to choose All, Nodes only, or Edges only for box selection, then hold Ctrl (⌘ on Mac) or Shift while dragging.",
         ],
       },
       {
@@ -259,6 +261,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           "顶点模式（N）下点击空白处放置顶点。",
           "边模式（E）下依次点击起点和终点即可连边。",
           "选择模式（V）下拖动顶点移动，拖动边即可弯曲；曲线会经过光标位置。",
+          "点击「选择」工具旁的 ▾，可选择框选「全部」「仅顶点」或「仅边」，再按住 Ctrl（Mac 为 ⌘）或 Shift 拖动。",
           "双击编辑标签或权重，右键打开菜单。",
         ],
       },
