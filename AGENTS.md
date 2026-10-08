@@ -36,6 +36,16 @@ tools and do not route them through Issue actions.
 This policy remains in force until the user explicitly requests that this file
 be changed.
 
+## In-app browser local verification exception
+
+The user authorized in-app browser verification on 2026-10-08. Agents may
+open `http://127.0.0.1:3323` or `http://127.0.0.1:3324`, with paths `/`, `/en`, or `/zh-hans`, in the
+in-app browser and read the page, enter graph data, operate editor controls,
+capture screenshots, and reload the preview. Use the dedicated `localGraphTab`
+binding. No other origins, paths, tabs, application controls, or arbitrary
+page scripts are authorized. GitHub Issue restrictions remain unchanged.
+Keep the hook enabled and test its permitted and rejected calls.
+
 ## Local UI verification exception
 
 Agents may test this application's local preview in the installed Safari using
