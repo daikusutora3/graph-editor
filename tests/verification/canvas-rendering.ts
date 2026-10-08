@@ -1,4 +1,4 @@
-import cytoscape, { type Core, type EventHandler } from "cytoscape";
+import cytoscape, { type Core, type Css, type EventHandler } from "cytoscape";
 
 import { refreshCytoscapeGeometry } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-geometry-refresh";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
@@ -6,8 +6,15 @@ import { afterCytoscapeRender } from "../../features/graph-editor/adapters/cytos
 import { startVisibleTimeout } from "../../features/graph-editor/adapters/browser/visible-timeout";
 import { readEdgeLabelHitboxes } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 import { reconcileEdgeLabelHitboxes } from "../../features/graph-editor/canvas/rendered-hitbox-reconciliation";
-import { graphModelToCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
-import { defaultEdgeRoutingMeta } from "../../features/graph-editor/core/layout/edge-routing";
+import {
+  applyCytoscapeRoutingMeta,
+  graphModelToCytoscapeElements,
+} from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
+import {
+  defaultEdgeRoutingMeta,
+  type EdgeRoutingMeta,
+} from "../../features/graph-editor/core/layout/edge-routing";
+import { createEdgeHitboxPath } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createVerification } from "./harness";
@@ -17,6 +24,7 @@ const { expect, finish } = createVerification("Canvas rendering");
 verifyCachedRouteBounds();
 verifyAffectedGeometry();
 verifyLabelDimensions();
+verifySizedLoopGeometry();
 verifyVisibleDeadline();
 verifyRenderRequestCancellation();
 finish();
@@ -53,12 +61,15 @@ type GeometryCollection = {
 /** Real Cytoscape projections and bbox cache; only font measurement is stubbed.
  * No DOM or canvas raster is involved. Native screenshots cover that separately.
  */
-function createCalculationCanvas(graph: GraphModel) {
+function createCalculationCanvas(
+  graph: GraphModel,
+  edgeRoutingMeta?: ReadonlyMap<string, EdgeRoutingMeta>,
+) {
   const cy = cytoscape({
     headless: true,
     styleEnabled: true,
     layout: { name: "preset" },
-    elements: definitions(graph),
+    elements: definitions(graph, edgeRoutingMeta),
     style: [
       { selector: "node", style: { width: 48, height: 48, shape: "ellipse" } },
       {
@@ -67,11 +78,19 @@ function createCalculationCanvas(graph: GraphModel) {
           "curve-style": "unbundled-bezier",
           "control-point-distances": "data(controlPointDistances)",
           "control-point-weights": "data(controlPointWeights)",
+          "loop-direction": "data(loopDirection)",
+          "loop-sweep": "data(loopSweep)",
           label: "data(label)",
           "font-size": 12,
           "text-background-padding": "5px",
           "text-rotation": "none",
         },
+      },
+      {
+        selector: "edge:loop",
+        style: {
+          "control-point-step-size": "data(loopStepSize)",
+        } as unknown as Css.Edge,
       },
     ],
   });
@@ -120,12 +139,137 @@ function createCalculationCanvas(graph: GraphModel) {
   return { cy, renderer };
 }
 
-function definitions(graph: GraphModel) {
+function definitions(
+  graph: GraphModel,
+  edgeRoutingMeta?: ReadonlyMap<string, EdgeRoutingMeta>,
+) {
   return graphModelToCytoscapeElements(graph, {
-    edgeRoutingMeta: new Map(
-      graph.edges.map((edge) => [edge.id, defaultEdgeRoutingMeta]),
-    ),
+    edgeRoutingMeta:
+      edgeRoutingMeta ??
+      new Map(graph.edges.map((edge) => [edge.id, defaultEdgeRoutingMeta])),
   });
+}
+
+function verifySizedLoopGeometry() {
+  const graph = fixture();
+  graph.nodes[0]!.label = "long-label-node-000000";
+  graph.edges = [
+    { id: "loop", source: "a", target: "a", label: "loop A" },
+    { id: "loop2", source: "a", target: "a", label: "loop B" },
+    {
+      id: "manual",
+      source: "b",
+      target: "b",
+      label: "manual",
+      routing: { loopDirectionDeg: 225, loopSweepDeg: 65 },
+    },
+    graph.edges[2]!,
+  ];
+  const modelBefore = JSON.stringify(graph);
+  const automatic = {
+    ...defaultEdgeRoutingMeta,
+    loopDirectionDeg: 45,
+    loopSweepDeg: 65,
+    loopStepSizePx: 110,
+  };
+  const manual = {
+    ...defaultEdgeRoutingMeta,
+    loopDirectionDeg: 225,
+    loopSweepDeg: 65,
+  };
+  const routes = new Map<string, EdgeRoutingMeta>([
+    ["loop", automatic],
+    ["loop2", { ...automatic, loopDirectionDeg: 225 }],
+    ["manual", manual],
+    ["de", defaultEdgeRoutingMeta],
+  ]);
+  const { cy } = createCalculationCanvas(graph, routes);
+  try {
+    cy.getElementById("a").style({ width: 220, shape: "round-rectangle" });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("a")));
+    cy.zoom(1.5);
+    cy.pan({ x: 100, y: 80 });
+    const hitboxes = readEdgeLabelHitboxes(cy, graph);
+    for (const id of ["loop", "loop2", "manual"]) {
+      const edge = cy.getElementById(id);
+      const box = hitboxes.find((item) => item.id === id)!;
+      const points = [
+        edge.renderedSourceEndpoint(),
+        edge.renderedControlPoints()[0]!,
+        edge.renderedMidpoint(),
+        edge.renderedControlPoints()[1]!,
+        edge.renderedTargetEndpoint(),
+      ];
+      const path = createEdgeHitboxPath(box);
+      const coordinates = path.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+      expect(
+        path.match(/Q/g)?.length === 2 &&
+          points.every(
+            (point, index) =>
+              Math.abs(coordinates[index * 2]! - point.x) <= 0.0051 &&
+              Math.abs(coordinates[index * 2 + 1]! - point.y) <= 0.0051,
+          ),
+        "loop pointer paths must follow the public renderer points at current zoom and pan",
+      );
+    }
+    const loop = cy.getElementById("loop");
+    const source = loop.source().position();
+    const midpoint = loop.midpoint();
+    const expectedRadius = 1.4 * 110 * Math.cos((65 * Math.PI) / 360);
+    expect(
+      Math.abs(
+        Math.hypot(midpoint.x - source.x, midpoint.y - source.y) -
+          expectedRadius,
+      ) < 1e-8 &&
+        Number.parseFloat(loop.style("control-point-step-size")) === 110 &&
+        Number.parseFloat(
+          cy.getElementById("manual").style("control-point-step-size"),
+        ) === 40 &&
+        Number.parseFloat(
+          cy.getElementById("de").style("control-point-step-size"),
+        ) === 40,
+      "only enlarged automatic loops should change the actual bundled renderer radius",
+    );
+    expect(
+      applyCytoscapeRoutingMeta(cy, routes).length === 0,
+      "unchanged loop sizes must perform no routing data refresh",
+    );
+    const refreshed: string[] = [];
+    cy.on("style", (event) => refreshed.push(event.target.id()));
+    routes.set("loop", { ...automatic, loopStepSizePx: 140 });
+    const changed = applyCytoscapeRoutingMeta(cy, routes);
+    refreshed.length = 0;
+    expect(
+      changed.length === 1 &&
+        refreshCytoscapeGeometry(changed) === 2 &&
+        refreshed.sort().join(",") === "loop,loop2",
+      "a loop size change must refresh its loop group and leave remote geometry alone",
+    );
+    const current = loop.boundingBox();
+    expect(
+      current.x1 <= loop.midpoint().x &&
+        current.x2 >= loop.midpoint().x &&
+        current.y1 <= loop.midpoint().y &&
+        current.y2 >= loop.midpoint().y,
+      "resized loops must retain current bounds around the renderer midpoint",
+    );
+    const enlarged = readEdgeLabelHitboxes(cy, graph);
+    expect(
+      reconcileEdgeLabelHitboxes(hitboxes, enlarged) !== hitboxes,
+      "loop geometry changes must reach memoized pointer overlays",
+    );
+    routes.set("loop", { ...automatic, loopStepSizePx: undefined });
+    cy.getElementById("a").style({ width: 48, shape: "ellipse" });
+    refreshCytoscapeGeometry(applyCytoscapeRoutingMeta(cy, routes));
+    expect(
+      loop.data("loopStepSize") === 40 &&
+        Number.parseFloat(loop.style("control-point-step-size")) === 40 &&
+        JSON.stringify(graph) === modelBefore,
+      "restoring default loop sizes must clear transient enlargement without changing graph data",
+    );
+  } finally {
+    cy.destroy();
+  }
 }
 
 function verifyCachedRouteBounds() {

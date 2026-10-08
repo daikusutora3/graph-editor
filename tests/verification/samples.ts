@@ -371,6 +371,49 @@ function verifyPreviewEdgePaths() {
   if (!parallelPath.includes("Q")) {
     fail("preview bowed edges should render as quadratic paths");
   }
+  const largerLoop = createPreviewEdgePath({
+    directed: true,
+    radius: 8,
+    routing: {
+      bowPx: 0,
+      loopDirectionDeg: -45,
+      loopSweepDeg: 70,
+      loopStepSizePx: 80,
+    },
+    scale: 1,
+    source: { x: 20, y: 20 },
+    target: { x: 20, y: 20 },
+  });
+  const largerCoordinates = largerLoop.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+  if (
+    Math.abs(
+      Math.hypot(largerCoordinates[2]! - 20, largerCoordinates[3]! - 20) -
+        2 * Math.hypot(loopCoordinates[2]! - 20, loopCoordinates[3]! - 20),
+    ) > 0.03
+  ) {
+    fail("preview loop controls should grow with the transient loop size");
+  }
+  const fittedLoop = createPreviewEdgePath({
+    directed: false,
+    radius: 3,
+    routing: {
+      bowPx: 0,
+      loopDirectionDeg: 0,
+      loopSweepDeg: 70,
+      loopStepSizePx: 180,
+    },
+    scale: 0.1,
+    source: { x: 50, y: 40 },
+    target: { x: 50, y: 40 },
+  });
+  const fittedCoordinates = fittedLoop.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+  if (
+    Math.hypot(fittedCoordinates[2]! - 50, fittedCoordinates[3]! - 40) > 25.21
+  ) {
+    fail(
+      "enlarged preview loops should fit within their scaled control bounds",
+    );
+  }
 }
 
 function verifySizedSampleGraphs() {

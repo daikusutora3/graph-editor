@@ -219,6 +219,49 @@ const escapedLimit: GraphModel = {
     y: 0,
   })),
 };
+const loopLabels: GraphModel = {
+  ...createEmptyGraphModel({ allowSelfLoops: true, allowMultiEdges: true }),
+  nodes: [{ id: "a", label: "long-label-node-000000", order: 0, x: 0, y: 0 }],
+  edges: Array.from({ length: 8 }, (_, index) => ({
+    id: `loop-${index}`,
+    source: "a",
+    target: "a",
+    label: "loop label",
+  })),
+};
+const loopModelBefore = JSON.stringify(loopLabels);
+const enlargedLoops = exportGraph(loopLabels, "tikz");
+const loopDistances = [
+  ...enlargedLoops.matchAll(/min distance=([\d.]+)mm/g),
+].map((match) => Number(match[1]));
+expect(
+  loopDistances.length === 8 &&
+    loopDistances.some((value) => value > 10) &&
+    loopDistances.every((value) => value <= 45),
+  "TikZ must retain bounded automatic loop enlargement for long labels and pill sources",
+);
+expect(
+  JSON.stringify(loopLabels) === loopModelBefore &&
+    enlargedLoops === runExportTask(loopLabels, "tikz"),
+  "loop sizing stays transient and synchronous/resumable exports must agree",
+);
+const manualOnly: GraphModel = {
+  ...loopLabels,
+  edges: [
+    {
+      id: "manual",
+      source: "a",
+      target: "a",
+      routing: { loopDirectionDeg: 45, loopSweepDeg: 65 },
+    },
+  ],
+};
+expect(
+  exportGraph(manualOnly, "tikz").includes(
+    "out=77.5,in=12.5,min distance=10mm",
+  ),
+  "fixed manual loops must preserve their direction, sweep and default print size",
+);
 for (const exportText of [
   () => exportGraph(escapedLimit, "tikz"),
   () => runExportTask(escapedLimit, "tikz"),

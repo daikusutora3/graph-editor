@@ -3,6 +3,7 @@ import type { Core, EdgeSingular, NodeSingular, Position } from "cytoscape";
 import type { EdgeId, GraphModel, NodeId } from "../../core/graph/model";
 
 import type { RenderedPoint } from "../../core/view/types";
+import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
 import type { InlineEditTarget } from "../../canvas/graph-canvas-types";
 
 export type NodeHitbox = {
@@ -35,6 +36,10 @@ export type EdgeLabelHitbox = {
   controlPointWeights?: readonly number[];
   loopDirectionDeg: number;
   loopSweepDeg: number;
+  /** Rendered fallback size; public renderer points take precedence. */
+  loopStepSizePx?: number;
+  /** Source, two controls, midpoint and target in rendered coordinates. */
+  loopPoints?: readonly RenderedPoint[];
 };
 
 export const NODE_HITBOX_SIZE = 72;
@@ -147,10 +152,36 @@ export function readEdgeLabelHitboxes(
       ),
       loopDirectionDeg: readDegreeEdgeData(edge, "loopDirection", -45),
       loopSweepDeg: readDegreeEdgeData(edge, "loopSweep", 70),
+      loopStepSizePx:
+        normalizeLoopStepSize(readNumericEdgeData(edge, "loopStepSize", 40)) *
+        zoom,
+      loopPoints:
+        graphEdge.source === graphEdge.target
+          ? readRenderedLoopPoints(edge)
+          : undefined,
     });
   });
 
   return hitboxes;
+}
+
+function readRenderedLoopPoints(edge: EdgeSingular) {
+  const controls = edge.renderedControlPoints?.();
+  if (controls?.length !== 2) return undefined;
+  const start = edge.renderedSourceEndpoint?.();
+  const end = edge.renderedTargetEndpoint?.();
+  const loopMidpoint = edge.renderedMidpoint?.();
+  const points = [start, controls[0], loopMidpoint, controls[1], end];
+  if (
+    !points.every(
+      (point): point is RenderedPoint =>
+        point !== undefined &&
+        Number.isFinite(point.x) &&
+        Number.isFinite(point.y),
+    )
+  )
+    return undefined;
+  return points;
 }
 
 function readNumericArrayEdgeData(

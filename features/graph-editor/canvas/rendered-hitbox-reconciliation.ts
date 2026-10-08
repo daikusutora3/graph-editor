@@ -68,8 +68,25 @@ function sameEdgeLabelHitbox(a: EdgeLabelHitbox, b: EdgeLabelHitbox) {
     a.labelHeight === b.labelHeight &&
     a.loopDirectionDeg === b.loopDirectionDeg &&
     a.loopSweepDeg === b.loopSweepDeg &&
+    a.loopStepSizePx === b.loopStepSizePx &&
+    samePoints(a.loopPoints, b.loopPoints) &&
     sameNumbers(a.controlPointDistancesPx, b.controlPointDistancesPx) &&
     sameNumbers(a.controlPointWeights, b.controlPointWeights)
+  );
+}
+
+function samePoints(
+  a: EdgeLabelHitbox["loopPoints"],
+  b: EdgeLabelHitbox["loopPoints"],
+) {
+  return (
+    a === b ||
+    (a !== undefined &&
+      b !== undefined &&
+      a.length === b.length &&
+      a.every(
+        (point, index) => point.x === b[index]!.x && point.y === b[index]!.y,
+      ))
   );
 }
 

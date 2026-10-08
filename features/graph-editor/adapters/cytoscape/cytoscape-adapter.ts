@@ -18,6 +18,7 @@ import {
   type EdgeRoutingMeta,
   type EdgeRoutingOptions,
 } from "../../core/layout/edge-routing";
+import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
 import { createCurveNodeDistance } from "../../core/layout/edge-route-geometry";
 import { nodeGeometryWidth, NODE_SIZE_PX } from "../../core/graph/node-size";
 import type {
@@ -50,6 +51,7 @@ type CytoscapeEdgeData = {
   duplicate: boolean;
   loopDirection: string;
   loopSweep: string;
+  loopStepSize: number;
 };
 
 export type GraphCanvasPalette = {
@@ -215,6 +217,7 @@ export function applyCytoscapeRoutingMeta(
       duplicate: meta.duplicate,
       loopDirection: `${meta.loopDirectionDeg}deg`,
       loopSweep: `${meta.loopSweepDeg}deg`,
+      loopStepSize: normalizeLoopStepSize(meta.loopStepSizePx),
     });
     changed.merge(edge);
   });
@@ -344,7 +347,8 @@ function edgeRoutingDataChanged(
     !sameNumericArray(data.controlPointWeights, meta.controlPointWeights) ||
     data.duplicate !== meta.duplicate ||
     data.loopDirection !== `${meta.loopDirectionDeg}deg` ||
-    data.loopSweep !== `${meta.loopSweepDeg}deg`
+    data.loopSweep !== `${meta.loopSweepDeg}deg` ||
+    data.loopStepSize !== normalizeLoopStepSize(meta.loopStepSizePx)
   );
 }
 
@@ -403,6 +407,7 @@ function edgeToCytoscapeElement(
       duplicate: routingMeta.duplicate,
       loopDirection: `${routingMeta.loopDirectionDeg}deg`,
       loopSweep: `${routingMeta.loopSweepDeg}deg`,
+      loopStepSize: normalizeLoopStepSize(routingMeta.loopStepSizePx),
     } satisfies CytoscapeEdgeData,
   };
 }
@@ -562,6 +567,12 @@ export function createGraphCanvasStylesheet(
         "text-background-shape": "round-rectangle",
         "text-background-padding": palette.labelPadding,
         "text-rotation": "none",
+      }),
+    },
+    {
+      selector: "edge:loop",
+      style: cytoscapeStyle({
+        "control-point-step-size": "data(loopStepSize)",
       }),
     },
     {

@@ -240,6 +240,8 @@ function verifyHitboxReconciliation() {
     controlPointWeights: [0.5],
     loopDirectionDeg: -45,
     loopSweepDeg: 70,
+    loopStepSizePx: 40,
+    loopPoints: [{ x: 1, y: 2 }],
   };
   const secondEdge = { ...edge, id: "ba" };
   const edges = [edge, secondEdge];
@@ -250,6 +252,7 @@ function verifyHitboxReconciliation() {
         ...item,
         controlPointDistancesPx: [...item.controlPointDistancesPx!],
         controlPointWeights: [...item.controlPointWeights!],
+        loopPoints: item.loopPoints?.map((point) => ({ ...point })),
       })),
     ) === edges,
     "equal numeric geometry arrays should retain existing hitbox references",
@@ -268,6 +271,9 @@ function verifyHitboxReconciliation() {
     { bowPx: 1 },
     { loopDirectionDeg: 45 },
     { loopSweepDeg: 90 },
+    { loopStepSizePx: 80 },
+    { loopPoints: [{ x: 2, y: 2 }] },
+    { loopPoints: undefined },
     { controlPointDistancesPx: [1] },
     { controlPointWeights: [0.6] },
     { controlPointWeights: undefined },
@@ -724,6 +730,15 @@ function verifySelectionAndArrowStyles() {
     selector: string;
     style: Record<string, unknown>;
   }>;
+  expect(
+    stylesheet.find((rule) => rule.selector === "edge:loop")?.style[
+      "control-point-step-size"
+    ] === "data(loopStepSize)" &&
+      stylesheet.find((rule) => rule.selector === "edge")?.style[
+        "control-point-step-size"
+      ] === undefined,
+    "transient loop sizing must leave ordinary edge control-point defaults unchanged",
+  );
 
   const selectedNodeStyle = stylesheet.find(
     (rule) => rule.selector === "node:selected",

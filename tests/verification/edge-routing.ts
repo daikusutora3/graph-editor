@@ -25,10 +25,15 @@ import {
   createLoopDirectionTask,
   loopDirectionCandidates,
   loopSamplePoints,
+  loopLabelPoint,
+  normalizeLoopStepSize,
   normalizeDegrees,
   scoreLoopDirection,
 } from "../../features/graph-editor/core/layout/edge-routing-loops";
-import type { ResolvedEdgeRoutingOptions } from "../../features/graph-editor/core/layout/edge-routing-shared";
+import {
+  edgeLabelSize,
+  type ResolvedEdgeRoutingOptions,
+} from "../../features/graph-editor/core/layout/edge-routing-shared";
 import {
   layoutLine,
   layoutTree,
@@ -1133,8 +1138,218 @@ verifyManualRoutingHistoryAndStorage();
 verifyRoutingGeometryWork();
 verifyParallelRoutingHistoryWork();
 verifyLoopRoutingWork();
+verifyLoopGroupGeometry();
 
 finish();
+
+function verifyLoopGroupGeometry() {
+  const loopGraph = (
+    count: number,
+    label = "loop A",
+    nodeLabel = "0",
+  ): GraphModel => ({
+    ...graphFixture([]),
+    settings: {
+      ...defaultGraphSettings,
+      directed: true,
+      allowSelfLoops: true,
+      allowMultiEdges: true,
+      weighted: false,
+      autoEdgeRouting: true,
+    },
+    nodes: [{ id: "source", label: nodeLabel, order: 0, x: 0, y: 0 }],
+    edges: Array.from({ length: count }, (_, index) => ({
+      id: `loop${index}`,
+      source: "source",
+      target: "source",
+      label,
+    })),
+  });
+  const assertLabelsSeparate = (
+    graph: GraphModel,
+    routes: ReadonlyMap<string, EdgeRoutingMeta>,
+  ) => {
+    for (let i = 0; i < graph.edges.length; i++)
+      for (let j = 0; j < i; j++) {
+        const a = graph.edges[i]!,
+          b = graph.edges[j]!;
+        const pa = loopLabelPoint(graph.nodes[0]!, routes.get(a.id)!),
+          pb = loopLabelPoint(graph.nodes[0]!, routes.get(b.id)!);
+        const sa = edgeLabelSize(a),
+          sb = edgeLabelSize(b);
+        expect(
+          Math.abs(pa.x - pb.x) >= (sa.width + sb.width) / 2 + 2 ||
+            Math.abs(pa.y - pb.y) >= 28,
+          "estimated native-model loop-label backgrounds must be separate",
+        );
+      }
+  };
+  for (const count of [2, 3, 4, 8]) {
+    const graph = loopGraph(count);
+    for (const mode of ["simple", "quality"] as const) {
+      const routes = computeEdgeRouting(graph, { mode });
+      expect(
+        edgeRoutingProgress(routes).pendingEdgeIds.length === 0,
+        "small loop groups should finish before returning",
+      );
+      assertLabelsSeparate(graph, routes);
+      expect(
+        [...routes.values()].every(
+          (route) =>
+            normalizeLoopStepSize(route.loopStepSizePx) >= 40 &&
+            normalizeLoopStepSize(route.loopStepSizePx) <= 180,
+        ),
+        "loop sizes must remain bounded transient geometry",
+      );
+      expect(
+        [...routes.values()].every(
+          (route) => route.loopSweepDeg <= 360 / count - 10,
+        ),
+        "automatic loop source sectors must stay separate in both avoidance modes",
+      );
+      const restored = computeEdgeRouting(graph, {
+        mode: "quality",
+        previousMeta: routes,
+      });
+      expect(
+        canonicalSignature(restored) ===
+          canonicalSignature(computeEdgeRouting(graph)),
+        "toggling avoidance must restore canonical loop placement",
+      );
+    }
+  }
+  const manual = loopGraph(4);
+  manual.edges[0] = {
+    ...manual.edges[0]!,
+    routing: { loopDirectionDeg: 45, loopSweepDeg: 65 },
+  };
+  for (const mode of ["simple", "quality"] as const) {
+    const routes = computeEdgeRouting(manual, { mode });
+    const fixed = routes.get("loop0")!;
+    expect(
+      fixed.loopDirectionDeg === 45 &&
+        fixed.loopSweepDeg === 65 &&
+        normalizeLoopStepSize(fixed.loopStepSizePx) === 40,
+      "manual loop direction, sweep and default size must remain exact",
+    );
+    for (const edge of manual.edges.slice(1)) {
+      const route = routes.get(edge.id)!;
+      expect(
+        Math.abs(normalizeDegrees(route.loopDirectionDeg - 45)) >=
+          (route.loopSweepDeg + 65) / 2 + 4,
+        "automatic loops must reserve the fixed manual sector",
+      );
+    }
+    assertLabelsSeparate(manual, routes);
+  }
+  const pill = loopGraph(2, "loop A", "long-label-node-000000");
+  for (const mode of ["simple", "quality"] as const) {
+    const routes = computeEdgeRouting(pill, { mode });
+    expect(
+      [...routes.values()].every((route) => route.status !== "unresolved"),
+      "automatic loop backgrounds must clear the source pill",
+    );
+    for (const route of routes.values()) {
+      const p = loopLabelPoint(pill.nodes[0]!, route);
+      expect(
+        Math.abs(p.y) > 37,
+        "pill-loop labels should lie beyond the source height",
+      );
+    }
+    assertLabelsSeparate(pill, routes);
+  }
+  const shortSource = loopGraph(2);
+  expect(
+    createEdgeRoutingCacheKey(shortSource, { mode: "simple" }) !==
+      createEdgeRoutingCacheKey(pill, { mode: "simple" }),
+    "loop-size caches must invalidate when a source label widens with avoidance disabled",
+  );
+  const hidden = loopGraph(8, "");
+  hidden.edges = hidden.edges.map((edge) => ({
+    ...edge,
+    label: undefined,
+    weight: "1",
+  }));
+  expect(
+    [...computeEdgeRouting(hidden).values()].every(
+      (route) => normalizeLoopStepSize(route.loopStepSizePx) === 40,
+    ),
+    "stored hidden weights must not enlarge unlabelled loops",
+  );
+  const singleton = loopGraph(1, "1");
+  expect(
+    normalizeLoopStepSize(
+      computeEdgeRouting(singleton).get("loop0")?.loopStepSizePx,
+    ) === 40,
+    "ordinary single loops must preserve their default size",
+  );
+  const longSingle = loopGraph(1, "WWWWWWWWWWWW");
+  const longRoute = computeEdgeRouting(longSingle).get("loop0")!;
+  const longPoint = loopLabelPoint(longSingle.nodes[0]!, longRoute);
+  const longSize = edgeLabelSize(longSingle.edges[0]!);
+  const longDx = Math.max(0, Math.abs(longPoint.x) - longSize.width / 2 - 4),
+    longDy = Math.max(0, Math.abs(longPoint.y) - longSize.height / 2 - 4);
+  expect(
+    Math.hypot(longDx, longDy) >= 24,
+    "a long automatic single-loop label must clear its circular source",
+  );
+  const retained = computeEdgeRouting(manual);
+  const preserved = computeEdgeRouting(
+    {
+      ...manual,
+      edges: [
+        ...manual.edges,
+        { id: "other", source: "source", target: "outside" },
+      ],
+      nodes: [
+        ...manual.nodes,
+        { id: "outside", label: "", order: 1, x: 400, y: 400 },
+      ],
+    },
+    { previousMeta: retained, rerouteEdgeIds: new Set(["other"]) },
+  );
+  expect(
+    manual.edges.every(
+      (edge) => preserved.get(edge.id) === retained.get(edge.id),
+    ),
+    "untouched whole-loop groups must retain their exact metadata objects",
+  );
+  const dense = loopGraph(8, "loop A");
+  dense.nodes.push(
+    ...Array.from({ length: 400 }, (_, index) => ({
+      id: `near${index}`,
+      label: "",
+      order: index + 1,
+      x: Math.cos(index * 0.31) * 80,
+      y: Math.sin(index * 0.31) * 80,
+    })),
+  );
+  const saved = JSON.stringify(dense);
+  let draft = computeEdgeRouting(dense);
+  expect(
+    edgeRoutingProgress(draft).pendingEdgeIds.length > 0,
+    "loop node and label scoring must respect the synchronous work budget",
+  );
+  for (
+    let pass = 0;
+    pass < 100 && edgeRoutingProgress(draft).pendingEdgeIds.length;
+    pass++
+  )
+    draft = computeEdgeRouting(dense, {
+      previousMeta: draft,
+      rerouteEdgeIds: new Set(edgeRoutingProgress(draft).pendingEdgeIds),
+    });
+  const full = finishTask(createEdgeRoutingTask(dense));
+  expect(
+    edgeRoutingProgress(draft).pendingEdgeIds.length === 0 &&
+      canonicalSignature(draft) === canonicalSignature(full),
+    "pending loop tasks must finish exactly like an uninterrupted generator",
+  );
+  expect(
+    JSON.stringify(dense) === saved && !saved.includes("loopStepSizePx"),
+    "transient loop sizes must never change the graph or its history data",
+  );
+}
 
 function verifyLoopRoutingWork() {
   const options: ResolvedEdgeRoutingOptions = {
