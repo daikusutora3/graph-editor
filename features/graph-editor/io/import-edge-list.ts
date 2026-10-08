@@ -9,7 +9,6 @@ import {
   MAX_IMPORT_NODES,
   readImportSettings,
   readLines,
-  shouldRequireNumericWeights,
   splitTokens,
   type ImportOptions,
 } from "./import-utils";
@@ -150,14 +149,6 @@ export function importStructuredEdgeList(
         min: inputIndexBase,
         max: nodeCount - 1 + inputIndexBase,
       });
-      continue;
-    }
-
-    if (
-      shouldRequireNumericWeights(settings) &&
-      !Number.isFinite(Number(parts[2]))
-    ) {
-      warnings.push({ code: "weight-not-numeric", line: line.number });
       continue;
     }
 

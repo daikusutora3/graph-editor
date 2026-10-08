@@ -133,12 +133,12 @@ for (const weightKind of ["number", "string", "number"] as const) {
   expect(
     JSON.stringify(imported) ===
       JSON.stringify(tryImportAdjacencyList(sharedAdjacencyLines, options)) &&
-      imported?.model.edges.length === (weightKind === "number" ? 2 : 4) &&
+      imported?.model.edges.length === 4 &&
       JSON.stringify(
         imported.warnings.map((warning) =>
           "line" in warning ? warning.line : undefined,
         ),
-      ) === JSON.stringify(weightKind === "number" ? [2, 4] : []) &&
+      ) === JSON.stringify([]) &&
       JSON.stringify(analyzeGraphSource(sharedAdjacencySource)) ===
         sharedAnalysis,
     "reusing a parsed adjacency source across scans preserves options, counts, repeated edges and per-line warnings",
@@ -997,9 +997,9 @@ const nonNumericLooseWeight = importGraphInput("0 1 x", {
 });
 
 expect(
-  nonNumericLooseWeight.model.edges.length === 0 &&
-    nonNumericLooseWeight.warnings[0]?.code === "weight-not-numeric",
-  "weighted edge-pairs import should reject non-numeric weights",
+  nonNumericLooseWeight.model.edges[0]?.weight === "x" &&
+    nonNumericLooseWeight.warnings.length === 0,
+  "weighted edge-pairs import should preserve text weights",
 );
 
 const nonNumericAdjacencyWeight = importGraphInput("0: 1(x)", {
@@ -1009,10 +1009,36 @@ const nonNumericAdjacencyWeight = importGraphInput("0: 1(x)", {
 });
 
 expect(
-  nonNumericAdjacencyWeight.model.edges.length === 0 &&
-    nonNumericAdjacencyWeight.warnings[0]?.code === "weight-not-numeric",
-  "weighted adjacency-list import should reject non-numeric weights",
+  nonNumericAdjacencyWeight.model.edges[0]?.weight === "x" &&
+    nonNumericAdjacencyWeight.warnings.length === 0,
+  "weighted adjacency-list import should preserve text weights",
 );
+
+for (const [format, input] of [
+  ["contest-edge-list", "3 2\n1 2 INF\n2 3 ∞"],
+  ["weighted-parent-list", "3\n1 INF\n2 ∞"],
+] as const) {
+  const imported = importGraphInput(input, { format, weighted: true });
+  expect(
+    imported.model.edges.map((edge) => edge.weight).join(",") === "INF,∞" &&
+      imported.warnings.length === 0,
+    `${format} should preserve arbitrary weight tokens`,
+  );
+  for (const exportFormat of ["edge-list", "adjacency-list", "json"] as const) {
+    const restored = importGraphInput(
+      exportGraph(imported.model, exportFormat),
+      {
+        weighted: true,
+        format:
+          exportFormat === "edge-list" ? "contest-edge-list" : exportFormat,
+      },
+    );
+    expect(
+      restored.model.edges.map((edge) => edge.weight).join(",") === "INF,∞",
+      `${format} text weights should survive ${exportFormat} round trips`,
+    );
+  }
+}
 
 const looseFallback = importGraphInput("0 1\n1 2", {
   directed: false,

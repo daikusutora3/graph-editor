@@ -159,12 +159,6 @@ export function ensureNodeByLabel(
   return id;
 }
 
-export function shouldRequireNumericWeights(
-  settings: Pick<GraphSettings, "weighted" | "weightKind">,
-) {
-  return settings.weighted && settings.weightKind === "number";
-}
-
 function stripComment(line: string): string {
   const hashIndex = line.indexOf("#");
   const slashIndex = line.indexOf("//");

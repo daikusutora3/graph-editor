@@ -317,6 +317,67 @@ expect(
       0.000001,
   "automatic routing should point the rendered self-loop away from the nearby node",
 );
+for (const count of [2, 3, 4, 10]) {
+  const graph: GraphModel = {
+    ...obstructedLoopGraph,
+    nodes: [obstructedLoopGraph.nodes[0]],
+    edges: Array.from({ length: count }, (_, index) => ({
+      id: `loop-${index}`,
+      source: "a",
+      target: "a",
+    })),
+  };
+  const routes = computeEdgeRouting(graph);
+  const first = routes.get("loop-0")!;
+  const second = routes.get("loop-1")!;
+  expect(
+    Math.abs(
+      normalizeDegrees(second.loopDirectionDeg - first.loopDirectionDeg),
+    ) >=
+      360 / count - 1 &&
+      [...routes.values()].every((route) => route.loopSweepDeg < 360 / count),
+    `${count} automatic self-loops should occupy separate angular sectors`,
+  );
+  expect(
+    routingSignature(routes) === routingSignature(computeEdgeRouting(graph)),
+    "self-loop placement should remain deterministic",
+  );
+  if (count === 2) {
+    const obstructed = {
+      ...graph,
+      nodes: [
+        graph.nodes[0],
+        { ...obstructedLoopGraph.nodes[1], x: -50, y: -50 },
+      ],
+    };
+    const moved = computeEdgeRouting(obstructed);
+    expect(
+      moved.get("loop-0")!.loopDirectionDeg !== first.loopDirectionDeg,
+      "a pair of loops should rotate away from a nearby node",
+    );
+    expect(
+      Math.abs(
+        normalizeDegrees(
+          moved.get("loop-1")!.loopDirectionDeg -
+            moved.get("loop-0")!.loopDirectionDeg,
+        ),
+      ) === 180,
+      "node avoidance should preserve opposite directions for two loops",
+    );
+    graph.edges[0].routing = { loopDirectionDeg: 90, loopSweepDeg: 60 };
+    const manual = computeEdgeRouting(graph).get("loop-0")!;
+    expect(
+      manual.loopDirectionDeg === 90 && manual.loopSweepDeg === 60,
+      "explicit manual loop routing should remain unchanged",
+    );
+    graph.settings.autoEdgeRouting = false;
+    graph.edges[0].routing = undefined;
+    expect(
+      computeEdgeRouting(graph).get("loop-0")!.loopSweepDeg === 70,
+      "disabled automatic routing should preserve the existing simple layout",
+    );
+  }
+}
 const previousPositiveRoute = new Map<string, EdgeRoutingMeta>([
   ["ab", routeMeta(64)],
 ]);

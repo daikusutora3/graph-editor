@@ -221,11 +221,7 @@ export function tryImportWeightedParentList(
   }
 
   const parents = rows.map(([parent]) => Number(parent));
-  const weights = rows.map(([, weight]) => Number(weight));
-  if (
-    parents.some((value) => !Number.isInteger(value)) ||
-    weights.some((value) => !Number.isFinite(value))
-  ) {
+  if (parents.some((value) => !Number.isInteger(value))) {
     return null;
   }
 

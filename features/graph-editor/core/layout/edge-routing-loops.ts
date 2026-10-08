@@ -13,6 +13,38 @@ export function chooseLoopDirection(
   return step.value;
 }
 
+/** Rotate evenly spaced loops together so their sectors stay separate. */
+export function* createLoopGroupDirectionTask(
+  source: GraphNode,
+  nodes: GraphNode[],
+  options: ResolvedEdgeRoutingOptions,
+  count: number,
+): Generator<void, number> {
+  if (count === 1) {
+    return yield* createLoopDirectionTask(source, nodes, options);
+  }
+  const nearbyNodes = loopObstacleNodes(source, nodes, options);
+  if (nearbyNodes.length === 0) return Math.round(options.loopDirectionDeg);
+  let best = Math.round(options.loopDirectionDeg);
+  let bestScore = Infinity;
+  for (const candidate of loopDirectionCandidates(options)) {
+    let score = 0;
+    for (let index = 0; index < count; index++) {
+      yield;
+      const direction = candidate + (index * 360) / count;
+      score += scoreLoopDirection(direction, source, nearbyNodes, {
+        ...options,
+        loopDirectionDeg: options.loopDirectionDeg + (index * 360) / count,
+      });
+    }
+    if (score < bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 /** Keep each direction resumable without rescoring distant nodes 24 times. */
 export function* createLoopDirectionTask(
   source: GraphNode,
