@@ -25,6 +25,7 @@ import {
   applyCytoscapeRoutingMeta,
 } from "../adapters/cytoscape/cytoscape-adapter";
 import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
+import { refreshCytoscapeGeometry } from "../adapters/cytoscape/graph-canvas-geometry-refresh";
 import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
 type DragSnapshot = Record<NodeId, Position>;
@@ -92,18 +93,9 @@ export function useHtmlNodeDrag({
   const restoreRoutes = useCallback(
     (cy: Core) => {
       const routes = originalRoutesRef.current;
-      cy.edges().forEach((edge) => {
-        const route = routes.get(edge.id());
-        if (route)
-          edge.data({
-            bow: route.bowPx,
-            controlPointDistances: route.controlPointDistancesPx,
-            controlPointWeights: route.controlPointWeights,
-            duplicate: route.duplicate,
-            loopDirection: `${route.loopDirectionDeg}deg`,
-            loopSweep: `${route.loopSweepDeg}deg`,
-          });
-      });
+      refreshCytoscapeGeometry(
+        withCytoscapeBatch(cy, () => applyCytoscapeRoutingMeta(cy, routes)),
+      );
       acceptRoutingMeta(graph, routes);
       updateRenderedHitboxes(cy);
     },
@@ -227,8 +219,10 @@ export function useHtmlNodeDrag({
               dragRoutingBaselineRef.current = step.value;
               if (positionRevision === dragPositionRevisionRef.current) {
                 dragRoutingPendingRef.current = false;
-                withCytoscapeBatch(cy, () =>
-                  applyCytoscapeRoutingMeta(cy, step.value),
+                refreshCytoscapeGeometry(
+                  withCytoscapeBatch(cy, () =>
+                    applyCytoscapeRoutingMeta(cy, step.value),
+                  ),
                 );
                 acceptRoutingMeta(positioned, step.value);
                 schedulePostRoutingHitboxes(cy);

@@ -5,7 +5,7 @@ import { edgeHasVisibleLabel } from "./edge-routing-shared";
 import type { RoutingWork } from "./edge-routing-shared";
 import { representativeBow } from "./edge-routing";
 import { routeEdgeKey } from "./edge-routing";
-import { edgeLabelClearance } from "./edge-routing-shared";
+import { edgeLabelSize } from "./edge-routing-shared";
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
 import { EDGE_PAIR_SCORING_WORK_LIMIT } from "./edge-routing";
 /** Candidate-curve scoring for automatic edge routing. Pure functions; the
@@ -44,6 +44,19 @@ export function scoreCandidateCurve(
   nodesById: Map<NodeId, GraphNode>,
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
+) {
+  return (
+    scoreCurveNodeAndShape(curve, source, target, edge, nodes, options).score +
+    scoreCurveLabelOverlap(edge, edges, nodesById, curve, options, resolvedMeta)
+  );
+}
+export function scoreCurveNodeAndShape(
+  curve: EdgeCurveGeometry,
+  source: GraphNode,
+  target: GraphNode,
+  edge: GraphEdge,
+  nodes: GraphNode[],
+  options: ResolvedEdgeRoutingOptions,
 ) {
   const distanceToNode = createCurveNodeDistance(source, target, curve);
   let collisionCount = 0;
@@ -84,33 +97,16 @@ export function scoreCandidateCurve(
     ...curve.controlPointDistancesPx.map(Math.abs),
   );
 
-  return (
-    collisionCount * NODE_COLLISION_SCORE +
-    penetrationScore * NODE_PENETRATION_SCORE +
-    scoreCurveCrossings(
-      edge,
-      edges,
-      nodesById,
-      source,
-      target,
-      curve,
-      options,
-      resolvedMeta,
-    ) +
-    scoreCurveLabelOverlap(
-      edge,
-      edges,
-      nodesById,
-      curve,
-      options,
-      resolvedMeta,
-    ) +
-    extraLength * EXTRA_LENGTH_SCORE +
-    maximumOffset * 0.03 +
-    curve.controlPointWeights.length * 0.4 +
-    scoreCurveZigzag(curve) +
-    scoreCurveInstability(curve, edge, options)
-  );
+  return {
+    collisions: collisionCount,
+    score:
+      collisionCount * NODE_COLLISION_SCORE +
+      penetrationScore * NODE_PENETRATION_SCORE +
+      extraLength * EXTRA_LENGTH_SCORE +
+      maximumOffset * 0.03 +
+      curve.controlPointWeights.length * 0.4 +
+      scoreCurveZigzag(curve),
+  };
 }
 export function scoreCurveCrossings(
   edge: GraphEdge,
@@ -334,6 +330,7 @@ export function scoreCurveLabelOverlap(
   curve: EdgeCurveGeometry,
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
+  includeParallelLabels = false,
 ) {
   if (
     !edgeHasVisibleLabel(edge) ||
@@ -350,13 +347,15 @@ export function scoreCurveLabelOverlap(
   }
 
   const anchor = edgeCurveMidpoint(source, target, curve);
+  const size = edgeLabelSize(edge, options.work);
   let score = 0;
 
   for (const otherEdge of edges) {
     if (
       otherEdge.id === edge.id ||
       otherEdge.source === otherEdge.target ||
-      routeEdgeKey(otherEdge) === routeEdgeKey(edge) ||
+      (!includeParallelLabels &&
+        routeEdgeKey(otherEdge) === routeEdgeKey(edge)) ||
       !edgeHasVisibleLabel(otherEdge)
     ) {
       continue;
@@ -369,17 +368,29 @@ export function scoreCurveLabelOverlap(
       continue;
     }
 
-    const otherAnchor = edgeCurveMidpoint(
-      otherSource,
-      otherTarget,
-      routeForEdge(otherEdge, options, resolvedMeta),
-    );
-    const distance = Math.hypot(
-      anchor.x - otherAnchor.x,
-      anchor.y - otherAnchor.y,
-    );
-    const overlap = Math.max(0, edgeLabelClearance(edge, otherEdge) - distance);
-    score += overlap * overlap * 1.4;
+    const otherCurve = routeForEdge(otherEdge, options, resolvedMeta);
+    const cached = options.work.labelAnchors?.get(otherEdge.id);
+    const otherAnchor =
+      cached?.curve === otherCurve
+        ? cached.point
+        : edgeCurveMidpoint(otherSource, otherTarget, otherCurve);
+    if (cached?.curve !== otherCurve)
+      options.work.labelAnchors?.set(otherEdge.id, {
+        curve: otherCurve,
+        point: otherAnchor,
+      });
+    options.work.units += NODE_CHECK_UNITS;
+    const otherSize = edgeLabelSize(otherEdge, options.work);
+    const overlapX =
+      (size.width + otherSize.width) / 2 +
+      2 -
+      Math.abs(anchor.x - otherAnchor.x);
+    const overlapY =
+      (size.height + otherSize.height) / 2 +
+      2 -
+      Math.abs(anchor.y - otherAnchor.y);
+    if (overlapX > 0 && overlapY > 0)
+      score += 10_000 + overlapX * overlapY * 1.4;
   }
 
   return score;

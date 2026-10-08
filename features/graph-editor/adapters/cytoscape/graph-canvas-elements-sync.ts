@@ -1,10 +1,12 @@
 import type {
   Core,
+  CollectionReturnValue,
   ElementDefinition,
   SingularElementReturnValue,
 } from "cytoscape";
 
 type SyncCytoscapeElementsResult = {
+  changedElements: CollectionReturnValue;
   added: number;
   recreated: number;
   removed: number;
@@ -28,6 +30,7 @@ export function syncCytoscapeElements(
   options: SyncCytoscapeElementsOptions = {},
 ): SyncCytoscapeElementsResult {
   const result: SyncCytoscapeElementsResult = {
+    changedElements: cy.collection(),
     added: 0,
     recreated: 0,
     removed: 0,
@@ -42,6 +45,12 @@ export function syncCytoscapeElements(
 
   cy.elements().forEach((element) => {
     if (!nextIds.has(element.id())) {
+      // Removing an edge can change surviving parallel and self-loop routes.
+      result.changedElements.merge(
+        element.group() === "edges"
+          ? element.parallelEdges()
+          : element.connectedEdges().parallelEdges(),
+      );
       element.remove();
       result.removed += 1;
     }
@@ -57,14 +66,20 @@ export function syncCytoscapeElements(
     const existing = cy.getElementById(id);
 
     if (existing.empty()) {
-      cy.add(definition);
+      result.changedElements.merge(cy.add(definition));
       result.added += 1;
       continue;
     }
 
     if (shouldRecreateElement(existing, definition)) {
+      result.changedElements.merge(
+        (existing.group() === "edges"
+          ? existing.parallelEdges()
+          : existing.connectedEdges().parallelEdges()
+        ).not(existing),
+      );
       existing.remove();
-      cy.add(definition);
+      result.changedElements.merge(cy.add(definition));
       result.recreated += 1;
       continue;
     }
@@ -75,6 +90,7 @@ export function syncCytoscapeElements(
     }
 
     updateElement(existing, definition, options);
+    result.changedElements.merge(existing);
     result.updated += 1;
   }
 

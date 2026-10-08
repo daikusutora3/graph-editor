@@ -27,6 +27,9 @@ export type EdgeLabelHitbox = {
   nodeHeight: number;
   x: number;
   y: number;
+  /** Rendered label background bounds, with a minimum pointer target. */
+  labelWidth?: number;
+  labelHeight?: number;
   bowPx: number;
   controlPointDistancesPx?: readonly number[];
   controlPointWeights?: readonly number[];
@@ -94,14 +97,26 @@ export function readEdgeLabelHitboxes(
     }
 
     const position = readEdgeRenderedLabelPosition(edge);
+    const label =
+      graphEdge.label ??
+      (graph.settings.weighted ? (graphEdge.weight ?? "1") : "");
+    const labelBounds = label
+      ? edge.renderedBoundingBox({
+          includeNodes: false,
+          includeEdges: false,
+          includeLabels: true,
+          includeMainLabels: true,
+          includeSourceLabels: false,
+          includeTargetLabels: false,
+          includeOverlays: false,
+        })
+      : null;
     const source = geometryFor(edge.source());
     const target = geometryFor(edge.target());
 
     hitboxes.push({
       id: edge.id(),
-      label: graph.settings.weighted
-        ? (graphEdge.weight ?? "1")
-        : (graphEdge.label ?? ""),
+      label,
       sourceX: source.position.x,
       sourceY: source.position.y,
       targetX: target.position.x,
@@ -111,6 +126,14 @@ export function readEdgeLabelHitboxes(
       nodeHeight: source.height,
       x: position.x,
       y: position.y,
+      labelWidth:
+        labelBounds && Number.isFinite(labelBounds.w) && labelBounds.w > 0
+          ? Math.max(44, labelBounds.w)
+          : edgeLabelHitboxWidth(label),
+      labelHeight:
+        labelBounds && Number.isFinite(labelBounds.h) && labelBounds.h > 0
+          ? Math.max(EDGE_LABEL_HITBOX_HEIGHT, labelBounds.h)
+          : EDGE_LABEL_HITBOX_HEIGHT,
       bowPx: readNumericEdgeData(edge, "bow", 0),
       controlPointDistancesPx: readNumericArrayEdgeData(
         edge,
@@ -241,7 +264,7 @@ function readEdgeRenderedLabelPosition(edge: EdgeSingular): RenderedPoint {
 }
 
 export function edgeLabelHitboxWidth(label: string) {
-  return clamp(label.length * 9 + 28, 44, 112);
+  return Math.max(label.length * 9 + 28, 44);
 }
 
 function midpoint(a: RenderedPoint, b: RenderedPoint): RenderedPoint {
@@ -249,8 +272,4 @@ function midpoint(a: RenderedPoint, b: RenderedPoint): RenderedPoint {
     x: (a.x + b.x) / 2,
     y: (a.y + b.y) / 2,
   };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
 }

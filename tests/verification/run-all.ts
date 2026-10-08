@@ -18,6 +18,7 @@ const suites = [
   { name: "overlaps", path: "tests/verification/overlaps.ts" },
   { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
+  { name: "canvas-rendering", path: "tests/verification/canvas-rendering.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
   {
     name: "history-clipboard",
