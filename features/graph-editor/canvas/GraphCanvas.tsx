@@ -202,7 +202,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     [notifyZoomPercent],
   );
 
-  const { displayReady, displayError } = useGraphCanvasLifecycle({
+  const { displayReady, displayError, renderReady } = useGraphCanvasLifecycle({
     routingReady,
     containerRef,
     cyRef,
@@ -549,7 +549,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
         </div>
       ) : null}
       <div
-        data-canvas-ready={displayReady}
+        data-canvas-ready={renderReady}
         style={{ visibility: displayReady ? "visible" : "hidden" }}
         inert={!displayReady}
         className={[

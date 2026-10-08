@@ -64,6 +64,8 @@ function sameEdgeLabelHitbox(a: EdgeLabelHitbox, b: EdgeLabelHitbox) {
     a.x === b.x &&
     a.y === b.y &&
     a.bowPx === b.bowPx &&
+    a.labelWidth === b.labelWidth &&
+    a.labelHeight === b.labelHeight &&
     a.loopDirectionDeg === b.loopDirectionDeg &&
     a.loopSweepDeg === b.loopSweepDeg &&
     sameNumbers(a.controlPointDistancesPx, b.controlPointDistancesPx) &&

@@ -445,7 +445,8 @@ const SelectEdgeLabelButton = memo(function SelectEdgeLabelButton({
         left: 0,
         top: 0,
         translate: `${edge.x}px ${edge.y}px`,
-        width: edgeLabelHitboxWidth(edge.label),
+        width: edge.labelWidth ?? edgeLabelHitboxWidth(edge.label),
+        height: edge.labelHeight,
       }}
       {...edgeHitboxEventProps(edge, handlers)}
     />

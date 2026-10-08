@@ -150,6 +150,14 @@ function verifySharedEndpointSnapshots() {
     source: () => a,
     target: () => b,
     renderedMidpoint: () => ({ x: 50, y: 0 }),
+    renderedBoundingBox: () => ({
+      x1: 45,
+      y1: -13,
+      x2: 55,
+      y2: 13,
+      w: 10,
+      h: 26,
+    }),
     data: (key: string) => {
       if (key === "controlPointDistances") return [10];
       if (key === "controlPointWeights") return [0.5];

@@ -2,6 +2,7 @@ import {
   measureNodeWidth,
   withMeasuredNodeGeometry,
 } from "../browser/node-geometry";
+import { refreshCytoscapeGeometry } from "./graph-canvas-geometry-refresh";
 import type {
   Core,
   Css,
@@ -154,7 +155,7 @@ export function syncCytoscapeEdgeRoutingData(
   );
   let step = task.next();
   while (!step.done) step = task.next();
-  applyCytoscapeRoutingMeta(cy, step.value);
+  refreshCytoscapeGeometry(applyCytoscapeRoutingMeta(cy, step.value));
   return step.value;
 }
 
@@ -199,6 +200,7 @@ export function applyCytoscapeRoutingMeta(
   cy: Core,
   edgeRoutingMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
 ) {
+  const changed = cy.collection();
   cy.edges().forEach((edge) => {
     const meta = edgeRoutingMeta.get(edge.id());
 
@@ -214,7 +216,9 @@ export function applyCytoscapeRoutingMeta(
       loopDirection: `${meta.loopDirectionDeg}deg`,
       loopSweep: `${meta.loopSweepDeg}deg`,
     });
+    changed.merge(edge);
   });
+  return changed;
 }
 
 function* interactiveRerouteEdgeIdsTask(

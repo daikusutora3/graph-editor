@@ -1,4 +1,5 @@
-import type { EdgeCurvePoint } from "./edge-route-geometry";
+import type { EdgeCurveGeometry, EdgeCurvePoint } from "./edge-route-geometry";
+import { estimateLabelWidth } from "../graph/node-size";
 import type { EdgeRoutingMeta } from "./edge-routing";
 /** Types and small helpers shared by the routing modules. */
 import type { GraphEdge, EdgeId } from "../graph/model";
@@ -8,6 +9,11 @@ export type RoutingWork = {
   units: number;
   pending?: Set<EdgeId>;
   samples: Map<string, EdgeCurvePoint[]>;
+  labelAnchors?: Map<
+    EdgeId,
+    { curve: EdgeCurveGeometry; point: EdgeCurvePoint }
+  >;
+  labelSizes?: Map<EdgeId, { width: number; height: number }>;
 };
 export type ResolvedEdgeRoutingOptions = {
   avoidNodes: boolean;
@@ -53,4 +59,16 @@ export function edgeLabelText(edge: GraphEdge) {
 }
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+/** Axis-aligned background bounds at the renderer's12px edge font. */
+export function edgeLabelSize(edge: GraphEdge, work?: RoutingWork) {
+  const cached = work?.labelSizes?.get(edge.id);
+  if (cached) return cached;
+  const size = {
+    width: estimateLabelWidth(edgeLabelText(edge), 12) + 10,
+    height: 26,
+  };
+  work?.labelSizes?.set(edge.id, size);
+  return size;
 }

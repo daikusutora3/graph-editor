@@ -1,9 +1,16 @@
 import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
-import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
+import type {
+  ResolvedEdgeRoutingOptions,
+  RoutingWork,
+} from "./edge-routing-shared";
 import { createLoopGroupDirectionTask } from "./edge-routing-loops";
 import { clamp } from "./edge-routing-shared";
 import { compareCurvePreference } from "./edge-routing-scoring";
-import { scoreCandidateCurve } from "./edge-routing-scoring";
+import {
+  scoreCurveNodeAndShape,
+  scoreCurveLabelOverlap,
+} from "./edge-routing-scoring";
+import { edgeHasVisibleLabel, edgeLabelSize } from "./edge-routing-shared";
 import { canonicalPreviousBow } from "./edge-routing-shared";
 import type {
   EdgeId,
@@ -53,9 +60,9 @@ const NODE_AVOIDANCE_WORK_LIMIT = 400_000;
 export const EDGE_PAIR_SCORING_WORK_LIMIT = 4_000_000;
 /**
  * Scoring work allowed per computeEdgeRouting call, in "units" (one node
- * distance check = 1, one edge-pair crossing check = 4). Once spent, the
- * remaining edges keep their previous route or go straight instead of
- * freezing the UI. ~250k units is roughly 10 ms on a laptop.
+ * distance or label comparison =1). A synchronous call returns a pending
+ * draft once spent; subsequent calls resume its exact generator. Browser
+ * tasks finish all stages across frames instead of restarting the route.
  */
 const ROUTING_WORK_BUDGET = 25_000;
 const MIN_DUPLICATE_BOW_SPACING_PX = 12;
@@ -76,7 +83,7 @@ const defaultEdgeRoutingOptions: ResolvedEdgeRoutingOptions = {
   previousMeta: new Map(),
   rerouteEdgeIds: null,
   separateParallelEdges: true,
-  nodeClearancePx: 42,
+  nodeClearancePx: 30,
   duplicateBowPx: 36,
   loopDirectionDeg: LOOP_DIRECTION_DEG,
   loopDirectionStepDeg: LOOP_DIRECTION_STEP_DEG,
@@ -84,27 +91,128 @@ const defaultEdgeRoutingOptions: ResolvedEdgeRoutingOptions = {
   loopSweepStepDeg: LOOP_SWEEP_STEP_DEG,
   maxLoopSweepDeg: MAX_LOOP_SWEEP_DEG,
   candidateBowPx: [
-    0, 32, -32, 64, -64, 96, -96, 128, -128, 160, -160, 180, -180,
+    0, 16, -16, 32, -32, 64, -64, 96, -96, 128, -128, 160, -160, 180, -180,
   ],
 };
+
+type EdgeRoutingTask = Generator<void, Map<EdgeId, EdgeRoutingMeta>>;
+type EdgeRoutingTaskState = {
+  task: EdgeRoutingTask;
+  work: RoutingWork;
+  meta: Map<EdgeId, EdgeRoutingMeta>;
+  retainedMeta?: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
+  result?: Map<EdgeId, EdgeRoutingMeta>;
+  cacheKey: string;
+  options: EdgeRoutingOptions;
+  /** Cheap provisional lanes used only while the complete task is pending. */
+  skipManualReconciliation?: boolean;
+};
+const routingTaskStates = new WeakMap<EdgeRoutingTask, EdgeRoutingTaskState>();
+const routingContinuations = new WeakMap<
+  ReadonlyMap<EdgeId, EdgeRoutingMeta>,
+  { state: EdgeRoutingTaskState; pending: ReadonlySet<EdgeId> }
+>();
+
+function resumableState(model: GraphModel, options: EdgeRoutingOptions) {
+  const continuation =
+    options.previousMeta && routingContinuations.get(options.previousMeta);
+  if (
+    !continuation ||
+    !options.rerouteEdgeIds ||
+    continuation.state.cacheKey !== createEdgeRoutingCacheKey(model, options) ||
+    options.rerouteEdgeIds.size !== continuation.pending.size ||
+    [...options.rerouteEdgeIds].some((id) => !continuation.pending.has(id))
+  )
+    return undefined;
+  return continuation.state;
+}
 
 export function computeEdgeRouting(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
 ): Map<EdgeId, EdgeRoutingMeta> {
-  const task = createEdgeRoutingTask(model, options);
+  const resumed = resumableState(model, options);
+  if (resumed?.result) return resumed.result;
+  const task = resumed?.task ?? createEdgeRoutingTask(model, options);
+  const state = routingTaskStates.get(task)!;
+  const startedUnits = state.work.units;
+  let step = task.next();
+  while (!step.done && state.work.units - startedUnits < ROUTING_WORK_BUDGET)
+    step = task.next();
+  if (step.done) return step.value;
+
+  // Keep the exact task alive. Rebuilding a partial route would change which
+  // labels later edges see and could starve final simplification.
+  const fallback = createParallelRoutingDraft(
+    model,
+    state.options.previousMeta,
+  );
+  const draft = new Map<EdgeId, EdgeRoutingMeta>();
+  const pending = new Set<EdgeId>();
+  for (const [id, fallbackRoute] of fallback) {
+    const route = state.meta.get(id) ?? fallbackRoute;
+    if (state.retainedMeta?.has(id)) {
+      draft.set(id, state.retainedMeta.get(id)!);
+    } else {
+      draft.set(id, { ...route, status: "pending" });
+      pending.add(id);
+    }
+  }
+  state.cacheKey ||= createEdgeRoutingCacheKey(model, options);
+  routingContinuations.set(draft, { state, pending });
+  return draft;
+}
+
+/** A provisional draft must not recursively spend the quality work budget. */
+function createParallelRoutingDraft(
+  model: GraphModel,
+  previousMeta: EdgeRoutingOptions["previousMeta"],
+) {
+  const task = createEdgeRoutingTask(model, { mode: "parallel", previousMeta });
+  routingTaskStates.get(task)!.skipManualReconciliation = true;
   let step = task.next();
   while (!step.done) step = task.next();
   return step.value;
 }
 
-/** Retains group, candidate and final-check progress between browser frames. */
-export function* createEdgeRoutingTask(
+/** A complete resumable task: callers can yield between browser frames. */
+export function createEdgeRoutingTask(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
-): Generator<void, Map<EdgeId, EdgeRoutingMeta>> {
+): EdgeRoutingTask {
+  const resumed = resumableState(model, options);
+  if (resumed?.result)
+    return (function* () {
+      yield;
+      return resumed.result!;
+    })();
+  if (resumed) return resumed.task;
+  const state = {
+    work: {
+      units: 0,
+      samples: new Map(),
+      pending: new Set(),
+      labelAnchors: new Map(),
+      labelSizes: new Map(),
+    },
+    meta: new Map(),
+    cacheKey: "",
+    options,
+  } as EdgeRoutingTaskState;
+  const task = routingTask(model, options, state);
+  state.task = task;
+  routingTaskStates.set(task, state);
+  return task;
+}
+
+function* routingTask(
+  model: GraphModel,
+  options: EdgeRoutingOptions,
+  state: EdgeRoutingTaskState,
+): EdgeRoutingTask {
   model = routingDisplayModel(model);
   const resolvedOptions = resolveEdgeRoutingOptions(model, options);
+  resolvedOptions.work = state.work;
   if (resolvedOptions.avoidNodes) {
     // Resolve label geometry once for this pass. Candidate scoring repeatedly
     // reads it; the transient widths must never enter history or saved models.
@@ -131,7 +239,7 @@ export function* createEdgeRoutingTask(
   }
 
   const duplicateKeys = getDuplicateKeys(model);
-  const meta = new Map<EdgeId, EdgeRoutingMeta>();
+  const meta = state.meta;
   const originalEdgeOrder = new Map(
     model.edges.map((edge, index) => [edge.id, index]),
   );
@@ -157,9 +265,27 @@ export function* createEdgeRoutingTask(
       }
     }
     resolvedOptions.retainedMeta = retainedMeta;
+    state.retainedMeta = retainedMeta;
   }
 
-  for (const edges of routeGroups.values()) {
+  const chordLength = (edges: GraphEdge[]) => {
+    const edge = edges[0];
+    const source = edge && nodesById.get(edge.source),
+      target = edge && nodesById.get(edge.target);
+    return source && target
+      ? Math.hypot(target.x - source.x, target.y - source.y)
+      : 0;
+  };
+  const orderedGroups = resolvedOptions.avoidNodes
+    ? [...routeGroups]
+        .toSorted(
+          ([a, aEdges], [b, bEdges]) =>
+            chordLength(bEdges) - chordLength(aEdges) ||
+            (a < b ? -1 : a > b ? 1 : 0),
+        )
+        .map(([, edges]) => edges)
+    : [...routeGroups.values()];
+  for (const edges of orderedGroups) {
     yield;
     if (
       resolvedOptions.retainedMeta &&
@@ -194,7 +320,7 @@ export function* createEdgeRoutingTask(
         ? yield* createLoopGroupDirectionTask(
             source,
             model.nodes,
-            loopOptions,
+            { ...loopOptions, nodeClearancePx: 42 },
             separateLoops ? edges.length : 1,
           )
         : resolvedOptions.loopDirectionDeg;
@@ -238,7 +364,11 @@ export function* createEdgeRoutingTask(
       const center = (orderedEdges.length - 1) / 2;
       const spacingPx = duplicateBowSpacing(
         orderedEdges.length,
-        resolvedOptions.duplicateBowPx,
+        parallelLabelSpacing(
+          orderedEdges,
+          nodesById,
+          resolvedOptions.duplicateBowPx,
+        ),
       );
 
       for (const [index, edge] of orderedEdges.entries()) {
@@ -269,13 +399,16 @@ export function* createEdgeRoutingTask(
 
     if (edges.length === 1) {
       const edge = firstGroupEdge;
-      const curve = yield* chooseEdgeCurve(
+      const curve = orientCanonicalCurve(
         edge,
-        model.edges,
-        model.nodes,
-        nodesById,
-        resolvedOptions,
-        meta,
+        yield* chooseEdgeCurve(
+          canonicalRoutingEdge(edge),
+          model.edges,
+          model.nodes,
+          nodesById,
+          resolvedOptions,
+          meta,
+        ),
       );
       meta.set(
         edge.id,
@@ -298,16 +431,24 @@ export function* createEdgeRoutingTask(
     const center = (orderedEdges.length - 1) / 2;
     const duplicateBowPx = duplicateBowSpacing(
       orderedEdges.length,
-      resolvedOptions.duplicateBowPx,
+      parallelLabelSpacing(
+        orderedEdges,
+        nodesById,
+        resolvedOptions.duplicateBowPx,
+      ),
     );
     const maxDuplicateBow = center * duplicateBowPx;
-    const firstEdge = orderedEdges[0] ?? firstGroupEdge;
+    // A manual sibling remains fixed; its bow must not become the automatic
+    // group's centre before the override removes that sibling's lane offset.
+    const firstEdge =
+      orderedEdges.find((edge) => edge.routing?.bowPx === undefined) ??
+      firstGroupEdge;
     const canonicalEdge = canonicalRoutingEdge(firstEdge);
-    const canonicalOptions = centerPreviousRouteForParallelGroup(
-      firstEdge,
-      orientPreviousRouteForCanonicalEdge(firstEdge, resolvedOptions),
-      -center * duplicateBowPx,
-    );
+    const canonicalOptions = {
+      ...resolvedOptions,
+      // The outside lane's midpoint lies half its control offset from centre.
+      nodeClearancePx: resolvedOptions.nodeClearancePx + maxDuplicateBow / 2,
+    };
     const groupCurve = clampCurveDistances(
       yield* chooseEdgeCurve(
         canonicalEdge,
@@ -360,16 +501,19 @@ export function* createEdgeRoutingTask(
           meta.set(edge.id, { ...route, status: "pending" });
           continue;
         }
-        if (
-          resolvedOptions.rerouteEdgeIds &&
-          !resolvedOptions.rerouteEdgeIds.has(edge.id)
-        )
-          continue;
+        if (resolvedOptions.retainedMeta?.has(edge.id)) continue;
         let finalRoute = route;
         if (
           !edge.routing &&
           edges.length > 1 &&
-          nodeCollisions(route, edge, source, target, model.nodes) > 0
+          nodeCollisions(
+            route,
+            edge,
+            source,
+            target,
+            model.nodes,
+            resolvedOptions.work,
+          ) > 0
         ) {
           // Evaluate offsets after applying the parallel lane, including the clamp.
           let bestCollisions = nodeCollisions(
@@ -378,6 +522,7 @@ export function* createEdgeRoutingTask(
             source,
             target,
             model.nodes,
+            resolvedOptions.work,
           );
           for (const offset of [24, -24, 48, -48, 96, -96, 180, -180]) {
             yield;
@@ -392,6 +537,7 @@ export function* createEdgeRoutingTask(
               source,
               target,
               model.nodes,
+              resolvedOptions.work,
             );
             const distinct = edges.every(
               (other) =>
@@ -401,7 +547,15 @@ export function* createEdgeRoutingTask(
                     (edge.source <= edge.target
                       ? representativeBow(candidate)
                       : -representativeBow(candidate)),
-                ) >= MIN_DUPLICATE_BOW_SPACING_PX,
+                ) >=
+                  duplicateBowSpacing(
+                    edges.length,
+                    parallelLabelSpacing(
+                      edges,
+                      nodesById,
+                      resolvedOptions.duplicateBowPx,
+                    ),
+                  ),
             );
             if (distinct && collisions < bestCollisions) {
               bestCollisions = collisions;
@@ -415,12 +569,31 @@ export function* createEdgeRoutingTask(
         }
         meta.set(edge.id, {
           ...finalRoute,
-          status: nodeCollisions(finalRoute, edge, source, target, model.nodes)
+          status: nodeCollisions(
+            finalRoute,
+            edge,
+            source,
+            target,
+            model.nodes,
+            resolvedOptions.work,
+          )
             ? "unresolved"
             : "ready",
         });
       }
     }
+  }
+  if (
+    !state.skipManualReconciliation &&
+    model.edges.some((edge) => edge.routing?.bowPx !== undefined)
+  ) {
+    yield* separateAutomaticSiblingsFromManualRoutes(
+      routeGroups.values(),
+      model,
+      nodesById,
+      resolvedOptions,
+      meta,
+    );
   }
   if (
     (options.mode ?? "quality") === "quality" &&
@@ -429,7 +602,234 @@ export function* createEdgeRoutingTask(
     for (const [id, route] of meta)
       meta.set(id, { ...route, status: "unresolved" });
   }
-  return meta;
+  if (resolvedOptions.avoidNodes && !resolvedOptions.work.pending?.size) {
+    yield* simplifyFinishedRoutes(
+      orderedGroups,
+      model,
+      nodesById,
+      resolvedOptions,
+      meta,
+    );
+  }
+  if (!resolvedOptions.avoidNodes) {
+    state.result = meta;
+    return meta;
+  }
+  // Decision order is canonical; callers keep the established group/lane order.
+  const result = new Map<EdgeId, EdgeRoutingMeta>();
+  for (const edges of routeGroups.values()) {
+    const ordered =
+      edges.length > 1 && edges[0]?.source !== edges[0]?.target
+        ? orderParallelEdges(
+            edges,
+            resolvedOptions.previousMeta,
+            originalEdgeOrder,
+          )
+        : edges;
+    for (const edge of ordered) {
+      yield;
+      const route = meta.get(edge.id);
+      if (route) result.set(edge.id, route);
+    }
+  }
+  state.result = result;
+  return result;
+}
+
+function parallelLabelSpacing(
+  edges: GraphEdge[],
+  nodesById: ReadonlyMap<NodeId, GraphNode>,
+  requested: number,
+) {
+  const first = edges[0];
+  if (!first || !edges.some(edgeHasVisibleLabel)) return requested;
+  const source = nodesById.get(first.source),
+    target = nodesById.get(first.target);
+  if (!source || !target) return requested;
+  const length = Math.hypot(target.x - source.x, target.y - source.y) || 1;
+  const normalX = Math.abs((target.y - source.y) / length);
+  const normalY = Math.abs((target.x - source.x) / length);
+  let width = 0,
+    height = 0;
+  for (const edge of edges) {
+    if (!edgeHasVisibleLabel(edge)) continue;
+    const size = edgeLabelSize(edge);
+    width = Math.max(width, size.width);
+    height = Math.max(height, size.height);
+  }
+  return Math.max(
+    requested,
+    2 *
+      Math.min(
+        normalX ? (width + 2) / normalX : Infinity,
+        normalY ? (height + 2) / normalY : Infinity,
+      ),
+  );
+}
+
+function* simplifyFinishedRoutes(
+  groups: GraphEdge[][],
+  model: GraphModel,
+  nodesById: Map<NodeId, GraphNode>,
+  options: ResolvedEdgeRoutingOptions,
+  meta: Map<EdgeId, EdgeRoutingMeta>,
+): Generator<void> {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const edges of groups) {
+      yield;
+      if (edges.length !== 1) continue;
+      const edge = edges[0]!;
+      const route = meta.get(edge.id);
+      const source = nodesById.get(edge.source),
+        target = nodesById.get(edge.target);
+      if (
+        !route ||
+        !source ||
+        !target ||
+        edge.source === edge.target ||
+        edge.routing?.bowPx !== undefined ||
+        options.retainedMeta?.has(edge.id) ||
+        route.controlPointDistancesPx.every((d) => d === 0)
+      )
+        continue;
+      const straight = singleBowCurve(0);
+      if (
+        nodeCollisions(
+          straight,
+          edge,
+          source,
+          target,
+          model.nodes,
+          options.work,
+        ) > 0
+      )
+        continue;
+      const straightLabels = scoreCurveLabelOverlap(
+        edge,
+        model.edges,
+        nodesById,
+        straight,
+        options,
+        meta,
+      );
+      if (straightLabels !== 0) continue;
+      meta.set(edge.id, { ...route, ...straight, bowPx: 0, status: "ready" });
+      options.work.samples.clear();
+      options.work.labelAnchors?.delete(edge.id);
+      changed = true;
+    }
+  }
+}
+
+/** Reconcile lanes against fixed manual geometry, which has no lane offset. */
+function* separateAutomaticSiblingsFromManualRoutes(
+  groups: Iterable<GraphEdge[]>,
+  model: GraphModel,
+  nodesById: Map<NodeId, GraphNode>,
+  options: ResolvedEdgeRoutingOptions,
+  meta: Map<EdgeId, EdgeRoutingMeta>,
+): Generator<void> {
+  for (const edges of groups) {
+    yield;
+    if (
+      edges.length < 2 ||
+      edges[0]?.source === edges[0]?.target ||
+      !edges.some((edge) => edge.routing?.bowPx !== undefined)
+    )
+      continue;
+    const minimumSpacing = duplicateBowSpacing(
+      edges.length,
+      MIN_DUPLICATE_BOW_SPACING_PX,
+    );
+    for (const edge of edges) {
+      yield;
+      if (
+        edge.routing?.bowPx !== undefined ||
+        options.retainedMeta?.has(edge.id)
+      )
+        continue;
+      const route = meta.get(edge.id);
+      const canonicalEdge = canonicalRoutingEdge(edge);
+      const source = nodesById.get(canonicalEdge.source),
+        target = nodesById.get(canonicalEdge.target);
+      if (!route || !source || !target) continue;
+      const current = orientCanonicalCurve(edge, route);
+      const candidates = [
+        current,
+        ...options.candidateBowPx.map((bow) => singleBowCurve(bow)),
+        ...options.candidateBowPx.map((offset) =>
+          clampCurveDistances(
+            offsetEdgeCurve(current, offset),
+            -MAX_BOW_PX,
+            MAX_BOW_PX,
+          ),
+        ),
+      ];
+      let best = current,
+        bestScore = Infinity,
+        bestCollisions = Infinity,
+        bestLabels = Infinity;
+      for (const candidate of candidates) {
+        yield;
+        const distinct = edges.every((other) => {
+          if (other.id === edge.id) return true;
+          options.work.units += 1;
+          return (
+            Math.abs(
+              canonicalPreviousBow(other, meta) - representativeBow(candidate),
+            ) >= minimumSpacing
+          );
+        });
+        if (!distinct) continue;
+        const evaluation = options.avoidNodes
+          ? scoreCurveNodeAndShape(
+              candidate,
+              source,
+              target,
+              canonicalEdge,
+              model.nodes,
+              options,
+            )
+          : {
+              collisions: 0,
+              score: Math.abs(representativeBow(candidate)) * 0.03,
+            };
+        const labels = scoreCurveLabelOverlap(
+          canonicalEdge,
+          model.edges,
+          nodesById,
+          candidate,
+          options,
+          meta,
+          true,
+        );
+        const score = evaluation.score + labels;
+        if (
+          evaluation.collisions < bestCollisions ||
+          (evaluation.collisions === bestCollisions &&
+            (score < bestScore ||
+              (score === bestScore &&
+                compareCurvePreference(candidate, best, options.variant) < 0)))
+        ) {
+          best = candidate;
+          bestScore = score;
+          bestCollisions = evaluation.collisions;
+          bestLabels = labels;
+        }
+      }
+      const oriented = orientCanonicalCurve(edge, best);
+      meta.set(edge.id, {
+        ...route,
+        ...oriented,
+        bowPx: representativeBow(oriented),
+        status: bestCollisions > 0 || bestLabels > 0 ? "unresolved" : "ready",
+      });
+      options.work.samples.clear();
+      options.work.labelAnchors?.delete(edge.id);
+    }
+  }
 }
 
 function duplicateBowSpacing(edgeCount: number, requestedSpacing: number) {
@@ -532,16 +932,15 @@ export function createEdgeRoutingCacheKey(
     resolvedOptions.maxLoopSweepDeg,
     resolvedOptions.candidateBowPx.join(","),
   ].join(":");
-  const nodeSignature = resolvedOptions.avoidNodes
-    ? JSON.stringify(
-        model.nodes.map((node) => [
-          node.id,
-          node.x,
-          node.y,
-          nodeGeometryWidth(node),
-        ]),
-      )
-    : "";
+  // Even simple parallel lanes depend on chord direction for label spacing.
+  const nodeSignature = JSON.stringify(
+    model.nodes.map((node) => [
+      node.id,
+      node.x,
+      node.y,
+      ...(resolvedOptions.avoidNodes ? [nodeGeometryWidth(node)] : []),
+    ]),
+  );
   const edgeSignature = model.edges
     .map(
       (edge) =>
@@ -608,19 +1007,6 @@ function* chooseEdgeCurve(
     return simpleCurve;
   }
 
-  if (options.work.units > ROUTING_WORK_BUDGET) {
-    options.work.pending?.add(edge.id);
-    // Budget spent: keep whatever this edge had rather than stalling.
-    const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
-
-    return previous
-      ? {
-          controlPointDistancesPx: previous.controlPointDistancesPx,
-          controlPointWeights: previous.controlPointWeights,
-        }
-      : simpleCurve;
-  }
-
   const obstacles = projectedEdgeObstacles(
     edge,
     source,
@@ -639,58 +1025,76 @@ function* chooseEdgeCurve(
       ...createObstacleAvoidingCurves(source, target, obstacles, -1),
     );
   }
-  const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
-
-  if (previous) {
-    candidates.unshift({
-      controlPointDistancesPx: previous.controlPointDistancesPx,
-      controlPointWeights: previous.controlPointWeights,
-    });
-  }
   for (let index = 0; index < candidates.length; index++)
     candidates[index] = clampCurveDistances(
       candidates[index]!,
       -MAX_BOW_PX,
       MAX_BOW_PX,
     );
-  let best = candidates[0] ?? simpleCurve;
-  let bestCollisions = nodeCollisions(best, edge, source, target, nodes);
-  let bestScore = scoreCandidateCurve(
-    best,
-    source,
-    target,
-    edge,
-    edges,
-    nodes,
-    nodesById,
-    options,
-    resolvedMeta,
-  );
-
-  for (const candidate of candidates.slice(1)) {
+  const evaluated: {
+    curve: EdgeCurveGeometry;
+    collisions: number;
+    score: number;
+  }[] = [];
+  let minimumCollisions = Infinity;
+  let best = simpleCurve;
+  let bestScore = Infinity;
+  for (const candidate of candidates) {
     yield;
-    const score = scoreCandidateCurve(
+    const evaluation = scoreCurveNodeAndShape(
       candidate,
       source,
       target,
       edge,
-      edges,
       nodes,
-      nodesById,
       options,
-      resolvedMeta,
     );
-
-    const collisions = nodeCollisions(candidate, edge, source, target, nodes);
+    evaluated.push({ curve: candidate, ...evaluation });
     if (
-      collisions < bestCollisions ||
-      (collisions === bestCollisions &&
-        (score < bestScore ||
-          (score === bestScore &&
-            compareCurvePreference(candidate, best, options.variant) < 0)))
+      evaluation.collisions < minimumCollisions ||
+      (evaluation.collisions === minimumCollisions &&
+        evaluation.score < bestScore)
     ) {
-      bestCollisions = collisions;
+      minimumCollisions = evaluation.collisions;
       best = candidate;
+      bestScore = evaluation.score;
+    }
+    if (
+      candidate.controlPointDistancesPx.every((d) => d === 0) &&
+      evaluation.collisions === 0 &&
+      scoreCurveLabelOverlap(
+        edge,
+        edges,
+        nodesById,
+        candidate,
+        options,
+        resolvedMeta,
+      ) === 0
+    )
+      return candidate;
+  }
+  // Node safety has strict priority. Label checks are only useful on curves
+  // that can still win; do not repeat the expensive node-distance scan.
+  bestScore = Infinity;
+  for (const evaluation of evaluated) {
+    if (evaluation.collisions !== minimumCollisions) continue;
+    yield;
+    const score =
+      evaluation.score +
+      scoreCurveLabelOverlap(
+        edge,
+        edges,
+        nodesById,
+        evaluation.curve,
+        options,
+        resolvedMeta,
+      );
+    if (
+      score < bestScore ||
+      (score === bestScore &&
+        compareCurvePreference(evaluation.curve, best, options.variant) < 0)
+    ) {
+      best = evaluation.curve;
       bestScore = score;
     }
   }
@@ -912,52 +1316,6 @@ function canonicalRoutingEdge(edge: GraphEdge): GraphEdge {
   };
 }
 
-function orientPreviousRouteForCanonicalEdge(
-  edge: GraphEdge,
-  options: ResolvedEdgeRoutingOptions,
-): ResolvedEdgeRoutingOptions {
-  if (edge.source <= edge.target) {
-    return options;
-  }
-
-  const previous = options.previousMeta.get(edge.id);
-
-  if (!previous) {
-    return options;
-  }
-
-  return {
-    ...options,
-    previousRoute: {
-      ...previous,
-      ...reverseEdgeCurve(previous),
-      bowPx: -previous.bowPx,
-    },
-  };
-}
-
-function centerPreviousRouteForParallelGroup(
-  edge: GraphEdge,
-  options: ResolvedEdgeRoutingOptions,
-  edgeOffsetPx: number,
-): ResolvedEdgeRoutingOptions {
-  const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
-
-  if (!previous || edgeOffsetPx === 0) {
-    return options;
-  }
-
-  const centered = offsetEdgeCurve(previous, -edgeOffsetPx);
-  return {
-    ...options,
-    previousRoute: {
-      ...previous,
-      ...centered,
-      bowPx: representativeBow(centered),
-    },
-  };
-}
-
 export function routeEdgeKey(edge: GraphEdge) {
   return edge.source <= edge.target
     ? JSON.stringify([edge.source, edge.target])
@@ -1016,6 +1374,7 @@ function nodeCollisions(
   source: GraphNode,
   target: GraphNode,
   nodes: GraphNode[],
+  work?: RoutingWork,
 ) {
   const reach =
     Math.max(0, ...curve.controlPointDistancesPx.map(Math.abs)) + NODE_SIZE_PX;
@@ -1031,7 +1390,8 @@ function nodeCollisions(
       node.y > Math.max(source.y, target.y) + reach
     )
       continue;
-    if (distanceToNode(node) < NODE_SIZE_PX / 2 + 12) count++;
+    if (work) work.units += 1;
+    if (distanceToNode(node) < NODE_SIZE_PX / 2 + 6) count++;
   }
   return count;
 }

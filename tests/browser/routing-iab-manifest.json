@@ -1,0 +1,6071 @@
+{
+  "version": 1,
+  "baselineCommit": "aeb2132",
+  "browser": "Codex in-app browser",
+  "origin": "http://127.0.0.1:3323",
+  "path": "/en",
+  "viewport": {
+    "width": 1440,
+    "height": 948
+  },
+  "imageFormat": "image/jpeg",
+  "extension": ".jpg",
+  "outputRoot": "/tmp/graph-editor-routing-comparison/iab",
+  "sceneReset": "Import empty JSON through the actual Load form before each scene. If empty import is unavailable, use the UI Clear command and record its actual confirmation flow; freeze that flow for both phases.",
+  "emptyGraph": {
+    "version": 1,
+    "nodes": [],
+    "edges": [],
+    "settings": {
+      "directed": false,
+      "weighted": false,
+      "indexBase": 0,
+      "allowSelfLoops": true,
+      "allowMultiEdges": true,
+      "autoEdgeRouting": true,
+      "snapToGrid": false,
+      "showNodeLabels": true,
+      "arrowScale": 1,
+      "weightKind": "number"
+    }
+  },
+  "interactionPolicy": "Use actual JSON fill+Apply, Layout/Offset, sample UI, native Fit/Reset/Zoom, and only read-only DOM inspection. No Cytoscape or localStorage mutation through evaluate. Obtain DOM state after each action batch. Screenshots precede label bounds inspection.",
+  "screenshotSequence": "Main49 first, then two boundary scenes with five child photos each. Keep immediate imports free of any viewport operation after final Apply. Native-auto-fit scenes use Fit only before actions, then no explicit viewport changes after actions; actual zoom is recorded.",
+  "samplePolicy": "All five Platonic previews and applied scenes use actual sample UI with default parameters, undirected/unweighted and offset on. After replays sample application rather than importing Before coordinates.",
+  "scenes": [
+    {
+      "id": "tree-cold",
+      "title": "二分木：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": -112
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -112,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 112,
+            "y": 0
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": -168,
+            "y": 112
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -56,
+            "y": 112
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": 56,
+            "y": 112
+          },
+          {
+            "id": "n6",
+            "label": "6",
+            "order": 6,
+            "x": 168,
+            "y": 112
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n1",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n2",
+            "target": "n5",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n2",
+            "target": "n6",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":-112},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-112,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":112,\"y\":0},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":-168,\"y\":112},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-56,\"y\":112},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":56,\"y\":112},{\"id\":\"n6\",\"label\":\"6\",\"order\":6,\"x\":168,\"y\":112}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n1\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n2\",\"target\":\"n5\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n2\",\"target\":\"n6\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 7,
+        "edges": 6
+      }
+    },
+    {
+      "id": "path-cold",
+      "title": "道：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -320,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -192,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": -64,
+            "y": 0
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 64,
+            "y": 0
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": 192,
+            "y": 0
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": 320,
+            "y": 0
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n2",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n4",
+            "target": "n5",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-320,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-192,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":-64,\"y\":0},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":64,\"y\":0},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":192,\"y\":0},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":320,\"y\":0}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n2\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n4\",\"target\":\"n5\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 5
+      }
+    },
+    {
+      "id": "cycle-cold",
+      "title": "閉路：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": -150
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 130,
+            "y": -75
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 130,
+            "y": 75
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 0,
+            "y": 150
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -130,
+            "y": 75
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": -130,
+            "y": -75
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n2",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n4",
+            "target": "n5",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n5",
+            "target": "n0",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":-150},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":130,\"y\":-75},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":130,\"y\":75},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":0,\"y\":150},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-130,\"y\":75},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":-130,\"y\":-75}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n2\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n4\",\"target\":\"n5\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n5\",\"target\":\"n0\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 6
+      }
+    },
+    {
+      "id": "star-cold",
+      "title": "星：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 0,
+            "y": -170
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 162,
+            "y": -53
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 100,
+            "y": 138
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -100,
+            "y": 138
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": -162,
+            "y": -53
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n0",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n0",
+            "target": "n5",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":0,\"y\":-170},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":162,\"y\":-53},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":100,\"y\":138},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-100,\"y\":138},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":-162,\"y\":-53}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n0\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n0\",\"target\":\"n5\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 5
+      }
+    },
+    {
+      "id": "grid-cold",
+      "title": "格子：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0-0",
+            "label": "0",
+            "order": 0,
+            "x": -128,
+            "y": -104
+          },
+          {
+            "id": "n0-1",
+            "label": "1",
+            "order": 1,
+            "x": 0,
+            "y": -104
+          },
+          {
+            "id": "n0-2",
+            "label": "2",
+            "order": 2,
+            "x": 128,
+            "y": -104
+          },
+          {
+            "id": "n1-0",
+            "label": "3",
+            "order": 3,
+            "x": -128,
+            "y": 0
+          },
+          {
+            "id": "n1-1",
+            "label": "4",
+            "order": 4,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1-2",
+            "label": "5",
+            "order": 5,
+            "x": 128,
+            "y": 0
+          },
+          {
+            "id": "n2-0",
+            "label": "6",
+            "order": 6,
+            "x": -128,
+            "y": 104
+          },
+          {
+            "id": "n2-1",
+            "label": "7",
+            "order": 7,
+            "x": 0,
+            "y": 104
+          },
+          {
+            "id": "n2-2",
+            "label": "8",
+            "order": 8,
+            "x": 128,
+            "y": 104
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0-0",
+            "target": "n0-1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0-0",
+            "target": "n1-0",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n0-1",
+            "target": "n0-2",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n0-1",
+            "target": "n1-1",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n0-2",
+            "target": "n1-2",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n1-0",
+            "target": "n1-1",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "n1-0",
+            "target": "n2-0",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "n1-1",
+            "target": "n1-2",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "n1-1",
+            "target": "n2-1",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "n1-2",
+            "target": "n2-2",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "n2-0",
+            "target": "n2-1",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "n2-1",
+            "target": "n2-2",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0-0\",\"label\":\"0\",\"order\":0,\"x\":-128,\"y\":-104},{\"id\":\"n0-1\",\"label\":\"1\",\"order\":1,\"x\":0,\"y\":-104},{\"id\":\"n0-2\",\"label\":\"2\",\"order\":2,\"x\":128,\"y\":-104},{\"id\":\"n1-0\",\"label\":\"3\",\"order\":3,\"x\":-128,\"y\":0},{\"id\":\"n1-1\",\"label\":\"4\",\"order\":4,\"x\":0,\"y\":0},{\"id\":\"n1-2\",\"label\":\"5\",\"order\":5,\"x\":128,\"y\":0},{\"id\":\"n2-0\",\"label\":\"6\",\"order\":6,\"x\":-128,\"y\":104},{\"id\":\"n2-1\",\"label\":\"7\",\"order\":7,\"x\":0,\"y\":104},{\"id\":\"n2-2\",\"label\":\"8\",\"order\":8,\"x\":128,\"y\":104}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0-0\",\"target\":\"n0-1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n0-0\",\"target\":\"n1-0\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n0-1\",\"target\":\"n0-2\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n0-1\",\"target\":\"n1-1\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n0-2\",\"target\":\"n1-2\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n1-0\",\"target\":\"n1-1\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"n1-0\",\"target\":\"n2-0\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"n1-1\",\"target\":\"n1-2\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"n1-1\",\"target\":\"n2-1\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"n1-2\",\"target\":\"n2-2\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"n2-0\",\"target\":\"n2-1\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"n2-1\",\"target\":\"n2-2\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 9,
+        "edges": 12
+      }
+    },
+    {
+      "id": "ladder-cold",
+      "title": "はしご：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "t0",
+            "label": "0",
+            "order": 0,
+            "x": -165,
+            "y": -70
+          },
+          {
+            "id": "b0",
+            "label": "1",
+            "order": 1,
+            "x": -165,
+            "y": 70
+          },
+          {
+            "id": "t1",
+            "label": "2",
+            "order": 2,
+            "x": -55,
+            "y": -70
+          },
+          {
+            "id": "b1",
+            "label": "3",
+            "order": 3,
+            "x": -55,
+            "y": 70
+          },
+          {
+            "id": "t2",
+            "label": "4",
+            "order": 4,
+            "x": 55,
+            "y": -70
+          },
+          {
+            "id": "b2",
+            "label": "5",
+            "order": 5,
+            "x": 55,
+            "y": 70
+          },
+          {
+            "id": "t3",
+            "label": "6",
+            "order": 6,
+            "x": 165,
+            "y": -70
+          },
+          {
+            "id": "b3",
+            "label": "7",
+            "order": 7,
+            "x": 165,
+            "y": 70
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "t0",
+            "target": "b0",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "t0",
+            "target": "t1",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "b0",
+            "target": "b1",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "t1",
+            "target": "b1",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "t1",
+            "target": "t2",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "b1",
+            "target": "b2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "t2",
+            "target": "b2",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "t2",
+            "target": "t3",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "b2",
+            "target": "b3",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "t3",
+            "target": "b3",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"t0\",\"label\":\"0\",\"order\":0,\"x\":-165,\"y\":-70},{\"id\":\"b0\",\"label\":\"1\",\"order\":1,\"x\":-165,\"y\":70},{\"id\":\"t1\",\"label\":\"2\",\"order\":2,\"x\":-55,\"y\":-70},{\"id\":\"b1\",\"label\":\"3\",\"order\":3,\"x\":-55,\"y\":70},{\"id\":\"t2\",\"label\":\"4\",\"order\":4,\"x\":55,\"y\":-70},{\"id\":\"b2\",\"label\":\"5\",\"order\":5,\"x\":55,\"y\":70},{\"id\":\"t3\",\"label\":\"6\",\"order\":6,\"x\":165,\"y\":-70},{\"id\":\"b3\",\"label\":\"7\",\"order\":7,\"x\":165,\"y\":70}],\"edges\":[{\"id\":\"e0\",\"source\":\"t0\",\"target\":\"b0\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"t0\",\"target\":\"t1\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"b0\",\"target\":\"b1\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"t1\",\"target\":\"b1\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"t1\",\"target\":\"t2\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"b1\",\"target\":\"b2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"t2\",\"target\":\"b2\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"t2\",\"target\":\"t3\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"b2\",\"target\":\"b3\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"t3\",\"target\":\"b3\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 8,
+        "edges": 10
+      }
+    },
+    {
+      "id": "wheel-cold",
+      "title": "車輪：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "center",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "r0",
+            "label": "1",
+            "order": 1,
+            "x": 0,
+            "y": -170
+          },
+          {
+            "id": "r1",
+            "label": "2",
+            "order": 2,
+            "x": 147,
+            "y": -85
+          },
+          {
+            "id": "r2",
+            "label": "3",
+            "order": 3,
+            "x": 147,
+            "y": 85
+          },
+          {
+            "id": "r3",
+            "label": "4",
+            "order": 4,
+            "x": 0,
+            "y": 170
+          },
+          {
+            "id": "r4",
+            "label": "5",
+            "order": 5,
+            "x": -147,
+            "y": 85
+          },
+          {
+            "id": "r5",
+            "label": "6",
+            "order": 6,
+            "x": -147,
+            "y": -85
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "r0",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "center",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "r1",
+            "target": "r2",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "center",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "r2",
+            "target": "r3",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "center",
+            "target": "r2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "r3",
+            "target": "r4",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "center",
+            "target": "r3",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "r4",
+            "target": "r5",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "center",
+            "target": "r4",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "r5",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "center",
+            "target": "r5",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"center\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"r0\",\"label\":\"1\",\"order\":1,\"x\":0,\"y\":-170},{\"id\":\"r1\",\"label\":\"2\",\"order\":2,\"x\":147,\"y\":-85},{\"id\":\"r2\",\"label\":\"3\",\"order\":3,\"x\":147,\"y\":85},{\"id\":\"r3\",\"label\":\"4\",\"order\":4,\"x\":0,\"y\":170},{\"id\":\"r4\",\"label\":\"5\",\"order\":5,\"x\":-147,\"y\":85},{\"id\":\"r5\",\"label\":\"6\",\"order\":6,\"x\":-147,\"y\":-85}],\"edges\":[{\"id\":\"e0\",\"source\":\"r0\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"center\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"r1\",\"target\":\"r2\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"center\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"r2\",\"target\":\"r3\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"center\",\"target\":\"r2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"r3\",\"target\":\"r4\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"center\",\"target\":\"r3\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"r4\",\"target\":\"r5\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"center\",\"target\":\"r4\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"r5\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"center\",\"target\":\"r5\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 7,
+        "edges": 12
+      }
+    },
+    {
+      "id": "complete-cold",
+      "title": "完全グラフ K5：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": -150
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 143,
+            "y": -46
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 88,
+            "y": 121
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": -88,
+            "y": 121
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -143,
+            "y": -46
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n0",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "n1",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "n2",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "n2",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":-150},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":143,\"y\":-46},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":88,\"y\":121},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":-88,\"y\":121},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-143,\"y\":-46}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n0\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"n1\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"n2\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"n2\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 5,
+        "edges": 10
+      }
+    },
+    {
+      "id": "bipartite-cold",
+      "title": "完全二部グラフ K3,3：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "l0",
+            "label": "0",
+            "order": 0,
+            "x": -90,
+            "y": -92
+          },
+          {
+            "id": "l1",
+            "label": "1",
+            "order": 1,
+            "x": -90,
+            "y": 0
+          },
+          {
+            "id": "l2",
+            "label": "2",
+            "order": 2,
+            "x": -90,
+            "y": 92
+          },
+          {
+            "id": "r0",
+            "label": "3",
+            "order": 3,
+            "x": 90,
+            "y": -92
+          },
+          {
+            "id": "r1",
+            "label": "4",
+            "order": 4,
+            "x": 90,
+            "y": 0
+          },
+          {
+            "id": "r2",
+            "label": "5",
+            "order": 5,
+            "x": 90,
+            "y": 92
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "l0",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "l0",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "l0",
+            "target": "r2",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "l1",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "l1",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "l1",
+            "target": "r2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "l2",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "l2",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "l2",
+            "target": "r2",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": [3],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"l0\",\"label\":\"0\",\"order\":0,\"x\":-90,\"y\":-92},{\"id\":\"l1\",\"label\":\"1\",\"order\":1,\"x\":-90,\"y\":0},{\"id\":\"l2\",\"label\":\"2\",\"order\":2,\"x\":-90,\"y\":92},{\"id\":\"r0\",\"label\":\"3\",\"order\":3,\"x\":90,\"y\":-92},{\"id\":\"r1\",\"label\":\"4\",\"order\":4,\"x\":90,\"y\":0},{\"id\":\"r2\",\"label\":\"5\",\"order\":5,\"x\":90,\"y\":92}],\"edges\":[{\"id\":\"e0\",\"source\":\"l0\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"l0\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"l0\",\"target\":\"r2\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"l1\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"l1\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"l1\",\"target\":\"r2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"l2\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"l2\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"l2\",\"target\":\"r2\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 9
+      }
+    },
+    {
+      "id": "diamond-cold",
+      "title": "ダイヤモンド：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -125,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 125,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": -135
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 0,
+            "y": 135
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["family-control"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-125,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":125,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":-135},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":0,\"y\":135}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 5
+      }
+    },
+    {
+      "id": "greedy-two-edges-cold",
+      "title": "2本の独立した辺：順番依存：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [],
+      "observations": [1, 2, 4, 11],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "short-label-gap-cold",
+      "title": "短い辺ラベル：縦30pxの間隔：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 400,
+            "y": 60
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [],
+      "observations": [5, 14],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":400,\"y\":60}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 2
+      }
+    },
+    {
+      "id": "long-label-gap-cold",
+      "title": "長い辺ラベル：縦30pxの間隔：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 400,
+            "y": 60
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "abcdefghij"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "label": "abcdefghij"
+          }
+        ]
+      },
+      "actions": [],
+      "observations": [6, 14],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":400,\"y\":60}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"abcdefghij\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"label\":\"abcdefghij\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 2
+      }
+    },
+    {
+      "id": "node-clearance-40-cold",
+      "title": "頂点から16px離れた直線：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 200,
+            "y": 40
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1"
+          }
+        ]
+      },
+      "actions": [],
+      "observations": [7],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":200,\"y\":40}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 1
+      }
+    },
+    {
+      "id": "parallel-control-cold",
+      "title": "平行辺2本：必要な曲がりの対照：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 300,
+            "y": 0
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n1",
+            "label": "2"
+          }
+        ]
+      },
+      "actions": [],
+      "observations": ["control-multiedges"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":300,\"y\":0}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"2\"}]}",
+      "expectedCounts": {
+        "nodes": 2,
+        "edges": 2
+      }
+    },
+    {
+      "id": "randomConnected-cold",
+      "title": "連結グラフ：後の辺の再計算：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -192,
+            "y": -104
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -64,
+            "y": -104
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 64,
+            "y": -104
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 192,
+            "y": -104
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -192,
+            "y": 0
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": -64,
+            "y": 0
+          },
+          {
+            "id": "n6",
+            "label": "6",
+            "order": 6,
+            "x": 64,
+            "y": 0
+          },
+          {
+            "id": "n7",
+            "label": "7",
+            "order": 7,
+            "x": 192,
+            "y": 0
+          },
+          {
+            "id": "n8",
+            "label": "8",
+            "order": 8,
+            "x": -192,
+            "y": 104
+          },
+          {
+            "id": "n9",
+            "label": "9",
+            "order": 9,
+            "x": -64,
+            "y": 104
+          },
+          {
+            "id": "n10",
+            "label": "10",
+            "order": 10,
+            "x": 64,
+            "y": 104
+          },
+          {
+            "id": "n11",
+            "label": "11",
+            "order": 11,
+            "x": 192,
+            "y": 104
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n4",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n6",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n4",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "n4",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "n6",
+            "target": "n8",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "n1",
+            "target": "n5",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "n2",
+            "target": "n7",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e12",
+            "source": "n2",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e13",
+            "source": "n3",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e14",
+            "source": "n5",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e15",
+            "source": "n1",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e16",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e17",
+            "source": "n4",
+            "target": "n6",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": [9, 10, 12],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-192,\"y\":-104},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-64,\"y\":-104},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":64,\"y\":-104},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":192,\"y\":-104},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-192,\"y\":0},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":-64,\"y\":0},{\"id\":\"n6\",\"label\":\"6\",\"order\":6,\"x\":64,\"y\":0},{\"id\":\"n7\",\"label\":\"7\",\"order\":7,\"x\":192,\"y\":0},{\"id\":\"n8\",\"label\":\"8\",\"order\":8,\"x\":-192,\"y\":104},{\"id\":\"n9\",\"label\":\"9\",\"order\":9,\"x\":-64,\"y\":104},{\"id\":\"n10\",\"label\":\"10\",\"order\":10,\"x\":64,\"y\":104},{\"id\":\"n11\",\"label\":\"11\",\"order\":11,\"x\":192,\"y\":104}],\"edges\":[{\"id\":\"e0\",\"source\":\"n4\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n6\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n4\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"n4\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"n6\",\"target\":\"n8\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"n1\",\"target\":\"n5\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"n2\",\"target\":\"n7\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e12\",\"source\":\"n2\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e13\",\"source\":\"n3\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e14\",\"source\":\"n5\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e15\",\"source\":\"n1\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e16\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e17\",\"source\":\"n4\",\"target\":\"n6\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 12,
+        "edges": 18
+      }
+    },
+    {
+      "id": "petersen-cold",
+      "title": "ピーターセングラフ：ラベル間隔：読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "o0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": -170
+          },
+          {
+            "id": "i0",
+            "label": "1",
+            "order": 1,
+            "x": 0,
+            "y": -78
+          },
+          {
+            "id": "o1",
+            "label": "2",
+            "order": 2,
+            "x": 162,
+            "y": -53
+          },
+          {
+            "id": "i1",
+            "label": "3",
+            "order": 3,
+            "x": 75,
+            "y": -24
+          },
+          {
+            "id": "o2",
+            "label": "4",
+            "order": 4,
+            "x": 100,
+            "y": 138
+          },
+          {
+            "id": "i2",
+            "label": "5",
+            "order": 5,
+            "x": 46,
+            "y": 63
+          },
+          {
+            "id": "o3",
+            "label": "6",
+            "order": 6,
+            "x": -100,
+            "y": 138
+          },
+          {
+            "id": "i3",
+            "label": "7",
+            "order": 7,
+            "x": -46,
+            "y": 63
+          },
+          {
+            "id": "o4",
+            "label": "8",
+            "order": 8,
+            "x": -162,
+            "y": -53
+          },
+          {
+            "id": "i4",
+            "label": "9",
+            "order": 9,
+            "x": -75,
+            "y": -24
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "o0",
+            "target": "o1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "o0",
+            "target": "i0",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "i0",
+            "target": "i2",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "o1",
+            "target": "o2",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "o1",
+            "target": "i1",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "i1",
+            "target": "i3",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "o2",
+            "target": "o3",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "o2",
+            "target": "i2",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "i2",
+            "target": "i4",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "o3",
+            "target": "o4",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "o3",
+            "target": "i3",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "i3",
+            "target": "i0",
+            "weight": "1"
+          },
+          {
+            "id": "e12",
+            "source": "o4",
+            "target": "o0",
+            "weight": "1"
+          },
+          {
+            "id": "e13",
+            "source": "o4",
+            "target": "i4",
+            "weight": "1"
+          },
+          {
+            "id": "e14",
+            "source": "i4",
+            "target": "i1",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": true,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": [8, 13],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"o0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":-170},{\"id\":\"i0\",\"label\":\"1\",\"order\":1,\"x\":0,\"y\":-78},{\"id\":\"o1\",\"label\":\"2\",\"order\":2,\"x\":162,\"y\":-53},{\"id\":\"i1\",\"label\":\"3\",\"order\":3,\"x\":75,\"y\":-24},{\"id\":\"o2\",\"label\":\"4\",\"order\":4,\"x\":100,\"y\":138},{\"id\":\"i2\",\"label\":\"5\",\"order\":5,\"x\":46,\"y\":63},{\"id\":\"o3\",\"label\":\"6\",\"order\":6,\"x\":-100,\"y\":138},{\"id\":\"i3\",\"label\":\"7\",\"order\":7,\"x\":-46,\"y\":63},{\"id\":\"o4\",\"label\":\"8\",\"order\":8,\"x\":-162,\"y\":-53},{\"id\":\"i4\",\"label\":\"9\",\"order\":9,\"x\":-75,\"y\":-24}],\"edges\":[{\"id\":\"e0\",\"source\":\"o0\",\"target\":\"o1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"o0\",\"target\":\"i0\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"i0\",\"target\":\"i2\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"o1\",\"target\":\"o2\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"o1\",\"target\":\"i1\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"i1\",\"target\":\"i3\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"o2\",\"target\":\"o3\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"o2\",\"target\":\"i2\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"i2\",\"target\":\"i4\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"o3\",\"target\":\"o4\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"o3\",\"target\":\"i3\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"i3\",\"target\":\"i0\",\"weight\":\"1\"},{\"id\":\"e12\",\"source\":\"o4\",\"target\":\"o0\",\"weight\":\"1\"},{\"id\":\"e13\",\"source\":\"o4\",\"target\":\"i4\",\"weight\":\"1\"},{\"id\":\"e14\",\"source\":\"i4\",\"target\":\"i1\",\"weight\":\"1\"}],\"settings\":{\"directed\":true,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 10,
+        "edges": 15
+      }
+    },
+    {
+      "id": "minimal-reverse",
+      "title": "最小例：辺の入力順を反転",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          },
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [],
+      "observations": [2],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"},{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "minimal-line-restored",
+      "title": "最小例：直線配置→元の座標",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "layout",
+          "layout": "line"
+        },
+        {
+          "type": "restore"
+        }
+      ],
+      "observations": [1, 2, 3],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "minimal-off-on",
+      "title": "最小例：辺ずらしOFF→ON",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        },
+        {
+          "type": "offset",
+          "enabled": true
+        }
+      ],
+      "observations": [4],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "minimal-manual-comparison",
+      "title": "最小例：他の辺を保ってABだけ直線",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "import",
+          "graph": {
+            "version": 1,
+            "settings": {
+              "directed": false,
+              "weighted": false,
+              "indexBase": 0,
+              "allowSelfLoops": true,
+              "allowMultiEdges": true,
+              "autoEdgeRouting": true,
+              "snapToGrid": false,
+              "showNodeLabels": true,
+              "arrowScale": 1,
+              "weightKind": "number"
+            },
+            "nodes": [
+              {
+                "id": "n0",
+                "label": "0",
+                "order": 0,
+                "x": 180,
+                "y": 360
+              },
+              {
+                "id": "n1",
+                "label": "1",
+                "order": 1,
+                "x": 180,
+                "y": 450
+              },
+              {
+                "id": "n2",
+                "label": "2",
+                "order": 2,
+                "x": 0,
+                "y": 540
+              },
+              {
+                "id": "n3",
+                "label": "3",
+                "order": 3,
+                "x": 360,
+                "y": 270
+              }
+            ],
+            "edges": [
+              {
+                "id": "e0",
+                "source": "n0",
+                "target": "n1",
+                "label": "1",
+                "routing": {
+                  "bowPx": 0
+                }
+              },
+              {
+                "id": "e1",
+                "source": "n2",
+                "target": "n3",
+                "label": "1",
+                "routing": {
+                  "bowPx": -160
+                }
+              }
+            ]
+          },
+          "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\",\"routing\":{\"bowPx\":0}},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\",\"routing\":{\"bowPx\":-160}}]}"
+        }
+      ],
+      "observations": [1, 11],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "bipartite-line-restored",
+      "title": "K3,3：直線配置→元の座標",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "l0",
+            "label": "0",
+            "order": 0,
+            "x": -90,
+            "y": -92
+          },
+          {
+            "id": "l1",
+            "label": "1",
+            "order": 1,
+            "x": -90,
+            "y": 0
+          },
+          {
+            "id": "l2",
+            "label": "2",
+            "order": 2,
+            "x": -90,
+            "y": 92
+          },
+          {
+            "id": "r0",
+            "label": "3",
+            "order": 3,
+            "x": 90,
+            "y": -92
+          },
+          {
+            "id": "r1",
+            "label": "4",
+            "order": 4,
+            "x": 90,
+            "y": 0
+          },
+          {
+            "id": "r2",
+            "label": "5",
+            "order": 5,
+            "x": 90,
+            "y": 92
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "l0",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "l0",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "l0",
+            "target": "r2",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "l1",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "l1",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "l1",
+            "target": "r2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "l2",
+            "target": "r0",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "l2",
+            "target": "r1",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "l2",
+            "target": "r2",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [
+        {
+          "type": "layout",
+          "layout": "line"
+        },
+        {
+          "type": "restore"
+        }
+      ],
+      "observations": [3],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"l0\",\"label\":\"0\",\"order\":0,\"x\":-90,\"y\":-92},{\"id\":\"l1\",\"label\":\"1\",\"order\":1,\"x\":-90,\"y\":0},{\"id\":\"l2\",\"label\":\"2\",\"order\":2,\"x\":-90,\"y\":92},{\"id\":\"r0\",\"label\":\"3\",\"order\":3,\"x\":90,\"y\":-92},{\"id\":\"r1\",\"label\":\"4\",\"order\":4,\"x\":90,\"y\":0},{\"id\":\"r2\",\"label\":\"5\",\"order\":5,\"x\":90,\"y\":92}],\"edges\":[{\"id\":\"e0\",\"source\":\"l0\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"l0\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"l0\",\"target\":\"r2\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"l1\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"l1\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"l1\",\"target\":\"r2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"l2\",\"target\":\"r0\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"l2\",\"target\":\"r1\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"l2\",\"target\":\"r2\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 9
+      }
+    },
+    {
+      "id": "short-label-gap-offset-off",
+      "title": "短いラベル：直線比較",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 400,
+            "y": 60
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        }
+      ],
+      "observations": [5, 14],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":400,\"y\":60}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 2
+      }
+    },
+    {
+      "id": "short-label-gap-boundary-clicks",
+      "title": "短いラベル：中央と背景外縁の操作",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 400,
+            "y": 60
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        }
+      ],
+      "observations": [14],
+      "captureDelaySeconds": 0.8,
+      "boundaryClicks": {
+        "edgeId": "e0",
+        "label": "1"
+      },
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":400,\"y\":60}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 2
+      }
+    },
+    {
+      "id": "long-label-gap-offset-off",
+      "title": "長いラベル：直線比較",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 400,
+            "y": 60
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "abcdefghij"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "label": "abcdefghij"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        }
+      ],
+      "observations": [6, 14],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":400,\"y\":60}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"abcdefghij\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"label\":\"abcdefghij\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 2
+      }
+    },
+    {
+      "id": "long-label-gap-boundary-clicks",
+      "title": "長いラベル：中央と背景外縁の操作",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 400,
+            "y": 60
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "abcdefghij"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n2",
+            "label": "abcdefghij"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        }
+      ],
+      "observations": [14],
+      "captureDelaySeconds": 0.8,
+      "boundaryClicks": {
+        "edgeId": "e0",
+        "label": "abcdefghij"
+      },
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":400,\"y\":60}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"abcdefghij\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n2\",\"label\":\"abcdefghij\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 2
+      }
+    },
+    {
+      "id": "node-clearance-40-straight",
+      "title": "頂点の近くを通る辺：直線比較",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 400,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 200,
+            "y": 40
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        }
+      ],
+      "observations": [7],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":400,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":200,\"y\":40}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\"}]}",
+      "expectedCounts": {
+        "nodes": 3,
+        "edges": 1
+      }
+    },
+    {
+      "id": "petersen-off-on",
+      "title": "Petersen：再計算",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "o0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": -170
+          },
+          {
+            "id": "i0",
+            "label": "1",
+            "order": 1,
+            "x": 0,
+            "y": -78
+          },
+          {
+            "id": "o1",
+            "label": "2",
+            "order": 2,
+            "x": 162,
+            "y": -53
+          },
+          {
+            "id": "i1",
+            "label": "3",
+            "order": 3,
+            "x": 75,
+            "y": -24
+          },
+          {
+            "id": "o2",
+            "label": "4",
+            "order": 4,
+            "x": 100,
+            "y": 138
+          },
+          {
+            "id": "i2",
+            "label": "5",
+            "order": 5,
+            "x": 46,
+            "y": 63
+          },
+          {
+            "id": "o3",
+            "label": "6",
+            "order": 6,
+            "x": -100,
+            "y": 138
+          },
+          {
+            "id": "i3",
+            "label": "7",
+            "order": 7,
+            "x": -46,
+            "y": 63
+          },
+          {
+            "id": "o4",
+            "label": "8",
+            "order": 8,
+            "x": -162,
+            "y": -53
+          },
+          {
+            "id": "i4",
+            "label": "9",
+            "order": 9,
+            "x": -75,
+            "y": -24
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "o0",
+            "target": "o1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "o0",
+            "target": "i0",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "i0",
+            "target": "i2",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "o1",
+            "target": "o2",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "o1",
+            "target": "i1",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "i1",
+            "target": "i3",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "o2",
+            "target": "o3",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "o2",
+            "target": "i2",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "i2",
+            "target": "i4",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "o3",
+            "target": "o4",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "o3",
+            "target": "i3",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "i3",
+            "target": "i0",
+            "weight": "1"
+          },
+          {
+            "id": "e12",
+            "source": "o4",
+            "target": "o0",
+            "weight": "1"
+          },
+          {
+            "id": "e13",
+            "source": "o4",
+            "target": "i4",
+            "weight": "1"
+          },
+          {
+            "id": "e14",
+            "source": "i4",
+            "target": "i1",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": true,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        },
+        {
+          "type": "offset",
+          "enabled": true
+        }
+      ],
+      "observations": [8, 13],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"o0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":-170},{\"id\":\"i0\",\"label\":\"1\",\"order\":1,\"x\":0,\"y\":-78},{\"id\":\"o1\",\"label\":\"2\",\"order\":2,\"x\":162,\"y\":-53},{\"id\":\"i1\",\"label\":\"3\",\"order\":3,\"x\":75,\"y\":-24},{\"id\":\"o2\",\"label\":\"4\",\"order\":4,\"x\":100,\"y\":138},{\"id\":\"i2\",\"label\":\"5\",\"order\":5,\"x\":46,\"y\":63},{\"id\":\"o3\",\"label\":\"6\",\"order\":6,\"x\":-100,\"y\":138},{\"id\":\"i3\",\"label\":\"7\",\"order\":7,\"x\":-46,\"y\":63},{\"id\":\"o4\",\"label\":\"8\",\"order\":8,\"x\":-162,\"y\":-53},{\"id\":\"i4\",\"label\":\"9\",\"order\":9,\"x\":-75,\"y\":-24}],\"edges\":[{\"id\":\"e0\",\"source\":\"o0\",\"target\":\"o1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"o0\",\"target\":\"i0\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"i0\",\"target\":\"i2\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"o1\",\"target\":\"o2\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"o1\",\"target\":\"i1\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"i1\",\"target\":\"i3\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"o2\",\"target\":\"o3\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"o2\",\"target\":\"i2\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"i2\",\"target\":\"i4\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"o3\",\"target\":\"o4\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"o3\",\"target\":\"i3\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"i3\",\"target\":\"i0\",\"weight\":\"1\"},{\"id\":\"e12\",\"source\":\"o4\",\"target\":\"o0\",\"weight\":\"1\"},{\"id\":\"e13\",\"source\":\"o4\",\"target\":\"i4\",\"weight\":\"1\"},{\"id\":\"e14\",\"source\":\"i4\",\"target\":\"i1\",\"weight\":\"1\"}],\"settings\":{\"directed\":true,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 10,
+        "edges": 15
+      }
+    },
+    {
+      "id": "petersen-distinct-labels",
+      "title": "Petersen：異なるラベル値",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "o0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": -170
+          },
+          {
+            "id": "i0",
+            "label": "1",
+            "order": 1,
+            "x": 0,
+            "y": -78
+          },
+          {
+            "id": "o1",
+            "label": "2",
+            "order": 2,
+            "x": 162,
+            "y": -53
+          },
+          {
+            "id": "i1",
+            "label": "3",
+            "order": 3,
+            "x": 75,
+            "y": -24
+          },
+          {
+            "id": "o2",
+            "label": "4",
+            "order": 4,
+            "x": 100,
+            "y": 138
+          },
+          {
+            "id": "i2",
+            "label": "5",
+            "order": 5,
+            "x": 46,
+            "y": 63
+          },
+          {
+            "id": "o3",
+            "label": "6",
+            "order": 6,
+            "x": -100,
+            "y": 138
+          },
+          {
+            "id": "i3",
+            "label": "7",
+            "order": 7,
+            "x": -46,
+            "y": 63
+          },
+          {
+            "id": "o4",
+            "label": "8",
+            "order": 8,
+            "x": -162,
+            "y": -53
+          },
+          {
+            "id": "i4",
+            "label": "9",
+            "order": 9,
+            "x": -75,
+            "y": -24
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "o0",
+            "target": "o1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "o0",
+            "target": "i0",
+            "weight": "2"
+          },
+          {
+            "id": "e2",
+            "source": "i0",
+            "target": "i2",
+            "weight": "3"
+          },
+          {
+            "id": "e3",
+            "source": "o1",
+            "target": "o2",
+            "weight": "4"
+          },
+          {
+            "id": "e4",
+            "source": "o1",
+            "target": "i1",
+            "weight": "5"
+          },
+          {
+            "id": "e5",
+            "source": "i1",
+            "target": "i3",
+            "weight": "6"
+          },
+          {
+            "id": "e6",
+            "source": "o2",
+            "target": "o3",
+            "weight": "7"
+          },
+          {
+            "id": "e7",
+            "source": "o2",
+            "target": "i2",
+            "weight": "8"
+          },
+          {
+            "id": "e8",
+            "source": "i2",
+            "target": "i4",
+            "weight": "9"
+          },
+          {
+            "id": "e9",
+            "source": "o3",
+            "target": "o4",
+            "weight": "10"
+          },
+          {
+            "id": "e10",
+            "source": "o3",
+            "target": "i3",
+            "weight": "11"
+          },
+          {
+            "id": "e11",
+            "source": "i3",
+            "target": "i0",
+            "weight": "12"
+          },
+          {
+            "id": "e12",
+            "source": "o4",
+            "target": "o0",
+            "weight": "13"
+          },
+          {
+            "id": "e13",
+            "source": "o4",
+            "target": "i4",
+            "weight": "14"
+          },
+          {
+            "id": "e14",
+            "source": "i4",
+            "target": "i1",
+            "weight": "15"
+          }
+        ],
+        "settings": {
+          "directed": true,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": [8, 13],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"o0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":-170},{\"id\":\"i0\",\"label\":\"1\",\"order\":1,\"x\":0,\"y\":-78},{\"id\":\"o1\",\"label\":\"2\",\"order\":2,\"x\":162,\"y\":-53},{\"id\":\"i1\",\"label\":\"3\",\"order\":3,\"x\":75,\"y\":-24},{\"id\":\"o2\",\"label\":\"4\",\"order\":4,\"x\":100,\"y\":138},{\"id\":\"i2\",\"label\":\"5\",\"order\":5,\"x\":46,\"y\":63},{\"id\":\"o3\",\"label\":\"6\",\"order\":6,\"x\":-100,\"y\":138},{\"id\":\"i3\",\"label\":\"7\",\"order\":7,\"x\":-46,\"y\":63},{\"id\":\"o4\",\"label\":\"8\",\"order\":8,\"x\":-162,\"y\":-53},{\"id\":\"i4\",\"label\":\"9\",\"order\":9,\"x\":-75,\"y\":-24}],\"edges\":[{\"id\":\"e0\",\"source\":\"o0\",\"target\":\"o1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"o0\",\"target\":\"i0\",\"weight\":\"2\"},{\"id\":\"e2\",\"source\":\"i0\",\"target\":\"i2\",\"weight\":\"3\"},{\"id\":\"e3\",\"source\":\"o1\",\"target\":\"o2\",\"weight\":\"4\"},{\"id\":\"e4\",\"source\":\"o1\",\"target\":\"i1\",\"weight\":\"5\"},{\"id\":\"e5\",\"source\":\"i1\",\"target\":\"i3\",\"weight\":\"6\"},{\"id\":\"e6\",\"source\":\"o2\",\"target\":\"o3\",\"weight\":\"7\"},{\"id\":\"e7\",\"source\":\"o2\",\"target\":\"i2\",\"weight\":\"8\"},{\"id\":\"e8\",\"source\":\"i2\",\"target\":\"i4\",\"weight\":\"9\"},{\"id\":\"e9\",\"source\":\"o3\",\"target\":\"o4\",\"weight\":\"10\"},{\"id\":\"e10\",\"source\":\"o3\",\"target\":\"i3\",\"weight\":\"11\"},{\"id\":\"e11\",\"source\":\"i3\",\"target\":\"i0\",\"weight\":\"12\"},{\"id\":\"e12\",\"source\":\"o4\",\"target\":\"o0\",\"weight\":\"13\"},{\"id\":\"e13\",\"source\":\"o4\",\"target\":\"i4\",\"weight\":\"14\"},{\"id\":\"e14\",\"source\":\"i4\",\"target\":\"i1\",\"weight\":\"15\"}],\"settings\":{\"directed\":true,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 10,
+        "edges": 15
+      }
+    },
+    {
+      "id": "randomConnected-120",
+      "title": "ランダム連結：120%の見切れ",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -192,
+            "y": -104
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -64,
+            "y": -104
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 64,
+            "y": -104
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 192,
+            "y": -104
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -192,
+            "y": 0
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": -64,
+            "y": 0
+          },
+          {
+            "id": "n6",
+            "label": "6",
+            "order": 6,
+            "x": 64,
+            "y": 0
+          },
+          {
+            "id": "n7",
+            "label": "7",
+            "order": 7,
+            "x": 192,
+            "y": 0
+          },
+          {
+            "id": "n8",
+            "label": "8",
+            "order": 8,
+            "x": -192,
+            "y": 104
+          },
+          {
+            "id": "n9",
+            "label": "9",
+            "order": 9,
+            "x": -64,
+            "y": 104
+          },
+          {
+            "id": "n10",
+            "label": "10",
+            "order": 10,
+            "x": 64,
+            "y": 104
+          },
+          {
+            "id": "n11",
+            "label": "11",
+            "order": 11,
+            "x": 192,
+            "y": 104
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n4",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n6",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n4",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "n4",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "n6",
+            "target": "n8",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "n1",
+            "target": "n5",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "n2",
+            "target": "n7",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e12",
+            "source": "n2",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e13",
+            "source": "n3",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e14",
+            "source": "n5",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e15",
+            "source": "n1",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e16",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e17",
+            "source": "n4",
+            "target": "n6",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": [9, 10, 12],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": ["Fit view", "Reset to 100%", "Zoom in", "Zoom in"],
+        "afterActions": ["Fit view", "Reset to 100%", "Zoom in", "Zoom in"],
+        "panActions": []
+      },
+      "expectedZoomPercent": 120,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-192,\"y\":-104},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-64,\"y\":-104},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":64,\"y\":-104},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":192,\"y\":-104},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-192,\"y\":0},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":-64,\"y\":0},{\"id\":\"n6\",\"label\":\"6\",\"order\":6,\"x\":64,\"y\":0},{\"id\":\"n7\",\"label\":\"7\",\"order\":7,\"x\":192,\"y\":0},{\"id\":\"n8\",\"label\":\"8\",\"order\":8,\"x\":-192,\"y\":104},{\"id\":\"n9\",\"label\":\"9\",\"order\":9,\"x\":-64,\"y\":104},{\"id\":\"n10\",\"label\":\"10\",\"order\":10,\"x\":64,\"y\":104},{\"id\":\"n11\",\"label\":\"11\",\"order\":11,\"x\":192,\"y\":104}],\"edges\":[{\"id\":\"e0\",\"source\":\"n4\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n6\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n4\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"n4\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"n6\",\"target\":\"n8\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"n1\",\"target\":\"n5\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"n2\",\"target\":\"n7\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e12\",\"source\":\"n2\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e13\",\"source\":\"n3\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e14\",\"source\":\"n5\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e15\",\"source\":\"n1\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e16\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e17\",\"source\":\"n4\",\"target\":\"n6\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 12,
+        "edges": 18
+      }
+    },
+    {
+      "id": "randomConnected-offset-off",
+      "title": "ランダム連結：辺ずらしOFF比較",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -192,
+            "y": -104
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -64,
+            "y": -104
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 64,
+            "y": -104
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 192,
+            "y": -104
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -192,
+            "y": 0
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": -64,
+            "y": 0
+          },
+          {
+            "id": "n6",
+            "label": "6",
+            "order": 6,
+            "x": 64,
+            "y": 0
+          },
+          {
+            "id": "n7",
+            "label": "7",
+            "order": 7,
+            "x": 192,
+            "y": 0
+          },
+          {
+            "id": "n8",
+            "label": "8",
+            "order": 8,
+            "x": -192,
+            "y": 104
+          },
+          {
+            "id": "n9",
+            "label": "9",
+            "order": 9,
+            "x": -64,
+            "y": 104
+          },
+          {
+            "id": "n10",
+            "label": "10",
+            "order": 10,
+            "x": 64,
+            "y": 104
+          },
+          {
+            "id": "n11",
+            "label": "11",
+            "order": 11,
+            "x": 192,
+            "y": 104
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n4",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n6",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n4",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "n4",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "n6",
+            "target": "n8",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "n1",
+            "target": "n5",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "n2",
+            "target": "n7",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e12",
+            "source": "n2",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e13",
+            "source": "n3",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e14",
+            "source": "n5",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e15",
+            "source": "n1",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e16",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e17",
+            "source": "n4",
+            "target": "n6",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [
+        {
+          "type": "offset",
+          "enabled": false
+        }
+      ],
+      "observations": [9, 10, 12],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-192,\"y\":-104},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-64,\"y\":-104},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":64,\"y\":-104},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":192,\"y\":-104},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-192,\"y\":0},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":-64,\"y\":0},{\"id\":\"n6\",\"label\":\"6\",\"order\":6,\"x\":64,\"y\":0},{\"id\":\"n7\",\"label\":\"7\",\"order\":7,\"x\":192,\"y\":0},{\"id\":\"n8\",\"label\":\"8\",\"order\":8,\"x\":-192,\"y\":104},{\"id\":\"n9\",\"label\":\"9\",\"order\":9,\"x\":-64,\"y\":104},{\"id\":\"n10\",\"label\":\"10\",\"order\":10,\"x\":64,\"y\":104},{\"id\":\"n11\",\"label\":\"11\",\"order\":11,\"x\":192,\"y\":104}],\"edges\":[{\"id\":\"e0\",\"source\":\"n4\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n6\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n4\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"n4\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"n6\",\"target\":\"n8\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"n1\",\"target\":\"n5\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"n2\",\"target\":\"n7\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e12\",\"source\":\"n2\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e13\",\"source\":\"n3\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e14\",\"source\":\"n5\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e15\",\"source\":\"n1\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e16\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e17\",\"source\":\"n4\",\"target\":\"n6\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 12,
+        "edges": 18
+      }
+    },
+    {
+      "id": "import-ghost-immediate",
+      "title": "最小例：比較JSON読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "import",
+          "graph": {
+            "version": 1,
+            "settings": {
+              "directed": false,
+              "weighted": false,
+              "indexBase": 0,
+              "allowSelfLoops": true,
+              "allowMultiEdges": true,
+              "autoEdgeRouting": true,
+              "snapToGrid": false,
+              "showNodeLabels": true,
+              "arrowScale": 1,
+              "weightKind": "number"
+            },
+            "nodes": [
+              {
+                "id": "n0",
+                "label": "0",
+                "order": 0,
+                "x": 180,
+                "y": 360
+              },
+              {
+                "id": "n1",
+                "label": "1",
+                "order": 1,
+                "x": 180,
+                "y": 450
+              },
+              {
+                "id": "n2",
+                "label": "2",
+                "order": 2,
+                "x": 0,
+                "y": 540
+              },
+              {
+                "id": "n3",
+                "label": "3",
+                "order": 3,
+                "x": 360,
+                "y": 270
+              }
+            ],
+            "edges": [
+              {
+                "id": "e0",
+                "source": "n0",
+                "target": "n1",
+                "label": "1",
+                "routing": {
+                  "bowPx": 0
+                }
+              },
+              {
+                "id": "e1",
+                "source": "n2",
+                "target": "n3",
+                "label": "1",
+                "routing": {
+                  "bowPx": -160
+                }
+              }
+            ]
+          },
+          "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\",\"routing\":{\"bowPx\":0}},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\",\"routing\":{\"bowPx\":-160}}]}"
+        }
+      ],
+      "observations": [11, 12],
+      "captureDelaySeconds": 0,
+      "captureTiming": "immediate",
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "import-ghost-settled",
+      "title": "最小例：比較JSON読み込み後の待機",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "import",
+          "graph": {
+            "version": 1,
+            "settings": {
+              "directed": false,
+              "weighted": false,
+              "indexBase": 0,
+              "allowSelfLoops": true,
+              "allowMultiEdges": true,
+              "autoEdgeRouting": true,
+              "snapToGrid": false,
+              "showNodeLabels": true,
+              "arrowScale": 1,
+              "weightKind": "number"
+            },
+            "nodes": [
+              {
+                "id": "n0",
+                "label": "0",
+                "order": 0,
+                "x": 180,
+                "y": 360
+              },
+              {
+                "id": "n1",
+                "label": "1",
+                "order": 1,
+                "x": 180,
+                "y": 450
+              },
+              {
+                "id": "n2",
+                "label": "2",
+                "order": 2,
+                "x": 0,
+                "y": 540
+              },
+              {
+                "id": "n3",
+                "label": "3",
+                "order": 3,
+                "x": 360,
+                "y": 270
+              }
+            ],
+            "edges": [
+              {
+                "id": "e0",
+                "source": "n0",
+                "target": "n1",
+                "label": "1",
+                "routing": {
+                  "bowPx": 0
+                }
+              },
+              {
+                "id": "e1",
+                "source": "n2",
+                "target": "n3",
+                "label": "1",
+                "routing": {
+                  "bowPx": -160
+                }
+              }
+            ]
+          },
+          "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\",\"routing\":{\"bowPx\":0}},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\",\"routing\":{\"bowPx\":-160}}]}"
+        }
+      ],
+      "observations": [11, 12],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "manual-routing-control",
+      "title": "手動の曲がり：保持確認",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -320,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -192,
+            "y": 0
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": -64,
+            "y": 0
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 64,
+            "y": 0
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": 192,
+            "y": 0
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": 320,
+            "y": 0
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1",
+            "routing": {
+              "bowPx": 72,
+              "bowT": 0.35
+            }
+          },
+          {
+            "id": "e2",
+            "source": "n2",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n4",
+            "target": "n5",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": ["control-manual"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-320,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-192,\"y\":0},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":-64,\"y\":0},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":64,\"y\":0},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":192,\"y\":0},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":320,\"y\":0}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\",\"routing\":{\"bowPx\":72,\"bowT\":0.35}},{\"id\":\"e2\",\"source\":\"n2\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n4\",\"target\":\"n5\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 5
+      }
+    },
+    {
+      "id": "self-loop-control",
+      "title": "自己ループと多重ループ",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": true,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 300,
+            "y": 0
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n0",
+            "target": "n1",
+            "label": "2"
+          },
+          {
+            "id": "loop0",
+            "source": "n0",
+            "target": "n0",
+            "label": "loop A"
+          },
+          {
+            "id": "loop1",
+            "source": "n0",
+            "target": "n0",
+            "label": "loop B"
+          },
+          {
+            "id": "manual-loop",
+            "source": "n1",
+            "target": "n1",
+            "label": "manual",
+            "routing": {
+              "loopDirectionDeg": 45,
+              "loopSweepDeg": 65
+            }
+          }
+        ]
+      },
+      "actions": [],
+      "observations": ["control-loops"],
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":true,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":0,\"y\":0},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":300,\"y\":0}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"2\"},{\"id\":\"loop0\",\"source\":\"n0\",\"target\":\"n0\",\"label\":\"loop A\"},{\"id\":\"loop1\",\"source\":\"n0\",\"target\":\"n0\",\"label\":\"loop B\"},{\"id\":\"manual-loop\",\"source\":\"n1\",\"target\":\"n1\",\"label\":\"manual\",\"routing\":{\"loopDirectionDeg\":45,\"loopSweepDeg\":65}}]}",
+      "expectedCounts": {
+        "nodes": 2,
+        "edges": 5
+      }
+    },
+    {
+      "id": "sample-tetrahedral-preview",
+      "title": "四面体：サンプル選択画面",
+      "kind": "sample-preview",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-preview"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "tetrahedral",
+      "viewportPlan": {
+        "mode": "sample-picker",
+        "beforeActions": [],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 6,
+        "scope": "sample-preview"
+      }
+    },
+    {
+      "id": "sample-tetrahedral-applied",
+      "title": "四面体：サンプルを実際に作成",
+      "kind": "sample-applied",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-layout"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "tetrahedral",
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 6,
+        "scope": "canvas"
+      }
+    },
+    {
+      "id": "sample-cube-preview",
+      "title": "立方体：サンプル選択画面",
+      "kind": "sample-preview",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-preview"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "cube",
+      "viewportPlan": {
+        "mode": "sample-picker",
+        "beforeActions": [],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 8,
+        "edges": 12,
+        "scope": "sample-preview"
+      }
+    },
+    {
+      "id": "sample-cube-applied",
+      "title": "立方体：サンプルを実際に作成",
+      "kind": "sample-applied",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-layout"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "cube",
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 8,
+        "edges": 12,
+        "scope": "canvas"
+      }
+    },
+    {
+      "id": "sample-octahedral-preview",
+      "title": "八面体：サンプル選択画面",
+      "kind": "sample-preview",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-preview"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "octahedral",
+      "viewportPlan": {
+        "mode": "sample-picker",
+        "beforeActions": [],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 12,
+        "scope": "sample-preview"
+      }
+    },
+    {
+      "id": "sample-octahedral-applied",
+      "title": "八面体：サンプルを実際に作成",
+      "kind": "sample-applied",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-layout"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "octahedral",
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 6,
+        "edges": 12,
+        "scope": "canvas"
+      }
+    },
+    {
+      "id": "sample-dodecahedral-preview",
+      "title": "十二面体：サンプル選択画面",
+      "kind": "sample-preview",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-preview"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "dodecahedral",
+      "viewportPlan": {
+        "mode": "sample-picker",
+        "beforeActions": [],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 20,
+        "edges": 30,
+        "scope": "sample-preview"
+      }
+    },
+    {
+      "id": "sample-dodecahedral-applied",
+      "title": "十二面体：サンプルを実際に作成",
+      "kind": "sample-applied",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-layout"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "dodecahedral",
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 20,
+        "edges": 30,
+        "scope": "canvas"
+      }
+    },
+    {
+      "id": "sample-icosahedral-preview",
+      "title": "二十面体：サンプル選択画面",
+      "kind": "sample-preview",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-preview"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "icosahedral",
+      "viewportPlan": {
+        "mode": "sample-picker",
+        "beforeActions": [],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 12,
+        "edges": 30,
+        "scope": "sample-preview"
+      }
+    },
+    {
+      "id": "sample-icosahedral-applied",
+      "title": "二十面体：サンプルを実際に作成",
+      "kind": "sample-applied",
+      "graph": null,
+      "actions": [],
+      "observations": ["issue-19", "sample-layout"],
+      "captureDelaySeconds": 0.8,
+      "sampleKind": "icosahedral",
+      "viewportPlan": {
+        "mode": "ui-150",
+        "beforeActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "afterActions": [
+          "Fit view",
+          "Reset to 100%",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in",
+          "Zoom in"
+        ],
+        "panActions": []
+      },
+      "expectedZoomPercent": 150,
+      "inputText": null,
+      "expectedCounts": {
+        "nodes": 12,
+        "edges": 30,
+        "scope": "canvas"
+      }
+    },
+    {
+      "id": "native-random-import",
+      "title": "ランダム連結：自然な読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -192,
+            "y": -104
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -64,
+            "y": -104
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 64,
+            "y": -104
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 192,
+            "y": -104
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -192,
+            "y": 0
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": -64,
+            "y": 0
+          },
+          {
+            "id": "n6",
+            "label": "6",
+            "order": 6,
+            "x": 64,
+            "y": 0
+          },
+          {
+            "id": "n7",
+            "label": "7",
+            "order": 7,
+            "x": 192,
+            "y": 0
+          },
+          {
+            "id": "n8",
+            "label": "8",
+            "order": 8,
+            "x": -192,
+            "y": 104
+          },
+          {
+            "id": "n9",
+            "label": "9",
+            "order": 9,
+            "x": -64,
+            "y": 104
+          },
+          {
+            "id": "n10",
+            "label": "10",
+            "order": 10,
+            "x": 64,
+            "y": 104
+          },
+          {
+            "id": "n11",
+            "label": "11",
+            "order": 11,
+            "x": 192,
+            "y": 104
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n4",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n6",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n4",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "n4",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "n6",
+            "target": "n8",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "n1",
+            "target": "n5",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "n2",
+            "target": "n7",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e12",
+            "source": "n2",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e13",
+            "source": "n3",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e14",
+            "source": "n5",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e15",
+            "source": "n1",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e16",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e17",
+            "source": "n4",
+            "target": "n6",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [],
+      "observations": [10, 11, 12, 16],
+      "captureTiming": "settled",
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "native-auto-fit",
+        "beforeActions": ["Fit view"],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-192,\"y\":-104},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-64,\"y\":-104},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":64,\"y\":-104},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":192,\"y\":-104},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-192,\"y\":0},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":-64,\"y\":0},{\"id\":\"n6\",\"label\":\"6\",\"order\":6,\"x\":64,\"y\":0},{\"id\":\"n7\",\"label\":\"7\",\"order\":7,\"x\":192,\"y\":0},{\"id\":\"n8\",\"label\":\"8\",\"order\":8,\"x\":-192,\"y\":104},{\"id\":\"n9\",\"label\":\"9\",\"order\":9,\"x\":-64,\"y\":104},{\"id\":\"n10\",\"label\":\"10\",\"order\":10,\"x\":64,\"y\":104},{\"id\":\"n11\",\"label\":\"11\",\"order\":11,\"x\":192,\"y\":104}],\"edges\":[{\"id\":\"e0\",\"source\":\"n4\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n6\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n4\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"n4\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"n6\",\"target\":\"n8\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"n1\",\"target\":\"n5\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"n2\",\"target\":\"n7\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e12\",\"source\":\"n2\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e13\",\"source\":\"n3\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e14\",\"source\":\"n5\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e15\",\"source\":\"n1\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e16\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e17\",\"source\":\"n4\",\"target\":\"n6\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 12,
+        "edges": 18
+      }
+    },
+    {
+      "id": "native-random-zoom-out",
+      "title": "ランダム連結：自然な読み込み→縮小",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": -192,
+            "y": -104
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": -64,
+            "y": -104
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 64,
+            "y": -104
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 192,
+            "y": -104
+          },
+          {
+            "id": "n4",
+            "label": "4",
+            "order": 4,
+            "x": -192,
+            "y": 0
+          },
+          {
+            "id": "n5",
+            "label": "5",
+            "order": 5,
+            "x": -64,
+            "y": 0
+          },
+          {
+            "id": "n6",
+            "label": "6",
+            "order": 6,
+            "x": 64,
+            "y": 0
+          },
+          {
+            "id": "n7",
+            "label": "7",
+            "order": 7,
+            "x": 192,
+            "y": 0
+          },
+          {
+            "id": "n8",
+            "label": "8",
+            "order": 8,
+            "x": -192,
+            "y": 104
+          },
+          {
+            "id": "n9",
+            "label": "9",
+            "order": 9,
+            "x": -64,
+            "y": 104
+          },
+          {
+            "id": "n10",
+            "label": "10",
+            "order": 10,
+            "x": 64,
+            "y": 104
+          },
+          {
+            "id": "n11",
+            "label": "11",
+            "order": 11,
+            "x": 192,
+            "y": 104
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n4",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e2",
+            "source": "n6",
+            "target": "n10",
+            "weight": "1"
+          },
+          {
+            "id": "e3",
+            "source": "n4",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e4",
+            "source": "n3",
+            "target": "n4",
+            "weight": "1"
+          },
+          {
+            "id": "e5",
+            "source": "n1",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e6",
+            "source": "n4",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e7",
+            "source": "n6",
+            "target": "n8",
+            "weight": "1"
+          },
+          {
+            "id": "e8",
+            "source": "n1",
+            "target": "n5",
+            "weight": "1"
+          },
+          {
+            "id": "e9",
+            "source": "n0",
+            "target": "n2",
+            "weight": "1"
+          },
+          {
+            "id": "e10",
+            "source": "n2",
+            "target": "n7",
+            "weight": "1"
+          },
+          {
+            "id": "e11",
+            "source": "n0",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e12",
+            "source": "n2",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e13",
+            "source": "n3",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e14",
+            "source": "n5",
+            "target": "n11",
+            "weight": "1"
+          },
+          {
+            "id": "e15",
+            "source": "n1",
+            "target": "n9",
+            "weight": "1"
+          },
+          {
+            "id": "e16",
+            "source": "n1",
+            "target": "n3",
+            "weight": "1"
+          },
+          {
+            "id": "e17",
+            "source": "n4",
+            "target": "n6",
+            "weight": "1"
+          }
+        ],
+        "settings": {
+          "directed": false,
+          "weighted": true,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        }
+      },
+      "actions": [
+        {
+          "type": "native-zoom-out",
+          "count": 3
+        }
+      ],
+      "observations": [10, 11, 12, 16],
+      "captureTiming": "settled",
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "native-auto-fit",
+        "beforeActions": ["Fit view"],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": "{\"version\":1,\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":-192,\"y\":-104},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":-64,\"y\":-104},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":64,\"y\":-104},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":192,\"y\":-104},{\"id\":\"n4\",\"label\":\"4\",\"order\":4,\"x\":-192,\"y\":0},{\"id\":\"n5\",\"label\":\"5\",\"order\":5,\"x\":-64,\"y\":0},{\"id\":\"n6\",\"label\":\"6\",\"order\":6,\"x\":64,\"y\":0},{\"id\":\"n7\",\"label\":\"7\",\"order\":7,\"x\":192,\"y\":0},{\"id\":\"n8\",\"label\":\"8\",\"order\":8,\"x\":-192,\"y\":104},{\"id\":\"n9\",\"label\":\"9\",\"order\":9,\"x\":-64,\"y\":104},{\"id\":\"n10\",\"label\":\"10\",\"order\":10,\"x\":64,\"y\":104},{\"id\":\"n11\",\"label\":\"11\",\"order\":11,\"x\":192,\"y\":104}],\"edges\":[{\"id\":\"e0\",\"source\":\"n4\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e2\",\"source\":\"n6\",\"target\":\"n10\",\"weight\":\"1\"},{\"id\":\"e3\",\"source\":\"n4\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e4\",\"source\":\"n3\",\"target\":\"n4\",\"weight\":\"1\"},{\"id\":\"e5\",\"source\":\"n1\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e6\",\"source\":\"n4\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e7\",\"source\":\"n6\",\"target\":\"n8\",\"weight\":\"1\"},{\"id\":\"e8\",\"source\":\"n1\",\"target\":\"n5\",\"weight\":\"1\"},{\"id\":\"e9\",\"source\":\"n0\",\"target\":\"n2\",\"weight\":\"1\"},{\"id\":\"e10\",\"source\":\"n2\",\"target\":\"n7\",\"weight\":\"1\"},{\"id\":\"e11\",\"source\":\"n0\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e12\",\"source\":\"n2\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e13\",\"source\":\"n3\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e14\",\"source\":\"n5\",\"target\":\"n11\",\"weight\":\"1\"},{\"id\":\"e15\",\"source\":\"n1\",\"target\":\"n9\",\"weight\":\"1\"},{\"id\":\"e16\",\"source\":\"n1\",\"target\":\"n3\",\"weight\":\"1\"},{\"id\":\"e17\",\"source\":\"n4\",\"target\":\"n6\",\"weight\":\"1\"}],\"settings\":{\"directed\":false,\"weighted\":true,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+      "expectedCounts": {
+        "nodes": 12,
+        "edges": 18
+      }
+    },
+    {
+      "id": "native-minimal-import-immediate",
+      "title": "最小例：自然な比較JSON読み込み直後",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "import",
+          "graph": {
+            "version": 1,
+            "settings": {
+              "directed": false,
+              "weighted": false,
+              "indexBase": 0,
+              "allowSelfLoops": true,
+              "allowMultiEdges": true,
+              "autoEdgeRouting": true,
+              "snapToGrid": false,
+              "showNodeLabels": true,
+              "arrowScale": 1,
+              "weightKind": "number"
+            },
+            "nodes": [
+              {
+                "id": "n0",
+                "label": "0",
+                "order": 0,
+                "x": 180,
+                "y": 360
+              },
+              {
+                "id": "n1",
+                "label": "1",
+                "order": 1,
+                "x": 180,
+                "y": 450
+              },
+              {
+                "id": "n2",
+                "label": "2",
+                "order": 2,
+                "x": 0,
+                "y": 540
+              },
+              {
+                "id": "n3",
+                "label": "3",
+                "order": 3,
+                "x": 360,
+                "y": 270
+              }
+            ],
+            "edges": [
+              {
+                "id": "e0",
+                "source": "n0",
+                "target": "n1",
+                "label": "1",
+                "routing": {
+                  "bowPx": 0
+                }
+              },
+              {
+                "id": "e1",
+                "source": "n2",
+                "target": "n3",
+                "label": "1",
+                "routing": {
+                  "bowPx": -160
+                }
+              }
+            ]
+          },
+          "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\",\"routing\":{\"bowPx\":0}},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\",\"routing\":{\"bowPx\":-160}}]}"
+        }
+      ],
+      "observations": [10, 11, 12, 16],
+      "captureTiming": "immediate",
+      "captureDelaySeconds": 0,
+      "viewportPlan": {
+        "mode": "native-auto-fit",
+        "beforeActions": ["Fit view"],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    },
+    {
+      "id": "native-minimal-import-settled",
+      "title": "最小例：自然な比較JSON読み込み後の待機",
+      "kind": "graph",
+      "graph": {
+        "version": 1,
+        "settings": {
+          "directed": false,
+          "weighted": false,
+          "indexBase": 0,
+          "allowSelfLoops": true,
+          "allowMultiEdges": true,
+          "autoEdgeRouting": true,
+          "snapToGrid": false,
+          "showNodeLabels": true,
+          "arrowScale": 1,
+          "weightKind": "number"
+        },
+        "nodes": [
+          {
+            "id": "n0",
+            "label": "0",
+            "order": 0,
+            "x": 180,
+            "y": 360
+          },
+          {
+            "id": "n1",
+            "label": "1",
+            "order": 1,
+            "x": 180,
+            "y": 450
+          },
+          {
+            "id": "n2",
+            "label": "2",
+            "order": 2,
+            "x": 0,
+            "y": 540
+          },
+          {
+            "id": "n3",
+            "label": "3",
+            "order": 3,
+            "x": 360,
+            "y": 270
+          }
+        ],
+        "edges": [
+          {
+            "id": "e0",
+            "source": "n0",
+            "target": "n1",
+            "label": "1"
+          },
+          {
+            "id": "e1",
+            "source": "n2",
+            "target": "n3",
+            "label": "1"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "type": "import",
+          "graph": {
+            "version": 1,
+            "settings": {
+              "directed": false,
+              "weighted": false,
+              "indexBase": 0,
+              "allowSelfLoops": true,
+              "allowMultiEdges": true,
+              "autoEdgeRouting": true,
+              "snapToGrid": false,
+              "showNodeLabels": true,
+              "arrowScale": 1,
+              "weightKind": "number"
+            },
+            "nodes": [
+              {
+                "id": "n0",
+                "label": "0",
+                "order": 0,
+                "x": 180,
+                "y": 360
+              },
+              {
+                "id": "n1",
+                "label": "1",
+                "order": 1,
+                "x": 180,
+                "y": 450
+              },
+              {
+                "id": "n2",
+                "label": "2",
+                "order": 2,
+                "x": 0,
+                "y": 540
+              },
+              {
+                "id": "n3",
+                "label": "3",
+                "order": 3,
+                "x": 360,
+                "y": 270
+              }
+            ],
+            "edges": [
+              {
+                "id": "e0",
+                "source": "n0",
+                "target": "n1",
+                "label": "1",
+                "routing": {
+                  "bowPx": 0
+                }
+              },
+              {
+                "id": "e1",
+                "source": "n2",
+                "target": "n3",
+                "label": "1",
+                "routing": {
+                  "bowPx": -160
+                }
+              }
+            ]
+          },
+          "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\",\"routing\":{\"bowPx\":0}},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\",\"routing\":{\"bowPx\":-160}}]}"
+        }
+      ],
+      "observations": [10, 11, 12, 16],
+      "captureTiming": "settled",
+      "captureDelaySeconds": 0.8,
+      "viewportPlan": {
+        "mode": "native-auto-fit",
+        "beforeActions": ["Fit view"],
+        "afterActions": [],
+        "panActions": []
+      },
+      "expectedZoomPercent": null,
+      "inputText": "{\"version\":1,\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"},\"nodes\":[{\"id\":\"n0\",\"label\":\"0\",\"order\":0,\"x\":180,\"y\":360},{\"id\":\"n1\",\"label\":\"1\",\"order\":1,\"x\":180,\"y\":450},{\"id\":\"n2\",\"label\":\"2\",\"order\":2,\"x\":0,\"y\":540},{\"id\":\"n3\",\"label\":\"3\",\"order\":3,\"x\":360,\"y\":270}],\"edges\":[{\"id\":\"e0\",\"source\":\"n0\",\"target\":\"n1\",\"label\":\"1\"},{\"id\":\"e1\",\"source\":\"n2\",\"target\":\"n3\",\"label\":\"1\"}]}",
+      "expectedCounts": {
+        "nodes": 4,
+        "edges": 2
+      }
+    }
+  ],
+  "emptyInputText": "{\"version\":1,\"nodes\":[],\"edges\":[],\"settings\":{\"directed\":false,\"weighted\":false,\"indexBase\":0,\"allowSelfLoops\":true,\"allowMultiEdges\":true,\"autoEdgeRouting\":true,\"snapToGrid\":false,\"showNodeLabels\":true,\"arrowScale\":1,\"weightKind\":\"number\"}}",
+  "globalObservations": [
+    {
+      "id": 15,
+      "scope": "Review development badge placement in every full viewport JPEG; do not assume old overlap reproduces in IAB."
+    },
+    {
+      "id": 16,
+      "scope": "App-readiness and driver conditions stay separate. IAB photos require a visible actual graph, correct node/edge DOM counts, and matching UI controls."
+    }
+  ]
+}

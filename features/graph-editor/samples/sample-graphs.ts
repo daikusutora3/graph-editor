@@ -251,12 +251,13 @@ function prismPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
 }
 
 function tetrahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
-  return {
-    [nodeIds[0]]: { x: -155, y: 95 },
-    [nodeIds[1]]: { x: 155, y: 95 },
-    [nodeIds[2]]: { x: 0, y: -155 },
-    [nodeIds[3]]: { x: 0, y: 20 },
-  };
+  const x = Math.sqrt(3) * 100;
+  return fixedPositions(nodeIds, [
+    { x: -x, y: 100 },
+    { x, y: 100 },
+    { x: 0, y: -200 },
+    { x: 0, y: 0 },
+  ]);
 }
 
 function diamondPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
@@ -361,30 +362,34 @@ function hypercubePositions(
 }
 
 function octahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
+  const x = Math.sqrt(3) / 2;
+  // Outer face and inverted inner face: preserve adjacency without crossings.
   return fixedPositions(nodeIds, [
-    { x: 0, y: -220 },
-    { x: -74, y: 42 },
-    { x: 191, y: 110 },
-    { x: 0, y: -85 },
-    { x: -191, y: 110 },
-    { x: 74, y: 42 },
+    { x: 0, y: -240 },
+    { x: x * 75, y: -37.5 },
+    { x: x * 240, y: 120 },
+    { x: 0, y: 75 },
+    { x: -x * 240, y: 120 },
+    { x: -x * 75, y: -37.5 },
   ]);
 }
 
 function icosahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
+  const x = Math.sqrt(3) / 2;
+  // Three concentric rings keep the planar embedding and vertex clearance.
   return fixedPositions(nodeIds, [
-    { x: 0, y: -260 },
-    { x: 260, y: 160 },
-    { x: -260, y: 160 },
-    { x: -113, y: -29 },
-    { x: 0, y: -90 },
-    { x: 113, y: -29 },
-    { x: 0, y: 154 },
-    { x: -113, y: 93 },
-    { x: -38, y: 12 },
-    { x: 38, y: 12 },
-    { x: 113, y: 93 },
-    { x: 0, y: 73 },
+    { x: 0, y: -320 },
+    { x: x * 320, y: 160 },
+    { x: -x * 320, y: 160 },
+    { x: -x * 115, y: -57.5 },
+    { x: 0, y: -115 },
+    { x: x * 115, y: -57.5 },
+    { x: 0, y: 115 },
+    { x: -x * 115, y: 57.5 },
+    { x: -x * 45, y: -22.5 },
+    { x: x * 45, y: -22.5 },
+    { x: x * 115, y: 57.5 },
+    { x: 0, y: 45 },
   ]);
 }
 
@@ -603,28 +608,20 @@ function permutationPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
 }
 
 function dodecahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
-  return fixedPositions(nodeIds, [
-    { x: 0, y: -240 },
-    { x: 228, y: -74 },
-    { x: 141, y: 194 },
-    { x: -141, y: 194 },
-    { x: -228, y: -74 },
-    { x: 46, y: -143 },
-    { x: 121, y: -88 },
-    { x: 150, y: 0 },
-    { x: 121, y: 88 },
-    { x: 46, y: 143 },
-    { x: -46, y: 143 },
-    { x: -121, y: 88 },
-    { x: -150, y: 0 },
-    { x: -121, y: -88 },
-    { x: -46, y: -143 },
-    { x: 41, y: -57 },
-    { x: 67, y: 22 },
-    { x: 0, y: 70 },
-    { x: -67, y: 22 },
-    { x: -41, y: -57 },
-  ]);
+  const rings = [
+    { count: 5, radius: 240, start: -Math.PI / 2 },
+    { count: 10, radius: 150, start: -Math.PI / 2 },
+    { count: 5, radius: 70, start: (-3 * Math.PI) / 10 },
+  ];
+  return fixedPositions(
+    nodeIds,
+    rings.flatMap(({ count, radius, start }) =>
+      Array.from({ length: count }, (_, index) => {
+        const angle = start + (index * 2 * Math.PI) / count;
+        return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+      }),
+    ),
+  );
 }
 
 function clebschPositions(nodeIds: NodeId[]): Record<NodeId, Point> {

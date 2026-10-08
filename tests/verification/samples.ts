@@ -241,6 +241,7 @@ for (const kind of sampleGraphKinds) {
 }
 
 verifyNamedSampleGeometry(models);
+verifyPlatonicEmbeddings(models);
 verifyPreviewEdgePaths();
 verifySizedSampleGraphs();
 
@@ -873,4 +874,101 @@ function distanceToSegment(
   };
 
   return Math.hypot(point.x - projected.x, point.y - projected.y);
+}
+
+function verifyPlatonicEmbeddings(
+  sampleModels: Map<SampleGraphKind, GraphModel>,
+) {
+  for (const [kind, degrees] of [
+    ["tetrahedral", 120],
+    ["cube", 90],
+    ["octahedral", 120],
+    ["dodecahedral", 72],
+    ["icosahedral", 120],
+  ] as const) {
+    const model = sampleModels.get(kind)!;
+    const nodes = nodePositionByOrder(model);
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    const edgeKeys = new Set(
+      model.edges.map((e) => [e.source, e.target].sort().join("|")),
+    );
+    const angle = (degrees * Math.PI) / 180;
+    for (const transform of [
+      (p: { x: number; y: number }) => ({
+        x: p.x * Math.cos(angle) - p.y * Math.sin(angle),
+        y: p.x * Math.sin(angle) + p.y * Math.cos(angle),
+      }),
+      (p: { x: number; y: number }) => ({ x: -p.x, y: p.y }),
+    ]) {
+      const ids = new Map(
+        nodes.map((node) => {
+          const p = transform(node);
+          return [
+            node.id,
+            nodes.find((n) => Math.hypot(n.x - p.x, n.y - p.y) < 2)?.id,
+          ];
+        }),
+      );
+      if (
+        [...ids.values()].some((id) => !id) ||
+        model.edges.some(
+          (e) =>
+            !edgeKeys.has(
+              [ids.get(e.source), ids.get(e.target)].sort().join("|"),
+            ),
+        )
+      ) {
+        fail(
+          `${kind}: rotation/reflection must preserve vertices and adjacency`,
+        );
+      }
+    }
+    const cross = (
+      a: { x: number; y: number },
+      b: { x: number; y: number },
+      c: { x: number; y: number },
+    ) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    for (let i = 0; i < model.edges.length; i++) {
+      const e = model.edges[i]!;
+      const a = byId.get(e.source)!,
+        b = byId.get(e.target)!;
+      for (const f of model.edges.slice(i + 1)) {
+        if (
+          [f.source, f.target].some((id) => id === e.source || id === e.target)
+        )
+          continue;
+        const c = byId.get(f.source)!,
+          d = byId.get(f.target)!;
+        if (
+          cross(a, b, c) * cross(a, b, d) < -0.001 &&
+          cross(c, d, a) * cross(c, d, b) < -0.001
+        ) {
+          fail(`${kind}: nonincident straight edges ${e.id}/${f.id} cross`);
+        }
+      }
+      for (const n of nodes) {
+        if (n.id === e.source || n.id === e.target) continue;
+        const dx = b.x - a.x,
+          dy = b.y - a.y;
+        const t = Math.max(
+          0,
+          Math.min(
+            1,
+            ((n.x - a.x) * dx + (n.y - a.y) * dy) / (dx * dx + dy * dy),
+          ),
+        );
+        if (Math.hypot(n.x - a.x - t * dx, n.y - a.y - t * dy) < 30 - 0.001)
+          fail(`${kind}: an edge intrudes into another vertex`);
+      }
+    }
+    if (kind === "cube") {
+      const outer = nodes.slice(0, 4);
+      const width =
+        Math.max(...outer.map((n) => n.x)) - Math.min(...outer.map((n) => n.x));
+      const height =
+        Math.max(...outer.map((n) => n.y)) - Math.min(...outer.map((n) => n.y));
+      if (Math.abs(width - height) > 0.001)
+        fail("cube: outer face must remain square");
+    }
+  }
 }

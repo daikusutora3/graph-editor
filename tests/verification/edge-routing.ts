@@ -15,7 +15,11 @@ import type {
   GraphModel,
 } from "../../features/graph-editor/core/graph/model";
 import { estimateNodeWidth } from "../../features/graph-editor/core/graph/node-size";
-import { edgeCurveMidpoint } from "../../features/graph-editor/core/layout/edge-route-geometry";
+import {
+  edgeCurveMidpoint,
+  minimumCurveDistanceToNode,
+  reverseEdgeCurve,
+} from "../../features/graph-editor/core/layout/edge-route-geometry";
 import {
   chooseLoopDirection,
   createLoopDirectionTask,
@@ -29,7 +33,10 @@ import {
   layoutLine,
   layoutTree,
 } from "../../features/graph-editor/layouts/layout-algorithms";
-import { createSizedSampleGraph } from "../../features/graph-editor/samples/sample-graphs";
+import {
+  createSampleGraph,
+  createSizedSampleGraph,
+} from "../../features/graph-editor/samples/sample-graphs";
 import {
   emptyEdgeRoutingContinuitySnapshot,
   readPreviousAutomaticRoutingMeta,
@@ -37,6 +44,8 @@ import {
 } from "../../features/graph-editor/core/layout/edge-routing-continuity";
 import {
   createEdgeRoutingCacheKey,
+  createEdgeRoutingTask,
+  edgeRoutingProgress,
   computeEdgeRouting,
   type EdgeRoutingMeta,
 } from "../../features/graph-editor/core/layout/edge-routing";
@@ -492,8 +501,8 @@ const curvedCrossingGraph: GraphModel = {
   ],
 };
 expect(
-  computeEdgeRouting(curvedCrossingGraph).get("candidate")?.bowPx !== 0,
-  "crossing evaluation should account for the other edge's curved route",
+  computeEdgeRouting(curvedCrossingGraph).get("candidate")?.bowPx === 0,
+  "an ordinary crossing with a manual curve should keep a clear automatic edge straight",
 );
 
 const automaticCrossingGraph: GraphModel = {
@@ -515,21 +524,32 @@ const partiallyRoutedCrossing = computeEdgeRouting(automaticCrossingGraph, {
   rerouteEdgeIds: new Set(["candidate"]),
 });
 expect(
-  partiallyRoutedCrossing.get("candidate")?.bowPx !== 0 &&
+  partiallyRoutedCrossing.get("candidate")?.bowPx === 0 &&
     partiallyRoutedCrossing.get("curved") ===
       previousCrossingRoutes.get("curved"),
-  "partial rerouting should avoid the actual curve of a later untouched edge",
+  "partial rerouting should preserve a later curve while tolerating its ordinary crossing",
 );
 expect(
   [...partiallyRoutedCrossing.keys()].join(",") === "candidate,curved",
   "preserving obstacles should not change output edge order",
 );
+const pendingPartial = computeEdgeRouting(automaticCrossingGraph, {
+  previousMeta: new Map([
+    ...previousCrossingRoutes,
+    ["candidate", { ...routeMeta(0), status: "pending" as const }],
+  ]),
+  rerouteEdgeIds: new Set(["candidate"]),
+});
+expect(
+  pendingPartial.get("curved") === previousCrossingRoutes.get("curved"),
+  "a pending active edge must not authorize simplifying an untouched group",
+);
 expect(
   computeEdgeRouting({
     ...curvedCrossingGraph,
     edges: curvedCrossingGraph.edges.toReversed(),
-  }).get("candidate")?.bowPx !== 0,
-  "a later manual bend should remain an obstacle during full rerouting",
+  }).get("candidate")?.bowPx === 0,
+  "a later manual curve should stay exact without forcing an ordinary crossing detour",
 );
 
 const parallelCrossingGraph: GraphModel = {
@@ -582,6 +602,466 @@ expect(
   computeEdgeRouting(curvedLabelGraph).get("candidate")?.bowPx === 0,
   "label collision scoring should use the curved edge midpoint instead of its endpoint midpoint",
 );
+
+// Rectangle dimensions come from the renderer: short-label backgrounds are
+//26graph px tall. A30px vertical gap already leaves visible space, even for
+//long text; width must not inflate the required vertical clearance.
+{
+  const base: GraphModel = {
+    ...graphFixture([]),
+    nodes: [
+      { id: "a", label: "", order: 0, x: 0, y: 0 },
+      { id: "b", label: "", order: 1, x: 400, y: 0 },
+      { id: "c", label: "", order: 2, x: 400, y: 60 },
+    ],
+    edges: [
+      { id: "ab", source: "a", target: "b" },
+      { id: "ac", source: "a", target: "c" },
+    ],
+  };
+  for (const label of ["1", "abcdefghij"]) {
+    const graph = {
+      ...base,
+      edges: base.edges.map((edge) => ({ ...edge, label })),
+    };
+    expect(
+      [...computeEdgeRouting(graph).values()].every(
+        (route) => route.bowPx === 0,
+      ),
+      `vertically separated ${label} labels should keep straight edges`,
+    );
+  }
+  const separatedNode = {
+    ...base,
+    nodes: [
+      base.nodes[0]!,
+      base.nodes[1]!,
+      { id: "o", label: "", order: 2, x: 200, y: 40 },
+    ],
+    edges: [base.edges[0]!],
+  };
+  expect(
+    computeEdgeRouting(separatedNode).get("ab")?.bowPx === 0,
+    "a40px centre gap should not bend a line16px outside the vertex",
+  );
+  const penetratingNode = {
+    ...separatedNode,
+    nodes: separatedNode.nodes.map((node) =>
+      node.id === "o" ? { ...node, y: 0 } : node,
+    ),
+  };
+  const route = computeEdgeRouting(penetratingNode).get("ab")!;
+  expect(
+    route.bowPx !== 0 &&
+      minimumCurveDistanceToNode(
+        penetratingNode.nodes[0]!,
+        penetratingNode.nodes[1]!,
+        route,
+        penetratingNode.nodes[2]!,
+      ) >= 30,
+    "true vertex penetration should bend with visible clearance",
+  );
+  const reversedRoute = computeEdgeRouting({
+    ...penetratingNode,
+    edges: penetratingNode.edges.map((edge) => ({
+      ...edge,
+      source: edge.target,
+      target: edge.source,
+    })),
+  }).get("ab")!;
+  expect(
+    JSON.stringify(reverseEdgeCurve(reversedRoute)) ===
+      JSON.stringify({
+        controlPointDistancesPx: route.controlPointDistancesPx,
+        controlPointWeights: route.controlPointWeights,
+      }),
+    "reversing automatic endpoints should preserve the physical detour",
+  );
+}
+
+{
+  const labels: GraphModel = {
+    ...graphFixture([]),
+    nodes: [
+      { id: "a", label: "", order: 0, x: -200, y: 0 },
+      { id: "b", label: "", order: 1, x: 200, y: 0 },
+      { id: "c", label: "", order: 2, x: 0, y: -200 },
+      { id: "d", label: "", order: 3, x: 0, y: 200 },
+    ],
+    edges: [
+      { id: "ab", source: "a", target: "b", label: "1" },
+      { id: "cd", source: "c", target: "d", label: "1" },
+    ],
+  };
+  const routes = computeEdgeRouting(labels);
+  const first = edgeCurveMidpoint(
+    labels.nodes[0]!,
+    labels.nodes[1]!,
+    routes.get("ab")!,
+  );
+  const second = edgeCurveMidpoint(
+    labels.nodes[2]!,
+    labels.nodes[3]!,
+    routes.get("cd")!,
+  );
+  expect(
+    [...routes.values()].some((route) => route.bowPx !== 0) &&
+      (Math.abs(first.x - second.x) >= 20 ||
+        Math.abs(first.y - second.y) >= 26),
+    "coincident visible labels should separate their actual backgrounds",
+  );
+  const unlabeled = {
+    ...labels,
+    edges: labels.edges.map((edge) => ({ ...edge, label: undefined })),
+  };
+  expect(
+    [...computeEdgeRouting(unlabeled).values()].every(
+      (route) => route.bowPx === 0,
+    ),
+    "the same crossing without labels should stay straight",
+  );
+  const retainedLabel: GraphModel = {
+    ...labels,
+    nodes: [
+      { id: "a", label: "", order: 0, x: -250, y: 0 },
+      { id: "b", label: "", order: 1, x: 250, y: 0 },
+      { id: "c", label: "", order: 2, x: -200, y: 50 },
+      { id: "d", label: "", order: 3, x: 200, y: 50 },
+    ],
+    edges: [
+      { id: "candidate", source: "c", target: "d", label: "1" },
+      { id: "retained", source: "a", target: "b", label: "2" },
+    ],
+  };
+  const old = new Map([["retained", routeMeta(100)]]);
+  const partial = computeEdgeRouting(retainedLabel, {
+    previousMeta: old,
+    rerouteEdgeIds: new Set(["candidate"]),
+  });
+  expect(
+    partial.get("retained") === old.get("retained") &&
+      partial.get("candidate")?.bowPx !== 0,
+    "a later retained label must remain an actual obstacle during partial routing",
+  );
+}
+
+{
+  const minimal: GraphModel = {
+    ...graphFixture([]),
+    nodes: [
+      { id: "n0", label: "", order: 0, x: 180, y: 360 },
+      { id: "n1", label: "", order: 1, x: 180, y: 450 },
+      { id: "n2", label: "", order: 2, x: 0, y: 540 },
+      { id: "n3", label: "", order: 3, x: 360, y: 270 },
+    ],
+    edges: [
+      { id: "e0", source: "n0", target: "n1", label: "1" },
+      { id: "e1", source: "n2", target: "n3", label: "1" },
+    ],
+  };
+  const random = createSampleGraph("randomConnected", {
+    autoEdgeRouting: true,
+    weighted: true,
+    directed: true,
+  });
+  for (const graph of [
+    minimal,
+    random,
+    createSampleGraph("bipartite", {
+      autoEdgeRouting: true,
+      weighted: true,
+      directed: true,
+    }),
+    createSampleGraph("petersen", {
+      autoEdgeRouting: true,
+      weighted: true,
+      directed: true,
+    }),
+  ]) {
+    const initial = finishTask(createEdgeRoutingTask(graph));
+    const signature = canonicalSignature(initial);
+    expect(
+      canonicalSignature(
+        finishTask(
+          createEdgeRoutingTask({ ...graph, edges: graph.edges.toReversed() }),
+        ),
+      ) === signature,
+      "automatic singleton routes should not depend on edge array order",
+    );
+    expect(
+      canonicalSignature(
+        finishTask(createEdgeRoutingTask(graph, { previousMeta: initial })),
+      ) === signature,
+      "finished routes should remain stable on repeated calculation",
+    );
+    const line = {
+      ...graph,
+      nodes: graph.nodes.map((node) => ({
+        ...node,
+        ...layoutLine(graph)[node.id],
+      })),
+    };
+    const lineRoutes = finishTask(
+      createEdgeRoutingTask(line, { previousMeta: initial }),
+    );
+    expect(
+      canonicalSignature(
+        finishTask(createEdgeRoutingTask(graph, { previousMeta: lineRoutes })),
+      ) === signature,
+      "restoring coordinates should restore canonical automatic routes",
+    );
+  }
+  const minimalRoutes = computeEdgeRouting(minimal);
+  expect(
+    minimalRoutes.get("e0")?.bowPx === 0 &&
+      minimalRoutes.get("e1")?.bowPx !== 0,
+    "label separation should bend the longer edge while preserving the short connection",
+  );
+  expect(
+    computeEdgeRouting(random).get("e5")?.bowPx === 0,
+    "final geometry should remove the random sample's obsolete e5detour",
+  );
+}
+
+{
+  const weightedParallel: GraphModel = {
+    ...graphFixture([]),
+    nodes: [
+      { id: "a", label: "", order: 0, x: 0, y: 0 },
+      { id: "b", label: "", order: 1, x: 400, y: 0 },
+    ],
+    edges: [
+      { id: "ab1", source: "a", target: "b", label: "1" },
+      { id: "ab2", source: "a", target: "b", label: "2" },
+    ],
+  };
+  const routes = computeEdgeRouting(weightedParallel);
+  const anchors = weightedParallel.edges.map((edge) =>
+    edgeCurveMidpoint(
+      weightedParallel.nodes[0]!,
+      weightedParallel.nodes[1]!,
+      routes.get(edge.id)!,
+    ),
+  );
+  expect(
+    Math.abs(anchors[0]!.y - anchors[1]!.y) >= 26,
+    "parallel labels should retain separate visible backgrounds",
+  );
+}
+
+{
+  for (const reversed of [false, true]) {
+    for (const manualFirst of [false, true]) {
+      for (const bowT of [0.2, 0.5, 0.8]) {
+        for (const mode of ["quality", "parallel"] as const) {
+          const manual: GraphEdge = {
+            id: "manual",
+            source: reversed ? "b" : "a",
+            target: reversed ? "a" : "b",
+            label: "1",
+            routing: { bowPx: 64, bowT },
+          };
+          const automatic: GraphEdge = {
+            id: "automatic",
+            source: "a",
+            target: "b",
+            label: "2",
+          };
+          const graph: GraphModel = {
+            ...graphFixture([]),
+            nodes: [
+              { id: "a", label: "", order: 0, x: 0, y: 0 },
+              { id: "b", label: "", order: 1, x: 400, y: 0 },
+            ],
+            edges: manualFirst ? [manual, automatic] : [automatic, manual],
+          };
+          const routes = computeEdgeRouting(graph, { mode });
+          const fixed = routes.get("manual")!;
+          expect(
+            fixed.bowPx === 64 &&
+              fixed.controlPointDistancesPx[0] === 64 &&
+              fixed.controlPointWeights[0] === bowT,
+            "mixed parallel routing must preserve the exact manual bow and weight",
+          );
+          const manualAnchor = edgeCurveMidpoint(
+            graph.nodes[reversed ? 1 : 0]!,
+            graph.nodes[reversed ? 0 : 1]!,
+            fixed,
+          );
+          const automaticAnchor = edgeCurveMidpoint(
+            graph.nodes[0]!,
+            graph.nodes[1]!,
+            routes.get("automatic")!,
+          );
+          expect(
+            Math.abs(manualAnchor.x - automaticAnchor.x) >= 28 ||
+              Math.abs(manualAnchor.y - automaticAnchor.y) >= 28,
+            "mixed manual and automatic parallel labels must have separate actual backgrounds, in both edge orders and directions",
+          );
+          expect(
+            routes.get("automatic")?.bowPx === 0,
+            "a clear automatic sibling should stay straight beside a fixed manual bow regardless of order or direction",
+          );
+        }
+      }
+    }
+  }
+}
+
+{
+  const horizontal: GraphModel = {
+    ...graphFixture([]),
+    nodes: [
+      { id: "a", order: 0, label: "", x: 0, y: 0 },
+      { id: "b", order: 1, label: "", x: 400, y: 0 },
+    ],
+    edges: ["1", "2"].map((id) => ({
+      id,
+      source: "a",
+      target: "b",
+      label: "long label abcdefghijklmnop",
+    })),
+  };
+  const vertical = {
+    ...horizontal,
+    nodes: [horizontal.nodes[0]!, { ...horizontal.nodes[1]!, x: 0, y: 400 }],
+  };
+  for (const mode of ["simple", "parallel"] as const) {
+    expect(
+      createEdgeRoutingCacheKey(horizontal, { mode }) !==
+        createEdgeRoutingCacheKey(vertical, { mode }),
+      "non-quality parallel label spacing must invalidate its cache when endpoints move",
+    );
+    expect(
+      computeEdgeRouting(horizontal, { mode }).get("1")?.bowPx !==
+        computeEdgeRouting(vertical, { mode }).get("1")?.bowPx,
+      "labelled parallel lanes must follow the current chord direction",
+    );
+  }
+}
+
+{
+  const mixedBudget: GraphModel = {
+    ...graphFixture([]),
+    nodes: Array.from({ length: 50 }, (_, i) => [
+      { id: `a${i}`, order: i * 2, label: "", x: 0, y: i * 200 },
+      { id: `b${i}`, order: i * 2 + 1, label: "", x: 400, y: i * 200 },
+    ]).flat(),
+    edges: Array.from({ length: 50 }, (_, i) => [
+      {
+        id: `manual${i}`,
+        source: `a${i}`,
+        target: `b${i}`,
+        label: "1",
+        routing: { bowPx: 64, bowT: 0.5 },
+      },
+      { id: `automatic${i}`, source: `a${i}`, target: `b${i}`, label: "2" },
+    ]).flat(),
+  };
+  let draft = computeEdgeRouting(mixedBudget, { mode: "parallel" });
+  expect(
+    edgeRoutingProgress(draft).pendingEdgeIds.length > 0,
+    "mixed manual label work must keep the synchronous scoring budget without recursive fallback",
+  );
+  for (
+    let pass = 0;
+    pass < 50 && edgeRoutingProgress(draft).pendingEdgeIds.length;
+    pass++
+  ) {
+    draft = computeEdgeRouting(mixedBudget, {
+      mode: "parallel",
+      previousMeta: draft,
+      rerouteEdgeIds: new Set(edgeRoutingProgress(draft).pendingEdgeIds),
+    });
+  }
+  const finished = finishTask(
+    createEdgeRoutingTask(mixedBudget, { mode: "parallel" }),
+  );
+  expect(
+    edgeRoutingProgress(draft).pendingEdgeIds.length === 0 &&
+      canonicalSignature(draft) === canonicalSignature(finished),
+    "mixed parallel draft continuation must finish exactly like the full generator",
+  );
+  expect(
+    [...draft].every(
+      ([id, route]) => route.bowPx === (id.startsWith("manual") ? 64 : 0),
+    ),
+    "budget completion must preserve all manual routes and separate the automatic labels",
+  );
+}
+
+{
+  const heavy: GraphModel = {
+    ...graphFixture([]),
+    settings: {
+      ...defaultGraphSettings,
+      weighted: true,
+      allowMultiEdges: true,
+      autoEdgeRouting: true,
+    },
+    nodes: Array.from({ length: 200 }, (_, order) => ({
+      id: `n${order}`,
+      label: String(order),
+      order,
+      x: (order % 15) * 90,
+      y: Math.floor(order / 15) * 90,
+    })),
+    edges: Array.from({ length: 400 }, (_, index) => ({
+      id: `e${index}`,
+      source: `n${index % 200}`,
+      target: `n${((index % 200) + 1 + ((index * 17) % 199)) % 200}`,
+      weight: String(index % 10),
+    })),
+  };
+  const saved = JSON.stringify(heavy);
+  let draft = computeEdgeRouting(heavy);
+  expect(
+    edgeRoutingProgress(draft).pendingEdgeIds.length > 0,
+    "synchronous quality routing should retain its work budget",
+  );
+  const complete = finishTask(
+    createEdgeRoutingTask(heavy, {
+      previousMeta: draft,
+      rerouteEdgeIds: new Set(edgeRoutingProgress(draft).pendingEdgeIds),
+    }),
+  );
+  expect(
+    edgeRoutingProgress(complete).pendingEdgeIds.length === 0,
+    "the resumed generator must finish all routing and final cleanup",
+  );
+  let synchronous = computeEdgeRouting(heavy);
+  for (
+    let pass = 0;
+    pass < 100 && edgeRoutingProgress(synchronous).pendingEdgeIds.length;
+    pass++
+  )
+    synchronous = computeEdgeRouting(heavy, {
+      previousMeta: synchronous,
+      rerouteEdgeIds: new Set(edgeRoutingProgress(synchronous).pendingEdgeIds),
+    });
+  expect(
+    edgeRoutingProgress(synchronous).pendingEdgeIds.length === 0 &&
+      canonicalSignature(synchronous) === canonicalSignature(complete),
+    "synchronous budget chunks must resume the same canonical task",
+  );
+  expect(
+    JSON.stringify(heavy) === saved,
+    "routing scratch state must not enter the model",
+  );
+}
+
+function finishTask(task: ReturnType<typeof createEdgeRoutingTask>) {
+  let step = task.next();
+  let steps = 0;
+  while (!step.done && steps++ < 100_000) step = task.next();
+  if (!step.done) throw new Error("Routing task did not finish");
+  return step.value;
+}
+function canonicalSignature(routes: ReadonlyMap<string, EdgeRoutingMeta>) {
+  return JSON.stringify(
+    [...routes].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
+}
 
 const pointerBow = edgeBendFromRenderedPointer(
   { sourceX: 0, sourceY: 0, targetX: 200, targetY: 0 },

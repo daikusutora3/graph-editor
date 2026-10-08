@@ -532,13 +532,13 @@
 
 .ge-select-edge-hitbox {
   z-index: 19;
-  height: 2rem;
+  min-height: 2rem;
   border-radius: var(--radius-md);
   cursor: pointer;
 }
 
 [data-layout="mobile"] .ge-select-edge-hitbox {
-  height: 2.75rem;
+  min-height: 2.75rem;
 }
 
 .ge-select-node-hitbox:focus-visible,

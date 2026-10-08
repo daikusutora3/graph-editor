@@ -25,6 +25,9 @@ import {
 } from "./graph-canvas-viewport";
 import { withSuppressedSelectionSync } from "./selection-sync-guard";
 import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
+import { refreshCytoscapeGeometry } from "./graph-canvas-geometry-refresh";
+import { afterCytoscapeRender } from "./graph-canvas-render-request";
+import { startVisibleTimeout } from "../browser/visible-timeout";
 
 import type { CanvasFitRequest } from "../../canvas/GraphCanvasProvider";
 
@@ -73,6 +76,11 @@ export function useGraphCanvasLifecycle({
 }: UseGraphCanvasLifecycleOptions) {
   const [displayReady, setDisplayReady] = useState(false);
   const [displayError, setDisplayError] = useState(false);
+  const [paintedElements, setPaintedElements] = useState<
+    typeof elements | null
+  >(null);
+  const paintedElementsRef = useRef<typeof elements | null>(null);
+  const initialGeometryRef = useRef(true);
   const initialFitRef = useRef(true);
   const requestRef = useRef(0);
   const arrowScaleRef = useRef(graph.settings.arrowScale);
@@ -94,14 +102,12 @@ export function useGraphCanvasLifecycle({
 
   useEffect(() => {
     if (!fitRequest) return;
-    const timeout = window.setTimeout(() => completeFit(fitRequest.id), 10_000);
-    return () => clearTimeout(timeout);
+    return startVisibleTimeout(() => completeFit(fitRequest.id), 10_000);
   }, [fitRequest, completeFit]);
 
   useEffect(() => {
     if (displayReady) return;
-    const timeout = window.setTimeout(() => setDisplayError(true), 10_000);
-    return () => clearTimeout(timeout);
+    return startVisibleTimeout(() => setDisplayError(true), 10_000);
   }, [displayReady]);
 
   useEffect(() => {
@@ -131,8 +137,14 @@ export function useGraphCanvasLifecycle({
       return;
     }
     initialFitRef.current = true;
+    initialGeometryRef.current = true;
+    paintedElementsRef.current = null;
+    setPaintedElements(null);
+    setDisplayReady(false);
+    setDisplayError(false);
     cyRef.current = cy;
     return () => {
+      requestRef.current++;
       cy.removeAllListeners();
       cy.destroy();
       cyRef.current = null;
@@ -178,6 +190,7 @@ export function useGraphCanvasLifecycle({
       cy.style(
         createGraphCanvasStylesheet(readCanvasPalette(), arrowScaleRef.current),
       );
+      refreshCytoscapeGeometry(cy.elements());
       cy.resize();
       updateRenderedHitboxesRef.current(cy);
     };
@@ -208,6 +221,7 @@ export function useGraphCanvasLifecycle({
         graph.settings.arrowScale,
       ),
     );
+    refreshCytoscapeGeometry(cy.collection(cy.edges()));
     cy.resize();
     updateRenderedHitboxesRef.current(cy);
   }, [cyRef, graph.settings.arrowScale]);
@@ -223,20 +237,6 @@ export function useGraphCanvasLifecycle({
     const shouldFit = fitRequest?.graph === graph;
     if (fitRequest && !shouldFit) completeFit(fitRequest.id);
     const request = ++requestRef.current;
-    let completed = false;
-    let renderFrame: number | null = null;
-
-    const reveal = () => {
-      if (request !== requestRef.current || cy.destroyed()) return;
-      renderFrame = requestAnimationFrame(() => {
-        if (request !== requestRef.current || cy.destroyed()) return;
-        flushRenderedHitboxesRef.current(cy);
-        completed = true;
-        setDisplayReady(true);
-        setDisplayError(false);
-        if (shouldFit && fitRequest) completeFit(fitRequest.id);
-      });
-    };
     const fitToGraph = () => {
       cy.resize();
 
@@ -250,35 +250,54 @@ export function useGraphCanvasLifecycle({
       setZoomPercentRef.current(readZoomPercent(cy));
     };
 
-    withSuppressedSelectionSync(suppressSelectionSyncRef, () => {
+    const synced = withSuppressedSelectionSync(suppressSelectionSyncRef, () =>
       withCytoscapeBatch(cy, () => {
-        syncCytoscapeElements(cy, elements, {
+        const result = syncCytoscapeElements(cy, elements, {
           skipNodePositionIds: draggingNodeIdsRef.current,
         });
         syncCytoscapeSelection(cy, selectionRef.current);
-      });
-    });
+        return result;
+      }),
+    );
 
     cy.userZoomingEnabled(elements.length > 0);
 
-    if ((shouldReveal || shouldFit) && routingReady) {
-      initialFitRef.current = false;
+    const needsPaint =
+      shouldReveal || shouldFit || paintedElementsRef.current !== elements;
+    const cancelRender =
+      routingReady && needsPaint
+        ? afterCytoscapeRender(
+            cy,
+            () => request === requestRef.current,
+            () => {
+              flushRenderedHitboxesRef.current(cy);
+              paintedElementsRef.current = elements;
+              setPaintedElements(elements);
+              initialFitRef.current = false;
+              setDisplayReady(true);
+              setDisplayError(false);
+              if (shouldFit && fitRequest) completeFit(fitRequest.id);
+            },
+          )
+        : null;
 
-      // Register for this exact element/viewport request, after batched updates.
-      if (shouldReveal) cy.one("render", reveal);
-      fitToGraph();
+    // Refresh after the batch and before fit/hitbox reads. Initialization needs
+    // one full projection; subsequent requests touch only changed neighbours.
+    refreshCytoscapeGeometry(
+      initialGeometryRef.current ? cy.elements() : synced.changedElements,
+    );
+    initialGeometryRef.current = false;
+
+    if (routingReady && needsPaint) {
+      if (shouldReveal || shouldFit) fitToGraph();
       cy.forceRender();
-      if (!shouldReveal && shouldFit && fitRequest) completeFit(fitRequest.id);
     } else {
       updateRenderedHitboxesRef.current(cy);
     }
     return () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       if (requestRef.current === request) requestRef.current = request + 1;
-      cy.off("render", reveal);
-      if (renderFrame !== null) cancelAnimationFrame(renderFrame);
-      // An interrupted reveal still needs to finish for the replacement request.
-      if (shouldReveal && !completed) initialFitRef.current = true;
+      cancelRender?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -383,6 +402,7 @@ export function useGraphCanvasLifecycle({
   return {
     displayReady,
     displayError,
+    renderReady: routingReady && paintedElements === elements,
   };
 }
 
