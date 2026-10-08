@@ -201,8 +201,8 @@ const invalidInlineWeight = resolveInlineEditCommit(
 );
 
 expect(
-  invalidInlineWeight.kind === "error",
-  "invalid inline edge weight should keep the editor open with an error",
+  invalidInlineWeight.kind === "close" && !!invalidInlineWeight.command,
+  "text inline edge weight should commit successfully",
 );
 
 const unchangedInlineWeight = resolveInlineEditCommit(

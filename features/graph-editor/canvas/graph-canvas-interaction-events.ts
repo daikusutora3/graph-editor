@@ -93,6 +93,13 @@ export function useCytoscapeInteractionEvents({
       }
     };
 
+    const onTapSelection = () => {
+      if (mode === "select") {
+        // Native modifier-click selection finishes after the tap event.
+        setSelection(readCytoscapeSelection(cy));
+      }
+    };
+
     const onBoxStart = () => {
       if (mode !== "select") {
         return;
@@ -126,6 +133,7 @@ export function useCytoscapeInteractionEvents({
 
     cy.on("tap", onBackgroundTap);
     cy.on("cxttap", onContextTap);
+    cy.on("tapselect tapunselect", onTapSelection);
     cy.on("boxstart", onBoxStart);
     cy.on("boxend", onBoxEnd);
 
@@ -133,6 +141,7 @@ export function useCytoscapeInteractionEvents({
       if (!cy.destroyed()) {
         cy.off("tap", onBackgroundTap);
         cy.off("cxttap", onContextTap);
+        cy.off("tapselect tapunselect", onTapSelection);
         cy.off("boxstart", onBoxStart);
         cy.off("boxend", onBoxEnd);
       }

@@ -1,6 +1,6 @@
 import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
-import { createLoopDirectionTask } from "./edge-routing-loops";
+import { createLoopGroupDirectionTask } from "./edge-routing-loops";
 import { clamp } from "./edge-routing-shared";
 import { compareCurvePreference } from "./edge-routing-scoring";
 import { scoreCandidateCurve } from "./edge-routing-scoring";
@@ -180,8 +180,23 @@ export function* createEdgeRoutingTask(
       // single loop has center 0 and keeps the default direction.
       const center = (edges.length - 1) / 2;
       const source = nodesById.get(edges[0]?.source ?? "");
+      const separateLoops = resolvedOptions.avoidNodes && edges.length > 1;
+      const loopOptions = separateLoops
+        ? {
+            ...resolvedOptions,
+            loopSweepDeg: Math.max(
+              10,
+              Math.min(resolvedOptions.loopSweepDeg, 360 / edges.length - 10),
+            ),
+          }
+        : resolvedOptions;
       const loopDirectionDeg = source
-        ? yield* createLoopDirectionTask(source, model.nodes, resolvedOptions)
+        ? yield* createLoopGroupDirectionTask(
+            source,
+            model.nodes,
+            loopOptions,
+            separateLoops ? edges.length : 1,
+          )
         : resolvedOptions.loopDirectionDeg;
 
       for (const [index, edge] of edges.entries()) {
@@ -194,13 +209,17 @@ export function* createEdgeRoutingTask(
             duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
             loopDirectionDeg: Math.round(
               loopDirectionDeg +
-                (index - center) * resolvedOptions.loopDirectionStepDeg,
+                (separateLoops
+                  ? (index * 360) / edges.length
+                  : (index - center) * resolvedOptions.loopDirectionStepDeg),
             ),
-            loopSweepDeg: Math.min(
-              resolvedOptions.maxLoopSweepDeg,
-              resolvedOptions.loopSweepDeg +
-                index * resolvedOptions.loopSweepStepDeg,
-            ),
+            loopSweepDeg: separateLoops
+              ? Math.max(10, loopOptions.loopSweepDeg)
+              : Math.min(
+                  resolvedOptions.maxLoopSweepDeg,
+                  resolvedOptions.loopSweepDeg +
+                    index * resolvedOptions.loopSweepStepDeg,
+                ),
           }),
         );
       }

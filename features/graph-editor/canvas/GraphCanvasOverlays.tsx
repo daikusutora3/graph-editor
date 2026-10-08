@@ -270,7 +270,7 @@ export function InlineEditForm({
         }
         aria-invalid={Boolean(edit.error)}
         autoComplete="off"
-        inputMode={edit.kind === "edge-weight" ? "decimal" : "text"}
+        inputMode="text"
         onChange={(event) => onValueChange(event.target.value)}
         onBlur={onCommit}
         onCompositionStart={() => {

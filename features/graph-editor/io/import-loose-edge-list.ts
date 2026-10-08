@@ -9,7 +9,6 @@ import {
   type ImportOptions,
   type ParsedLine,
   readImportSettings,
-  shouldRequireNumericWeights,
 } from "./import-utils";
 import { createImportSource, type ImportSource } from "./import-source";
 import type { NodeId } from "../core/graph/model";
@@ -68,23 +67,12 @@ export function tryImportLooseEdgeList(
   const idByLabel = new Map<string, NodeId>();
   const warnings: ImportWarning[] = [];
 
-  rows.forEach(([sourceLabel, targetLabel, weight], index) => {
+  rows.forEach(([sourceLabel, targetLabel, weight]) => {
     if (sourceLabel === undefined || targetLabel === undefined) {
       return;
     }
 
     const edgeWeight = weight ?? "1";
-    if (
-      shouldRequireNumericWeights(settings) &&
-      !Number.isFinite(Number(edgeWeight))
-    ) {
-      warnings.push({
-        code: "weight-not-numeric",
-        line: lines[index]?.number ?? index + 1,
-      });
-      return;
-    }
-
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,

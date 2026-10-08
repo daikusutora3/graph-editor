@@ -15,13 +15,9 @@ export type InlineEditErrorCode = "invalid-number" | "invalid-graph";
 
 export function normalizeEdgeWeightInput(
   value: string,
-  weightKind: WeightKind,
+  _weightKind: WeightKind,
 ): { value: string; error?: InlineEditErrorCode } {
   const weight = value.trim() || "1";
-
-  if (weightKind === "number" && !Number.isFinite(Number(weight))) {
-    return { value: weight, error: "invalid-number" };
-  }
 
   return { value: weight };
 }

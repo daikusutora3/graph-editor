@@ -13,7 +13,6 @@ import {
   type ImportOptions,
   type ParsedLine,
   readImportSettings,
-  shouldRequireNumericWeights,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
 import type { ImportResult, ImportWarning } from "./import-types";
@@ -260,14 +259,6 @@ export function tryImportAdjacencyList(
       }
 
       const weight = parsedTarget.weight ?? "1";
-      if (
-        shouldRequireNumericWeights(settings) &&
-        !Number.isFinite(Number(weight))
-      ) {
-        warnings.push({ code: "weight-not-numeric", line: line.number });
-        return;
-      }
-
       const target = ensureNodeByLabel(model, idByLabel, targetLabel);
 
       if (!settings.directed) {

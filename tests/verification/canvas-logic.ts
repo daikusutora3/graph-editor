@@ -225,10 +225,11 @@ expect(
 
 // --- inline edit validation ------------------------------------------------
 expect(
-  normalizeEdgeWeightInput("abc", "number").error === "invalid-number" &&
+  normalizeEdgeWeightInput("INF", "number").value === "INF" &&
+    !normalizeEdgeWeightInput("容量 ∞", "number").error &&
     normalizeEdgeWeightInput(" 12 ", "number").value === "12" &&
     normalizeEdgeWeightInput("", "number").value === "1",
-  "weight input should validate numbers and default empty to 1",
+  "weight input should accept text and default empty to 1",
 );
 
 // --- locale detection ------------------------------------------------------

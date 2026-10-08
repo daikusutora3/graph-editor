@@ -579,8 +579,228 @@ return {hint:footer.textContent,lines:text.getClientRects().length,footerWidth:f
     return results
 
 
+
+def run_self_loop_review(session):
+    """Issue #3: toggle automatic routing and reload."""
+    results = []
+    for count in (2, 3, 10):
+        session.navigate("/en")
+        fixture = {**RANGE_FIXTURE,
+                   "settings": {**RANGE_FIXTURE["settings"], "autoEdgeRouting": False},
+                   "nodes": [{"id": "a", "label": "0", "order": 0, "x": 0, "y": 0}],
+                   "edges": [{"id": f"loop-{i}", "source": "a", "target": "a"} for i in range(count)]}
+        session.js("localStorage.clear(); localStorage.setItem('graph-editor-graph',arguments[0]); localStorage.setItem('graph-editor-theme','light');", json.dumps(fixture))
+        session.command("POST", "/refresh", {})
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+        session.wait(RANGE_CY + f"return cy.edges().length==={count};")
+        if session.command("GET", f"/element/{session.button('Layout')}/attribute/aria-expanded") != "true":
+            session.click(session.button("Layout"))
+        session.wait("return !!document.querySelector('[data-editor-panel=layouts]')")
+        session.click(session.button("Offset overlapping edges"))
+        session.click(session.button("Layout"))
+        def snapshot():
+            return session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:parseFloat(e.data('loopDirection')),sweep:parseFloat(e.data('loopSweep')),points:e.controlPoints()}));")
+        session.wait(RANGE_CY + f"return cy.edges().length==={count} && Math.abs(parseFloat(cy.edges()[1].data('loopDirection'))-parseFloat(cy.edges()[0].data('loopDirection')))>{360/count-1};")
+        before = snapshot()
+        assert all(edge["sweep"] < 360/count for edge in before), before
+        session.screenshot(f"self-loops-{count}")
+        session.command("POST", "/refresh", {})
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+        restored = snapshot()
+        assert [e["direction"] for e in before] == [e["direction"] for e in restored]
+        results.append({"count": count, "before": before, "restored": restored})
+        print(f"Self-loops {count}: toggle and reload passed", flush=True)
+    (OUTPUT / "self-loop-results.json").write_text(json.dumps(results, indent=2))
+    return results
+
+
+def run_text_weight_review(session):
+    session.navigate("/en")
+    session.js("localStorage.clear();")
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+    session.click(session.button("Load a graph"))
+    textarea = session.element("textarea")
+    session.command("POST", f"/element/{textarea}/value", {"text": "3 2\n1 2 INF\n2 3 ∞"})
+    session.wait("return [...document.querySelectorAll('button')].some(e=>e.textContent.trim()==='Apply to graph'&&!e.disabled)")
+    session.click(session.button("Apply to graph"))
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.edges[0]?.weight==='INF'")
+    session.click(session.element(".ge-select-edge-hitbox"))
+    range_key(session, "\ue007")
+    editor = session.element('input[name="graph-edge-weight"]')
+    assert session.js("return document.querySelector('input[name=graph-edge-weight]').inputMode") == "text"
+    session.command("POST", f"/element/{editor}/clear", {})
+    session.command("POST", f"/element/{editor}/value", {"text": "容量 ∞"})
+    range_key(session, "\ue007")
+    session.wait("return !document.querySelector('input[name=graph-edge-weight]') && JSON.parse(localStorage.getItem('graph-editor-graph')).edges[0].weight==='容量 ∞'")
+    session.screenshot("text-weight-edited")
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+    weights = session.js("const cy=[...document.querySelectorAll('div')].find(e=>'_cyreg' in e)?._cyreg?.cy;return cy?.edges().map(e=>e.data('weight'));")
+    assert weights == ["容量 ∞", "∞"], weights
+    (OUTPUT / "text-weight-review.json").write_text(json.dumps({"status": "passed", "weights": weights}, ensure_ascii=False, indent=2))
+    print("Safari text weights: import, keyboard edit, text input mode, canvas and reload passed", flush=True)
+
+
+def run_multi_selection_review(session):
+    """Issue #23: native additive selection must survive group editing."""
+    results = []
+    selected_ids = ["a", "b"]
+    for variant in ("ctrl", "meta", "range"):
+        session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
+        session.navigate("/en")
+        session.js("localStorage.clear(); localStorage.setItem('graph-editor-graph',arguments[0]); localStorage.setItem('graph-editor-theme','light');", json.dumps(RANGE_FIXTURE))
+        session.command("POST", "/refresh", {})
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length === 4")
+        session.js(RANGE_CY + "cy.zoom(1); cy.pan({x:container.clientWidth/2,y:400});")
+        baseline = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
+        stages = []
+        current_stage = "load"
+
+        def snapshot():
+            return session.js(RANGE_CY + """return {
+                saved: JSON.parse(localStorage.getItem('graph-editor-graph')),
+                liveNodes: cy.nodes().map(e=>({id:e.id(),x:e.position('x'),y:e.position('y'),fill:e.style('background-color')})),
+                selectedNodes: cy.nodes(':selected').map(e=>e.id()).sort(),
+                selectedEdges: cy.edges(':selected').map(e=>e.id()).sort(),
+                pressedNodes: [...document.querySelectorAll('.ge-select-node-hitbox')].map(e=>({label:e.getAttribute('aria-label'),pressed:e.getAttribute('aria-pressed')==='true'})),
+                summary: document.querySelector('.ge-selection-summary')?.textContent.trim() ?? '',
+                inlineEditors: [...document.querySelectorAll('.ge-inline-edit-input')].map(e=>e.value),
+                activeElement: {tag:document.activeElement.tagName,label:document.activeElement.getAttribute('aria-label')}
+            };""")
+
+        def verify(stage, expected, ids=selected_ids):
+            nonlocal current_stage
+            current_stage = stage
+            projection = [[n["id"], n["x"], n["y"], n.get("color", "paper")] for n in expected["nodes"]]
+            summary = "2 nodes" if ids == selected_ids else "Node A"
+            session.wait(RANGE_CY + """const saved=JSON.parse(localStorage.getItem('graph-editor-graph'));
+                const actual=saved?.nodes.map(n=>[n.id,n.x,n.y,n.color??'paper']);
+                const pressed=[...document.querySelectorAll('.ge-select-node-hitbox')].map((e,i)=>e.getAttribute('aria-pressed')==='true');
+                return JSON.stringify(actual)===JSON.stringify(""" + json.dumps(projection) + ") && " +
+                "cy.nodes(':selected').map(e=>e.id()).sort().join(',')===" + json.dumps(",".join(ids)) +
+                " && cy.edges(':selected').length===0 && JSON.stringify(pressed)===JSON.stringify(" +
+                json.dumps([n["id"] in ids for n in expected["nodes"]]) + ") && " +
+                "document.querySelector('.ge-selection-summary')?.textContent.trim()===" + json.dumps(summary))
+            actual = snapshot()
+            assert actual["saved"] == expected, (variant, stage, actual)
+            assert actual["selectedNodes"] == ids and not actual["selectedEdges"], (variant, stage, actual)
+            assert not actual["inlineEditors"], (variant, stage, actual)
+            assert [(n["id"], n["x"], n["y"]) for n in actual["liveNodes"]] == [(n["id"], n["x"], n["y"]) for n in expected["nodes"]], (variant, stage, actual)
+            stages.append({"stage": stage, **actual})
+            (OUTPUT / f"multi-selection-{variant}-{stage}.json").write_text(json.dumps(actual, indent=2))
+            print(f"multi-selection-{variant}-{stage}: saved graph, live positions and selection agree", flush=True)
+            return actual
+
+        def point(node_id):
+            return session.js(RANGE_CY + "const p=cy.getElementById(arguments[0]).renderedPosition();const r=container.getBoundingClientRect();return {x:p.x+r.x,y:p.y+r.y};", node_id)
+
+        def native_click(node_id, modifier=None):
+            p = point(node_id)
+            if modifier:
+                session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+                    {"type": "keyDown", "value": RANGE_KEYS[modifier]}]}]})
+            session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+                {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(p["x"]), "y": round(p["y"])},
+                {"type": "pointerDown", "button": 0}, {"type": "pointerUp", "button": 0}]}]})
+            if modifier:
+                session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+                    {"type": "keyUp", "value": RANGE_KEYS[modifier]}]}]})
+            session.command("DELETE", "/actions")
+
+        def moved(graph, dx, dy):
+            result = json.loads(json.dumps(graph))
+            for node in result["nodes"]:
+                if node["id"] in selected_ids:
+                    node["x"] += dx
+                    node["y"] += dy
+            return result
+
+        try:
+            if variant == "range":
+                choose_range_target(session, "Nodes only")
+                a, b = point("a"), point("b")
+                range_drag(session, [{"x": a["x"]-60, "y": a["y"]-60}, {"x": b["x"]+60, "y": b["y"]+60}],
+                           ["ctrl"], selected_ids, [], "2 nodes", "multi-selection-range-box")
+                verify("range-selected", baseline)
+            else:
+                native_click("a")
+                verify("single-a", baseline, ids=["a"])
+                current_stage = "additive-b"
+                native_click("b", variant)
+                verify("additive-b", baseline)
+                native_click("b", variant)
+                verify("toggle-b-off", baseline, ids=["a"])
+                native_click("b", variant)
+                verify("toggle-b-on", baseline)
+
+            session.wait("return !document.querySelector('.ge-select-node-hitbox')?.closest('[inert]')")
+            session.screenshot(f"multi-selection-{variant}-selected")
+            current_stage = "drag-preview"
+            start = point("a")
+            session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+                {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(start["x"]), "y": round(start["y"])},
+                {"type": "pointerDown", "button": 0},
+                {"type": "pointerMove", "duration": 400, "origin": "pointer", "x": 60, "y": 40}]}]})
+            after_drag = moved(baseline, 60, 40)
+            live_projection = [[n["id"], n["x"], n["y"]] for n in after_drag["nodes"]]
+            session.wait(RANGE_CY + "return JSON.stringify(cy.nodes().map(n=>[n.id(),n.position('x'),n.position('y')]))===JSON.stringify(" + json.dumps(live_projection) + ");")
+            preview = snapshot()
+            assert preview["selectedNodes"] == selected_ids and preview["summary"] == "2 nodes", (variant, preview)
+            assert preview["saved"] == baseline, "The group preview must not persist before pointer release"
+            (OUTPUT / f"multi-selection-{variant}-drag-preview.json").write_text(json.dumps(preview, indent=2))
+            session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+                {"type": "pointerUp", "button": 0}]}]})
+            session.command("DELETE", "/actions")
+            verify("drag-committed", after_drag)
+
+            range_key(session, "\ue014")
+            after_right = moved(after_drag, 1, 0)
+            verify("arrow-right", after_right)
+            session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+                {"type": "keyDown", "value": RANGE_KEYS["shift"]},
+                {"type": "keyDown", "value": "\ue015"}, {"type": "keyUp", "value": "\ue015"},
+                {"type": "keyUp", "value": RANGE_KEYS["shift"]}]}]})
+            after_down = moved(after_right, 0, 10)
+            before_color = verify("shift-arrow-down", after_down)
+            session.click(session.element('[role=radio][aria-label="Node color: Green"]'))
+            after_color = json.loads(json.dumps(after_down))
+            for node in after_color["nodes"]:
+                if node["id"] in selected_ids:
+                    node["color"] = "green"
+            before_fills = {node["id"]: node["fill"] for node in before_color["liveNodes"]}
+            session.wait(RANGE_CY + "const before=" + json.dumps(before_fills) + ";return cy.nodes().every(n=>['a','b'].includes(n.id()) ? n.style('background-color')!==before[n.id()] && n.style('background-color')===cy.getElementById('a').style('background-color') : n.style('background-color')===before[n.id()]);")
+            verify("palette-green", after_color)
+            assert session.js("return document.querySelector('[role=radio][aria-label=\"Node color: Green\"]')?.getAttribute('aria-checked')") == "true"
+            session.screenshot(f"multi-selection-{variant}-edited")
+
+            for stage, expected in (("undo-color", after_down), ("undo-shift-arrow", after_right),
+                                    ("undo-arrow", after_drag), ("undo-drag", baseline)):
+                session.click(session.button("Undo"))
+                verify(stage, expected)
+            # Redo keeps the saved result meaningful for the reload check.
+            for stage, expected in (("redo-drag", after_drag), ("redo-arrow", after_right),
+                                    ("redo-shift-arrow", after_down), ("redo-color", after_color)):
+                session.click(session.button("Redo"))
+                verify(stage, expected)
+            session.command("POST", "/refresh", {})
+            session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length===4")
+            restored = snapshot()
+            assert restored["saved"] == after_color, (variant, "reload", restored)
+            assert [(n["id"], n["x"], n["y"]) for n in restored["liveNodes"]] == [(n["id"], n["x"], n["y"]) for n in after_color["nodes"]], (variant, "reload", restored)
+            stages.append({"stage": "reload", **restored})
+            results.append({"variant": variant, "status": "passed", "stages": stages})
+            (OUTPUT / "multi-selection-results.json").write_text(json.dumps({"status": "passed" if len(results) == 3 else "in_progress", "results": results}, indent=2))
+        except Exception as error:
+            failure = {"variant": variant, "stage": current_stage, "error": str(error), "snapshot": snapshot(), "completedStages": stages}
+            (OUTPUT / "multi-selection-failure.json").write_text(json.dumps(failure, indent=2))
+            session.screenshot(f"multi-selection-{variant}-failure")
+            raise
+    return results
+
+
 def main():
-    assert len(sys.argv) == 1, "This runner accepts no URL or command overrides"
+    assert sys.argv[1:] in ([], ["--self-loops"], ["--text-weights"]), "This runner accepts only a fixed local scenario, no URL or command overrides"
     policy_checks()
     OUTPUT.mkdir(exist_ok=True)
     driver = subprocess.Popen(["/usr/bin/safaridriver", "-p", "4447"], stdout=(OUTPUT / "driver.log").open("w"), stderr=subprocess.STDOUT)
@@ -596,12 +816,20 @@ def main():
                 time.sleep(0.1)
         session = Session()
         (OUTPUT / "capabilities.json").write_text(json.dumps(session.capabilities, indent=2))
+        if sys.argv[1:] == ["--text-weights"]:
+            run_text_weight_review(session)
+            return
+        if sys.argv[1:] == ["--self-loops"]:
+            run_self_loop_review(session)
+            return
+        multi_results = run_multi_selection_review(session)
+        (OUTPUT / "multi-selection-results.json").write_text(json.dumps({"status": "passed", "results": multi_results}, indent=2))
         menu_results = run_range_menu_review(session)
         (OUTPUT / "range-menu-review.json").write_text(json.dumps({"status": "passed", "results": menu_results}, indent=2))
         results = run_range_selection(session)
         (OUTPUT / "range-selection-results.json").write_text(json.dumps({"status": "passed", "results": results}, indent=2))
         results += run_edge_routing_regression(session) + run_editor_review(session)
-        results = menu_results + results
+        results = multi_results + menu_results + results
         (OUTPUT / "results.json").write_text(json.dumps({"status": "passed", "capabilities": session.capabilities, "results": results, "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}, indent=2))
     except Exception as error:
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))
