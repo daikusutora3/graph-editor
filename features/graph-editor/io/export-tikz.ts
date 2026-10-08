@@ -1,6 +1,7 @@
 import type { GraphColor, GraphModel } from "../core/graph/model";
 import { estimateNodeWidth, NODE_SIZE_PX } from "../core/graph/node-size";
 import { createEdgeRoutingTask } from "../core/layout/edge-routing";
+import { normalizeLoopStepSize } from "../core/layout/edge-routing-loops";
 import {
   edgeCurveSegments,
   type EdgeCurvePoint,
@@ -76,22 +77,42 @@ export function* createTikzExportTask(
 ): Generator<void, string> {
   if (model.nodes.length === 0) return "";
 
+  const routes = yield* createEdgeRoutingTask(model, {
+    mode: model.settings.autoEdgeRouting ? "quality" : "simple",
+  });
   // Normalize translation and bound the drawing to 12 cm on its longest axis.
   // In particular, large valid model coordinates must not exceed TeX dimensions.
   const minX = Math.min(...model.nodes.map((node) => node.x));
   const minY = Math.min(...model.nodes.map((node) => node.y));
-  const span = Math.max(
+  let span = Math.max(
     ...model.nodes.map((node) => Math.max(node.x - minX, node.y - minY)),
   );
+  const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
+  let drawingMinX = minX;
+  let drawingMinY = minY;
+  let drawingMaxX = Math.max(...model.nodes.map((node) => node.x));
+  let drawingMaxY = Math.max(...model.nodes.map((node) => node.y));
+  for (const edge of model.edges) {
+    if (edge.source !== edge.target) continue;
+    const node = nodesById.get(edge.source);
+    const route = routes.get(edge.id);
+    if (!node || !route) continue;
+    // TikZ's default loop minimum is10mm (80 model pixels); reserve its
+    // proportional size, and the pill source, before scaling large drawings.
+    const radius = 2 * normalizeLoopStepSize(route.loopStepSizePx);
+    const width = Math.max(radius, estimateNodeWidth(node.label) / 2);
+    drawingMinX = Math.min(drawingMinX, node.x - width);
+    drawingMinY = Math.min(drawingMinY, node.y - radius);
+    drawingMaxX = Math.max(drawingMaxX, node.x + width);
+    drawingMaxY = Math.max(drawingMaxY, node.y + radius);
+  }
+  span = Math.max(span, drawingMaxX - drawingMinX, drawingMaxY - drawingMinY);
   const scale = Math.min(1 / 80, 12 / (span || 1));
   const coordinate = (point: EdgeCurvePoint) =>
     `(${number((point.x - minX) * scale)},${number(-(point.y - minY) * scale)})`;
   const nodes = new Map(
     model.nodes.map((node, index) => [node.id, { node, name: `v${index}` }]),
   );
-  const routes = yield* createEdgeRoutingTask(model, {
-    mode: model.settings.autoEdgeRouting ? "quality" : "simple",
-  });
   const lines = [
     "% Graph Editor: TikZ picture (labels are literal text, not TeX commands).",
     "% Add to your document preamble:",
@@ -138,8 +159,10 @@ export function* createTikzExportTask(
     if (edge.source === edge.target) {
       // Cytoscape measures clockwise from up; TikZ measures CCW from right.
       const direction = 90 - route.loopDirectionDeg;
+      const distanceMm =
+        10 * (normalizeLoopStepSize(route.loopStepSizePx) / 40) * (scale * 80);
       lines.push(
-        `  \\draw[${style}] (${source.name}) to[loop,out=${number(direction + route.loopSweepDeg / 2)},in=${number(direction - route.loopSweepDeg / 2)},min distance=10mm]${label} (${target.name});`,
+        `  \\draw[${style}] (${source.name}) to[loop,out=${number(direction + route.loopSweepDeg / 2)},in=${number(direction - route.loopSweepDeg / 2)},min distance=${number(distanceMm)}mm]${label} (${target.name});`,
       );
       continue;
     }

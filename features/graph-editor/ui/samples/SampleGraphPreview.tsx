@@ -3,6 +3,8 @@ import { memo, useId } from "react";
 import type { SampleGraphKind } from "../../samples/sample-graphs";
 import type { EdgeId, GraphModel } from "../../core/graph/model";
 import { computeEdgeRouting } from "../../core/layout/edge-routing";
+import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
+import { nodeGeometryWidth, NODE_SIZE_PX } from "../../core/graph/node-size";
 import { edgeCurveSvgPath } from "../../core/layout/edge-route-geometry";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +28,8 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   className,
 }: SampleGraphPreviewProps) {
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
-  const bounds = getModelBounds(model);
+  const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
+  const bounds = getModelBounds(model, edgeRouting);
   const nodeCount = model.nodes.length;
   const edgeCount = model.edges.length;
   const softenDenseEdges =
@@ -67,7 +70,6 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     : Math.max(0.9, radius * 0.42);
   const lastIndex = Math.max(0, model.nodes.length - 1);
   const showLabels = editorLike && nodeCount <= 12;
-  const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
   const context: PreviewContext = {
     model,
     markerId,
@@ -280,13 +282,14 @@ export function createPreviewEdgePath({
     controlPointWeights?: readonly number[];
     loopDirectionDeg: number;
     loopSweepDeg: number;
+    loopStepSizePx?: number;
   };
   scale: number;
   source: { x: number; y: number };
   target: { x: number; y: number };
 }) {
   if (source.x === target.x && source.y === target.y) {
-    return createLoopPath(source, radius, routing);
+    return createLoopPath(source, radius, scale, routing);
   }
 
   const dx = target.x - source.x;
@@ -308,16 +311,23 @@ export function createPreviewEdgePath({
 function createLoopPath(
   source: { x: number; y: number },
   radius: number,
+  scale: number,
   routing:
     | {
         loopDirectionDeg: number;
         loopSweepDeg: number;
+        loopStepSizePx?: number;
       }
     | undefined,
 ) {
   const direction = (((routing?.loopDirectionDeg ?? -45) - 90) * Math.PI) / 180;
   const sweep = ((routing?.loopSweepDeg ?? 70) * Math.PI) / 180;
-  const loopRadius = radius * 3;
+  const stepSize = normalizeLoopStepSize(routing?.loopStepSizePx);
+  // Keep gallery icons readable while larger loops fit their reserved bounds.
+  const loopRadius = Math.max(
+    radius * 1.5,
+    Math.min(radius * 3 * (stepSize / 40), 1.4 * stepSize * scale),
+  );
   const startAngle = direction - sweep / 2;
   const endAngle = direction + sweep / 2;
   const start = {
@@ -349,13 +359,35 @@ function round(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function getModelBounds(model: GraphModel) {
+function getModelBounds(
+  model: GraphModel,
+  routes: ReturnType<typeof computeEdgeRouting>,
+) {
   if (model.nodes.length === 0) {
     return { minX: -1, minY: -1, width: 2, height: 2 };
   }
 
   const xs = model.nodes.map((node) => node.x);
   const ys = model.nodes.map((node) => node.y);
+  const nodes = new Map(model.nodes.map((node) => [node.id, node]));
+  for (const edge of model.edges) {
+    if (edge.source !== edge.target) continue;
+    const node = nodes.get(edge.source);
+    const route = routes.get(edge.id);
+    if (!node || !route) continue;
+    const radius = normalizeLoopStepSize(route.loopStepSizePx) * 1.4;
+    const direction = ((route.loopDirectionDeg - 90) * Math.PI) / 180;
+    const sweep = (route.loopSweepDeg * Math.PI) / 180;
+    xs.push(
+      node.x - nodeGeometryWidth(node) / 2,
+      node.x + nodeGeometryWidth(node) / 2,
+    );
+    ys.push(node.y - NODE_SIZE_PX / 2, node.y + NODE_SIZE_PX / 2);
+    for (const angle of [direction - sweep / 2, direction + sweep / 2]) {
+      xs.push(node.x + Math.cos(angle) * radius);
+      ys.push(node.y + Math.sin(angle) * radius);
+    }
+  }
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);

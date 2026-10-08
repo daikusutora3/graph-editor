@@ -578,10 +578,20 @@ export function createEdgeHitboxPath(edge: EdgeLabelHitbox) {
 }
 
 function createLoopHitboxPath(edge: EdgeLabelHitbox) {
+  if (edge.loopPoints?.length === 5) {
+    const [start, controlA, midpoint, controlB, end] = edge.loopPoints;
+    return [
+      `M${round(start!.x)} ${round(start!.y)}`,
+      `Q${round(controlA!.x)} ${round(controlA!.y)}`,
+      `${round(midpoint!.x)} ${round(midpoint!.y)}`,
+      `Q${round(controlB!.x)} ${round(controlB!.y)}`,
+      `${round(end!.x)} ${round(end!.y)}`,
+    ].join(" ");
+  }
   const direction = ((edge.loopDirectionDeg - 90) * Math.PI) / 180;
   const sweep = (edge.loopSweepDeg * Math.PI) / 180;
-  const nodeRadius = 24;
-  const loopRadius = 72;
+  const nodeRadius = edge.nodeHeight / 2;
+  const loopRadius = 1.4 * (edge.loopStepSizePx ?? 40);
   const startAngle = direction - sweep / 2;
   const endAngle = direction + sweep / 2;
   const start = {

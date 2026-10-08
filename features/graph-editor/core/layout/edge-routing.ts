@@ -3,7 +3,7 @@ import type {
   ResolvedEdgeRoutingOptions,
   RoutingWork,
 } from "./edge-routing-shared";
-import { createLoopGroupDirectionTask } from "./edge-routing-loops";
+import { createLoopGroupRoutingTask } from "./edge-routing-loops";
 import { clamp } from "./edge-routing-shared";
 import { compareCurvePreference } from "./edge-routing-scoring";
 import {
@@ -40,6 +40,8 @@ export type EdgeRoutingMeta = EdgeCurveGeometry & {
   duplicate: boolean;
   loopDirectionDeg: number;
   loopSweepDeg: number;
+  /** Renderer-only loop size; absent means40px, never stored in GraphModel. */
+  loopStepSizePx?: number;
 };
 
 export type EdgeRoutingMode = "simple" | "parallel" | "quality";
@@ -302,30 +304,19 @@ function* routingTask(
     }
 
     if (edges.every((edge) => edge.source === edge.target)) {
-      // Multiple loops on one node are spread even in simple mode; a
-      // single loop has center 0 and keeps the default direction.
-      const center = (edges.length - 1) / 2;
       const source = nodesById.get(edges[0]?.source ?? "");
-      const separateLoops = resolvedOptions.avoidNodes && edges.length > 1;
-      const loopOptions = separateLoops
-        ? {
-            ...resolvedOptions,
-            loopSweepDeg: Math.max(
-              10,
-              Math.min(resolvedOptions.loopSweepDeg, 360 / edges.length - 10),
-            ),
-          }
-        : resolvedOptions;
-      const loopDirectionDeg = source
-        ? yield* createLoopGroupDirectionTask(
+      const placements = source
+        ? yield* createLoopGroupRoutingTask(
             source,
             model.nodes,
-            { ...loopOptions, nodeClearancePx: 42 },
-            separateLoops ? edges.length : 1,
+            edges,
+            { ...resolvedOptions, nodeClearancePx: 42 },
+            Boolean(state.skipManualReconciliation),
           )
-        : resolvedOptions.loopDirectionDeg;
-
-      for (const [index, edge] of edges.entries()) {
+        : new Map();
+      for (const edge of edges) {
+        yield;
+        const placement = placements.get(edge.id);
         meta.set(
           edge.id,
           applyRoutingOverride(edge, {
@@ -333,23 +324,12 @@ function* routingTask(
             controlPointDistancesPx: [0],
             controlPointWeights: [0.5],
             duplicate: duplicateKeys.has(duplicateEdgeKey(model, edge)),
-            loopDirectionDeg: Math.round(
-              loopDirectionDeg +
-                (separateLoops
-                  ? (index * 360) / edges.length
-                  : (index - center) * resolvedOptions.loopDirectionStepDeg),
-            ),
-            loopSweepDeg: separateLoops
-              ? Math.max(10, loopOptions.loopSweepDeg)
-              : Math.min(
-                  resolvedOptions.maxLoopSweepDeg,
-                  resolvedOptions.loopSweepDeg +
-                    index * resolvedOptions.loopSweepStepDeg,
-                ),
+            loopDirectionDeg: resolvedOptions.loopDirectionDeg,
+            loopSweepDeg: resolvedOptions.loopSweepDeg,
+            ...placement,
           }),
         );
       }
-
       continue;
     }
 
@@ -932,13 +912,17 @@ export function createEdgeRoutingCacheKey(
     resolvedOptions.maxLoopSweepDeg,
     resolvedOptions.candidateBowPx.join(","),
   ].join(":");
+  // Loop sizing uses source-pill width even with obstacle avoidance disabled.
+  const usesNodeWidth =
+    resolvedOptions.avoidNodes ||
+    model.edges.some((edge) => edge.source === edge.target);
   // Even simple parallel lanes depend on chord direction for label spacing.
   const nodeSignature = JSON.stringify(
     model.nodes.map((node) => [
       node.id,
       node.x,
       node.y,
-      ...(resolvedOptions.avoidNodes ? [nodeGeometryWidth(node)] : []),
+      ...(usesNodeWidth ? [nodeGeometryWidth(node)] : []),
     ]),
   );
   const edgeSignature = model.edges
