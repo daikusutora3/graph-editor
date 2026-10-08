@@ -80,6 +80,30 @@ GSC_SITEMAP_READ = re.compile(
 )
 
 
+LOCAL_GRAPH_OPEN = re.compile(
+    r"\s*let\s+localGraphTab\s*=\s*await\s+cua\.createBrowserTab\(\s*['\"]iab['\"]\s*,\s*"
+    r"['\"]http://127\.0\.0\.1:332[34](?:/|/en|/zh-hans)?['\"]\s*,\s*"
+    r"\{\s*visible:\s*true\s*\}\s*\);?\s*"
+)
+LOCAL_GRAPH_READ = re.compile(
+    r"\s*await\s+localGraphTab\.(?:getAXState|getScreenshot|getAXStateAndScreenshot)\(\s*\);?\s*"
+)
+
+# Only literal UI arguments; no arbitrary expressions, tab rebinding or scripts.
+_LOCAL_STRING = r"(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')"
+_LOCAL_LITERAL = rf"(?:{_LOCAL_STRING}|null|true|false|\d+|\[\s*\d+\s*,\s*\d+\s*\])"
+_LOCAL_OPTIONS = rf"\{{\s*(?:clickCount|mouseButton|key):\s*{_LOCAL_LITERAL}\s*\}}"
+LOCAL_GRAPH_ACTION = re.compile(
+    rf"\s*await\s+localGraphTab\.(?:click|setValue|typeText|paste|pressKey|scroll|selectText)"
+    rf"\(\s*{_LOCAL_LITERAL}(?:\s*,\s*(?:{_LOCAL_LITERAL}|{_LOCAL_OPTIONS}))*\s*\);?"
+    r"\s*(?:await\s+localGraphTab\.getAXState\(\);?\s*)?"
+)
+LOCAL_GRAPH_RELOAD = re.compile(r"\s*await\s+localGraphTab\.(?:reload|markDeliverable)\(\);?\s*")
+LOCAL_GRAPH_SAVE_SCREENSHOT = re.compile(
+    r"\s*await \(await import\('node:fs/promises'\)\)\.writeFile\("
+    r"'/tmp/graph-editor-text-weights.png', await localGraphTab\.getScreenshot\(\{ emit: false \}\)\);\s*"
+)
+
 def _compact_json(value: Any) -> str:
     try:
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
@@ -115,7 +139,12 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
     if name == "mcp__cua_repl__js":
         code = tool_input.get("code", "") if isinstance(tool_input, dict) else ""
         return not (
-            ISSUE_BROWSER_OPEN.fullmatch(code)
+            LOCAL_GRAPH_OPEN.fullmatch(code)
+            or LOCAL_GRAPH_READ.fullmatch(code)
+            or LOCAL_GRAPH_ACTION.fullmatch(code)
+            or LOCAL_GRAPH_RELOAD.fullmatch(code)
+            or LOCAL_GRAPH_SAVE_SCREENSHOT.fullmatch(code)
+            or ISSUE_BROWSER_OPEN.fullmatch(code)
             or ISSUE_BROWSER_BIND.fullmatch(code)
             or ISSUE_BROWSER_READ.fullmatch(code)
             or GSC_BROWSER_BIND.fullmatch(code)
@@ -218,6 +247,26 @@ def self_test() -> None:
 
     blocked.append(("mcp__cua_repl__js", {"code": "let safariSettings = await cua.getApp(\"Safari\");"}))
 
+    allowed.extend([
+        ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.createBrowserTab('iab', 'http://127.0.0.1:3324/en', { visible: true });"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.getAXState();"}),
+    ])
+    blocked.extend([
+        ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.createBrowserTab('iab', 'https://example.com', { visible: true });"}),
+        ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.createBrowserTab('iab', 'http://127.0.0.1:3324/guide', { visible: true });"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.evaluate('location.href=123');"}),
+    ])
+    allowed.extend([
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.click(16, { clickCount: 2 }); await localGraphTab.getAXState();"}),
+        ("mcp__cua_repl__js", {"code": 'await localGraphTab.setValue(86, "容量 ∞"); await localGraphTab.getAXState();'}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.reload();"}),
+        ("mcp__cua_repl__js", {"code": "await (await import('node:fs/promises')).writeFile('/tmp/graph-editor-text-weights.png', await localGraphTab.getScreenshot({ emit: false }));"}),
+    ])
+    blocked.extend([
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.click(cua.getApp('Safari'));"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.goto('https://github.com/daikusutora3/graph-editor/issues/1');"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.reload(); await issueTab.click(1);"}),
+    ])
     for tool_name, tool_input in blocked:
         assert should_block(tool_name, tool_input), (tool_name, tool_input)
     for tool_name, tool_input in allowed:
