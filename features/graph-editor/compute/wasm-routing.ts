@@ -9,6 +9,7 @@ import { getRustKernelReady, runRustKernel } from "./rust-kernel";
 type NodeSnapshot = {
   data: Float64Array;
   collisionBounded: boolean;
+  hasWidePills: boolean;
   records: {
     node: GraphNode;
     id: string;
@@ -45,11 +46,13 @@ function nodeSnapshot(nodes: GraphNode[]) {
     return cached;
   const data = new Float64Array(nodes.length * 3);
   let collisionBounded = true;
+  let hasWidePills = false;
   const indexes = new Map<string, number>();
   const records = nodes.map((node, index) => {
     data[index * 3] = node.x;
     data[index * 3 + 1] = node.y;
     data[index * 3 + 2] = nodeGeometryWidth(node) / 2;
+    hasWidePills ||= data[index * 3 + 2]! > 24;
     collisionBounded &&=
       boundedCollisionCoordinate(data[index * 3]!) &&
       boundedCollisionCoordinate(data[index * 3 + 1]!) &&
@@ -65,7 +68,7 @@ function nodeSnapshot(nodes: GraphNode[]) {
         .measuredWidth,
     };
   });
-  const snapshot = { data, collisionBounded, indexes, records };
+  const snapshot = { data, collisionBounded, hasWidePills, indexes, records };
   snapshots.set(nodes, snapshot);
   return snapshot;
 }
@@ -79,6 +82,78 @@ function packCurve(curve: EdgeCurveGeometry) {
   data.set(distances, 2);
   data.set(weights, 2 + distances.length);
   return data;
+}
+
+export type ProjectedObstacleCluster = {
+  endWeight: number;
+  negativeDistancePx: number;
+  positiveDistancePx: number;
+  startWeight: number;
+};
+
+/** Capsule projection and stable clustering. Host-derived chord/direction norms
+ * retain the reference's Math.hypot values before the 24-step pill searches. */
+export function projectRustEdgeObstacles(
+  edge: GraphEdge,
+  source: GraphNode,
+  target: GraphNode,
+  nodes: GraphNode[],
+  baseClearancePx: number,
+): ProjectedObstacleCluster[] | null {
+  if (!getRustKernelReady() || nodes.length < 64) return null;
+  if (
+    ![source.x, source.y, target.x, target.y, baseClearancePx].every(
+      boundedCollisionCoordinate,
+    )
+  )
+    return null;
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return [];
+  if (!Number.isFinite(length)) return null;
+  const snapshot = nodeSnapshot(nodes);
+  if (!snapshot.collisionBounded || snapshot.indexes.size !== nodes.length)
+    return null;
+  // Small all-circle projections have no pill search to amortize the ABI.
+  if (nodes.length < 256 && !snapshot.hasWidePills) return null;
+  const unitX = dx / length;
+  const unitY = dy / length;
+  const result = runRustKernel(
+    "routing_projected_obstacles",
+    [snapshot.data],
+    10,
+    [
+      nodes.length,
+      snapshot.indexes.get(edge.source) ?? -1,
+      snapshot.indexes.get(edge.target) ?? -1,
+      source.x,
+      source.y,
+      length,
+      unitX,
+      unitY,
+      Math.hypot(unitX, unitY) || 1,
+      Math.hypot(-unitY, unitX) || 1,
+      baseClearancePx,
+    ],
+  );
+  if (!result || result[0] === -1) return null;
+  const count = result[0]!;
+  if (result[1] === 1)
+    return [
+      {
+        startWeight: result[2]!,
+        endWeight: result[3]!,
+        positiveDistancePx: result[5]!,
+        negativeDistancePx: result[4]!,
+      },
+    ];
+  return Array.from({ length: count }, (_, index) => ({
+    endWeight: result[3 + index * 4]!,
+    negativeDistancePx: result[4 + index * 4]!,
+    positiveDistancePx: result[5 + index * 4]!,
+    startWeight: result[2 + index * 4]!,
+  }));
 }
 
 export function scoreRustCurveNodeAndShape(

@@ -23,6 +23,63 @@ type LoopPlacement = {
   loopStepSizePx?: number;
   status?: "ready" | "unresolved";
 };
+type LoopSize = { width: number; height: number };
+type LoopPreparation = {
+  sizes: (LoopSize | undefined)[];
+  automaticIndexes: number[];
+  fixed: { edge: GraphEdge; index: number }[];
+  size: (edge: GraphEdge, index: number) => LoopSize;
+  extent: (halfWidth: number, angle: number) => number;
+};
+
+/** Scratch geometry belongs to one resumable group, never to the graph. */
+function prepareLoopGroup(
+  edges: GraphEdge[],
+  automatic: GraphEdge[],
+  options: ResolvedEdgeRoutingOptions,
+): LoopPreparation {
+  const sizes: (LoopSize | undefined)[] = Array(edges.length);
+  const indexes = new Map(edges.map((edge, index) => [edge.id, index]));
+  const automaticIds = new Set(automatic.map((edge) => edge.id));
+  let cachedWidth = NaN;
+  const extents = new Map<number, number>();
+  const validateWidth = (halfWidth: number) => {
+    if (halfWidth !== cachedWidth) {
+      extents.clear();
+      cachedWidth = halfWidth;
+    }
+  };
+  return {
+    sizes,
+    automaticIndexes: automatic.map((edge) => indexes.get(edge.id)!),
+    fixed: edges.flatMap((edge, index) =>
+      automaticIds.has(edge.id) ? [] : [{ edge, index }],
+    ),
+    size(edge, index) {
+      // Public helpers can omit the task-level label cache. Keep their fresh
+      // reads, including edits made while the generator is suspended.
+      if (!options.work.labelSizes) return edgeLabelSize(edge, options.work);
+      return (sizes[index] ??= edgeLabelSize(edge, options.work));
+    },
+    extent(halfWidth, angle) {
+      if (halfWidth <= 24) return 24;
+      // The caller may resume after changing measured source geometry. Exact
+      // angle keys retain Math.cos/sin rounding rather than folding by 360°.
+      validateWidth(halfWidth);
+      const cached = extents.get(angle);
+      if (cached !== undefined) return cached;
+      const value = pillExtentTowards(
+        halfWidth,
+        24,
+        Math.cos(angle),
+        Math.sin(angle),
+      );
+      // Large public-helper inputs cannot grow this scratch map without bound.
+      if (extents.size < 1024) extents.set(angle, value);
+      return value;
+    },
+  };
+}
 
 export function chooseLoopDirection(
   source: GraphNode,
@@ -284,6 +341,7 @@ export function* createLoopGroupRoutingTask(
   const sorted = automatic.toSorted((a, b) =>
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
   );
+  let preparation: LoopPreparation | undefined;
   const nearby: GraphNode[] = [];
   if (options.avoidNodes && !provisional) {
     for (const [index, node] of nodes.entries()) {
@@ -308,13 +366,15 @@ export function* createLoopGroupRoutingTask(
     yield;
     const layout = allocateLoopSectors(sorted, fixed, options, direction);
     if (provisional) return layout;
-    yield* sizeLoopPlacements(source, edges, sorted, layout, options);
+    preparation ??= prepareLoopGroup(edges, sorted, options);
+    yield* sizeLoopPlacements(source, sorted, layout, options, preparation);
     const score = yield* scoreLoopLayout(
       source,
       edges,
       layout,
       nearby,
       options,
+      preparation,
     );
     if (score < bestScore) {
       bestScore = score;
@@ -447,21 +507,19 @@ function labelTouchesSource(
 }
 function* sizeLoopPlacements(
   source: GraphNode,
-  edges: GraphEdge[],
   automatic: GraphEdge[],
   layout: Map<EdgeId, LoopPlacement>,
   options: ResolvedEdgeRoutingOptions,
+  preparation: LoopPreparation,
 ): Generator<void> {
   let minimumGap = 360,
     diagonal = 0;
-  const automaticIds = new Set(automatic.map((edge) => edge.id));
-  const fixedEdges = edges.filter((edge) => !automaticIds.has(edge.id));
   const angles: number[] = [];
   for (const [index, edge] of automatic.entries()) {
     if (index % 64 === 0) yield;
     options.work.units++;
     if (edgeHasVisibleLabel(edge)) {
-      const size = edgeLabelSize(edge, options.work);
+      const size = preparation.size(edge, preparation.automaticIndexes[index]!);
       diagonal = Math.max(
         diagonal,
         Math.hypot(size.width + 2, size.height + 2),
@@ -485,7 +543,7 @@ function* sizeLoopPlacements(
       ? diagonal / (2 * Math.sin((minimumGap * Math.PI) / 360))
       : 0;
   const halfWidth = nodeGeometryWidth(source) / 2;
-  for (const edge of automatic) {
+  for (const [index, edge] of automatic.entries()) {
     yield;
     const route = layout.get(edge.id)!;
     const factor = 1.4 * Math.cos((route.loopSweepDeg * Math.PI) / 360);
@@ -498,18 +556,13 @@ function* sizeLoopPlacements(
         ((route.loopDirectionDeg - 90 + (sign * route.loopSweepDeg) / 2) *
           Math.PI) /
         180;
-      step = Math.max(
-        step,
-        (pillExtentTowards(halfWidth, 24, Math.cos(angle), Math.sin(angle)) +
-          6) /
-          1.4,
-      );
+      step = Math.max(step, (preparation.extent(halfWidth, angle) + 6) / 1.4);
     }
     route.loopStepSizePx = Number.isFinite(step)
       ? normalizeLoopStepSize(Math.ceil(step))
       : 180;
     if (step > 180) route.status = "unresolved";
-    const size = edgeLabelSize(edge, options.work);
+    const size = preparation.size(edge, preparation.automaticIndexes[index]!);
     while (
       edgeHasVisibleLabel(edge) &&
       labelTouchesSource(source, loopLabelPoint(source, route), size) &&
@@ -519,7 +572,7 @@ function* sizeLoopPlacements(
       options.work.units++;
       route.loopStepSizePx = Math.min(180, route.loopStepSizePx + 4);
     }
-    for (const other of fixedEdges) {
+    for (const { edge: other, index: otherIndex } of preparation.fixed) {
       yield;
       options.work.units++;
       if (!edgeHasVisibleLabel(edge) || !edgeHasVisibleLabel(other)) continue;
@@ -529,7 +582,7 @@ function* sizeLoopPlacements(
           loopLabelPoint(source, route),
           size,
           loopLabelPoint(source, fixed),
-          edgeLabelSize(other, options.work),
+          preparation.size(other, otherIndex),
         ) &&
         route.loopStepSizePx < 180
       ) {
@@ -546,13 +599,15 @@ function* scoreLoopLayout(
   layout: Map<EdgeId, LoopPlacement>,
   nodes: GraphNode[],
   options: ResolvedEdgeRoutingOptions,
+  preparation: LoopPreparation,
 ): Generator<void, number> {
-  const points = new Map<EdgeId, { x: number; y: number }>();
+  const points: { x: number; y: number }[] = [];
+  const routes = edges.map((edge) => layout.get(edge.id)!);
   const bundles = new Map<string, number>();
   let score = 0;
-  for (const edge of edges) {
+  for (const [edgeIndex, edge] of edges.entries()) {
     yield;
-    const route = layout.get(edge.id)!;
+    const route = routes[edgeIndex]!;
     const manual =
       edge.routing?.loopDirectionDeg !== undefined ||
       edge.routing?.loopSweepDeg !== undefined;
@@ -560,7 +615,7 @@ function* scoreLoopLayout(
     const bundle = bundles.get(key) ?? 0;
     bundles.set(key, bundle + 1);
     const point = loopLabelPoint(source, route, bundle);
-    points.set(edge.id, point);
+    points.push(point);
     let collisions = route.status === "unresolved" ? 1 : 0;
     if (!manual) {
       score +=
@@ -571,10 +626,10 @@ function* scoreLoopLayout(
           0.001;
       if (
         edgeHasVisibleLabel(edge) &&
-        labelTouchesSource(source, point, edgeLabelSize(edge, options.work))
+        labelTouchesSource(source, point, preparation.size(edge, edgeIndex))
       )
         collisions++;
-      const samples = nativeLoopSamplePoints(source, route);
+      const samples = nativeLoopSamplePoints(source, route, preparation.extent);
       let rustScores: Float64Array | null = null;
       for (const [index, node] of nodes.entries()) {
         yield;
@@ -619,10 +674,10 @@ function* scoreLoopLayout(
           b = edges[j]!;
         if (!edgeHasVisibleLabel(a) || !edgeHasVisibleLabel(b)) continue;
         const overlap = labelOverlap(
-          points.get(a.id)!,
-          edgeLabelSize(a, options.work),
-          points.get(b.id)!,
-          edgeLabelSize(b, options.work),
+          points[i]!,
+          preparation.sizes[i] ?? preparation.size(a, i),
+          points[j]!,
+          preparation.sizes[j] ?? preparation.size(b, j),
         );
         if (overlap) {
           score += 10_000 + overlap;
@@ -630,17 +685,21 @@ function* scoreLoopLayout(
             a.routing?.loopDirectionDeg === undefined &&
             a.routing?.loopSweepDeg === undefined
           )
-            layout.get(a.id)!.status = "unresolved";
+            routes[i]!.status = "unresolved";
           if (
             b.routing?.loopDirectionDeg === undefined &&
             b.routing?.loopSweepDeg === undefined
           )
-            layout.get(b.id)!.status = "unresolved";
+            routes[j]!.status = "unresolved";
         }
       }
   return score;
 }
-function nativeLoopSamplePoints(source: GraphNode, route: LoopPlacement) {
+function nativeLoopSamplePoints(
+  source: GraphNode,
+  route: LoopPlacement,
+  extent: LoopPreparation["extent"],
+) {
   const angle = ((route.loopDirectionDeg - 90) * Math.PI) / 180,
     sweep = (route.loopSweepDeg * Math.PI) / 360;
   const radius = 1.4 * normalizeLoopStepSize(route.loopStepSizePx);
@@ -652,21 +711,11 @@ function nativeLoopSamplePoints(source: GraphNode, route: LoopPlacement) {
     c2 = ray(angle + sweep, radius);
   const start = ray(
     angle - sweep,
-    pillExtentTowards(
-      nodeGeometryWidth(source) / 2,
-      24,
-      Math.cos(angle - sweep),
-      Math.sin(angle - sweep),
-    ),
+    extent(nodeGeometryWidth(source) / 2, angle - sweep),
   );
   const end = ray(
     angle + sweep,
-    pillExtentTowards(
-      nodeGeometryWidth(source) / 2,
-      24,
-      Math.cos(angle + sweep),
-      Math.sin(angle + sweep),
-    ),
+    extent(nodeGeometryWidth(source) / 2, angle + sweep),
   );
   const mid = { x: (c1.x + c2.x) / 2, y: (c1.y + c2.y) / 2 };
   const points: { x: number; y: number }[] = [];

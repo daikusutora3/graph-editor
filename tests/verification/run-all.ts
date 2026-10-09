@@ -14,6 +14,15 @@ const suites = [
     name: "wasm-interactive-routing",
     path: "tests/verification/wasm-interactive-routing.ts",
   },
+  {
+    name: "wasm-projected-obstacles",
+    path: "tests/verification/wasm-projected-obstacles.ts",
+  },
+  {
+    name: "loop-preparation",
+    path: "tests/verification/loop-preparation.ts",
+  },
+  { name: "wasm-import", path: "tests/verification/wasm-import.ts" },
   { name: "integrity", path: "tests/verification/integrity.ts" },
   { name: "autosave", path: "tests/verification/autosave.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },

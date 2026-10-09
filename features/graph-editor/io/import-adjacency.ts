@@ -27,10 +27,8 @@ export function tryImportAdjacencyMatrix(
   if (lines.length < 1 || source.firstRow.length !== lines.length) {
     return null;
   }
-  const { rows } = source;
-  if (rows.some((row) => row.length !== rows.length)) return null;
-
   if (lines.length > MAX_IMPORT_NODES) {
+    if (source.rows.some((row) => row.length !== lines.length)) return null;
     return importLimitFailure(
       "nodes",
       lines.length,
@@ -43,7 +41,7 @@ export function tryImportAdjacencyMatrix(
 
   const matrix = source.matrix;
   if (!matrix) return null;
-  const { values, isSymmetric, hasZeroValue, isBinary, hasWeightedValue } =
+  const { size, isSymmetric, hasZeroValue, isBinary, hasWeightedValue } =
     matrix;
 
   if (!hasZeroValue && options.format !== "adjacency-matrix") {
@@ -56,7 +54,7 @@ export function tryImportAdjacencyMatrix(
 
   if (
     options.format !== "adjacency-matrix" &&
-    values.length === 2 &&
+    size === 2 &&
     (!isBinary || (!directed && !isSymmetric))
   ) {
     return null;
@@ -65,7 +63,8 @@ export function tryImportAdjacencyMatrix(
   if (
     hasWeightedValue &&
     options.format !== "adjacency-matrix" &&
-    looksLikeWeightedEdgePairs(rows, values.length)
+    size === 3 &&
+    looksLikeWeightedEdgePairs(source.rows, size)
   ) {
     return null;
   }
@@ -91,7 +90,7 @@ export function tryImportAdjacencyMatrix(
   });
   const model = createEmptyGraphModel(settings);
 
-  model.nodes = Array.from({ length: values.length }, (_, index) =>
+  model.nodes = Array.from({ length: size }, (_, index) =>
     createNode({
       id: `n${index}`,
       label: String(index + settings.indexBase),
@@ -100,21 +99,34 @@ export function tryImportAdjacencyMatrix(
   );
   arrangeNodes(model);
 
-  values.forEach((row, sourceIndex) => {
-    row.forEach((value, targetIndex) => {
-      if (value === 0) {
-        return;
-      }
-
-      if (!settings.directed && targetIndex < sourceIndex) {
-        return;
-      }
-
+  if (matrix.values) {
+    matrix.values.forEach((row, sourceIndex) => {
+      row.forEach((value, targetIndex) => {
+        if (value === 0) return;
+        if (!settings.directed && targetIndex < sourceIndex) return;
+        const sourceNode = model.nodes[sourceIndex];
+        const targetNode = model.nodes[targetIndex];
+        if (!sourceNode || !targetNode) return;
+        model.edges.push(
+          createEdge({
+            id: `e${model.edges.length}`,
+            source: sourceNode.id,
+            target: targetNode.id,
+            weight: settings.weighted ? String(value) : undefined,
+          }),
+        );
+      });
+    });
+  } else {
+    for (const {
+      source: sourceIndex,
+      target: targetIndex,
+      value,
+    } of matrix.entries) {
+      if (!settings.directed && targetIndex < sourceIndex) continue;
       const sourceNode = model.nodes[sourceIndex];
       const targetNode = model.nodes[targetIndex];
-
-      if (!sourceNode || !targetNode) return;
-
+      if (!sourceNode || !targetNode) continue;
       model.edges.push(
         createEdge({
           id: `e${model.edges.length}`,
@@ -123,8 +135,8 @@ export function tryImportAdjacencyMatrix(
           weight: settings.weighted ? String(value) : undefined,
         }),
       );
-    });
-  });
+    }
+  }
 
   return {
     model,

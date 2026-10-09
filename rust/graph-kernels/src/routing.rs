@@ -19,6 +19,92 @@ struct Piece {
     start: Point,
     end: Point,
     error: f64,
+    dx: f64,
+    dy: f64,
+    denominator: f64,
+    min_x: f64,
+    max_x: f64,
+    min_y: f64,
+    max_y: f64,
+    coordinate_scale: f64,
+}
+impl Piece {
+    fn new(start: Point, end: Point, error: f64) -> Self {
+        let dx = end.x - start.x;
+        let dy = end.y - start.y;
+        let squared = dx * dx + dy * dy;
+        Self {
+            start,
+            end,
+            error,
+            dx,
+            dy,
+            denominator: if squared == 0.0 { 1.0 } else { squared },
+            min_x: start.x.min(end.x),
+            max_x: start.x.max(end.x),
+            min_y: start.y.min(end.y),
+            max_y: start.y.max(end.y),
+            coordinate_scale: 1.0_f64
+                .max(start.x.abs())
+                .max(start.y.abs())
+                .max(end.x.abs())
+                .max(end.y.abs()),
+        }
+    }
+
+    fn point_distance(&self, point: Point) -> f64 {
+        let t = (((point.x - self.start.x) * self.dx + (point.y - self.start.y) * self.dy)
+            / self.denominator)
+            .max(0.0)
+            .min(1.0);
+        hypot(
+            point.x - self.start.x - t * self.dx,
+            point.y - self.start.y - t * self.dy,
+        )
+    }
+
+    // The L-infinity gap between the segment's AABB and a horizontal capsule
+    // spine is a lower bound on their Euclidean distance. Keep a rounding guard
+    // so a near-equality still executes the original distance calculation.
+    fn cannot_improve(&self, left: Point, right: Point, minimum: f64) -> bool {
+        let x_gap = (left.x - self.max_x).max(self.min_x - right.x).max(0.0);
+        let y_gap = (left.y - self.max_y).max(self.min_y - left.y).max(0.0);
+        let scale = self
+            .coordinate_scale
+            .max(left.x.abs())
+            .max(right.x.abs())
+            .max(left.y.abs())
+            .max(minimum.abs())
+            .max(self.error.abs());
+        let guard = 1e-9_f64.max(f64::EPSILON * scale * 64.0);
+        x_gap.max(y_gap) - self.error > minimum + guard
+    }
+
+    fn capsule_distance(&self, left: Point, right: Point, denominator: f64) -> f64 {
+        if self.dy != 0.0 {
+            let t = (left.y - self.start.y) / self.dy;
+            let x = self.start.x + t * self.dx;
+            if t >= 0.0 && t <= 1.0 && x >= left.x && x <= right.x {
+                return 0.0;
+            }
+        }
+        let spine_distance = |point: Point| {
+            let dx = right.x - left.x;
+            let t = (((point.x - left.x) * dx + (point.y - left.y) * 0.0) / denominator)
+                .max(0.0)
+                .min(1.0);
+            hypot(point.x - left.x - t * dx, point.y - left.y - t * 0.0)
+        };
+        let endpoints = spine_distance(self.start).min(spine_distance(self.end));
+        let from_left = self.point_distance(left);
+        if left.x == right.x {
+            // Circular nodes have identical spine endpoints. The former fourth
+            // distance was exactly the same operation on the same point.
+            endpoints.min(from_left)
+        } else {
+            endpoints.min(from_left).min(self.point_distance(right))
+        }
+    }
 }
 
 struct Curve<'a> {
@@ -124,6 +210,7 @@ fn point_segment_distance(p: Point, a: Point, b: Point) -> f64 {
         .min(1.0);
     hypot(p.x - a.x - t * dx, p.y - a.y - t * dy)
 }
+#[cfg(test)]
 fn segment_distance(a: Point, b: Point, c: Point, d: Point) -> f64 {
     if a.y != b.y {
         let t = (c.y - a.y) / (b.y - a.y);
@@ -140,11 +227,7 @@ fn segment_distance(a: Point, b: Point, c: Point, d: Point) -> f64 {
 fn subdivide(segment: Segment, depth: usize, pieces: &mut Vec<Piece>) {
     let error = point_segment_distance(segment.control, segment.start, segment.end) / 2.0;
     if error <= 0.25 || depth >= 16 {
-        pieces.push(Piece {
-            start: segment.start,
-            end: segment.end,
-            error,
-        });
+        pieces.push(Piece::new(segment.start, segment.end, error));
         return;
     }
     let a = midpoint(segment.start, segment.control);
@@ -181,11 +264,7 @@ fn subdivide_final_route(
     let error = point_segment_distance(segment.control, segment.start, segment.end) / 2.0;
     let ambiguous = (error - 0.25).abs() <= tolerance || !error.is_finite();
     if error <= 0.25 || depth >= 16 {
-        pieces.push(Piece {
-            start: segment.start,
-            end: segment.end,
-            error,
-        });
+        pieces.push(Piece::new(segment.start, segment.end, error));
         return ambiguous;
     }
     let a = midpoint(segment.start, segment.control);
@@ -294,10 +373,19 @@ pub unsafe extern "C" fn routing_node_shape(
             x: node[0] + span,
             y: node[1],
         };
-        let mut minimum = f64::INFINITY;
+        let spine_width = right.x - left.x;
+        let spine_squared = spine_width * spine_width;
+        let spine_denominator = if spine_squared == 0.0 {
+            1.0
+        } else {
+            spine_squared
+        };
+        let mut minimum = clearance;
         for piece in &pieces {
-            minimum =
-                minimum.min(segment_distance(piece.start, piece.end, left, right) - piece.error);
+            if !piece.cannot_improve(left, right, minimum) {
+                minimum = minimum
+                    .min(piece.capsule_distance(left, right, spine_denominator) - piece.error);
+            }
         }
         let overlap = (clearance - minimum).max(0.0);
         if overlap > 0.0 {
@@ -383,16 +471,27 @@ pub unsafe extern "C" fn routing_node_collisions(
             x: node[0] + span,
             y: node[1],
         };
-        let mut minimum = f64::INFINITY;
-        for piece in &pieces {
-            minimum =
-                minimum.min(segment_distance(piece.start, piece.end, left, right) - piece.error);
-        }
         let node_scale = coordinate_scale
             .max(node[0].abs())
             .max(node[1].abs())
             .max(node[2].abs());
         let tolerance = 1e-7_f64.max(f64::EPSILON * node_scale * 32.0);
+        // Distances above this limit cannot collide or trigger the existing
+        // ambiguity fallback. Preserve all calculations within that band.
+        let mut minimum = 30.0 + tolerance * 2.0;
+        let spine_width = right.x - left.x;
+        let spine_squared = spine_width * spine_width;
+        let spine_denominator = if spine_squared == 0.0 {
+            1.0
+        } else {
+            spine_squared
+        };
+        for piece in &pieces {
+            if !piece.cannot_improve(left, right, minimum) {
+                minimum = minimum
+                    .min(piece.capsule_distance(left, right, spine_denominator) - piece.error);
+            }
+        }
         if (minimum - 30.0).abs() <= tolerance || (!pieces.is_empty() && !minimum.is_finite()) {
             needs_js = true;
         }
@@ -557,7 +656,313 @@ pub unsafe extern "C" fn routing_loop_obstacles(
 
 #[cfg(test)]
 mod collision_tests {
-    use super::routing_node_collisions;
+    use super::{
+        hypot, routing_node_collisions, routing_node_shape, samples, segment_distance, subdivide,
+        subdivide_final_route, Curve, Point,
+    };
+
+    fn reference(
+        nodes: &[f64],
+        curve_data: &[f64],
+        source: Point,
+        target: Point,
+        clearance: f64,
+        final_route: bool,
+    ) -> [f64; 3] {
+        let curve = unsafe { Curve::from_ptr(curve_data.as_ptr()) };
+        let segments = curve.segments(source, target);
+        let offset = curve.maximum_offset();
+        let coordinate_scale = 1.0_f64
+            .max(source.x.abs())
+            .max(source.y.abs())
+            .max(target.x.abs())
+            .max(target.y.abs())
+            .max(offset);
+        let tolerance = 1e-7_f64.max(f64::EPSILON * coordinate_scale * 32.0);
+        let mut pieces = Vec::new();
+        let mut needs_js = false;
+        for segment in &segments {
+            if final_route {
+                needs_js |= subdivide_final_route(*segment, 0, &mut pieces, tolerance);
+            } else {
+                subdivide(*segment, 0, &mut pieces);
+            }
+        }
+        let reach = offset + if final_route { 48.0 } else { clearance + 120.0 };
+        let min_x = source.x.min(target.x) - reach;
+        let max_x = source.x.max(target.x) + reach;
+        let min_y = source.y.min(target.y) - reach;
+        let max_y = source.y.max(target.y) + reach;
+        let mut collisions = 0.0;
+        let mut penetration = 0.0;
+        let mut units = 0.0;
+        for node in nodes.chunks_exact(3) {
+            if node[0] + node[2] < min_x
+                || node[0] - node[2] > max_x
+                || node[1] < min_y
+                || node[1] > max_y
+            {
+                continue;
+            }
+            units += 1.0;
+            let span = (node[2] - 24.0).max(0.0);
+            let left = Point {
+                x: node[0] - span,
+                y: node[1],
+            };
+            let right = Point {
+                x: node[0] + span,
+                y: node[1],
+            };
+            let mut minimum = f64::INFINITY;
+            for piece in &pieces {
+                minimum = minimum
+                    .min(segment_distance(piece.start, piece.end, left, right) - piece.error);
+            }
+            if final_route {
+                let node_scale = coordinate_scale
+                    .max(node[0].abs())
+                    .max(node[1].abs())
+                    .max(node[2].abs());
+                let tolerance = 1e-7_f64.max(f64::EPSILON * node_scale * 32.0);
+                if (minimum - 30.0).abs() <= tolerance
+                    || (!pieces.is_empty() && !minimum.is_finite())
+                {
+                    needs_js = true;
+                }
+                if minimum < 30.0 {
+                    collisions += 1.0;
+                }
+            } else {
+                let overlap = (clearance - minimum).max(0.0);
+                if overlap > 0.0 {
+                    collisions += 1.0;
+                    penetration += overlap * overlap;
+                }
+            }
+        }
+        if final_route {
+            [
+                collisions,
+                units,
+                if needs_js && units > 0.0 { 1.0 } else { 0.0 },
+            ]
+        } else {
+            let points = samples(&segments, source, target, 12);
+            let mut length = 0.0;
+            for pair in points.windows(2) {
+                length += hypot(pair[1].x - pair[0].x, pair[1].y - pair[0].y);
+            }
+            let extra = (length - hypot(target.x - source.x, target.y - source.y)).max(0.0);
+            [
+                collisions,
+                collisions * 1_000_000.0
+                    + penetration * 1_000.0
+                    + extra * 0.2
+                    + offset * 0.03
+                    + curve.weights.len() as f64 * 0.4
+                    + curve.zigzag(),
+                units,
+            ]
+        }
+    }
+
+    #[test]
+    fn prepared_distances_and_guarded_rejection_match_original_bits() {
+        let mut state = 731_u64;
+        let mut random = || {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            (state >> 11) as f64 / (1_u64 << 53) as f64
+        };
+        for shift in [0.0, -1e9, 1e12] {
+            for fixture in 0..48 {
+                let source = Point {
+                    x: shift - 160.0,
+                    y: shift - 80.0,
+                };
+                let target = if fixture % 11 == 0 {
+                    source
+                } else {
+                    Point {
+                        x: shift + 160.0,
+                        y: shift + 80.0,
+                    }
+                };
+                let count = fixture % 5;
+                let mut curve = vec![count as f64, count as f64];
+                for _ in 0..count {
+                    curve.push(random() * 640.0 - 320.0);
+                }
+                for index in 0..count {
+                    curve.push((index + 1) as f64 / (count + 1) as f64);
+                }
+                let mut nodes = Vec::new();
+                for index in 0..72 {
+                    nodes.extend([
+                        shift + random() * 900.0 - 450.0,
+                        shift + random() * 700.0 - 350.0,
+                        if index % 3 == 0 {
+                            24.0
+                        } else {
+                            24.0 + random() * 100.0
+                        },
+                    ]);
+                }
+                for final_route in [false, true] {
+                    let expected = reference(&nodes, &curve, source, target, 30.0, final_route);
+                    let mut actual = [0.0; 3];
+                    unsafe {
+                        if final_route {
+                            routing_node_collisions(
+                                nodes.as_ptr(),
+                                curve.as_ptr(),
+                                actual.as_mut_ptr(),
+                                nodes.len() / 3,
+                                -1.0,
+                                -1.0,
+                                source.x,
+                                source.y,
+                                target.x,
+                                target.y,
+                            );
+                        } else {
+                            routing_node_shape(
+                                nodes.as_ptr(),
+                                curve.as_ptr(),
+                                actual.as_mut_ptr(),
+                                nodes.len() / 3,
+                                -1.0,
+                                -1.0,
+                                source.x,
+                                source.y,
+                                target.x,
+                                target.y,
+                                30.0,
+                            );
+                        }
+                    }
+                    assert_eq!(
+                        actual.map(f64::to_bits),
+                        expected.map(f64::to_bits),
+                        "shift={shift}, fixture={fixture}, final={final_route}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn candidate_unbounded_coordinates_and_widths_match_original() {
+        // The candidate host intentionally retains its general numeric helper.
+        // Huge/invalid public-helper inputs must not change its old result just
+        // because only the final-route host applies a finite-coordinate gate.
+        for shift in [0.0, 1e20, -1e150] {
+            let source = Point {
+                x: shift - 100.0,
+                y: shift,
+            };
+            let target = Point {
+                x: shift + 100.0,
+                y: shift,
+            };
+            let nodes = [
+                shift,
+                shift + 30.0,
+                24.0,
+                shift + 200.0,
+                shift,
+                100.0,
+                shift,
+                shift,
+                1e200,
+                shift,
+                shift,
+                f64::INFINITY,
+                shift,
+                shift,
+                f64::NAN,
+                f64::NAN,
+                shift,
+                24.0,
+                shift,
+                f64::INFINITY,
+                24.0,
+                f64::INFINITY,
+                f64::INFINITY,
+                24.0,
+            ];
+            for curve in [&[1.0, 1.0, 0.0, 0.5][..], &[0.0, 0.0][..]] {
+                for clearance in [0.0, 30.0, f64::INFINITY, f64::NAN] {
+                    let expected = reference(&nodes, curve, source, target, clearance, false);
+                    let mut actual = [0.0; 3];
+                    unsafe {
+                        routing_node_shape(
+                            nodes.as_ptr(),
+                            curve.as_ptr(),
+                            actual.as_mut_ptr(),
+                            nodes.len() / 3,
+                            -1.0,
+                            -1.0,
+                            source.x,
+                            source.y,
+                            target.x,
+                            target.y,
+                            clearance,
+                        );
+                    }
+                    assert_eq!(
+                        actual.map(f64::to_bits),
+                        expected.map(f64::to_bits),
+                        "shift={shift}, clearance={clearance}, curve={curve:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn threshold_bands_and_adaptive_split_ties_keep_fallback_flags() {
+        for shift in [0.0, 1e9, 1e12] {
+            let source = Point {
+                x: shift - 100.0,
+                y: shift,
+            };
+            let target = Point {
+                x: shift + 100.0,
+                y: shift,
+            };
+            let mut nodes = Vec::new();
+            for offset in [30.0 - 2e-7, 30.0 - 1e-8, 30.0, 30.0 + 1e-8, 30.0 + 2e-7] {
+                for width in [24.0, 100.0] {
+                    nodes.extend([shift, shift + offset, width]);
+                    nodes.extend([shift + 200.0, shift + offset, width]);
+                }
+            }
+            for curve in [&[1.0, 1.0, 0.0, 0.5][..], &[1.0, 1.0, 0.5, 0.5][..]] {
+                let expected = reference(&nodes, curve, source, target, 30.0, true);
+                let mut actual = [0.0; 3];
+                unsafe {
+                    routing_node_collisions(
+                        nodes.as_ptr(),
+                        curve.as_ptr(),
+                        actual.as_mut_ptr(),
+                        nodes.len() / 3,
+                        -1.0,
+                        -1.0,
+                        source.x,
+                        source.y,
+                        target.x,
+                        target.y,
+                    );
+                }
+                assert_eq!(
+                    actual.map(f64::to_bits),
+                    expected.map(f64::to_bits),
+                    "shift={shift}, curve={curve:?}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn final_route_threshold_and_pruning_work_are_independent() {

@@ -6,6 +6,7 @@ import type { RefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { evaluateGraphInput } from "../../io/import-graph";
+import { initializeRustKernel } from "../../compute/rust-kernel";
 import type { ImportFormat, ImportOptions } from "../../io/import-utils";
 import type { ImportEvaluation } from "../../io/import-types";
 import type { GraphModel } from "../../core/graph/model";
@@ -46,6 +47,12 @@ export function useGraphStarterState({
   const debouncedInputText = useDebouncedValue(inputText, 150, {
     transition: true,
   });
+  useEffect(() => {
+    // A fresh empty canvas has not loaded the kernel yet. Start its download
+    // during the input debounce for large pastes; parsing keeps the JS fallback.
+    if (open && tab === "paste" && inputText.length >= 16_384)
+      void initializeRustKernel().catch(() => {});
+  }, [inputText, open, tab]);
   const previewParseKey = useMemo(
     () =>
       previewEnabled

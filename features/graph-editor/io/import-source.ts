@@ -1,3 +1,7 @@
+import {
+  readRustNumericMatrix,
+  type NumericImportMatrix,
+} from "../compute/wasm-import";
 import { MAX_IMPORT_NODES, type ParsedLine, splitTokens } from "./import-utils";
 
 type AdjacencyRow = {
@@ -9,21 +13,11 @@ type AdjacencyRow = {
   lastScan: object | undefined;
 };
 
-type NumericMatrix = {
-  values: number[][];
-  isBinary: boolean;
-  isSymmetric: boolean;
-  hasZeroValue: boolean;
-  hasWeightedValue: boolean;
-  directedEdgeCount: number;
-  undirectedEdgeCount: number;
-};
-
 /** One evaluation owns these parsed rows; analysis and import share its matrix. */
 export function createImportSource(lines: ParsedLine[]) {
   let firstRow: string[] | undefined;
   let rows: string[][] | undefined;
-  let matrix: NumericMatrix | null | undefined;
+  let matrix: NumericImportMatrix | null | undefined;
   const adjacencyRows = new Map<string, AdjacencyRow | null>();
   let previousAdjacencyText: string | undefined;
   let previousAdjacencyRow: AdjacencyRow | null = null;
@@ -53,7 +47,8 @@ export function createImportSource(lines: ParsedLine[]) {
       return readRows();
     },
     get matrix() {
-      if (matrix === undefined) matrix = readNumericMatrix(readRows());
+      if (matrix === undefined)
+        matrix = readRustNumericMatrix(lines) ?? readNumericMatrix(readRows());
       return matrix;
     },
   };
@@ -74,7 +69,7 @@ function readAdjacencyRow(text: string): AdjacencyRow | null {
   };
 }
 
-function readNumericMatrix(rows: string[][]): NumericMatrix | null {
+function readNumericMatrix(rows: string[][]): NumericImportMatrix | null {
   const size = rows.length;
   if (size < 1 || rows.some((row) => row.length !== size)) return null;
   const values: number[][] = [];
@@ -103,6 +98,7 @@ function readNumericMatrix(rows: string[][]): NumericMatrix | null {
     values.push(numericRow);
   }
   return {
+    size,
     values,
     isBinary: !hasWeightedValue,
     isSymmetric,

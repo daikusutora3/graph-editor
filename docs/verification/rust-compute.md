@@ -5,6 +5,7 @@ editing history in TypeScript. A dependency-free Rust crate performs the numeric
 work in batches: force relaxation, capsule clearance, overlap resolution, curve
 distance/shape scoring, final-route collision checks, batched interactive
 reroute selection, curve crossings and sampled self-loop obstacles.
+It also projects node capsules into an edge's frame and clusters obstacles.
 
 Force and overlap actions, automatic routing and interactive drag routing run
 in a browser Web Worker. The Worker receives an immutable graph snapshot with
@@ -217,3 +218,335 @@ weight/direction variants passed that stronger check. No expected-curve retry
 or product-side workaround was introduced. The local verification server and
 isolated SafariDriver session were closed afterward. This change has not been
 deployed to production.
+
+### Further routing work: straight routes and Rust obstacle projection
+
+The next stage starts from commit `391df6a`. It checks the straight candidate
+with the existing Rust scorer before projecting obstacles or making bent
+candidates. A clear straight route returns immediately. A blocked route reuses
+that first evaluation, preserving candidate order, work units and generator
+boundaries instead of scoring it twice.
+
+Obstacle projection, stable sorting and clustering now have a Rust operation.
+The host supplies its chord length and both direction norms. The capsule
+boundary still uses all 24 reference bisections, but compares squared distance
+to 576, avoiding repeated norm divisions and square roots. Comparisons within
+`1e-10` of 576 use the original JS operation; this is a wider ambiguity guard
+than a `1e-12` distance comparison at 24px. Extent, clamp, perpendicular-distance
+and cluster-merge boundaries also retain JS for ambiguous values.
+
+Within one kernel call, identical half-width bit patterns reuse their two
+capsule extents. A lazy cache holds at most 16 widths; additional distinct
+widths are calculated normally. Circles need no capsule search. This cache
+never survives a call or a generator yield. The host's coordinate, ID, label
+and measured-width mutation validation remains active.
+
+Graphs with fewer than 64 nodes use JS projection. All-circle inputs with fewer
+than 256 nodes also use JS, because their arithmetic does not consistently
+amortize copying. Duplicate IDs, unsafe coordinates and ambiguous boundaries
+retain the original projection algorithm.
+
+The final component benchmark uses premeasured widths, matching the production
+routing task. Both backends alternate over 12 passes of 50 calls, with five
+warm passes and seven measured medians. Every pass requires identical ordered
+cluster output. Packing, cache validation, allocation, copies and cleanup are
+included; rows selecting JS for both backends make no Rust speedup claim.
+
+| Projected obstacles with mixed wide nodes | JavaScript ms | Rust/Wasm ms | Speedup |
+| ----------------------------------------- | ------------: | -----------: | ------: |
+| 64 nodes                                  |        0.0383 |       0.0065 |   5.85x |
+| 100 nodes                                 |        0.0716 |       0.0163 |   4.40x |
+| 300 nodes                                 |        0.1828 |       0.0218 |   8.40x |
+| 1000 nodes                                |        0.6399 |       0.0559 |  11.45x |
+
+The complete-routing comparison against `391df6a` uses each version's own
+real Wasm artifact and alternates 16 passes, discarding five warm passes:
+
+| Routing fixture                 | Previous app ms | Current app ms | Speedup |
+| ------------------------------- | --------------: | -------------: | ------: |
+| Quality, 40 nodes / 55 edges    |           16.47 |          14.80 |   1.11x |
+| Sparse, 1000 nodes / 400 edges  |          443.28 |          34.25 |  12.94x |
+| Dense, 150 nodes / 220 edges    |          914.93 |         894.51 |   1.02x |
+| Parallel, 100 nodes / 300 edges |          533.56 |         518.13 |   1.03x |
+| Dense, 1000 nodes / 1 edge      |           28.50 |          28.30 |   1.01x |
+
+All five route hashes and generator step counts agree. Background desktop
+activity increased absolute durations during this final run. An earlier
+isolated straight-only comparison measured the sparse fixture at 121.59 to
+7.34ms (16.56x); the final gain includes skipping work in TypeScript and must
+not be attributed entirely to the new Rust projection. Dense and parallel
+whole-task timings show little additional improvement despite the component
+gain. These synchronous measurements still exclude Worker messaging and
+browser painting.
+
+Run the new component comparison with:
+
+```sh
+bun run tests/benchmarks/wasm-projected-obstacles.ts
+```
+
+The projection suite covers 110 fixtures, including 72 actual Rust results and
+38 JS selections/fallbacks. Ordered clusters match the frozen JS reference
+exactly. Tests include cache capacity and repeated widths, in-place mutation,
+translated geometry, strict boundaries and the measured wide-capsule fixture
+used by Safari. The new artifact is 61,635 bytes.
+
+The final source passed all 32 application verification suites, 10 native Rust
+tests, both TypeScript checks, lint, formatting and all 46 repository policy
+self-tests. The production static build and release/header checks also passed.
+
+The first isolated Safari run passed all six Rust workflow scenarios, including
+the new 64-node measured-capsule route: its rendered minimum gap was 25.09px,
+and reloading preserved its route and saved model. Native dragging, Undo/Redo,
+Worker cancellation, layout and overlap resolution also passed. The later,
+existing four-node multi-selection test timed out after its Green palette
+click; no click-event evidence was captured on that attempt. That fixture has
+automatic routing disabled and does not exercise the changed calculations.
+The runner now records the native palette events and correctly releases Shift
+after its existing SafariDriver keyboard fallback.
+
+Three further attempts stopped at varying canvas-readiness waits. Diagnostics
+confirmed `visibilityState: hidden` with a completed Rust routing mark while
+rendering remained pending. Switching the same isolated WebDriver window did
+not prevent that condition. The full 38-scenario Safari review therefore has
+not completed for this change; the six-scenario Rust pass is recorded separately
+in `/tmp/graph-editor-safari-review-phase3-first-attempt/rust-compute-results.json`.
+All runs checked the 13 allowed/rejected URL cases before opening their isolated
+sessions, and closed their sessions afterward. This is an expert review, with
+no first-time human participant or native file-download verification.
+
+Cloudflare configuration is unchanged. At this verification stage, the
+additional work had not been committed, pushed or deployed.
+
+### Remaining Rust candidates: source and CPU audit
+
+This investigation uses the current `37fc95279bee9c61` artifact and the working
+tree containing the straight-route/projection changes above. It does not apply
+another product-code rewrite. CPU benchmarks run sequentially on macOS arm64,
+Bun 1.3.14, with the real Wasm module loaded before the data/layout/export
+benchmarks. Browser painting, Worker transport, download and compilation costs
+are excluded. The results below are current costs, not measured speedups for
+proposed implementations.
+
+The existing complete-routing benchmark, profiled across its five workloads and
+16 passes, collected 4,313 CPU samples. Wasm functions account for 3,965 samples
+(91.93% of self time). Candidate node/shape scoring and final-route collision
+checks dominate. Consequently, moving the remaining host code to Rust has
+limited room to improve those dense workloads. Optimizing the existing
+`routing_node_shape` and `routing_node_collisions` operations is the first
+performance investigation to pursue. Piece-level distance pruning and reducing
+repeated norm calculations are experiments, not established improvements; route
+choices, strict threshold fallbacks and work accounting must still agree.
+
+| Remaining area                                                   |  Current measurement | Assessment                                                                           |
+| ---------------------------------------------------------------- | -------------------: | ------------------------------------------------------------------------------------ |
+| 128 loops at one wide source, long labels, no surrounding nodes  |              14.94ms | Conditional Rust batch candidate after JS preparation improvements                   |
+| Same 128 loops with 64 surrounding nodes                         |              45.75ms | Heavy obstacle work already uses Rust; batching the remaining layout stages may help |
+| 600 compact wide vertices, one loop per vertex, TikZ             |             972.47ms | Routing dominates; optimize loop processing rather than TeX string generation        |
+| 700 × 700 numeric matrix import                                  |        11.07–11.96ms | Conditional ASCII scanner candidate; compare a JS streaming reader first             |
+| DAG predicate / SCC / BFS, 1000 vertices and 5000 edges          | 1.05 / 0.74 / 0.94ms | Low priority; little absolute time available to save                                 |
+| DAG layout, same graph                                           |               2.43ms | Low priority; substantial node clearance already uses Rust                           |
+| Undo/Redo, same graph                                            |          2.71–3.11ms | Retain TypeScript and native JSON processing                                         |
+| JSON / edge or adjacency-list import, same limits                |   2.68 / 4.01–4.60ms | Retain TypeScript; strings and graph objects dominate the interface                  |
+| One manual-bend pointer event, wide endpoints, numeric work only |             0.0030ms | Too little arithmetic to justify another Wasm boundary                               |
+| 5000 SVG hitbox path strings, excluding getter/React/DOM work    |               1.14ms | Low priority; formatting and browser-side data still remain                          |
+
+**Self-loop layout.** Thirty-six fixtures compare the current Rust and JS
+backends, alternating seven passes and retaining five measured medians. All
+ordered route hashes agree. Wide-source/long-label groups of 32, 64 and 128 loops
+with no surrounding obstacles take 1.90, 4.94 and 14.94ms. The relevant obstacle
+kernel does not dispatch in these one-node cases. With 64 surrounding nodes,
+the existing Rust path takes 10.40, 22.13 and 45.75ms. These are different
+workloads; changing labels or adding nodes is not a before/after speedup test.
+
+A separate 1,396-sample profile of the 128-loop one-node case attributes 21.9%
+self time to repeated cached label-size reads, 21.0% to generator resumption,
+and 19.9% to pill-boundary search (27.8% inclusive). Label-overlap arithmetic
+itself is about 0.3%. Even absent labels produce 201,725 generator steps. The
+next comparison should therefore precompute label sizes, reuse pill extents for
+equal shape/direction inputs and avoid unnecessary pair-level scheduling before
+testing a Rust batch of layout size/anchor/pair work. A batch must retain bounded
+cancellation intervals and the original status/score/work-budget behavior. The
+existing 4ms slicing of 128 loops with 64 obstacles takes 70.28ms in total, with
+a maximum observed slice of about 4.014ms; total latency and uninterrupted CPU
+time are distinct measurements.
+
+The 600-vertex TikZ case has a loop at each separate vertex. A second profile
+uses exactly the export's `simple` mode, rather than mixing it with `quality`
+routing, and collects 7,738 samples. Routing is 95.21% inclusive; the existing
+`routing_loop_obstacles` Wasm operation is 51.84% self time, and generator
+resumption is 16.94%. The TikZ generator itself is 0.14% self time. Moving TeX
+formatting to Rust would not address the dominant cost. This case also supports
+investigating existing loop-kernel arithmetic and how numerical work is batched.
+
+**Numeric matrix import.** A 700 × 700 sparse matrix contains 490,000 cells and
+979,999 ASCII characters, inside the 1,000,000-character plain-input limit.
+`io/import-source.ts` creates token strings and numeric rows and checks symmetry;
+`io/import-adjacency.ts` then visits every cell again to create nonzero edges.
+A useful Rust experiment would scan text once and return nonzero edges plus
+matrix statistics. Converting all cells to JS numbers first and sending a dense
+f64 buffer adds 3.92MB of copying while retaining token creation. Any fast path
+must preserve supported JS numeric forms, Unicode separators, comments and
+format detection, or explicitly use the existing fallback. This import runs
+after a 150ms preview debounce and reuses its matching result for Apply, so the
+11–12ms CPU cost is not a per-frame operation.
+
+An automatic-detection case with 60,000 distinct adjacency rows takes 52.85ms,
+but it has 60,001 labels and 60,000 edges and returns a graph-limit error. It is
+a stress input, not a supported graph. Earlier limit handling and Worker-based
+evaluation are alternatives to language migration for such cases.
+
+**Lower priorities.** Topology traversal is linear and already short at graph
+limits. `ui/panels/LayoutsPanel.tsx` caches predicates by graph identity, so a
+cache keyed by topology could avoid repeating them after position-only changes.
+Range selection, viewport and hitbox updates mainly obtain Cytoscape geometry
+or update React/DOM/SVG state; moving small comparisons to Wasm would retain
+those costs and add packing/ID reconstruction. The measured manual-bend event
+costs about 0.00053ms for circular endpoints and 0.0030ms for 192px endpoints.
+These last measurements isolate numeric/string construction and do not claim
+to reproduce complete browser interactions.
+
+Candidate-curve batching and persistent Wasm node input have lower priority in
+light of the earlier input-retention results above and the current CPU profile.
+Single-control label scoring already selects JS because direct Wasm calls were
+slower. `scoreCurveCrossings` and `scoreCurveInstability` have no current product
+callers, so further optimizing them would not improve this app's active path.
+
+Evidence is saved under `/tmp/graph-editor-rust-audit/` for the complete-routing
+profile, `/tmp/graph-editor-rust-loop-candidates.jsonl` and
+`/tmp/graph-editor-loop-candidates-120.md` for loop measurements/profiling, and
+`/tmp/graph-editor-rust-candidate-data-{topology,history,tikz,import}.json` for
+existing data benchmarks. The matched TikZ profile is
+`/tmp/graph-editor-rust-candidate-data-tikz-matched.cpuprofile`. Temporary audit
+scripts initialize the current module before importing the existing benchmark;
+the preexisting application sources and Rust artifact are preserved.
+
+### Additional measured improvements
+
+The follow-up implements three changes: prepared distances in the existing Rust
+curve kernels, reusable self-loop preparation in TypeScript, and an ASCII
+integer adjacency-matrix scanner in Rust. The saved pre-change source under
+`/tmp/graph-editor-rust-phase4-baseline` uses its own real
+`37fc95279bee9c61` module; the final module is `b0f4c21baceed2ce`, 64,832 bytes.
+CPU measurements below run sequentially on macOS arm64 and Bun 1.3.14. They
+exclude browser painting, Worker messaging and initial Wasm loading.
+
+**Curve distances.** Each adaptive line segment prepares its differences,
+denominator and bounds once. A conservative L-infinity bound skips distances
+that cannot change the result, with a scale-dependent rounding guard. Circular
+nodes avoid calculating the same spine endpoint twice. The original arithmetic
+and near-threshold fallback flags remain intact. Eight component comparisons
+measure 2.54–2.92x gains with matching output hashes; those timings deliberately
+exclude ABI allocation and copies.
+
+The complete-routing comparison alternates 16 passes and discards five warmup
+passes. Every ordered route hash and generator step count matches:
+
+| Routing fixture                 | Before ms | After ms | Speedup |
+| ------------------------------- | --------: | -------: | ------: |
+| Quality, 40 nodes / 55 edges    |     2.663 |    1.783 |   1.49x |
+| Sparse, 1000 nodes / 400 edges  |     6.682 |    6.663 |   1.00x |
+| Dense, 150 nodes / 220 edges    |   187.363 |   79.701 |   2.35x |
+| Parallel, 100 nodes / 300 edges |   115.275 |   50.525 |   2.28x |
+| Dense, 1000 nodes / 1 edge      |     6.572 |    2.584 |   2.54x |
+
+Dense and parallel median maximum 4ms slices fall from 4.119/4.093ms to
+4.032/4.029ms. These are observed cooperative scheduling durations, not hard
+real-time bounds. The sparse case already skips most distance work and shows
+little further gain. Native reference tests compare floating-point bits for
+144 curve fixtures, large translations, non-finite/overflow inputs, threshold
+bands and adaptive splitting ties. The JS comparison covers 134 cases, including
+112 actual Rust results.
+
+**Self-loop preparation.** Group-local arrays reuse label sizes, label points
+and route references. An at-most-1024-entry cache reuses exact-angle capsule
+extents and invalidates when measured source width changes. Provisional results
+still return before preparation. Helpers without a label cache retain fresh
+label reads while suspended. Every yield and work counter is preserved.
+
+| Wide source, labeled loops | Before ms | After ms | Speedup |
+| -------------------------- | --------: | -------: | ------: |
+| 32, no obstacles           |     2.832 |    2.104 |   1.35x |
+| 64, no obstacles           |     7.053 |    4.587 |   1.54x |
+| 128, no obstacles          |    22.038 |   15.698 |   1.40x |
+| 128, 64 obstacles          |    78.240 |   67.489 |   1.16x |
+
+All ten complete-routing loop cases match routes and step counts. Thirty-four
+verification fixtures also match fixed hashes recorded from the previous
+implementation, including the full work/yield trace, width and label changes,
+manual routes and cache-free helpers. A Rust batch of capsule extents was tried
+and removed: the final JS preparation was about 2–27% faster than that extra
+Wasm boundary. Existing Rust loop-obstacle scoring remains in use.
+
+**Integer matrix input.** For 128–1000 normalized rows, the scanner accepts the
+ASCII safe-integer subset and returns row-major nonzero entries, symmetry and
+exact edge counts. It keeps at most 10,000 entries, enough for every valid
+5000-edge symmetric graph, while counting all cells for limit warnings. The
+host packs raw text into the existing allocation ABI; it does not create and
+copy a dense JS number matrix. Decimal, exponent, hex, Unicode and unsupported
+integer syntax retain the original Number reader and dense edge-generation path.
+Cheap syntax checks avoid scanning a long integer prefix before decimal fallback.
+
+Twelve passes alternate previous, current-JS and current-loaded backends, with
+five warmup passes discarded. The comparison includes format detection, graph
+creation and warnings; all 21 full evaluation hashes match:
+
+| Matrix input, automatic detection   | Before ms | After ms | Speedup |
+| ----------------------------------- | --------: | -------: | ------: |
+| Sparse 128 × 128                    |     0.426 |    0.186 |   2.29x |
+| Sparse 700 × 700                    |    10.677 |    2.811 |   3.80x |
+| Weighted directed 700 × 700         |    10.694 |    3.328 |   3.21x |
+| Decimal 300 × 300, JS fallback      |     3.539 |    3.527 |   1.00x |
+| Late decimal 700 × 700, JS fallback |    10.125 |    9.574 |   1.06x |
+
+Explicit matrix selection shows 2.94–3.63x gains at 700 rows. Matrix verification
+covers 34 fixtures, nine Rust selections, all other Number syntaxes, Unicode,
+shape errors, comments, unloaded Wasm and an exact 5000-edge symmetric boundary.
+A JS streaming reader was also measured but rejected after decimal-input
+regressions. A large paste starts loading the kernel during the existing 150ms
+debounce, including on a fresh empty canvas; unloaded or failed Wasm keeps the
+synchronous JS fallback. Successful scans leave one input-free performance mark
+for browser verification.
+
+The final code passes all 34 application verification suites, 16 native Rust
+tests, both TypeScript checks, lint, formatting, 46 repository policy checks,
+the production static build and release/header checks. The initial sandboxed
+build recorded a port-denial error in Turbopack's generated cache; preserving
+that cache in `/tmp/graph-editor-rust-phase4-turbopack-cache` and rebuilding with
+local port permission resolved it.
+
+Safari expert review passes six scenarios on the final production build: the
+128-row matrix's real Rust preview, Apply, Undo/Redo and persistence; Force
+layout; superseded-layout cancellation; overlap resolution; ten loops; and the
+new measured wide source with 32 labeled loops and reload. Its routes and saved
+model are unchanged after reload. The matrix was entered with a textarea value
+setter and input event, not a native clipboard paste. The first attempt stopped
+when a Layout click did not open the panel. A bounded retry that checks the
+panel's actual state allowed the next run to reach all six scenarios.
+
+That run then timed out in the existing native obstacle-drag scenario: the
+three-node canvas was ready and visible, but unfocused; the obstacle had not
+moved and no new routing completion mark was present. No input-event trace was
+captured, so this does not establish the reason for the failed drag. The final
+64-node projected obstacle and the full 40-scenario review have therefore not
+passed on this artifact. Partial evidence is recorded in
+`/tmp/graph-editor-safari-review/rust-compute-progress.json`; the first attempt
+is preserved under `/tmp/graph-editor-safari-review-phase4-first-attempt`.
+Both runs passed 13 allowed/rejected URL checks before opening an isolated
+session and closed their sessions afterward. No first-time human participant
+or native download was verified.
+
+Reproduce the comparisons against a saved pre-change checkout with its own Wasm:
+
+```sh
+bun run benchmark:wasm-routing-distances --baseline-root /path/to/before
+bun run benchmark:wasm-routing-optimizations --baseline-root /path/to/before
+bun run benchmark:loop-preparation --baseline-root /path/to/before
+bun run benchmark:wasm-import --baseline-root /path/to/before
+```
+
+Final matrix results are recorded in
+`/tmp/graph-editor-rust-phase4-import-final.jsonl`, and loop results in
+`/tmp/graph-editor-rust-phase4-loop-preparation.json`. Cloudflare configuration
+is unchanged. Production deployment is outside this local performance
+verification.
