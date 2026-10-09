@@ -33,78 +33,102 @@ for (const [flag, name] of [
   );
   backends.push({ name: name!, route: routing.createEdgeRoutingTask });
 }
-await initializeRustKernelFromBytes(readFileSync(`public${RUST_KERNEL_URL}`));
+const kernelIndex = process.argv.indexOf("--kernel");
+await initializeRustKernelFromBytes(
+  readFileSync(
+    kernelIndex >= 0
+      ? process.argv[kernelIndex + 1]!
+      : `public${RUST_KERNEL_URL}`,
+  ),
+);
 backends.push({ name: "optimized preparation", route: createEdgeRoutingTask });
 
 const reports: unknown[] = [];
-for (const count of [2, 8, 32, 64, 128])
-  for (const obstacles of [0, 64]) {
-    const graph = fixture(count, obstacles);
-    const samples = new Map<
-      string,
-      {
-        times: number[];
-        maxSlices: number[];
-        steps: number;
-        routeHash: string;
+const workloads = [
+  ...[2, 8, 32, 64, 128].flatMap((count) =>
+    [0, 64].map((obstacles) => ({ count, obstacles, labels: "all" as const })),
+  ),
+  ...[128, 512, 2000, 2001].map((count) => ({
+    count,
+    obstacles: 0,
+    labels: "none" as const,
+  })),
+  ...[512, 2000].map((count) => ({
+    count,
+    obstacles: 0,
+    labels: "all" as const,
+  })),
+  { count: 512, obstacles: 0, labels: "mixed" as const },
+];
+for (const { count, obstacles, labels } of workloads) {
+  const graph = fixture(count, obstacles, labels);
+  const samples = new Map<
+    string,
+    {
+      times: number[];
+      maxSlices: number[];
+      steps: number;
+      routeHash: string;
+    }
+  >();
+  let expected: string | undefined;
+  for (let pass = 0; pass < 10; pass++)
+    for (let slot = 0; slot < backends.length; slot++) {
+      const backend = backends[(slot + pass) % backends.length]!;
+      const task = backend.route(graph, { mode: "quality" });
+      const started = performance.now();
+      let step = task.next();
+      let steps = 1,
+        maxSlice = 0;
+      while (!step.done) {
+        const sliceStarted = performance.now();
+        do {
+          step = task.next();
+          steps++;
+        } while (!step.done && performance.now() - sliceStarted < 4);
+        maxSlice = Math.max(maxSlice, performance.now() - sliceStarted);
       }
-    >();
-    let expected: string | undefined;
-    for (let pass = 0; pass < 10; pass++)
-      for (let slot = 0; slot < backends.length; slot++) {
-        const backend = backends[(slot + pass) % backends.length]!;
-        const task = backend.route(graph, { mode: "quality" });
-        const started = performance.now();
-        let step = task.next();
-        let steps = 1,
-          maxSlice = 0;
-        while (!step.done) {
-          const sliceStarted = performance.now();
-          do {
-            step = task.next();
-            steps++;
-          } while (!step.done && performance.now() - sliceStarted < 4);
-          maxSlice = Math.max(maxSlice, performance.now() - sliceStarted);
-        }
-        const elapsed = performance.now() - started;
-        const routeHash = createHash("sha256")
-          .update(JSON.stringify([...step.value]))
-          .digest("hex");
-        const signature = `${routeHash}:${steps}`;
-        expected ??= signature;
-        if (signature !== expected)
-          throw new Error(
-            `loops ${count}/${obstacles}: outputs or yield counts differ`,
-          );
-        if (pass < 3) continue;
-        const sample = samples.get(backend.name) ?? {
-          times: [],
-          maxSlices: [],
-          steps,
-          routeHash,
-        };
-        sample.times.push(elapsed);
-        sample.maxSlices.push(maxSlice);
-        samples.set(backend.name, sample);
-      }
-    const report = {
-      name: `loops ${count}, obstacles ${obstacles}`,
-      measurements: Object.fromEntries(
-        [...samples].map(([name, sample]) => [
-          name,
-          {
-            medianMs: median(sample.times),
-            medianMaxSliceMs: median(sample.maxSlices),
-            steps: sample.steps,
-            routeHash: sample.routeHash,
-          },
-        ]),
-      ),
-      sameOutput: true,
-    };
-    reports.push(report);
-    console.log(JSON.stringify(report));
-  }
+      const elapsed = performance.now() - started;
+      const routeHash = createHash("sha256")
+        .update(JSON.stringify([...step.value]))
+        .digest("hex");
+      // Scheduling is allowed to improve. Ordered geometry and statuses
+      // must still agree; both step counts and maximum slices are reported.
+      const signature = routeHash;
+      expected ??= signature;
+      if (signature !== expected)
+        throw new Error(
+          `loops ${count}/${obstacles}/${labels}: ordered outputs differ`,
+        );
+      if (pass < 3) continue;
+      const sample = samples.get(backend.name) ?? {
+        times: [],
+        maxSlices: [],
+        steps,
+        routeHash,
+      };
+      sample.times.push(elapsed);
+      sample.maxSlices.push(maxSlice);
+      samples.set(backend.name, sample);
+    }
+  const report = {
+    name: `loops ${count}, obstacles ${obstacles}, labels ${labels}`,
+    measurements: Object.fromEntries(
+      [...samples].map(([name, sample]) => [
+        name,
+        {
+          medianMs: median(sample.times),
+          medianMaxSliceMs: median(sample.maxSlices),
+          steps: sample.steps,
+          routeHash: sample.routeHash,
+        },
+      ]),
+    ),
+    sameOutput: true,
+  };
+  reports.push(report);
+  console.log(JSON.stringify(report));
+}
 
 const outputIndex = process.argv.indexOf("--output");
 if (outputIndex >= 0)
@@ -113,7 +137,11 @@ if (outputIndex >= 0)
     JSON.stringify(reports, null, 2) + "\n",
   );
 
-function fixture(count: number, obstacles: number): GraphModel {
+function fixture(
+  count: number,
+  obstacles: number,
+  labels: "none" | "mixed" | "all",
+): GraphModel {
   const nodes = [
     { id: "source", order: 0, label: "wide", measuredWidth: 240, x: 0, y: 0 },
     ...Array.from({ length: obstacles }, (_, index) => ({
@@ -136,7 +164,9 @@ function fixture(count: number, obstacles: number): GraphModel {
       id: `loop${index}`,
       source: "source",
       target: "source",
-      label: index % 2 ? "long loop label" : "1",
+      ...(labels === "all" || (labels === "mixed" && index % 3 === 0)
+        ? { label: index % 2 ? "long loop label" : "1" }
+        : {}),
     })),
   };
 }

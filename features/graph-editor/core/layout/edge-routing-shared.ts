@@ -14,6 +14,8 @@ export type RoutingWork = {
     { curve: EdgeCurveGeometry; point: EdgeCurvePoint }
   >;
   labelSizes?: Map<EdgeId, { width: number; height: number }>;
+  /** Product tasks retain immutable edge labels; public helpers may not. */
+  stableLabels?: true;
 };
 export type ResolvedEdgeRoutingOptions = {
   avoidNodes: boolean;

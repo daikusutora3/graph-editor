@@ -5,19 +5,7 @@ import {
   type ParsedLine,
 } from "../io/import-utils";
 
-type MatrixEntry = { source: number; target: number; value: number };
-export type NumericImportMatrix = {
-  size: number;
-  isBinary: boolean;
-  isSymmetric: boolean;
-  hasZeroValue: boolean;
-  hasWeightedValue: boolean;
-  directedEdgeCount: number;
-  undirectedEdgeCount: number;
-} & (
-  | { entries: MatrixEntry[]; values?: undefined }
-  | { values: number[][]; entries?: undefined }
-);
+import type { NumericImportMatrix } from "../io/import-types";
 
 const encoder = new TextEncoder();
 const headerLength = 8;

@@ -20,7 +20,6 @@ import {
 import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/edge-routing";
 import { scoreLoopDirection } from "../../features/graph-editor/core/layout/edge-routing-loops";
 import {
-  scoreCurveCrossings,
   scoreCurveLabelOverlap,
   scoreCurveNodeAndShape,
 } from "../../features/graph-editor/core/layout/edge-routing-scoring";
@@ -55,21 +54,6 @@ const scenarios = [
         graph.nodes,
         opts,
       ).score,
-  },
-  {
-    name: "crossings, 160 curved obstacles",
-    repeats: 60,
-    run: (index: number) =>
-      scoreCurveCrossings(
-        edge,
-        graph.edges,
-        nodesById,
-        source,
-        target,
-        curves[index % curves.length]!,
-        opts,
-        new Map(),
-      ),
   },
   {
     name: "labels, 160 obstacles",

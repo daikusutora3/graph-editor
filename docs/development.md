@@ -46,8 +46,9 @@ only applies where that execution path actually exists.
 | A focused behavior change                   | Run the relevant file with `bun run tests/verification/<suite>.ts`                                                                 |
 | Type, lint, or formatting checks separately | `bun run typecheck`, `bun run typecheck:strict`, `bun run lint`, `bun run format:check`                                            |
 | All model/IO/state verification suites      | `bun run test`                                                                                                                     |
+| Native Rust kernels                         | `bun run test:rust` — offline, locked Cargo tests                                                                                  |
 | Integrated code validation                  | `bun run check` — both type checks, lint, formatting, repository policy, and verification suites                                   |
-| Public-build preparation                    | `bun run check:all` — integrated checks, static build, and release assertions                                                      |
+| Public-build preparation                    | `bun run check:all` — integrated checks, native Rust tests, static build, and release assertions                                   |
 | UI behavior or responsive styling           | Reproduce the affected interaction in the browser; use the [browser audits](../scripts/audit/README.md) for their covered surfaces |
 | Canvas recovery, fit, history, or bends     | Use the browser regression command below and the [consistency contracts](verification/editor-consistency.md)                       |
 
@@ -202,6 +203,12 @@ Numeric kernels and Worker execution are described in
 [Rust/Wasm computation](verification/rust-compute.md). Rebuild edited Rust with
 `bun run build:wasm`; ordinary builds verify the checked-in artifact with
 `bun run check:wasm` and do not require a Rust toolchain.
+
+`bun run test:rust` and `bun run check:all` also run native kernel tests.
+Install the pinned toolchain declared in
+[`rust-toolchain.toml`](../rust/graph-kernels/rust-toolchain.toml) first.
+Build and test scripts share toolchain selection: the repository's
+`.local-bin/rust` installation when present, otherwise Cargo on `PATH`.
 
 ```bash
 bun run build

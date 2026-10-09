@@ -118,7 +118,8 @@ export function useGraphStarterState({
   const applyText = (text = inputText) => {
     const parseKey = makeStarterParseKey(text, importOptions);
     const currentEvaluation =
-      parsedPreview?.key === parseKey
+      parsedPreview?.key.inputText === parseKey.inputText &&
+      parsedPreview.key.settings === parseKey.settings
         ? parsedPreview.evaluation
         : evaluateGraphInput(text, importOptions);
     const { analysis: currentAnalysis, result } = currentEvaluation;
@@ -162,14 +163,14 @@ export function useGraphStarterState({
 }
 
 type StarterParseResult = {
-  key: string;
+  key: ReturnType<typeof makeStarterParseKey>;
   evaluation: ImportEvaluation;
 };
 
 function makeStarterParseKey(inputText: string, options: ImportOptions) {
-  return JSON.stringify({
+  return {
     inputText,
-    settings: {
+    settings: JSON.stringify({
       allowMultiEdges: options.allowMultiEdges,
       allowSelfLoops: options.allowSelfLoops,
       arrowScale: options.arrowScale,
@@ -178,8 +179,9 @@ function makeStarterParseKey(inputText: string, options: ImportOptions) {
       format: options.format,
       indexBase: options.indexBase,
       snapToGrid: options.snapToGrid,
+      showNodeLabels: options.showNodeLabels,
       weighted: options.weighted,
       weightKind: options.weightKind,
-    },
-  });
+    } satisfies Record<keyof ImportOptions, unknown>),
+  };
 }

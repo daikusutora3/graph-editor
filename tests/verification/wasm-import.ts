@@ -4,10 +4,8 @@ import {
   initializeRustKernelFromBytes,
   withRustKernelSuppressed,
 } from "../../features/graph-editor/compute/rust-kernel";
-import {
-  readRustNumericMatrix,
-  type NumericImportMatrix,
-} from "../../features/graph-editor/compute/wasm-import";
+import { readRustNumericMatrix } from "../../features/graph-editor/compute/wasm-import";
+import type { NumericImportMatrix } from "../../features/graph-editor/io/import-types";
 import { evaluateGraphInput } from "../../features/graph-editor/io/import-graph";
 import { createImportSource } from "../../features/graph-editor/io/import-source";
 import {

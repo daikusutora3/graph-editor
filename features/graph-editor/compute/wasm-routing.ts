@@ -165,10 +165,16 @@ export function scoreRustCurveNodeAndShape(
   clearance: number,
 ) {
   if (!getRustKernelReady()) return null;
+  if (
+    !canRustCountCurveNodeCollisions(curve, source, target) ||
+    !boundedCollisionCoordinate(clearance)
+  )
+    return null;
   const snapshot = nodeSnapshot(nodes);
   // Models validate unique IDs. Preserve the public helper's exclusion rules
   // for callers that supply a temporary invalid array with duplicate IDs.
-  if (snapshot.indexes.size !== nodes.length) return null;
+  if (!snapshot.collisionBounded || snapshot.indexes.size !== nodes.length)
+    return null;
   const result = runRustKernel(
     "routing_node_shape",
     [snapshot.data, packCurve(curve)],
@@ -240,33 +246,6 @@ export function countRustCurveNodeCollisions(
     : null;
 }
 
-export function scoreRustCurveCrossings(
-  curve: EdgeCurveGeometry,
-  source: EdgeCurvePoint,
-  target: EdgeCurvePoint,
-  otherSamples: readonly EdgeCurvePoint[][],
-) {
-  if (!getRustKernelReady()) return null;
-  const data = new Float64Array(
-    otherSamples.reduce((length, points) => length + 1 + points.length * 2, 0),
-  );
-  let cursor = 0;
-  for (const points of otherSamples) {
-    data[cursor++] = points.length;
-    for (const point of points) {
-      data[cursor++] = point.x;
-      data[cursor++] = point.y;
-    }
-  }
-  const result = runRustKernel(
-    "routing_crossings",
-    [packCurve(curve), data],
-    1,
-    [data.length, source.x, source.y, target.x, target.y],
-  );
-  return result?.[0] ?? null;
-}
-
 export type RoutingLabelObstacle = {
   anchor: EdgeCurvePoint;
   size: { width: number; height: number };
@@ -312,6 +291,15 @@ export function scoreRustLoopObstacles(
   pillNodes: boolean,
 ) {
   if (!getRustKernelReady()) return null;
+  if (
+    !boundedCollisionCoordinate(clearance) ||
+    !points.every(
+      (point) =>
+        boundedCollisionCoordinate(point.x) &&
+        boundedCollisionCoordinate(point.y),
+    )
+  )
+    return null;
   // A Wasm call pays for copying every input/output even when almost all nodes
   // fail the cheap bounds check. Sample only to choose the backend: Rust/JS
   // still run the complete bounds test and use every obstacle for the result.
@@ -337,9 +325,11 @@ export function scoreRustLoopObstacles(
     data[index * 2] = point.x;
     data[index * 2 + 1] = point.y;
   });
-  return runRustKernel(
+  const snapshot = nodeSnapshot(nodes);
+  if (!snapshot.collisionBounded) return null;
+  const result = runRustKernel(
     "routing_loop_obstacles",
-    [nodeSnapshot(nodes).data, data],
+    [snapshot.data, data],
     nodes.length * 3,
     [
       nodes.length,
@@ -352,4 +342,7 @@ export function scoreRustLoopObstacles(
       pillNodes ? 1 : 0,
     ],
   );
+  // The first collision slot is a batch-wide sentinel for a strict threshold
+  // tie. Keep JS's Math.hypot result and its original generator work trace.
+  return result?.[2] === -1 ? null : result;
 }

@@ -200,7 +200,7 @@ def routing_snapshot(session):
         if (!cy || !graph || cy.nodes().length !== 7 || cy.edges().length !== 6) return null;
         return {
             settings: graph.settings,
-            routingCompletedAt: performance.getEntriesByName('graph-compute:routing:wasm').at(-1)?.startTime ?? null,
+            routingCompletedAt: performance.getEntriesByName('graph-compute:routing:worker').at(-1)?.startTime ?? null,
             nodes: graph.nodes.map(({id, x, y}) => ({id, x, y})),
             edges: cy.edges().map(e => ({
                 id: e.id(), source: e.data('source'), target: e.data('target'),
@@ -878,8 +878,15 @@ def run_rust_compute_review(session):
     def saved():
         return session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
 
-    def mark(kind):
-        return session.wait("return performance.getEntriesByName(arguments[0]).length".replace("arguments[0]", json.dumps(f"graph-compute:{kind}:wasm")), timeout=30)
+    def mark(kind, kernel=None):
+        # Worker completion also covers deliberately selected JS paths. Rust
+        # scenarios require evidence from the exact numerical operation.
+        suffix = f"wasm:{kernel}" if kernel else ("wasm" if kind == "import" else "worker")
+        name = json.dumps(f"graph-compute:{kind}:{suffix}")
+        condition = f"return performance.getEntriesByName({name}).at(-1)"
+        if kernel:
+            condition += "?.detail?.calls > 0"
+        return session.wait(condition, timeout=30)
 
     # Start with an empty graph so input-time loading, rather than canvas
     # routing, makes the Rust integer scanner available before the preview.
@@ -920,7 +927,7 @@ def run_rust_compute_review(session):
     session.js("window.__rustFrames=0;window.__rustFrameActive=true;const tick=()=>{if(window.__rustFrameActive){window.__rustFrames++;requestAnimationFrame(tick)}};requestAnimationFrame(tick);")
     started = time.monotonic()
     session.click(session.button("Auto layout: Force-directed"))
-    mark("layout")
+    mark("layout", "force_layout")
     session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return g.nodes.some(n=>n.y!==0)")
     laid_out = saved()
     frame_count = session.js("window.__rustFrameActive=false;return window.__rustFrames")
@@ -960,7 +967,7 @@ def run_rust_compute_review(session):
     baseline = saved()
     session.open_panel("Layout", "layouts")
     session.click(session.button("Resolve overlap: Move nodes apart"))
-    mark("overlap")
+    mark("overlap", "resolve_overlaps")
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.some(n=>n.y!==0)")
     separated = saved()
     assert all(n["x"] % 24 == 0 and n["y"] % 24 == 0 for n in separated["nodes"])
@@ -1017,14 +1024,14 @@ def run_rust_compute_review(session):
     mark("routing")
     session.wait(RANGE_CY + "return cy.getElementById('ab').data('bow')===0")
     baseline = saved()
-    start = session.js(RANGE_CY + "cy.zoom(1);cy.pan({x:container.clientWidth/2,y:400});const p=cy.getElementById('c').renderedPosition(),r=container.getBoundingClientRect();performance.clearMarks('graph-compute:routing:wasm');return {x:p.x+r.x,y:p.y+r.y};")
+    start = session.js(RANGE_CY + "cy.zoom(1);cy.pan({x:container.clientWidth/2,y:400});const p=cy.getElementById('c').renderedPosition(),r=container.getBoundingClientRect();performance.clearMarks('graph-compute:routing:worker');performance.clearMarks('graph-compute:routing:wasm:routing_node_shape');return {x:p.x+r.x,y:p.y+r.y};")
     session.wait("return !document.querySelector('.ge-select-node-hitbox')?.closest('[inert]')")
     session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
         {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(start["x"]), "y": round(start["y"])},
         {"type": "pointerDown", "button": 0},
         {"type": "pointerMove", "duration": 400, "origin": "pointer", "x": 0, "y": -180}]}]})
     session.wait(RANGE_CY + "return cy.getElementById('c').position('y')===0&&Math.abs(cy.getElementById('ab').data('bow'))>0")
-    mark("routing")
+    mark("routing", "routing_node_shape")
     assert saved() == baseline, "Worker routing during drag must not persist the preview"
     def curve_gap():
         return session.js(RANGE_CY + """
@@ -1077,7 +1084,7 @@ def run_rust_compute_review(session):
                           + [{"id": f"far{i}", "label": str(i), "order": i + 3,
                               "x": 10000 + i * 120, "y": 10000} for i in range(61)]}
     load(projected)
-    mark("routing")
+    mark("routing", "routing_projected_obstacles")
     projected_saved = saved()
     assert len(projected_saved["nodes"]) == 64
     session.wait(RANGE_CY + "return Math.abs(cy.getElementById('ab').data('bow'))>0")
@@ -1088,7 +1095,7 @@ def run_rust_compute_review(session):
     session.screenshot("rust-projected-wide-obstacle-64")
     session.command("POST", "/refresh", {})
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
-    mark("routing")
+    mark("routing", "routing_projected_obstacles")
     assert session.js(RANGE_CY + "return {distances:cy.getElementById('ab').data('controlPointDistances'),weights:cy.getElementById('ab').data('controlPointWeights')};") == projected_route
     assert saved() == projected_saved, "Automatic projection must not persist routing geometry"
     results.append({"scenario": "routing-projected-wide-obstacle-64", "status": "passed",

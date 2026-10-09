@@ -54,7 +54,64 @@ expect(
   fixtures === referenceContracts.length,
   "all recorded baseline fixtures must run",
 );
-console.log(JSON.stringify({ fixtures }));
+let stableFixtures = 0;
+for (const count of [2, 8, 128, 512]) {
+  for (const labels of ["none", "mixed", "all"] as const) {
+    const graph = immutableFixture(count, labels);
+    const legacy = drain(structuredClone(graph));
+    const stable = drain(graph, undefined, true, true);
+    expect(
+      JSON.stringify(stable.routes) === JSON.stringify(legacy.routes) &&
+        stable.units === legacy.units,
+      `${labels} ${count}: stable labels retain ordered routes, statuses and work units`,
+    );
+    verifyScheduling(stable, `${labels} ${count}`);
+    stableFixtures++;
+  }
+}
+for (const count of [2000, 2001, 5000]) {
+  const graph = immutableFixture(count, "none");
+  const stable = drain(graph, undefined, true, true);
+  const pairUnits = count * count <= 4_000_000 ? (count * (count - 1)) / 2 : 0;
+  expect(
+    stable.units === 1 + 24 * (2 * count + pairUnits),
+    `unlabeled ${count}: retain the original pair-budget threshold and accounting`,
+  );
+  expect(
+    stable.trace.length < count * 64,
+    `unlabeled ${count}: no per-pair generator expansion`,
+  );
+  verifyScheduling(stable, `unlabeled ${count}`);
+  stableFixtures++;
+}
+const cancellable = immutableFixture(2000, "none");
+const cancellationOptions = makeOptions();
+cancellationOptions.work.stableLabels = true;
+const cancellationTask = createLoopGroupRoutingTask(
+  cancellable.source,
+  cancellable.nodes,
+  cancellable.edges,
+  cancellationOptions,
+);
+let cancellationStep = cancellationTask.next();
+while (!cancellationStep.done && cancellationOptions.work.units < 25_000)
+  cancellationStep = cancellationTask.next();
+expect(
+  !cancellationStep.done,
+  "the large group remains cancellable at the budget",
+);
+expect(
+  cancellationOptions.work.units <= 25_000 + 4096,
+  "a synchronous budget checkpoint cannot charge an entire group at once",
+);
+cancellationTask.return(new Map());
+const stoppedUnits = cancellationOptions.work.units;
+expect(
+  cancellationTask.next().done === true &&
+    cancellationOptions.work.units === stoppedUnits,
+  "cancelled loop work never resumes",
+);
+console.log(JSON.stringify({ fixtures, stableFixtures }));
 finish();
 
 /** Fixed hashes were recorded from the saved pre-change source and kernel,
@@ -84,6 +141,15 @@ function compare(
       JSON.stringify(graph) === saved,
       `${context}: no persistent graph mutation`,
     );
+  if (!mutate) {
+    const stable = drain(structuredClone(graph), undefined, cacheLabels, true);
+    expect(
+      JSON.stringify(stable.routes) === JSON.stringify(actual.routes) &&
+        stable.units === actual.units,
+      `${context}: immutable-label scheduling retains results and accounting`,
+    );
+    verifyScheduling(stable, context);
+  }
   fixtures++;
 }
 
@@ -94,9 +160,11 @@ function drain(
   graph: ReturnType<typeof fixture>,
   mutate?: "width" | "label",
   cacheLabels = true,
+  stableLabels = false,
 ) {
   const options = makeOptions();
   if (!cacheLabels) delete options.work.labelSizes;
+  if (stableLabels) options.work.stableLabels = true;
   const task = createLoopGroupRoutingTask(
     graph.source,
     graph.nodes,
@@ -119,6 +187,28 @@ function drain(
     step = task.next();
   }
   return { routes: [...step.value], trace, units: options.work.units };
+}
+
+function verifyScheduling(result: ReturnType<typeof drain>, context: string) {
+  const units = [0, ...result.trace, result.units];
+  expect(
+    units.every(
+      (value, index) =>
+        index === 0 ||
+        (value >= units[index - 1]! && value - units[index - 1]! <= 4096),
+    ),
+    `${context}: work advances monotonically in bounded resumable chunks`,
+  );
+}
+
+function immutableFixture(count: number, labels: "none" | "mixed" | "all") {
+  const graph = fixture(count, true, true, false);
+  for (const [index, edge] of graph.edges.entries())
+    if (labels === "none" || (labels === "mixed" && index % 3 !== 0)) {
+      delete edge.label;
+      delete edge.weight;
+    }
+  return graph;
 }
 
 function fixture(

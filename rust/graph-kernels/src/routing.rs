@@ -505,69 +505,6 @@ pub unsafe extern "C" fn routing_node_collisions(
     out[2] = if needs_js && units > 0.0 { 1.0 } else { 0.0 };
 }
 
-fn segments_intersect(a: Point, b: Point, c: Point, d: Point) -> bool {
-    let abx = b.x - a.x;
-    let aby = b.y - a.y;
-    let cdx = d.x - c.x;
-    let cdy = d.y - c.y;
-    let denominator = abx * cdy - aby * cdx;
-    if denominator.abs() < 0.001 {
-        return false;
-    }
-    let acx = c.x - a.x;
-    let acy = c.y - a.y;
-    let along_ab = (acx * cdy - acy * cdx) / denominator;
-    let along_cd = (acx * aby - acy * abx) / denominator;
-    along_ab >= -1e-9 && along_ab <= 1.0 + 1e-9 && along_cd >= -1e-9 && along_cd <= 1.0 + 1e-9
-}
-
-/// other samples = [point_count,x,y,...] repeated for each already-pruned edge.
-#[no_mangle]
-pub unsafe extern "C" fn routing_crossings(
-    curve_ptr: *const f64,
-    other_ptr: *const f64,
-    output_ptr: *mut f64,
-    other_len: usize,
-    sx: f64,
-    sy: f64,
-    tx: f64,
-    ty: f64,
-) {
-    let curve = Curve::from_ptr(curve_ptr);
-    let source = Point { x: sx, y: sy };
-    let target = Point { x: tx, y: ty };
-    let points = samples(&curve.segments(source, target), source, target, 8);
-    let others = slice::from_raw_parts(other_ptr, other_len);
-    let mut cursor = 0;
-    let mut score = 0.0;
-    while cursor < others.len() {
-        let count = others[cursor] as usize;
-        cursor += 1;
-        let data = &others[cursor..cursor + count * 2];
-        let crossed = points.windows(2).any(|pair| {
-            (1..count).any(|i| {
-                segments_intersect(
-                    pair[0],
-                    pair[1],
-                    Point {
-                        x: data[(i - 1) * 2],
-                        y: data[(i - 1) * 2 + 1],
-                    },
-                    Point {
-                        x: data[i * 2],
-                        y: data[i * 2 + 1],
-                    },
-                )
-            })
-        });
-        if crossed {
-            score += 500.0;
-        }
-        cursor += count * 2;
-    }
-    *output_ptr = score;
-}
-
 /// labels = [anchor_x,anchor_y,width,height]*N.
 #[no_mangle]
 pub unsafe extern "C" fn routing_label_overlap(
@@ -602,6 +539,12 @@ pub unsafe extern "C" fn routing_label_overlap(
 /// the existing generator consumes results at its original yield boundaries.
 /// output = [overlap_score,work_units,collision_count]*N, preserving JS's sum
 /// order and generator work accounting even when each chunk is computed ahead.
+/// A -1 in the first collision slot requests the JS reference for the entire
+/// batch when hypot rounding could change a strict clearance comparison.
+/// # Safety
+/// The caller supplies separate live buffers for node_count triples,
+/// point_count pairs and node_count output triples. The host bounds numerical
+/// inputs to avoid overflow in the clearance comparison and rounding guard.
 #[no_mangle]
 pub unsafe extern "C" fn routing_loop_obstacles(
     nodes_ptr: *const f64,
@@ -619,6 +562,10 @@ pub unsafe extern "C" fn routing_loop_obstacles(
     let nodes = slice::from_raw_parts(nodes_ptr, node_count * 3);
     let points = slice::from_raw_parts(points_ptr, point_count * 2);
     let out = slice::from_raw_parts_mut(output_ptr, node_count * 3);
+    let point_scale = points
+        .iter()
+        .fold(1.0_f64, |scale, coordinate| scale.max(coordinate.abs()));
+    let mut needs_js = false;
     for (index, node) in nodes.chunks_exact(3).enumerate() {
         let mut score = 0.0;
         let mut units = 0.0;
@@ -632,7 +579,15 @@ pub unsafe extern "C" fn routing_loop_obstacles(
             } else {
                 0.0
             };
-            let mut distance = f64::INFINITY;
+            let scale = point_scale
+                .max(node[0].abs())
+                .max(node[1].abs())
+                .max(span)
+                .max(clearance.abs());
+            let tolerance = 1e-7_f64.max(f64::EPSILON * scale * 32.0);
+            // Only distances below clearance contribute a score or collision.
+            // Retain a wider band for the strict-threshold rounding fallback.
+            let mut distance = clearance + tolerance * 2.0;
             for point in points.chunks_exact(2) {
                 units += 1.0;
                 let dx = if pill_nodes != 0 {
@@ -640,8 +595,14 @@ pub unsafe extern "C" fn routing_loop_obstacles(
                 } else {
                     node[0] - point[0]
                 };
-                distance = distance.min(hypot(dx, node[1] - point[1]));
+                let dy = node[1] - point[1];
+                // L-infinity is a conservative lower bound on the exact norm.
+                // Still count every original sample, including rejected ones.
+                if dx.abs().max(dy.abs()) <= distance + tolerance {
+                    distance = distance.min(hypot(dx, dy));
+                }
             }
+            needs_js |= (distance - clearance).abs() <= tolerance;
             let overlap = (clearance - distance).max(0.0);
             score = overlap * overlap;
             if distance < clearance {
@@ -651,6 +612,9 @@ pub unsafe extern "C" fn routing_loop_obstacles(
         out[index * 3] = score;
         out[index * 3 + 1] = units;
         out[index * 3 + 2] = collisions;
+    }
+    if needs_js && node_count > 0 {
+        out[2] = -1.0;
     }
 }
 
@@ -1025,5 +989,116 @@ mod collision_tests {
             );
         }
         assert_eq!(out, [0.0, 1.0, 0.0]);
+    }
+}
+
+#[cfg(test)]
+mod loop_tests {
+    use super::{hypot, routing_loop_obstacles};
+
+    fn reference(nodes: &[f64], points: &[f64], clearance: f64, pill: bool) -> Vec<f64> {
+        let mut output = vec![0.0; nodes.len()];
+        for (index, node) in nodes.chunks_exact(3).enumerate() {
+            let span = if pill { (node[2] - 24.0).max(0.0) } else { 0.0 };
+            let mut distance = f64::INFINITY;
+            for point in points.chunks_exact(2) {
+                let dx = if pill {
+                    ((point[0] - node[0]).abs() - span).max(0.0)
+                } else {
+                    node[0] - point[0]
+                };
+                distance = distance.min(hypot(dx, node[1] - point[1]));
+            }
+            output[index * 3] = (clearance - distance).max(0.0).powi(2);
+            output[index * 3 + 1] = (points.len() / 2 + usize::from(!pill)) as f64;
+            output[index * 3 + 2] = (distance < clearance) as u8 as f64;
+        }
+        output
+    }
+
+    fn run(nodes: &[f64], points: &[f64], clearance: f64, pill: bool) -> Vec<f64> {
+        let mut output = vec![0.0; nodes.len()];
+        unsafe {
+            routing_loop_obstacles(
+                nodes.as_ptr(),
+                points.as_ptr(),
+                output.as_mut_ptr(),
+                nodes.len() / 3,
+                points.len() / 2,
+                clearance,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+                f64::INFINITY,
+                f64::INFINITY,
+                u32::from(pill),
+            );
+        }
+        output
+    }
+
+    #[test]
+    fn bounded_rejection_preserves_scores_counts_and_every_sample_unit() {
+        let mut state = 1847_u64;
+        let mut random = || {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            (state >> 11) as f64 / (1_u64 << 53) as f64
+        };
+        for shift in [0.0, -1e9, 1e12] {
+            for fixture in 0..40 {
+                let nodes: Vec<f64> = (0..32)
+                    .flat_map(|index| {
+                        [
+                            shift + random() * 500.0 - 250.0,
+                            shift + random() * 500.0 - 250.0,
+                            if index % 2 == 0 {
+                                24.0
+                            } else {
+                                24.0 + random() * 100.0
+                            },
+                        ]
+                    })
+                    .collect();
+                let points: Vec<f64> = (0..18)
+                    .flat_map(|_| {
+                        [
+                            shift + random() * 140.0 - 70.0,
+                            shift + random() * 140.0 - 70.0,
+                        ]
+                    })
+                    .collect();
+                for pill in [false, true] {
+                    let clearance = if fixture % 2 == 0 { 30.0 } else { 42.0 };
+                    let mut actual = run(&nodes, &points, clearance, pill);
+                    let expected = reference(&nodes, &points, clearance, pill);
+                    if actual[2] == -1.0 {
+                        actual[2] = expected[2];
+                    }
+                    assert_eq!(
+                        actual, expected,
+                        "shift={shift}, fixture={fixture}, pill={pill}"
+                    );
+                }
+            }
+        }
+        for points in [&[][..], &[1000.0, 1000.0][..]] {
+            let nodes = [0.0, 0.0, 24.0];
+            assert_eq!(
+                run(&nodes, points, 30.0, true),
+                reference(&nodes, points, 30.0, true)
+            );
+        }
+    }
+
+    #[test]
+    fn strict_threshold_rounding_requests_the_js_batch_reference() {
+        let points = [0.0, 0.0];
+        for y in [0.0, 2.785979953862811] {
+            let x = if y == 0.0 { 30.0 } else { 29.870358479547487 };
+            let output = run(&[x, y, 24.0], &points, 30.0, true);
+            assert_eq!(output[2], -1.0);
+            assert_eq!(output[1], 1.0);
+        }
+        assert_eq!(run(&[29.99, 0.0, 24.0], &points, 30.0, true)[2], 1.0);
+        assert_eq!(run(&[30.01, 0.0, 24.0], &points, 30.0, true)[2], 0.0);
     }
 }

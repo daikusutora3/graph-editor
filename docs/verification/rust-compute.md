@@ -372,8 +372,9 @@ a maximum observed slice of about 4.014ms; total latency and uninterrupted CPU
 time are distinct measurements.
 
 The 600-vertex TikZ case has a loop at each separate vertex. A second profile
-uses exactly the export's `simple` mode, rather than mixing it with `quality`
-routing, and collects 7,738 samples. Routing is 95.21% inclusive; the existing
+uses the export's `quality` mode (`autoEdgeRouting: true` in the fixture),
+and collects 7,738 samples. The earlier description of this profile as `simple`
+was incorrect. Routing is 95.21% inclusive; the existing
 `routing_loop_obstacles` Wasm operation is 51.84% self time, and generator
 resumption is 16.94%. The TikZ generator itself is 0.14% self time. Moving TeX
 formatting to Rust would not address the dominant cost. This case also supports
@@ -550,3 +551,143 @@ Final matrix results are recorded in
 `/tmp/graph-editor-rust-phase4-loop-preparation.json`. Cloudflare configuration
 is unchanged. Production deployment is outside this local performance
 verification.
+
+## System cleanup and self-loop improvements (2026-10-09–10)
+
+The saved baseline is `b4884d3`, with its matching `b0f4c21baceed2ce` Wasm.
+The final asset is `/wasm/graph-kernels.0a6aa1ac2de4a8aa.wasm`, 64,335 bytes;
+source hash is `bdf3f749429edb15c57887a85d3e6dbee97493396de55e022561682af4fd59a9`.
+ABI version and buffer lengths remain unchanged. The original temporary
+build differs only in three panic source-line bytes after Safety comments
+were added; the measurements below were rerun with the final public asset.
+
+### Behavior and organization
+
+- At the strict 30px self-loop collision boundary, Rust's scaled norm can round
+  differently from `Math.hypot`. The loop kernel now marks a batch for the JS
+  reference inside a conservative threshold band. A valid 17-node/2-loop model
+  that previously differed (`ready` versus `unresolved`) now agrees. Candidate
+  scoring and loop adapters also use bounded numeric gates; extreme finite
+  coordinates retain the existing JS semantics.
+- Product routing copies display labels before marking them stable. Groups of
+  eight or more compare only visible-label pairs, in the original order. Real
+  comparisons yield every 64 pairs; skipped budget charges yield at most every
+  4,096 units. Total legacy work accounting, statuses, the 4,000,000-pair gate,
+  and cancellation are retained. Public group helpers keep the original
+  per-pair reads/yields for labels that can change while suspended. Empty
+  obstacle groups no longer generate unused sample points.
+- Rust loop obstacle scoring rejects samples using a conservative distance
+  lower bound before calculating a norm. Every original sample still counts
+  toward work units; threshold ties fall back to JS.
+- Worker success records `graph-compute:<kind>:worker`. A `:wasm` or
+  `:wasm:<kernel>` mark requires successful numerical calls, with per-job call
+  counts. It proves dispatch, including a call whose adapter later chooses
+  JS for a boundary tie; it does not claim the result came entirely from Rust.
+  Concurrent yielding jobs keep separate collectors, and JS-only completions
+  clear older Rust marks. Earlier generic Worker marks alone did not establish
+  actual Rust execution.
+- A transient Worker failure falls back immediately. A later request can
+  recreate the Worker after one second, then two seconds. Three consecutive
+  failures stop retries for that page; success resets the count. ABI/module
+  incompatibility, computation errors and permanent transport errors do not
+  retry. Cancellation, pending cleanup and stale Worker rejection remain.
+- Removed unused crossing/instability scoring and the unused loop-group
+  direction helper. Dense and sparse matrix imports share edge construction;
+  the matrix type belongs to IO. Paste-cache keys compare the retained input
+  string and a small settings signature, including node-label visibility,
+  rather than serializing the full input again. Rust build and test scripts
+  share toolchain selection, and `check:all` now includes native Rust tests.
+
+### Matched CPU measurements
+
+macOS arm64/Bun, loaded Wasm, alternating backend order. These are computation
+costs, excluding downloads, DOM rendering, Worker transfer and browser event
+latency. Routing uses `quality` mode. Loop tasks are drained with the same 4ms
+clock checks; 10 passes discard three warmups. All 17 workloads retain identical
+ordered route/status hashes. Mutable helper fixtures also retain their full
+old work/yield traces; optimized scheduling is tested separately.
+
+| Self-loop workload, no surrounding obstacles | Before ms | After ms | Speedup |
+| -------------------------------------------- | --------: | -------: | ------: |
+| 128, no labels                               |     19.58 |     2.06 |   9.51x |
+| 512, no labels                               |    199.38 |     8.45 |  23.61x |
+| 2000, no labels                              |   3073.76 |    28.19 | 109.02x |
+| 128, labeled                                 |     15.28 |     5.87 |   2.60x |
+| 512, labeled                                 |    267.97 |    59.12 |   4.53x |
+| 2000, labeled                                |   3848.69 |   812.55 |   4.74x |
+| 512, mixed labels                            |    225.60 |    13.79 |  16.35x |
+
+For 2000 unlabeled loops, generator steps fall from 48,079,565 to 115,301;
+the median maximum slice is 4.149ms after the change. For labeled loops, steps
+fall to 853,205 and the median maximum slice is 4.054ms. Four milliseconds is a
+scheduling target, not a hard wall-time guarantee. The 2001-loop model retains
+the original pair-gate behavior and improves 34.67ms to 23.62ms. Tiny two-loop
+workloads retain the original pair path; their sub-millisecond results vary
+by a few hundredths of a millisecond.
+
+Eight matched Rust loop adapter fixtures retain identical score/collision/unit
+hashes, including snapshot validation, allocation, copies and free. They are
+1.29–1.67x faster. For 1000 circular obstacles and 18 pill-loop samples,
+62.39µs becomes 37.40µs. Circle-direction cases use the actual seven samples
+and 42px clearance, rather than the earlier generic 18-sample workload.
+
+The valid compact 600-node graph with long labels and one loop per vertex
+exports identical 217,128-character TikZ in 965.40ms before and 768.45ms after
+(1.26x). This is synchronous CPU work, with 12 alternating passes and five
+warmups removed; its default `autoEdgeRouting: true` selects `quality` mode.
+
+Five ordinary-routing workloads retain their hashes, with effectively
+unchanged times: sparse 1000/400 is 6.74→6.62ms, dense 150/220 is 79.11→78.92ms,
+and parallel 100/300 is 49.23→49.97ms. The matrix cleanup also retains output
+hashes with no material regression in sparse/weighted 700-row and decimal
+300-row fixtures. The extracted paste-cache helper retains matching semantics
+for empty, multiline, escaped/Unicode and large input. At two million
+characters, key construction falls from 1.12ms to about 0.00025ms; this excludes
+parsing and React rendering and is not an end-to-end paste speedup.
+
+Results: `/tmp/graph-editor-phase5-loop-public-final.json`,
+`/tmp/graph-editor-phase5-loop-obstacles-final.jsonl`,
+`/tmp/graph-editor-phase5-routing-final.jsonl`,
+`/tmp/graph-editor-phase5-import-cleanup.jsonl`,
+`/tmp/graph-editor-phase5-import-cache.jsonl`,
+`/tmp/graph-editor-phase5-tikz-final.json`.
+
+```sh
+bun run benchmark:loop-preparation --baseline-root /path/to/before --output /tmp/loops.json
+bun run benchmark:wasm-loop-obstacles --baseline-root /path/to/before
+bun run benchmark:wasm-routing-optimizations --baseline-root /path/to/before
+```
+
+### Verification
+
+Both TypeScript configurations, lint, formatting, the 46-check Issue policy
+self-test and all 34 verification suites passed with the final public Wasm.
+Loop verification covers 34 legacy full traces plus 15 stable-label fixtures,
+including true unlabeled/mixed/labeled input, 2000/2001/5000 boundaries,
+4,096-unit progress and budget cancellation. Native Rust's 18 tests passed,
+including threshold fallback and reference score/count/unit equivalence.
+The production build and release verification passed. The initial sandboxed
+build could not bind the CSS evaluation port; its generated Turbopack cache
+was preserved in `/tmp` and the build succeeded outside that restriction.
+
+Installed Safari 26.6 passed all 40 scenarios on the final production export
+at `http://127.0.0.1:3323`. The runner's 13 URL policy checks ran before its
+isolated WebDriver session, and the session/driver closed afterward. This was
+an expert review, not observation of a first-time participant.
+
+The eight compute scenarios passed: integer 128-row preview/Apply/Undo/Redo/
+reload; force-200; superseded layout cancellation; overlap-80; 10 self-loops;
+32 wide labeled self-loops/reload; native obstacle drag with preview-only
+persistence and Undo/Redo; and measured wide-obstacle projection/reload with
+64 nodes. Force, overlap, native drag and projection verify their specific
+kernel names and positive call counts. The small self-loop cases verify
+Worker completion and rendering without claiming a Rust obstacle dispatch.
+The final rendered obstacle gap was 12.697px after drag/Redo and 25.093px for
+the wide projection case. Their screenshots were also inspected.
+
+The remaining scenarios cover multi-selection, range controls, routing
+regressions, three locales, light/dark themes, and desktop viewport widths
+600/960/1440. Native file downloads are not verified; generated JSON is saved
+by the runner. Results and screenshots are in `/tmp/graph-editor-safari-review`,
+including `results.json` and `rust-compute-results.json`. Cloudflare settings
+are unchanged; these are local checks, not production deployment evidence.

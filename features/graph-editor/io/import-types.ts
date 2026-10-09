@@ -1,5 +1,19 @@
 import type { GraphModel } from "../core/graph/model";
 
+type MatrixEntry = { source: number; target: number; value: number };
+export type NumericImportMatrix = {
+  size: number;
+  isBinary: boolean;
+  isSymmetric: boolean;
+  hasZeroValue: boolean;
+  hasWeightedValue: boolean;
+  directedEdgeCount: number;
+  undirectedEdgeCount: number;
+} & (
+  | { entries: MatrixEntry[]; values?: undefined }
+  | { values: number[][]; entries?: undefined }
+);
+
 export type ImportFormatKind =
   | "contest-edge-list"
   | "tree-edge-list"

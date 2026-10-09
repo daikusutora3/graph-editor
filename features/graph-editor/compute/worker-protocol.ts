@@ -10,6 +10,7 @@ import type {
 } from "../core/layout/edge-routing";
 import type { LayoutKind } from "../layouts/manual-layouts";
 import type { OverlapResult } from "../layouts/resolve-node-overlaps";
+import type { RustKernelCalls } from "./rust-kernel";
 
 export type ComputeJob =
   | {
@@ -34,4 +35,5 @@ export type ComputeValue =
 export type ComputeRequest =
   { id: number; job: ComputeJob } | { cancel: number };
 export type ComputeResponse =
-  { id: number; result: ComputeValue } | { id: number; error: string };
+  | { id: number; result: ComputeValue; kernels: RustKernelCalls }
+  | { id: number; error: string; failure: "transient" | "permanent" };

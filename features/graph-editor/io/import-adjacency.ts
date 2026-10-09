@@ -99,22 +99,28 @@ export function tryImportAdjacencyMatrix(
   );
   arrangeNodes(model);
 
+  const addMatrixEdge = (
+    sourceIndex: number,
+    targetIndex: number,
+    value: number,
+  ) => {
+    if (!settings.directed && targetIndex < sourceIndex) return;
+    const sourceNode = model.nodes[sourceIndex];
+    const targetNode = model.nodes[targetIndex];
+    if (!sourceNode || !targetNode) return;
+    model.edges.push(
+      createEdge({
+        id: `e${model.edges.length}`,
+        source: sourceNode.id,
+        target: targetNode.id,
+        weight: settings.weighted ? String(value) : undefined,
+      }),
+    );
+  };
   if (matrix.values) {
     matrix.values.forEach((row, sourceIndex) => {
       row.forEach((value, targetIndex) => {
-        if (value === 0) return;
-        if (!settings.directed && targetIndex < sourceIndex) return;
-        const sourceNode = model.nodes[sourceIndex];
-        const targetNode = model.nodes[targetIndex];
-        if (!sourceNode || !targetNode) return;
-        model.edges.push(
-          createEdge({
-            id: `e${model.edges.length}`,
-            source: sourceNode.id,
-            target: targetNode.id,
-            weight: settings.weighted ? String(value) : undefined,
-          }),
-        );
+        if (value !== 0) addMatrixEdge(sourceIndex, targetIndex, value);
       });
     });
   } else {
@@ -122,20 +128,8 @@ export function tryImportAdjacencyMatrix(
       source: sourceIndex,
       target: targetIndex,
       value,
-    } of matrix.entries) {
-      if (!settings.directed && targetIndex < sourceIndex) continue;
-      const sourceNode = model.nodes[sourceIndex];
-      const targetNode = model.nodes[targetIndex];
-      if (!sourceNode || !targetNode) continue;
-      model.edges.push(
-        createEdge({
-          id: `e${model.edges.length}`,
-          source: sourceNode.id,
-          target: targetNode.id,
-          weight: settings.weighted ? String(value) : undefined,
-        }),
-      );
-    }
+    } of matrix.entries)
+      addMatrixEdge(sourceIndex, targetIndex, value);
   }
 
   return {

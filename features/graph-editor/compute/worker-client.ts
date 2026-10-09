@@ -19,8 +19,29 @@ type Pending = {
 };
 let worker: Worker | null = null;
 let unavailable = false;
+let consecutiveFailures = 0;
+let retryAfter = 0;
+const MAX_CONSECUTIVE_FAILURES = 3;
+const RETRY_COOLDOWN_MS = 1000;
 let nextId = 0;
 const pending = new Map<number, Pending>();
+const markedKernels = new Map<ComputeJob["kind"], string[]>();
+
+function failWorker(permanent = false) {
+  consecutiveFailures++;
+  unavailable = permanent || consecutiveFailures >= MAX_CONSECUTIVE_FAILURES;
+  retryAfter = performance.now() + RETRY_COOLDOWN_MS * consecutiveFailures;
+  stopWorker();
+}
+
+function permanentTransportError(error: unknown) {
+  return (
+    error instanceof DOMException &&
+    ["SecurityError", "NotSupportedError", "DataCloneError"].includes(
+      error.name,
+    )
+  );
+}
 
 function stopWorker() {
   if (typeof window !== "undefined")
@@ -37,6 +58,7 @@ function stopWorker() {
 function getWorker() {
   if (
     unavailable ||
+    performance.now() < retryAfter ||
     typeof window === "undefined" ||
     typeof Worker === "undefined"
   )
@@ -56,24 +78,43 @@ function getWorker() {
         pending.delete(response.id);
         request.cleanup();
         if ("error" in response) {
-          unavailable = true;
           request.complete(null);
-          stopWorker();
+          failWorker(response.failure === "permanent");
           return;
         }
-        const mark = `graph-compute:${request.kind}:wasm`;
-        performance.clearMarks(mark);
-        performance.mark(mark);
+        consecutiveFailures = 0;
+        retryAfter = 0;
+        const prefix = `graph-compute:${request.kind}`;
+        const completed = `${prefix}:worker`;
+        performance.clearMarks(completed);
+        performance.mark(completed);
+        const wasm = `${prefix}:wasm`;
+        // Retain only this job's evidence; a JS-only result removes older Wasm
+        // marks rather than accidentally certifying an earlier computation.
+        performance.clearMarks(wasm);
+        for (const name of markedKernels.get(request.kind) ?? [])
+          performance.clearMarks(`${wasm}:${name}`);
+        const kernels = Object.entries(response.kernels).filter(
+          ([, calls]) => Number.isInteger(calls) && calls > 0,
+        );
+        markedKernels.set(
+          request.kind,
+          kernels.map(([name]) => name),
+        );
+        if (kernels.length) {
+          performance.mark(wasm, { detail: response.kernels });
+          for (const [name, calls] of kernels)
+            performance.mark(`${wasm}:${name}`, { detail: { calls } });
+        }
         request.complete(response.result);
       };
       created.onerror = () => {
         if (worker !== created) return;
-        unavailable = true;
-        stopWorker();
+        failWorker();
       };
       window.addEventListener("pagehide", stopWorker);
-    } catch {
-      unavailable = true;
+    } catch (error) {
+      failWorker(permanentTransportError(error));
       return null;
     }
   }
@@ -98,16 +139,14 @@ function run(
         // Web Worker messages do not accept a window targetOrigin.
         // eslint-disable-next-line unicorn/require-post-message-target-origin
         active.postMessage({ cancel: id });
-      } catch {
-        unavailable = true;
-        stopWorker();
+      } catch (error) {
+        failWorker(permanentTransportError(error));
       } finally {
         complete(null);
       }
     };
     const timer = setTimeout(() => {
-      unavailable = true;
-      stopWorker();
+      failWorker();
     }, 120_000);
     pending.set(id, {
       complete,
@@ -121,9 +160,8 @@ function run(
     try {
       // eslint-disable-next-line unicorn/require-post-message-target-origin
       active.postMessage({ id, job });
-    } catch {
-      unavailable = true;
-      stopWorker();
+    } catch (error) {
+      failWorker(permanentTransportError(error));
     }
   });
 }

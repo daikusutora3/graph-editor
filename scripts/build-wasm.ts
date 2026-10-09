@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { runCargo } from "./rust-toolchain";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const crate = resolve(root, "rust/graph-kernels");
@@ -51,27 +51,16 @@ if (process.argv.includes("--check")) {
   if (!WebAssembly.validate(bytes)) throw new Error("Invalid checked-in Wasm");
   console.log("Rust/Wasm artifact is current");
 } else {
-  const localCargo = resolve(root, ".local-bin/rust/cargo/bin/cargo");
-  const localRustup = resolve(root, ".local-bin/rust/rustup");
-  const environment = { ...process.env };
-  if (existsSync(localCargo)) {
-    environment.CARGO_HOME = resolve(root, ".local-bin/rust/cargo");
-    environment.RUSTUP_HOME = localRustup;
-  }
-  const result = spawnSync(
-    existsSync(localCargo) ? localCargo : "cargo",
-    [
-      "build",
-      "--manifest-path",
-      resolve(crate, "Cargo.toml"),
-      "--target",
-      "wasm32-unknown-unknown",
-      "--release",
-      "--offline",
-      "--locked",
-    ],
-    { cwd: crate, env: environment, stdio: "inherit" },
-  );
+  const result = runCargo([
+    "build",
+    "--manifest-path",
+    resolve(crate, "Cargo.toml"),
+    "--target",
+    "wasm32-unknown-unknown",
+    "--release",
+    "--offline",
+    "--locked",
+  ]);
   if (result.status !== 0)
     throw new Error(
       "Rust/Wasm build failed; install Rust and the wasm32-unknown-unknown target.",
