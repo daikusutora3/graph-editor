@@ -4,6 +4,17 @@
  * every interactive target grows to at least 44px under it. */
 @custom-variant touch (&:where([data-layout="mobile"] *));
 
+[data-layout="mobile"] {
+  --ge-mobile-toolbar-height: 64px;
+  --ge-mobile-controls-bottom: calc(var(--ge-mobile-toolbar-height) + 28px);
+}
+
+@media (width < 375px) {
+  [data-layout="mobile"] {
+    --ge-mobile-toolbar-height: 120px;
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * Design tokens
  * One semantic set for the whole app (chrome, panels, canvas). Dark is the
@@ -253,6 +264,11 @@
   animation: ge-pop 160ms ease-out both;
 }
 
+/* An open popover supplies the context; its trigger tooltip would sit behind it. */
+[data-tooltip][aria-expanded="true"]::after {
+  display: none;
+}
+
 .ge-context-menu,
 .ge-pop {
   animation: ge-pop 160ms ease-out both;
@@ -360,7 +376,7 @@
   left: 50%;
   z-index: 120;
   width: max-content;
-  max-width: 240px;
+  max-width: min(240px, calc(100vw - 32px));
   padding: 5px 9px;
   border-radius: 8px;
   background: var(--primary);
@@ -368,7 +384,7 @@
   font-size: 11.5px;
   font-weight: 600;
   line-height: 1.3;
-  white-space: nowrap;
+  white-space: normal;
   box-shadow: var(--shadow);
   opacity: 0;
   transform: translate(-50%, -2px);
@@ -381,6 +397,12 @@
 [data-tooltip][data-tooltip-side="bottom-end"]::after {
   right: 0;
   left: auto;
+  transform: translate(0, -2px);
+}
+
+[data-tooltip][data-tooltip-side="bottom-start"]::after {
+  left: 0;
+  text-align: left;
   transform: translate(0, -2px);
 }
 
@@ -409,6 +431,8 @@
 
   [data-tooltip][data-tooltip-side="bottom-end"]:hover::after,
   [data-tooltip][data-tooltip-side="bottom-end"]:focus-visible::after,
+  [data-tooltip][data-tooltip-side="bottom-start"]:hover::after,
+  [data-tooltip][data-tooltip-side="bottom-start"]:focus-visible::after,
   [data-tooltip][data-tooltip-side="top-start"]:hover::after,
   [data-tooltip][data-tooltip-side="top-start"]:focus-visible::after {
     transform: translate(0, 0);

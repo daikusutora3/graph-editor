@@ -177,7 +177,7 @@ export function SampleGalleryPane({
             {messages.samples.generationSettings}
           </summary>
           <div className="flex flex-wrap gap-2 pt-1 pb-2">
-            <label className="min-w-20 flex-1">
+            <label className="min-w-0 flex-[1_1_9rem]">
               <SectionLabel>{messages.settings.direction}</SectionLabel>
               <Select
                 aria-label={messages.settings.direction}
@@ -193,7 +193,7 @@ export function SampleGalleryPane({
                 <option value="true">{messages.settings.directed}</option>
               </Select>
             </label>
-            <label className="min-w-20 flex-1">
+            <label className="min-w-0 flex-[1_1_9rem]">
               <SectionLabel>{messages.settings.weight}</SectionLabel>
               <Select
                 aria-label={messages.settings.weight}
@@ -210,7 +210,7 @@ export function SampleGalleryPane({
                 <option value="true">{messages.settings.weighted}</option>
               </Select>
             </label>
-            <label className="min-w-20 flex-1">
+            <label className="min-w-0 flex-[1_1_9rem]">
               <SectionLabel>{messages.settings.indexBase}</SectionLabel>
               <Select
                 aria-label={messages.settings.indexBase}

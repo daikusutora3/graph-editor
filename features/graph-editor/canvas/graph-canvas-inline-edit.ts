@@ -26,6 +26,20 @@ export const isCanvasShortcutBlockedTarget = isEditorShortcutBlockedTarget;
 const NODE_LABEL_PADDING = 14;
 /** Room for the caret so the last glyph never touches the edge. */
 const CARET_ROOM = 4;
+const INLINE_EDIT_CANVAS_INSET = 16;
+
+/** Keep the measured editor inside the canvas without moving its graph element. */
+export function clampInlineEditCenterX(
+  centerX: number,
+  formWidth: number,
+  canvasWidth: number,
+) {
+  const halfWidth = formWidth / 2;
+  const min = INLINE_EDIT_CANVAS_INSET + halfWidth;
+  const max = canvasWidth - INLINE_EDIT_CANVAS_INSET - halfWidth;
+
+  return min > max ? canvasWidth / 2 : clamp(centerX, min, max);
+}
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
 
@@ -120,7 +134,7 @@ export function inlineEditCssProperties({
       : {};
 
   const style: Record<string, string | number | undefined> = {
-    maxWidth: "calc(100vw - 2rem)",
+    maxWidth: `calc(100% - ${INLINE_EDIT_CANVAS_INSET * 2}px)`,
     width,
     "--ge-inline-edit-zoom": String(zoom),
     "--ge-inline-edit-padding": `${padding}px`,

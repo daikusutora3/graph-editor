@@ -121,6 +121,7 @@ function BrandPill({
     <button
       type="button"
       data-editor-chrome-control="true"
+      data-editor-panel-trigger="app"
       aria-label={messages.appMenu.open}
       aria-expanded={open}
       aria-haspopup="menu"
@@ -234,6 +235,7 @@ function DesktopToolbar({
         active={panel === "layouts"}
         aria-expanded={panel === "layouts"}
         aria-label={messages.chrome.layouts}
+        data-editor-panel-trigger="layouts"
         data-graph-shortcut-target="true"
         tooltip={`${messages.chrome.layouts} (L)`}
         className={modeButtonClass}
@@ -247,6 +249,7 @@ function DesktopToolbar({
         active={panel === "settings"}
         aria-expanded={panel === "settings"}
         aria-label={messages.chrome.settings}
+        data-editor-panel-trigger="settings"
         data-graph-shortcut-target="true"
         tooltip={`${messages.chrome.settings} (,)`}
         className={modeButtonClass}
@@ -284,6 +287,7 @@ function DesktopRightRail({
       <Divider />
       <RailButton
         active={panel === "starter"}
+        panelTrigger="starter"
         icon={FileInput}
         label={messages.chrome.openStarter}
         shortLabel={messages.chrome.load}
@@ -292,6 +296,7 @@ function DesktopRightRail({
       />
       <RailButton
         active={panel === "export"}
+        panelTrigger="export"
         icon={Download}
         label={messages.chrome.export}
         wide={wide}
@@ -299,6 +304,7 @@ function DesktopRightRail({
       />
       <RailButton
         active={panel === "png"}
+        panelTrigger="png"
         icon={Camera}
         label={messages.chrome.png}
         shortLabel={messages.chrome.pngShort}
@@ -353,6 +359,7 @@ function MobileTopRail({
           active={panel === target}
           aria-expanded={panel === target}
           aria-label={label}
+          data-editor-panel-trigger={target}
           data-graph-shortcut-target="true"
           className="h-11 min-w-11 flex-col gap-1"
           style={{ paddingInline: 6 }}
@@ -377,6 +384,7 @@ export function MobileBottomBar({
   onUndo,
 }: ToolbarSharedProps) {
   const { messages } = useI18n();
+  const showRangeMenu = useShortcutPlatform() !== "touch";
 
   return (
     <div
@@ -385,15 +393,22 @@ export function MobileBottomBar({
       data-editor-chrome-control="true"
       className={cn(
         floating,
-        "absolute right-3 bottom-4 left-3 z-[70] h-16 gap-0.5 rounded-2xl px-1.5 backdrop-blur-[24px] @max-[359px]/editor:gap-0",
+        "absolute right-3 bottom-4 left-3 z-[70] h-[var(--ge-mobile-toolbar-height,64px)] gap-0.5 rounded-2xl px-1.5 backdrop-blur-[24px] @max-[375px]/editor:grid @max-[375px]/editor:grid-cols-3 @max-[375px]/editor:grid-rows-2 @max-[375px]/editor:py-1.5",
       )}
     >
       {editorModes.map(({ mode: itemMode, icon: Icon }) => (
-        <div key={itemMode} className="flex min-w-0 flex-1 items-center">
+        <div
+          key={itemMode}
+          className={cn(
+            "flex min-w-11 flex-1 items-center rounded-lg",
+            itemMode === "select" && showRangeMenu && "min-w-[68px]",
+          )}
+        >
           <MobileBarButton
             active={mode === itemMode}
             label={messages.toolbar.modes[itemMode].label}
             pressed={mode === itemMode}
+            joined={itemMode === "select" && showRangeMenu}
             wide
             onClick={() => onModeChange(itemMode)}
           >
@@ -427,6 +442,7 @@ export function MobileBottomBar({
         active={panel === "menu"}
         expanded={panel === "menu"}
         label={messages.chrome.menu}
+        panelTrigger="menu"
         onClick={() => onTogglePanel("menu")}
       >
         <SlidersHorizontal className="size-icon-lg" aria-hidden="true" />
@@ -470,6 +486,7 @@ function RailButton({
   active,
   icon: Icon,
   label,
+  panelTrigger,
   shortLabel,
   wide,
   onClick,
@@ -477,6 +494,7 @@ function RailButton({
   active: boolean;
   icon: LucideIcon;
   label: string;
+  panelTrigger: EditorPanel;
   shortLabel?: string;
   wide: boolean;
   onClick: () => void;
@@ -486,6 +504,7 @@ function RailButton({
       active={active}
       aria-expanded={active}
       aria-label={label}
+      data-editor-panel-trigger={panelTrigger}
       data-graph-shortcut-target="true"
       tooltip={label}
       tooltipSide="bottom-end"
@@ -508,6 +527,8 @@ function MobileBarButton({
   expanded,
   label,
   pressed,
+  panelTrigger,
+  joined = false,
   wide = false,
   onClick,
 }: {
@@ -517,6 +538,8 @@ function MobileBarButton({
   expanded?: boolean;
   label: string;
   pressed?: boolean;
+  panelTrigger?: EditorPanel;
+  joined?: boolean;
   wide?: boolean;
   onClick: () => void;
 }) {
@@ -525,12 +548,14 @@ function MobileBarButton({
       active={active}
       aria-expanded={expanded}
       aria-label={label}
+      data-editor-panel-trigger={panelTrigger}
       aria-pressed={pressed}
       data-graph-shortcut-target="true"
       disabled={disabled}
       className={cn(
-        "h-[52px] flex-col gap-[3px] rounded-lg px-0",
-        wide ? "min-w-11 flex-1" : "w-11",
+        "touch:h-[52px] h-[52px] flex-col gap-[3px] rounded-lg px-0",
+        joined && "touch:pr-0 rounded-r-none",
+        wide ? "min-w-11 flex-1" : "w-11 @max-[375px]/editor:w-full",
       )}
       onClick={onClick}
     >
@@ -554,7 +579,7 @@ function Divider({ tall = false }: { tall?: boolean }) {
       aria-hidden="true"
       className={cn(
         "shrink-0 bg-[var(--line)]",
-        tall ? "mx-0.5 h-7 w-px" : "mx-1.5 h-6 w-px",
+        tall ? "mx-0.5 h-7 w-px @max-[375px]/editor:hidden" : "mx-1.5 h-6 w-px",
       )}
     />
   );
