@@ -22,7 +22,15 @@ import type {
   GraphModel,
   GraphNode,
 } from "../../features/graph-editor/core/graph/model";
-import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/edge-routing";
+import {
+  createEdgeRoutingTask,
+  type EdgeRoutingMeta,
+} from "../../features/graph-editor/core/layout/edge-routing";
+import {
+  createRoutingDelta,
+  restoreRoutingDelta,
+  type RoutingDelta,
+} from "../../features/graph-editor/compute/routing-result";
 import { interactiveRerouteEdgeIdsTask } from "../../features/graph-editor/core/layout/interactive-routing";
 import { createManualLayoutCommand } from "../../features/graph-editor/layouts/manual-layouts";
 import { resolveNodeOverlaps } from "../../features/graph-editor/layouts/resolve-node-overlaps";
@@ -68,6 +76,7 @@ const model: Omit<GraphModel, "nodes"> & {
 if (childCase) {
   await verifyClient(childCase);
 } else {
+  verifyRoutingDelta();
   expect(
     (await computeLayoutInWorker(model, "force")) === null,
     "server rendering uses the fallback without a browser Worker",
@@ -86,6 +95,9 @@ if (childCase) {
     "send-error",
     "abort-error",
     "timeout",
+    "routing-delta",
+    "routing-delta-error",
+    "routing-delta-wrong-job",
   ]) {
     const result = spawnSync(
       "bun",
@@ -99,6 +111,78 @@ if (childCase) {
   }
 }
 finish();
+
+function routeMeta(bowPx: number): EdgeRoutingMeta {
+  return {
+    bowPx,
+    duplicate: false,
+    loopDirectionDeg: -45,
+    loopSweepDeg: 70,
+    controlPointDistancesPx: [bowPx],
+    controlPointWeights: [0.5],
+  };
+}
+
+function verifyRoutingDelta() {
+  const previous = new Map([
+    ["removed", routeMeta(10)],
+    ["ab", routeMeta(20)],
+    ["bc", routeMeta(30)],
+    ["de", routeMeta(40)],
+  ]);
+  const result = new Map([
+    ["de", previous.get("de")!],
+    ["added", routeMeta(50)],
+    ["bc", previous.get("bc")!],
+    ["ab", previous.get("ab")!],
+  ]);
+  const delta = createRoutingDelta(result, previous);
+  expect(
+    delta instanceof Map &&
+      delta.get("de") === null &&
+      delta.get("bc") === null &&
+      delta.get("ab") === null &&
+      delta.get("added")?.bowPx === 50,
+    "responses use null markers when more than half of the routes are retained",
+  );
+  if (delta) {
+    const restored = restoreRoutingDelta(structuredClone(delta), previous);
+    expect(
+      JSON.stringify([...restored]) === JSON.stringify([...result]) &&
+        !restored.has("removed") &&
+        restored.get("ab") === previous.get("ab"),
+      "structured-cloned deltas preserve result order, additions, deletions and retained identity",
+    );
+  }
+  const allRetained = createRoutingDelta(previous, previous);
+  expect(
+    allRetained instanceof Map &&
+      [...allRetained.values()].every((value) => value === null),
+    "an entirely retained result still carries its complete key order",
+  );
+  expect(
+    createRoutingDelta(
+      new Map([
+        ["ab", previous.get("ab")!],
+        ["bc", routeMeta(99)],
+      ]),
+      previous,
+    ) === null &&
+      createRoutingDelta(structuredClone(previous), previous) === null &&
+      createRoutingDelta(new Map(), previous) === null,
+    "half-retained, all-replaced and empty results keep the full response contract",
+  );
+  let rejected = false;
+  try {
+    restoreRoutingDelta(new Map([["missing", null]]), previous);
+  } catch {
+    rejected = true;
+  }
+  expect(
+    rejected,
+    "a null marker without its baseline must reject restoration",
+  );
+}
 
 async function verifyRealWorker(failFirst: boolean | "abi") {
   const moduleUrl = new URL(
@@ -232,10 +316,13 @@ async function verifyRealWorker(failFirst: boolean | "abi") {
         { id: "c", label: "C", order: 2, x: 0, y: 400 },
         { id: "d", label: "D", order: 3, x: -200, y: 800 },
         { id: "e", label: "E", order: 4, x: 200, y: 800 },
+        { id: "f", label: "F", order: 5, x: -200, y: 1600 },
+        { id: "g", label: "G", order: 6, x: 200, y: 1600 },
       ],
       edges: [
         { id: "ab", source: "a", target: "b" },
         { id: "de", source: "d", target: "e" },
+        { id: "fg", source: "f", target: "g" },
       ],
     };
     const baseline = complete(
@@ -283,12 +370,18 @@ async function verifyRealWorker(failFirst: boolean | "abi") {
       }),
     );
     expect(
-      "result" in dragged &&
-        dragged.result instanceof Map &&
-        JSON.stringify([...dragged.result]) ===
-          JSON.stringify([...expectedDrag]),
-      "interactive Worker uses the same reroute set and retains unaffected edge routes",
+      "routingDelta" in dragged &&
+        dragged.routingDelta.get("de") === null &&
+        dragged.routingDelta.get("fg") === null,
+      "real interactive Worker sends a delta when multiple remote routes are retained",
     );
+    if ("routingDelta" in dragged) {
+      const restored = restoreRoutingDelta(dragged.routingDelta, baseline);
+      expect(
+        JSON.stringify([...restored]) === JSON.stringify([...expectedDrag]),
+        "real Worker delta restores the same reroute result and order as the complete task",
+      );
+    }
     worker.postMessage({
       id: 6,
       job: { kind: "routing", model, options: { mode: "simple" } },
@@ -390,11 +483,12 @@ async function verifyClient(scenario: string) {
     emit(
       response:
         | { id: number; result: ComputeValue; kernels?: RustKernelCalls }
+        | { id: number; routingDelta: RoutingDelta; kernels?: RustKernelCalls }
         | Extract<ComputeResponse, { error: string }>,
     ) {
       this.onmessage?.({
         data: structuredClone(
-          "result" in response ? { kernels: {}, ...response } : response,
+          "error" in response ? response : { kernels: {}, ...response },
         ),
       } as MessageEvent<ComputeResponse>);
     }
@@ -403,6 +497,143 @@ async function verifyClient(scenario: string) {
     configurable: true,
     value: FakeWorker,
   });
+
+  if (scenario.startsWith("routing-delta")) {
+    const firstBaseline = new Map([
+      ["ab", routeMeta(10)],
+      ["bc", routeMeta(20)],
+      ["removed", routeMeta(30)],
+    ]);
+    const secondBaseline = new Map([
+      ["ab", routeMeta(110)],
+      ["bc", routeMeta(120)],
+      ["ac", routeMeta(130)],
+    ]);
+    const firstSnapshot = new Map(firstBaseline);
+    const secondSnapshot = new Map(secondBaseline);
+    const interaction = { nodes: model.nodes, movedNodeIds: new Set(["a"]) };
+    const routingModel = {
+      ...model,
+      edges: [...model.edges, { id: "ac", source: "a", target: "c" }],
+    };
+    const submit = (
+      baseline: ReadonlyMap<string, EdgeRoutingMeta>,
+      signal?: AbortSignal,
+    ) =>
+      computeRoutingInWorker(
+        routingModel,
+        { mode: "quality", previousMeta: baseline },
+        signal,
+        interaction,
+      );
+    const requestFor = (transport: FakeWorker) =>
+      transport.messages.at(-1)! as Extract<ComputeRequest, { id: number }>;
+    if (scenario !== "routing-delta") {
+      const malformed =
+        scenario === "routing-delta-error"
+          ? submit(firstBaseline)
+          : computeLayoutInWorker(model, "force");
+      const active = workers[0]!;
+      const malformedRequest = requestFor(active);
+      const other = computeOverlapsInWorker(model);
+      active.emit({
+        id: malformedRequest.id,
+        routingDelta: new Map([["missing", null]]),
+        kernels: { routing_node_collisions: 1 },
+      });
+      expect(
+        (await malformed) === null &&
+          (await other) === null &&
+          active.terminated,
+        "missing baselines and unexpected delta jobs fall back and settle concurrent work",
+      );
+      expect(
+        !performance
+          .getEntriesByType("mark")
+          .some((entry) => entry.name.startsWith("graph-compute:")),
+        "a failed restoration must not mark Worker or Rust computation as successful",
+      );
+      now = 100_000;
+      expect(
+        (await computeRoutingInWorker(model, {}, undefined, interaction)) ===
+          null &&
+          workers.length === 1 &&
+          pagehideListeners.size === 0,
+        "malformed delta responses disable their transport and release listeners",
+      );
+      return;
+    }
+
+    const first = submit(firstBaseline);
+    const active = workers[0]!;
+    const firstRequest = requestFor(active);
+    const second = submit(secondBaseline);
+    const secondRequest = requestFor(active);
+    firstBaseline.clear();
+    firstBaseline.set("ab", routeMeta(999));
+    secondBaseline.set("bc", routeMeta(999));
+    const firstDelta: RoutingDelta = new Map([
+      ["bc", null],
+      ["ac", routeMeta(50)],
+      ["ab", null],
+    ]);
+    const secondDelta: RoutingDelta = new Map([
+      ["ac", null],
+      ["ab", null],
+      ["bc", routeMeta(150)],
+    ]);
+    active.emit({ id: secondRequest.id, routingDelta: secondDelta });
+    active.emit({ id: firstRequest.id, routingDelta: firstDelta });
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    expect(
+      firstResult instanceof Map &&
+        secondResult instanceof Map &&
+        JSON.stringify([...firstResult]) ===
+          JSON.stringify([...restoreRoutingDelta(firstDelta, firstSnapshot)]) &&
+        JSON.stringify([...secondResult]) ===
+          JSON.stringify([...restoreRoutingDelta(secondDelta, secondSnapshot)]),
+      "out-of-order deltas restore against each request's submitted baseline despite later Map replacement",
+    );
+    expect(
+      firstResult?.get("ab") === firstSnapshot.get("ab") &&
+        secondResult?.get("ab") === secondSnapshot.get("ab") &&
+        !firstResult?.has("removed"),
+      "request baselines retain their own route identity and never resurrect deleted keys",
+    );
+
+    const controller = new AbortController();
+    const cancelled = submit(firstSnapshot, controller.signal);
+    const cancelledRequest = requestFor(active);
+    controller.abort();
+    performance.clearMarks();
+    const replacement = submit(secondSnapshot);
+    const replacementRequest = requestFor(active);
+    active.emit({
+      id: cancelledRequest.id,
+      routingDelta: new Map([["missing", null]]),
+      kernels: { routing_node_collisions: 99 },
+    });
+    expect(
+      (await cancelled) === null &&
+        !active.terminated &&
+        performance.getEntriesByType("mark").length === 0,
+      "late cancelled deltas are ignored without decoding or creating success marks",
+    );
+    active.emit({ id: replacementRequest.id, routingDelta: secondDelta });
+    const replacementResult = await replacement;
+    expect(
+      replacementResult instanceof Map &&
+        JSON.stringify([...replacementResult]) ===
+          JSON.stringify([...restoreRoutingDelta(secondDelta, secondSnapshot)]),
+      "late cancelled replies cannot alter the newer routing result",
+    );
+    events.dispatchEvent(new Event("pagehide"));
+    expect(
+      pagehideListeners.size === 0,
+      "delta requests leave no pagehide listeners after shutdown",
+    );
+    return;
+  }
 
   if (scenario === "constructor" || scenario === "send-error") {
     expect(

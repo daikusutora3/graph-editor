@@ -11,11 +11,14 @@ import type {
   ComputeValue,
   RoutingInteraction,
 } from "./worker-protocol";
+import { restoreRoutingDelta } from "./routing-result";
+import type { RoutingDelta } from "./routing-result";
 
 type Pending = {
   complete: (result: ComputeValue | null) => void;
   cleanup: () => void;
   kind: ComputeJob["kind"];
+  restoreRouting?: (delta: RoutingDelta) => Map<string, EdgeRoutingMeta>;
 };
 let worker: Worker | null = null;
 let unavailable = false;
@@ -82,6 +85,18 @@ function getWorker() {
           failWorker(response.failure === "permanent");
           return;
         }
+        let result: ComputeValue;
+        try {
+          if ("routingDelta" in response) {
+            if (!request.restoreRouting)
+              throw new Error("Unexpected routing delta");
+            result = request.restoreRouting(response.routingDelta);
+          } else result = response.result;
+        } catch {
+          request.complete(null);
+          failWorker(true);
+          return;
+        }
         consecutiveFailures = 0;
         retryAfter = 0;
         const prefix = `graph-compute:${request.kind}`;
@@ -106,7 +121,7 @@ function getWorker() {
           for (const [name, calls] of kernels)
             performance.mark(`${wasm}:${name}`, { detail: { calls } });
         }
-        request.complete(response.result);
+        request.complete(result);
       };
       created.onerror = () => {
         if (worker !== created) return;
@@ -128,6 +143,12 @@ function run(
   if (signal?.aborted) return Promise.resolve(null);
   const active = getWorker();
   if (!active) return Promise.resolve(null);
+  // Each reply restores against its own immutable request snapshot. Cancellation
+  // and Worker restart require no retained remote graph or routing state.
+  const previous =
+    job.kind === "routing" && job.interaction && job.options.previousMeta
+      ? new Map(job.options.previousMeta)
+      : null;
   const id = ++nextId;
   return new Promise((complete) => {
     const cancel = () => {
@@ -151,6 +172,9 @@ function run(
     pending.set(id, {
       complete,
       kind: job.kind,
+      restoreRouting: previous
+        ? (delta) => restoreRoutingDelta(delta, previous)
+        : undefined,
       cleanup: () => {
         clearTimeout(timer);
         signal?.removeEventListener("abort", cancel);

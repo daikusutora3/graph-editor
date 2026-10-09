@@ -13,6 +13,7 @@ import type {
   ComputeResponse,
   ComputeValue,
 } from "./worker-protocol";
+import { createRoutingDelta } from "./routing-result";
 
 // No DOM or browser measurement APIs enter this worker. Measured widths are
 // part of the immutable model supplied by the editor.
@@ -65,9 +66,19 @@ scope.onmessage = (event) => {
           return current;
         });
         if (step.done) {
+          const delta =
+            job.kind === "routing" &&
+            job.interaction &&
+            job.options.previousMeta &&
+            step.value instanceof Map
+              ? createRoutingDelta(step.value, job.options.previousMeta)
+              : null;
+          const response: ComputeResponse = delta
+            ? { id, routingDelta: delta, kernels }
+            : { id, result: step.value, kernels };
           // A dedicated Worker posts to its owner, without a window targetOrigin.
           // eslint-disable-next-line unicorn/require-post-message-target-origin
-          scope.postMessage({ id, result: step.value, kernels });
+          scope.postMessage(response);
           return;
         }
         // Also lets the Worker receive cancellation and replacement requests.

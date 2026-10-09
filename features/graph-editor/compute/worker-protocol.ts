@@ -11,6 +11,7 @@ import type {
 import type { LayoutKind } from "../layouts/manual-layouts";
 import type { OverlapResult } from "../layouts/resolve-node-overlaps";
 import type { RustKernelCalls } from "./rust-kernel";
+import type { RoutingDelta } from "./routing-result";
 
 export type ComputeJob =
   | {
@@ -36,4 +37,5 @@ export type ComputeRequest =
   { id: number; job: ComputeJob } | { cancel: number };
 export type ComputeResponse =
   | { id: number; result: ComputeValue; kernels: RustKernelCalls }
+  | { id: number; routingDelta: RoutingDelta; kernels: RustKernelCalls }
   | { id: number; error: string; failure: "transient" | "permanent" };

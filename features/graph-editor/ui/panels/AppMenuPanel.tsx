@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "../../i18n/I18nProvider";
 import { GitHubLogo, XLogo } from "../brand/social-logos";
 import { Kbd, focusRing } from "../primitives";
+import { menuFocusKeyDown } from "../primitives/focus-navigation";
 
 const APP_REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
 const APP_ISSUES_URL = `${APP_REPOSITORY_URL}/issues/new`;
@@ -31,7 +32,11 @@ export function AppMenuPanel({
   });
 
   return (
-    <div className="-mx-2 -my-1 flex flex-col gap-0.5" role="menu">
+    <div
+      className="-mx-2 -my-1 flex flex-col gap-0.5"
+      role="menu"
+      onKeyDown={menuFocusKeyDown}
+    >
       <MenuLink href={APP_REPOSITORY_URL} label={messages.appMenu.github}>
         <GitHubLogo className="size-4" aria-hidden="true" />
       </MenuLink>

@@ -46,10 +46,21 @@ export const NODE_HITBOX_SIZE = 72;
 const NODE_HITBOX_MARGIN = 12;
 export const EDGE_LABEL_HITBOX_HEIGHT = 32;
 
-export function readNodeHitboxes(cy: Core, graph: GraphModel): NodeHitbox[] {
-  const labels = new Map(graph.nodes.map((node) => [node.id, node.label]));
+export function readNodeHitboxes(
+  cy: Core,
+  graph: GraphModel,
+  options?: { ids: ReadonlySet<NodeId>; labels: ReadonlyMap<NodeId, string> },
+): NodeHitbox[] {
+  const labels =
+    options?.labels ??
+    new Map(graph.nodes.map((node) => [node.id, node.label]));
+  const nodes = options
+    ? [...options.ids]
+        .map((id) => cy.getElementById(id))
+        .filter((node) => node.isNode() && !node.removed())
+    : cy.nodes();
 
-  return cy.nodes().map((node) => {
+  return nodes.map((node) => {
     const position = node.renderedPosition();
 
     return {
@@ -68,8 +79,18 @@ export function readNodeHitboxes(cy: Core, graph: GraphModel): NodeHitbox[] {
 export function readEdgeLabelHitboxes(
   cy: Core,
   graph: GraphModel,
+  options?: {
+    ids: ReadonlySet<EdgeId>;
+    edges: ReadonlyMap<EdgeId, GraphModel["edges"][number]>;
+  },
 ): EdgeLabelHitbox[] {
-  const edges = new Map(graph.edges.map((edge) => [edge.id, edge]));
+  const edges =
+    options?.edges ?? new Map(graph.edges.map((edge) => [edge.id, edge]));
+  const collection = options
+    ? [...options.ids]
+        .map((id) => cy.getElementById(id))
+        .filter((edge) => edge.isEdge() && !edge.removed())
+    : cy.edges();
   const hitboxes: EdgeLabelHitbox[] = [];
   const zoom = cy.zoom();
   const nodeGeometry = new Map<
@@ -94,7 +115,7 @@ export function readEdgeLabelHitboxes(
     return geometry;
   };
 
-  cy.edges().forEach((edge) => {
+  collection.forEach((edge) => {
     const graphEdge = edges.get(edge.id());
 
     if (!graphEdge) {

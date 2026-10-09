@@ -2,6 +2,15 @@
 
 Use these checks when UI geometry, themes, or static-export headers change.
 They are separate from `bun run check` and `bun run check:all`.
+
+For the current agent task, rendered UI verification uses only the in-app
+browser at the approved `http://127.0.0.1:3323` or `:3324` preview, on `/`,
+`/en` or `/zh-hans`, through the `localGraphTab` binding. Keep the policy hook
+enabled. Do not launch Safari or Playwright, or execute arbitrary page scripts.
+The CLI commands below document the maintained audit tools; changes to their
+source or a passing `bun run check` do not establish that those browser suites
+were executed. Record actual in-app screenshots and interactions separately.
+
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 
 ```bash
@@ -19,7 +28,12 @@ THEME=dark BASE_URL=http://localhost:3000 bun run audit:ui
 
 Use the Japanese root route; the script selects controls by Japanese labels.
 Adjust the port to the running server. It checks target sizes, text contrast,
-and overlapping or off-screen chrome at widths from 375 to 1920 CSS pixels.
+and overlapping or off-screen chrome at widths from 320 to 1920 CSS pixels,
+with separate pointer and Android touch profiles. Mobile toolbar controls must
+be at least 44×44px. The range selector is available only to pointer input and
+may be 24px wide; its mobile height must still be at least 44px. Touch profiles
+must hide that selector. Desktop controls use a 30px minimum, with the same
+24px width exception for the pointer-only range selector.
 It exits nonzero for reported findings. Panels are scanned when the script
 finds their controls, so inspect its coverage and manually exercise the changed
 interaction; a pass does not establish that every feature or sample was tested.
@@ -58,9 +72,14 @@ BASE_URL=http://127.0.0.1:3310 bun tests/browser/responsive-ui-regressions.ts
 ```
 
 The regression check exercises import application, pointer and keyboard color
-selection, persistence, 44px mobile toolbar targets, focus restoration and
-short-window sample creation at five widths in all three locales and both
-themes. It also sweeps 147 widths from 320 to 2560px in both themes, including
+selection, persistence, input-specific target sizes, app-menu arrows without
+link activation, selected-radio panel entry, focus restoration and short-window
+sample creation at five widths in all three locales and both themes, with
+separate pointer and Android touch profiles. Touch emulation includes a mobile
+user agent; `hasTouch` alone does not select the app's touch platform.
+Validation uses unsupported-version JSON, because free-form node labels such
+as `not a graph` can describe a valid edge. It also sweeps 147 widths from 320
+to 2560px in both themes with pointer input, including
 additional breakpoint neighbors, and writes `width-sweep.json` to `OUTPUT_DIR`
 (default `/tmp/graph-editor-ui-review`). Browser engine and physical mobile
 keyboard coverage remain separate from these Chromium checks.
@@ -132,23 +151,30 @@ Graph properties and generation limits are covered by `bun run test`, including
 shortest paths, negative cycles, matching, bridges, seeded generation, and
 configurable graph families.
 
-## Installed Safari and panel focus
+## Panel keyboard verification in the in-app preview
 
-After building, start the approved local preview on the fixed port:
+Start the approved local preview, then bind its permitted route in the in-app
+browser as `localGraphTab`. Capture the rendered state at 320, 375, 768 and
+1280px where the changed interaction differs. Use browser controls and the
+page's accessible controls for interaction; do not inject scripts.
 
-```bash
-PORT=3323 bun run serve:out
-/usr/bin/python3 tests/browser/safari-workflow.py
-BASE_URL=http://127.0.0.1:3323 bun run tests/browser/panel-focus.ts
-```
+- Open the app menu. Up/Down wrap through available menu items, and Home/End
+  reach the first/last item. These keys must move focus without opening links
+  or the shortcuts panel. Escape closes the menu and restores its trigger.
+- On desktop, choose Directed in Settings, close it and reopen it. Initial
+  focus must land on Directed. Tab moves to the selected weight option; arrow
+  keys still change radio values. Disabled controls and controls hidden by the
+  UI must be skipped. Check forward and backward Tab at the panel boundaries.
+- Open Load graph and start typing immediately. Initial focus must preserve an
+  already focused input. Close with Escape, confirm focus returns to the
+  opener, and reopen using the keyboard. With unsupported-version JSON such
+  as `{"version":999}`, Apply must remain disabled while warnings are visible.
+- At narrow widths with pointer input, inspect the range selector separately:
+  it may be 24px wide while the other toolbar controls remain at least 44px.
+  Record the input platform with the screenshots. An in-app desktop preview
+  does not establish touch-device coverage.
 
-Restart `serve:out` after rebuilding: its CSP header rules are read at startup.
-The Safari runner uses Apple's installed `safaridriver` in an isolated session.
-It accepts no arguments and permits only `/`, `/en`, and `/zh-hans` on
-`http://127.0.0.1:3323`. It checks keyboard entry, Tab, Escape, immediate typing,
-import, selection, color, dragging, JSON output, PNG preview and reload persistence
-in 3 languages, 3 window widths and 2 themes. Screenshots and actual viewport
-sizes are recorded in `/tmp/graph-editor-safari-review`. Safari's native file
-download is not exercised; the runner saves the generated JSON itself.
-The focus regression deliberately delays initial focus until after typing to
-verify that automatic focus cannot interrupt the user's input.
+`tests/verification/focus-navigation.ts` checks the selected-radio Tab contract,
+unavailable controls and focus-only menu navigation without starting a browser.
+The maintained browser regressions add rendered focus and geometry assertions;
+report them as unexecuted when only source and nonbrowser checks ran.
