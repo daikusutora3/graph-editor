@@ -32,6 +32,7 @@
     "benchmark:wasm-routing-optimizations": "bun run tests/benchmarks/wasm-routing-optimizations.ts",
     "benchmark:wasm-routing-distances": "bun run tests/benchmarks/wasm-routing-distances.ts",
     "benchmark:loop-preparation": "bun run tests/benchmarks/loop-preparation.ts",
+    "benchmark:wasm-loop-obstacles": "bun run tests/benchmarks/wasm-loop-obstacles.ts",
     "benchmark:wasm-import": "bun run tests/benchmarks/wasm-import.ts",
     "benchmark:bundle": "bun run tests/benchmarks/initial-bundle.ts",
     "lint": "oxlint . --deny-warnings",
@@ -47,9 +48,10 @@
     "audit:csp": "bun scripts/audit/csp-check.mjs",
     "serve:out": "bun scripts/audit/serve-out.mjs",
     "test": "bun run tests/verification/run-all.ts",
+    "test:rust": "bun run scripts/test-rust.ts",
     "prepare": "git config core.hooksPath .githooks",
     "check": "tsc --noEmit && tsc -p tsconfig.strict.json --noEmit && oxlint . --deny-warnings && prettier . --check && bun run policy:check && bun run test",
-    "check:all": "bun run check && bun run build && bun run tests/verification/release.ts"
+    "check:all": "bun run check && bun run test:rust && bun run build && bun run tests/verification/release.ts"
   },
   "dependencies": {
     "clsx": "2.1.1",

@@ -2,7 +2,12 @@ import { createEdgeRoutingTask } from "../core/layout/edge-routing";
 import { interactiveRerouteEdgeIdsTask } from "../core/layout/interactive-routing";
 import { createManualLayoutTask } from "../layouts/manual-layouts";
 import { createOverlapTask } from "../layouts/resolve-node-overlaps";
-import { initializeRustKernel } from "./rust-kernel";
+import {
+  initializeRustKernel,
+  RustKernelCompatibilityError,
+  withRustKernelDiagnostics,
+  type RustKernelCalls,
+} from "./rust-kernel";
 import type {
   ComputeRequest,
   ComputeResponse,
@@ -27,8 +32,10 @@ scope.onmessage = (event) => {
   const { id, job } = request;
   active.add(id);
   void (async () => {
+    let initialized = false;
     try {
       await initializeRustKernel();
+      initialized = true;
       if (cancelled.has(id)) return;
       const task: Generator<void, ComputeValue> =
         job.kind === "routing"
@@ -48,14 +55,19 @@ scope.onmessage = (event) => {
           : job.kind === "overlap"
             ? createOverlapTask(job.model)
             : createManualLayoutTask(job.model, job.layout, job.rootNodeId);
+      const kernels: RustKernelCalls = {};
       while (!cancelled.has(id)) {
-        const deadline = performance.now() + 4;
-        let step = task.next();
-        while (!step.done && performance.now() < deadline) step = task.next();
+        const step = withRustKernelDiagnostics(kernels, () => {
+          const deadline = performance.now() + 4;
+          let current = task.next();
+          while (!current.done && performance.now() < deadline)
+            current = task.next();
+          return current;
+        });
         if (step.done) {
           // A dedicated Worker posts to its owner, without a window targetOrigin.
           // eslint-disable-next-line unicorn/require-post-message-target-origin
-          scope.postMessage({ id, result: step.value });
+          scope.postMessage({ id, result: step.value, kernels });
           return;
         }
         // Also lets the Worker receive cancellation and replacement requests.
@@ -68,6 +80,10 @@ scope.onmessage = (event) => {
           id,
           error:
             error instanceof Error ? error.message : "Graph computation failed",
+          failure:
+            !initialized && !(error instanceof RustKernelCompatibilityError)
+              ? "transient"
+              : "permanent",
         };
         // eslint-disable-next-line unicorn/require-post-message-target-origin
         scope.postMessage(response);

@@ -1,6 +1,5 @@
 import { nodeGeometryWidth } from "../graph/node-size";
 import {
-  scoreRustCurveCrossings,
   scoreRustCurveLabelOverlap,
   scoreRustCurveNodeAndShape,
   type RoutingLabelObstacle,
@@ -8,7 +7,6 @@ import {
 import { singleBowCurve } from "./edge-route-geometry";
 import type { EdgeRoutingMeta } from "./edge-routing";
 import { edgeHasVisibleLabel } from "./edge-routing-shared";
-import type { RoutingWork } from "./edge-routing-shared";
 import { representativeBow } from "./edge-routing";
 import { routeEdgeKey } from "./edge-routing";
 import { edgeLabelSize } from "./edge-routing-shared";
@@ -21,13 +19,11 @@ import {
   approximateCurveLength,
   edgeCurveMidpoint,
   createCurveNodeDistance,
-  sampleEdgeCurve,
   type EdgeCurveGeometry,
   type EdgeCurvePoint,
 } from "./edge-route-geometry";
 
 export const NODE_CHECK_UNITS = 1;
-export const EDGE_PAIR_UNITS = 4;
 /** Bounding-box slack around a candidate curve when pruning obstacles. */
 export const PRUNE_MARGIN_PX = 120;
 export const STRAIGHT_CURVE: EdgeCurveGeometry = {
@@ -36,9 +32,6 @@ export const STRAIGHT_CURVE: EdgeCurveGeometry = {
 };
 export const NODE_COLLISION_SCORE = 1_000_000;
 export const NODE_PENETRATION_SCORE = 1_000;
-export const EDGE_CROSSING_SCORE = 500;
-export const SIDE_CHANGE_SCORE = 120;
-export const ROUTE_DIFFERENCE_SCORE = 0.8;
 export const EXTRA_LENGTH_SCORE = 0.2;
 export function scoreCandidateCurve(
   curve: EdgeCurveGeometry,
@@ -126,106 +119,6 @@ export function scoreCurveNodeAndShape(
       scoreCurveZigzag(curve),
   };
 }
-export function scoreCurveCrossings(
-  edge: GraphEdge,
-  edges: GraphEdge[],
-  nodesById: Map<NodeId, GraphNode>,
-  source: GraphNode,
-  target: GraphNode,
-  curve: EdgeCurveGeometry,
-  options: ResolvedEdgeRoutingOptions,
-  resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
-) {
-  const bounds = curveBounds(source, target, curve, 0);
-  const obstacles: EdgeCurvePoint[][] = [];
-
-  for (const otherEdge of edges) {
-    if (
-      otherEdge.id === edge.id ||
-      otherEdge.source === edge.source ||
-      otherEdge.source === edge.target ||
-      otherEdge.target === edge.source ||
-      otherEdge.target === edge.target
-    ) {
-      continue;
-    }
-
-    const otherSource = nodesById.get(otherEdge.source);
-    const otherTarget = nodesById.get(otherEdge.target);
-
-    if (!otherSource || !otherTarget) {
-      continue;
-    }
-
-    const otherCurve = routeForEdge(otherEdge, options, resolvedMeta);
-    const otherBounds = curveBounds(otherSource, otherTarget, otherCurve, 0);
-
-    if (
-      otherBounds.x2 < bounds.x1 ||
-      otherBounds.x1 > bounds.x2 ||
-      otherBounds.y2 < bounds.y1 ||
-      otherBounds.y1 > bounds.y2
-    ) {
-      continue;
-    }
-
-    options.work.units += EDGE_PAIR_UNITS;
-    obstacles.push(
-      cachedCurveSamples(
-        options.work,
-        `${otherEdge.id}:${resolvedMeta.has(otherEdge.id) ? "r" : "p"}`,
-        otherSource,
-        otherTarget,
-        otherCurve,
-      ),
-    );
-  }
-  const rustScore = scoreRustCurveCrossings(curve, source, target, obstacles);
-  if (rustScore !== null) return rustScore;
-  const samples = sampleEdgeCurve(source, target, curve, 8);
-  let score = 0;
-  for (const otherSamples of obstacles) {
-    for (let index = 1; index < samples.length; index += 1) {
-      const segmentStart = samples[index - 1];
-      const segmentEnd = samples[index];
-
-      if (!segmentStart || !segmentEnd) {
-        continue;
-      }
-
-      let crossed = false;
-
-      for (
-        let otherIndex = 1;
-        otherIndex < otherSamples.length;
-        otherIndex += 1
-      ) {
-        const otherStart = otherSamples[otherIndex - 1];
-        const otherEnd = otherSamples[otherIndex];
-
-        if (
-          !otherStart ||
-          !otherEnd ||
-          !segmentsIntersect(segmentStart, segmentEnd, otherStart, otherEnd)
-        ) {
-          continue;
-        }
-
-        // Reducing crossings can justify a bend. Changing only their angle
-        // should not outweigh a clear, shorter straight route.
-        score += EDGE_CROSSING_SCORE;
-        crossed = true;
-        break;
-      }
-
-      if (crossed) {
-        break;
-      }
-    }
-  }
-
-  return score;
-}
 export function routeForEdge(
   edge: GraphEdge,
   options: ResolvedEdgeRoutingOptions,
@@ -257,95 +150,6 @@ export function curveBounds(
     x2: Math.max(source.x, target.x) + reach,
     y2: Math.max(source.y, target.y) + reach,
   };
-}
-export function cachedCurveSamples(
-  work: RoutingWork,
-  key: string,
-  source: EdgeCurvePoint,
-  target: EdgeCurvePoint,
-  curve: EdgeCurveGeometry,
-) {
-  const cached = work.samples.get(key);
-
-  if (cached) {
-    return cached;
-  }
-
-  const samples = sampleEdgeCurve(source, target, curve, 8);
-  work.samples.set(key, samples);
-
-  return samples;
-}
-export function segmentsIntersect(
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-  c: { x: number; y: number },
-  d: { x: number; y: number },
-) {
-  const abX = b.x - a.x;
-  const abY = b.y - a.y;
-  const cdX = d.x - c.x;
-  const cdY = d.y - c.y;
-  const denominator = abX * cdY - abY * cdX;
-  if (Math.abs(denominator) < 0.001) return false;
-
-  const acX = c.x - a.x;
-  const acY = c.y - a.y;
-  const alongAB = (acX * cdY - acY * cdX) / denominator;
-  const alongCD = (acX * abY - acY * abX) / denominator;
-  const epsilon = 1e-9;
-  // Include sample endpoints: a crossing at a curve's internal sample join
-  // is still a crossing. Graph edges sharing a vertex are excluded by callers.
-  return (
-    alongAB >= -epsilon &&
-    alongAB <= 1 + epsilon &&
-    alongCD >= -epsilon &&
-    alongCD <= 1 + epsilon
-  );
-}
-export function scoreCurveInstability(
-  curve: EdgeCurveGeometry,
-  edge: GraphEdge,
-  options: ResolvedEdgeRoutingOptions,
-) {
-  const previous = options.previousRoute ?? options.previousMeta.get(edge.id);
-
-  if (!previous) {
-    return 0;
-  }
-
-  // A clear straight route should recover after a layout moves obstacles
-  // away. Continuity must not keep a bend that was only needed before.
-  if (curve.controlPointDistancesPx.every((distance) => distance === 0)) {
-    return 0;
-  }
-
-  const sampleCount = Math.max(
-    curve.controlPointDistancesPx.length,
-    previous.controlPointDistancesPx.length,
-  );
-  let difference = 0;
-
-  for (let index = 0; index < sampleCount; index += 1) {
-    const currentDistance =
-      curve.controlPointDistancesPx[
-        Math.min(index, curve.controlPointDistancesPx.length - 1)
-      ] ?? 0;
-    const previousDistance =
-      previous.controlPointDistancesPx[
-        Math.min(index, previous.controlPointDistancesPx.length - 1)
-      ] ?? 0;
-    difference += Math.abs(currentDistance - previousDistance);
-  }
-
-  const currentSide = Math.sign(representativeBow(curve));
-  const previousSide = Math.sign(representativeBow(previous));
-  const sideChangePenalty =
-    currentSide !== 0 && previousSide !== 0 && currentSide !== previousSide
-      ? SIDE_CHANGE_SCORE
-      : 0;
-
-  return difference * ROUTE_DIFFERENCE_SCORE + sideChangePenalty;
 }
 export function scoreCurveLabelOverlap(
   edge: GraphEdge,

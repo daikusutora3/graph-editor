@@ -200,6 +200,7 @@ export function createEdgeRoutingTask(
       pending: new Set(),
       labelAnchors: new Map(),
       labelSizes: new Map(),
+      stableLabels: true,
     },
     meta: new Map(),
     cacheKey: "",

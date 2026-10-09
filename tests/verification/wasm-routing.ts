@@ -6,8 +6,14 @@ import {
   getRustKernelReady,
   initializeRustKernelFromBytes,
   resetRustKernelForTests,
+  withRustKernelSuppressed,
 } from "../../features/graph-editor/compute/rust-kernel";
+import {
+  scoreRustCurveNodeAndShape,
+  scoreRustLoopObstacles,
+} from "../../features/graph-editor/compute/wasm-routing";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
+import { parseGraphModelJson } from "../../features/graph-editor/core/graph/graph-json";
 import type {
   GraphEdge,
   GraphModel,
@@ -20,7 +26,6 @@ import {
   scoreLoopDirection,
 } from "../../features/graph-editor/core/layout/edge-routing-loops";
 import {
-  scoreCurveCrossings,
   scoreCurveLabelOverlap,
   scoreCurveNodeAndShape,
 } from "../../features/graph-editor/core/layout/edge-routing-scoring";
@@ -135,16 +140,6 @@ function scores(curve: EdgeCurveGeometry) {
     model.nodes,
     opts,
   );
-  const crossings = scoreCurveCrossings(
-    edge,
-    model.edges,
-    nodesById,
-    source,
-    target,
-    curve,
-    opts,
-    new Map(),
-  );
   const label = scoreCurveLabelOverlap(
     edge,
     model.edges,
@@ -154,7 +149,7 @@ function scores(curve: EdgeCurveGeometry) {
     new Map(),
     true,
   );
-  return { ...node, crossings, label, units: opts.work.units };
+  return { ...node, label, units: opts.work.units };
 }
 
 resetRustKernelForTests();
@@ -239,7 +234,6 @@ for (const [index, curve] of curves.entries()) {
     `curve ${index}: collisions`,
   );
   expect(actual.units === expected.units, `curve ${index}: work units`);
-  expect(actual.crossings === expected.crossings, `curve ${index}: crossings`);
   expect(
     close(actual.score, expected.score),
     `curve ${index}: node/shape score`,
@@ -423,6 +417,133 @@ const negative = scoreCurveNodeAndShape(
 expect(
   positive.score === negative.score,
   "symmetric candidate scores retain exact ties",
+);
+
+// Finite JSON coordinates can exceed the safe arithmetic range of the numeric
+// backend. The adapter must retain the JS reference instead of overflowing a
+// squared projection and changing the selected candidate.
+const extremeSource = { id: "a", label: "1", order: 0, x: 0, y: 0 };
+const extremeTarget = { id: "b", label: "2", order: 1, x: 1e160, y: 0 };
+const extremeEdge = { id: "extreme", source: "a", target: "b" };
+const extremeModel = parseGraphModelJson(
+  JSON.stringify({
+    ...createEmptyGraphModel(),
+    nodes: [
+      extremeSource,
+      extremeTarget,
+      { id: "c", label: "3", order: 2, x: 5e159, y: 20 },
+    ],
+    edges: [extremeEdge],
+  }),
+)!;
+expect(Boolean(extremeModel), "large finite coordinates remain valid JSON");
+const extremeScore = () =>
+  scoreCurveNodeAndShape(
+    straight,
+    extremeSource,
+    extremeTarget,
+    extremeEdge,
+    extremeModel.nodes,
+    options(),
+  );
+expect(
+  scoreRustCurveNodeAndShape(
+    straight,
+    extremeSource,
+    extremeTarget,
+    extremeEdge,
+    extremeModel.nodes,
+    30,
+  ) === null,
+  "unsafe candidate arithmetic selects the JS fallback",
+);
+expect(
+  JSON.stringify(extremeScore()) ===
+    JSON.stringify(withRustKernelSuppressed(extremeScore)),
+  "extreme candidate scores remain independent of the loaded backend",
+);
+
+const loopThresholdNodes = Array.from({ length: 16 }, (_, order) => ({
+  id: `loop-threshold-${order}`,
+  label: "1",
+  order,
+  x: 29.870358479547487,
+  y: 2.785979953862811,
+}));
+const unboundedLoopBounds = {
+  x1: -Infinity,
+  y1: -Infinity,
+  x2: Infinity,
+  y2: Infinity,
+};
+expect(
+  scoreRustLoopObstacles(
+    loopThresholdNodes,
+    [{ x: 0, y: 0 }],
+    30,
+    unboundedLoopBounds,
+    true,
+  ) === null,
+  "loop hypot rounding at strict clearance requests the JS reference",
+);
+for (const x of [29.99, 30.01]) {
+  const result = scoreRustLoopObstacles(
+    loopThresholdNodes.map((node) => ({ ...node, x, y: 0 })),
+    [{ x: 0, y: 0 }],
+    30,
+    unboundedLoopBounds,
+    true,
+  );
+  expect(
+    result?.[2] === Number(x < 30) && result[1] === 1,
+    "unambiguous loop clearance retains Rust and exact sample units",
+  );
+}
+
+// Exercise the normal product entry point with no custom routing options.
+// Native loop sampling previously called this ready in Rust but unresolved in
+// JS because the nearest sample is 29.999999999999993px away in Math.hypot.
+const thresholdLoopModel = parseGraphModelJson(
+  JSON.stringify({
+    ...createEmptyGraphModel(),
+    nodes: [
+      { id: "source", label: "wide ".repeat(4), order: 0, x: 0, y: 0 },
+      ...Array.from({ length: 16 }, (_, index) => ({
+        id: `threshold-${index}`,
+        label: "1",
+        order: index + 1,
+        x: 25.638510610240907,
+        y: -21.214021930723533,
+      })),
+    ],
+    edges: [
+      { id: "automatic", source: "source", target: "source" },
+      {
+        id: "manual",
+        source: "source",
+        target: "source",
+        routing: { loopDirectionDeg: 135, loopSweepDeg: 30 },
+      },
+    ],
+  }),
+)!;
+expect(
+  Boolean(thresholdLoopModel),
+  "strict loop fixture is a valid JSON graph",
+);
+const expectedThresholdRoutes = withRustKernelSuppressed(() =>
+  completeRoutes(thresholdLoopModel),
+);
+const actualThresholdRoutes = completeRoutes(thresholdLoopModel);
+expect(
+  actualThresholdRoutes === expectedThresholdRoutes,
+  "standard product routing retains JS loop statuses at the strict threshold",
+);
+expect(
+  new Map<string, { status: string }>(JSON.parse(actualThresholdRoutes)).get(
+    "automatic",
+  )?.status === "unresolved",
+  "the near-threshold automatic loop remains unresolved",
 );
 console.log(
   JSON.stringify({ maximumNodeScoreDifference, maximumLabelScoreDifference }),

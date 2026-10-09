@@ -8,7 +8,10 @@ import {
   resetRustKernelForTests,
   runRustKernel,
   subscribeRustKernel,
+  RustKernelCompatibilityError,
+  withRustKernelDiagnostics,
   withRustKernelSuppressed,
+  type RustKernelCalls,
 } from "../../features/graph-editor/compute/rust-kernel";
 import { createVerification } from "./harness";
 
@@ -86,6 +89,27 @@ try {
   );
   unsubscribe();
 
+  resetRustKernelForTests();
+  let incompatibleDownloads = 0;
+  globalThis.fetch = (async () => {
+    incompatibleDownloads++;
+    return new Response(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]));
+  }) as typeof fetch;
+  const incompatible = initializeRustKernel();
+  let compatibilityError: unknown;
+  try {
+    await incompatible;
+  } catch (error) {
+    compatibilityError = error;
+  }
+  expect(
+    compatibilityError instanceof RustKernelCompatibilityError &&
+      initializeRustKernel() === incompatible &&
+      incompatibleDownloads === 1 &&
+      !getRustKernelReady(),
+    "permanent ABI failures share their rejection without repeated downloads",
+  );
+
   // Instrument the real Rust allocator, memory and operation. The wrappers only
   // record ownership and poison buffers while they are still live before free.
   const { instance } = await instantiate(bytes, {});
@@ -139,9 +163,16 @@ try {
     },
   };
   let abiVersion = 2;
+  let missingExport = false;
   WebAssembly.instantiate = (async () => ({
     instance: {
-      exports: { ...instrumented, kernel_abi_version: () => abiVersion },
+      exports: {
+        ...instrumented,
+        kernel_abi_version: () => abiVersion,
+        routing_node_shape: missingExport
+          ? undefined
+          : exports.routing_node_shape,
+      },
     },
     module: {},
   })) as unknown as typeof instantiate;
@@ -153,6 +184,13 @@ try {
   );
   expect(!getRustKernelReady(), "ABI version mismatch retains the fallback");
   abiVersion = 1;
+  missingExport = true;
+  await rejects(
+    () => initializeRustKernelFromBytes(bytes),
+    "Unsupported graph kernel ABI",
+    "all required operations are checked before exposing the kernel",
+  );
+  missingExport = false;
   await initializeRustKernelFromBytes(bytes);
   expect(
     notifications === 1,
@@ -247,6 +285,30 @@ try {
     JSON.stringify([...(restored ?? [])]) === JSON.stringify([...reference]) &&
       operations === beforeSuppression.operations + 1,
     "normal routing/export callers can use Rust immediately after suppression",
+  );
+  const firstCalls: RustKernelCalls = {};
+  const secondCalls: RustKernelCalls = {};
+  const call = () =>
+    runRustKernel("force_layout", [seeds, new Float64Array()], 4, [2, 0, 124]);
+  withRustKernelDiagnostics(firstCalls, () => {
+    call();
+    try {
+      withRustKernelDiagnostics(secondCalls, () => {
+        call();
+        throw new Error("diagnostic scope probe");
+      });
+    } catch {
+      // The inner collector is restored even when that slice throws.
+    }
+    call();
+    withRustKernelSuppressed(call);
+  });
+  await Promise.resolve();
+  withRustKernelDiagnostics(secondCalls, call);
+  call();
+  expect(
+    firstCalls.force_layout === 2 && secondCalls.force_layout === 2,
+    "yielding jobs and nested scopes keep exact separate counts and exclude suppressed/unscoped calls",
   );
   const largeSeeds = new Float64Array(300_000);
   const largeEdges = new Float64Array(400_000);

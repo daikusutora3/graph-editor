@@ -92,38 +92,6 @@ export function chooseLoopDirection(
   return step.value;
 }
 
-/** Rotate evenly spaced loops together so their sectors stay separate. */
-export function* createLoopGroupDirectionTask(
-  source: GraphNode,
-  nodes: GraphNode[],
-  options: ResolvedEdgeRoutingOptions,
-  count: number,
-): Generator<void, number> {
-  if (count === 1) {
-    return yield* createLoopDirectionTask(source, nodes, options);
-  }
-  const nearbyNodes = yield* loopObstacleNodes(source, nodes, options);
-  if (nearbyNodes.length === 0) return Math.round(options.loopDirectionDeg);
-  let best = Math.round(options.loopDirectionDeg);
-  let bestScore = Infinity;
-  for (const candidate of loopDirectionCandidates(options)) {
-    let score = 0;
-    for (let index = 0; index < count; index++) {
-      yield;
-      const direction = candidate + (index * 360) / count;
-      score += yield* scoreLoopDirectionTask(direction, source, nearbyNodes, {
-        ...options,
-        loopDirectionDeg: options.loopDirectionDeg + (index * 360) / count,
-      });
-    }
-    if (score < bestScore) {
-      best = candidate;
-      bestScore = score;
-    }
-  }
-  return best;
-}
-
 /** Keep each direction resumable without rescoring distant nodes 24 times. */
 export function* createLoopDirectionTask(
   source: GraphNode,
@@ -629,70 +597,170 @@ function* scoreLoopLayout(
         labelTouchesSource(source, point, preparation.size(edge, edgeIndex))
       )
         collisions++;
-      const samples = nativeLoopSamplePoints(source, route, preparation.extent);
-      let rustScores: Float64Array | null = null;
-      for (const [index, node] of nodes.entries()) {
-        yield;
-        if (index === 0)
-          rustScores = scoreRustLoopObstacles(
-            nodes,
-            samples,
-            30,
-            { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity },
-            true,
-          );
-        if (rustScores) {
-          const resultIndex = index * 3;
-          options.work.units += rustScores[resultIndex + 1]!;
-          collisions += rustScores[resultIndex + 2]!;
-          continue;
+      if (nodes.length > 0) {
+        const samples = nativeLoopSamplePoints(
+          source,
+          route,
+          preparation.extent,
+        );
+        let rustScores: Float64Array | null = null;
+        for (const [index, node] of nodes.entries()) {
+          yield;
+          if (index === 0)
+            rustScores = scoreRustLoopObstacles(
+              nodes,
+              samples,
+              30,
+              { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity },
+              true,
+            );
+          if (rustScores) {
+            const resultIndex = index * 3;
+            options.work.units += rustScores[resultIndex + 1]!;
+            collisions += rustScores[resultIndex + 2]!;
+            continue;
+          }
+          const a = Math.max(0, nodeGeometryWidth(node) / 2 - 24);
+          let distance = Infinity;
+          for (const sample of samples) {
+            options.work.units++;
+            distance = Math.min(
+              distance,
+              Math.hypot(
+                Math.max(0, Math.abs(sample.x - node.x) - a),
+                sample.y - node.y,
+              ),
+            );
+          }
+          if (distance < 30) collisions++;
         }
-        const a = Math.max(0, nodeGeometryWidth(node) / 2 - 24);
-        let distance = Infinity;
-        for (const sample of samples) {
-          options.work.units++;
-          distance = Math.min(
-            distance,
-            Math.hypot(
-              Math.max(0, Math.abs(sample.x - node.x) - a),
-              sample.y - node.y,
-            ),
-          );
-        }
-        if (distance < 30) collisions++;
       }
     }
     route.status = collisions ? "unresolved" : "ready";
     score += collisions * 1_000_000;
   }
-  if (edges.length * edges.length <= 4_000_000)
-    for (let i = 0; i < edges.length; i++)
-      for (let j = 0; j < i; j++) {
-        yield;
-        options.work.units++;
-        const a = edges[i]!,
-          b = edges[j]!;
-        if (!edgeHasVisibleLabel(a) || !edgeHasVisibleLabel(b)) continue;
-        const overlap = labelOverlap(
-          points[i]!,
-          preparation.sizes[i] ?? preparation.size(a, i),
-          points[j]!,
-          preparation.sizes[j] ?? preparation.size(b, j),
-        );
-        if (overlap) {
-          score += 10_000 + overlap;
-          if (
-            a.routing?.loopDirectionDeg === undefined &&
-            a.routing?.loopSweepDeg === undefined
-          )
-            routes[i]!.status = "unresolved";
-          if (
-            b.routing?.loopDirectionDeg === undefined &&
-            b.routing?.loopSweepDeg === undefined
-          )
-            routes[j]!.status = "unresolved";
-        }
+  if (edges.length * edges.length > 4_000_000) return score;
+  // Tiny groups have little pair work to amortize the extra scheduling setup.
+  if (options.work.stableLabels && edges.length >= 8)
+    return yield* scoreStableLoopLabelPairs(
+      edges,
+      points,
+      routes,
+      options,
+      preparation,
+      score,
+    );
+
+  // Public helpers can change labels while suspended. Keep their original
+  // per-pair reads and yields unless the caller promises immutable labels.
+  for (let i = 0; i < edges.length; i++)
+    for (let j = 0; j < i; j++) {
+      yield;
+      options.work.units++;
+      const a = edges[i]!,
+        b = edges[j]!;
+      if (!edgeHasVisibleLabel(a) || !edgeHasVisibleLabel(b)) continue;
+      const overlap = labelOverlap(
+        points[i]!,
+        preparation.sizes[i] ?? preparation.size(a, i),
+        points[j]!,
+        preparation.sizes[j] ?? preparation.size(b, j),
+      );
+      if (overlap) {
+        score += 10_000 + overlap;
+        if (
+          a.routing?.loopDirectionDeg === undefined &&
+          a.routing?.loopSweepDeg === undefined
+        )
+          routes[i]!.status = "unresolved";
+        if (
+          b.routing?.loopDirectionDeg === undefined &&
+          b.routing?.loopSweepDeg === undefined
+        )
+          routes[j]!.status = "unresolved";
       }
+    }
+  return score;
+}
+
+/** Skip invisible pairs while retaining their original work-budget charge. */
+function* scoreStableLoopLabelPairs(
+  edges: GraphEdge[],
+  points: { x: number; y: number }[],
+  routes: LoopPlacement[],
+  options: ResolvedEdgeRoutingOptions,
+  preparation: LoopPreparation,
+  score: number,
+): Generator<void, number> {
+  yield;
+  const visible: number[] = [];
+  for (let index = 0; index < edges.length; index++)
+    if (edgeHasVisibleLabel(edges[index]!)) visible.push(index);
+
+  // Real comparisons yield every 64 pairs. Arithmetic-only skipped work is
+  // charged in at-most-4096-unit chunks, below the synchronous 25000-unit
+  // routing budget; cancellation never waits for an entire dense group.
+  let unitsSinceYield = 0,
+    pairsSinceYield = 0,
+    accounted = 0;
+  for (let right = 0; right < visible.length; right++) {
+    const i = visible[right]!;
+    for (let left = 0; left < right; left++) {
+      const j = visible[left]!;
+      const ordinal = (i * (i - 1)) / 2 + j;
+      let skipped = ordinal - accounted;
+      while (skipped > 0) {
+        if (unitsSinceYield === 4096) {
+          yield;
+          unitsSinceYield = pairsSinceYield = 0;
+        }
+        const charge = Math.min(skipped, 4096 - unitsSinceYield);
+        options.work.units += charge;
+        unitsSinceYield += charge;
+        skipped -= charge;
+      }
+      if (pairsSinceYield === 64 || unitsSinceYield === 4096) {
+        yield;
+        unitsSinceYield = pairsSinceYield = 0;
+      }
+      options.work.units++;
+      unitsSinceYield++;
+      pairsSinceYield++;
+      accounted = ordinal + 1;
+      const a = edges[i]!,
+        b = edges[j]!;
+      const overlap = labelOverlap(
+        points[i]!,
+        preparation.sizes[i] ?? preparation.size(a, i),
+        points[j]!,
+        preparation.sizes[j] ?? preparation.size(b, j),
+      );
+      if (overlap) {
+        score += 10_000 + overlap;
+        if (
+          a.routing?.loopDirectionDeg === undefined &&
+          a.routing?.loopSweepDeg === undefined
+        )
+          routes[i]!.status = "unresolved";
+        if (
+          b.routing?.loopDirectionDeg === undefined &&
+          b.routing?.loopSweepDeg === undefined
+        )
+          routes[j]!.status = "unresolved";
+      }
+    }
+  }
+  let remaining = (edges.length * (edges.length - 1)) / 2 - accounted;
+  while (remaining > 0) {
+    if (unitsSinceYield === 4096) {
+      yield;
+      unitsSinceYield = 0;
+    }
+    const charge = Math.min(remaining, 4096 - unitsSinceYield);
+    options.work.units += charge;
+    unitsSinceYield += charge;
+    remaining -= charge;
+  }
   return score;
 }
 function nativeLoopSamplePoints(

@@ -1,7 +1,5 @@
-import {
-  readRustNumericMatrix,
-  type NumericImportMatrix,
-} from "../compute/wasm-import";
+import { readRustNumericMatrix } from "../compute/wasm-import";
+import type { NumericImportMatrix } from "./import-types";
 import { MAX_IMPORT_NODES, type ParsedLine, splitTokens } from "./import-utils";
 
 type AdjacencyRow = {

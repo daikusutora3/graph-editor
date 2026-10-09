@@ -1,5 +1,23 @@
 import { RUST_KERNEL_URL } from "./kernel-asset";
 
+const kernelNames = [
+  "force_layout",
+  "node_clearance",
+  "resolve_overlaps",
+  "routing_node_shape",
+  "routing_node_collisions",
+  "routing_projected_obstacles",
+  "routing_label_overlap",
+  "routing_loop_obstacles",
+  "interactive_straight_reroutes",
+  "import_integer_matrix",
+] as const;
+export type RustKernelName = (typeof kernelNames)[number];
+export type RustKernelCalls = Partial<Record<RustKernelName, number>>;
+
+/** An incompatible immutable module cannot recover by downloading it again. */
+export class RustKernelCompatibilityError extends Error {}
+
 type KernelExports = WebAssembly.Exports & {
   memory: WebAssembly.Memory;
   alloc_f64: (length: number) => number;
@@ -10,6 +28,7 @@ type KernelExports = WebAssembly.Exports & {
 let kernel: KernelExports | null = null;
 let loading: Promise<void> | null = null;
 let suppressionDepth = 0;
+let diagnostics: RustKernelCalls | null = null;
 const listeners = new Set<() => void>();
 
 export function getRustKernelReady() {
@@ -27,6 +46,21 @@ export function withRustKernelSuppressed<T>(callback: () => T): T {
   }
 }
 
+/** Measure only this synchronous slice; concurrent Worker jobs keep separate
+ * collectors while they yield. Never retain a collector across an await. */
+export function withRustKernelDiagnostics<T>(
+  calls: RustKernelCalls,
+  callback: () => T,
+): T {
+  const previous = diagnostics;
+  diagnostics = calls;
+  try {
+    return callback();
+  } finally {
+    diagnostics = previous;
+  }
+}
+
 export function subscribeRustKernel(listener: () => void) {
   listeners.add(listener);
   return () => {
@@ -35,16 +69,29 @@ export function subscribeRustKernel(listener: () => void) {
 }
 
 export async function initializeRustKernelFromBytes(bytes: BufferSource) {
-  const { instance } = await WebAssembly.instantiate(bytes, {});
+  let instance: WebAssembly.Instance;
+  try {
+    ({ instance } = await WebAssembly.instantiate(bytes, {}));
+  } catch (error) {
+    if (
+      error instanceof WebAssembly.CompileError ||
+      error instanceof WebAssembly.LinkError
+    )
+      throw new RustKernelCompatibilityError("Invalid graph kernel module", {
+        cause: error,
+      });
+    throw error;
+  }
   const exports = instance.exports as KernelExports;
   if (
     !(exports.memory instanceof WebAssembly.Memory) ||
     typeof exports.alloc_f64 !== "function" ||
     typeof exports.free_f64 !== "function" ||
     typeof exports.kernel_abi_version !== "function" ||
-    exports.kernel_abi_version() !== 1
+    exports.kernel_abi_version() !== 1 ||
+    kernelNames.some((name) => typeof exports[name] !== "function")
   ) {
-    throw new Error("Unsupported graph kernel ABI");
+    throw new RustKernelCompatibilityError("Unsupported graph kernel ABI");
   }
   kernel = exports;
   for (const listener of listeners) listener();
@@ -58,7 +105,7 @@ export function initializeRustKernel(): Promise<void> {
       if (!response.ok) throw new Error("Graph kernel download failed");
       await initializeRustKernelFromBytes(await response.arrayBuffer());
     })().catch((error: unknown) => {
-      loading = null;
+      if (!(error instanceof RustKernelCompatibilityError)) loading = null;
       throw error;
     });
   }
@@ -100,6 +147,10 @@ export function runRustKernel(
       ).set(input);
     }
     operation(...allocations.map(({ pointer }) => pointer), ...args);
+    if (diagnostics) {
+      const operationName = name as RustKernelName;
+      diagnostics[operationName] = (diagnostics[operationName] ?? 0) + 1;
+    }
     return new Float64Array(active.memory.buffer, output, outputLength).slice();
   } finally {
     for (const { pointer, length } of allocations.reverse())

@@ -12,7 +12,9 @@ import {
 import type {
   ComputeRequest,
   ComputeResponse,
+  ComputeValue,
 } from "../../features/graph-editor/compute/worker-protocol";
+import type { RustKernelCalls } from "../../features/graph-editor/compute/rust-kernel";
 import { uninstallStorageFlushListeners } from "../../features/graph-editor/adapters/browser/stored-graph";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import { createMoveNodesCommand } from "../../features/graph-editor/core/graph/graph-intents";
@@ -72,11 +74,15 @@ if (childCase) {
   );
   await verifyRealWorker(false);
   await verifyRealWorker(true);
+  await verifyRealWorker("abi");
   for (const scenario of [
     "normal",
     "constructor",
     "response-error",
     "event-error",
+    "transient-response",
+    "transient-send",
+    "retry-limit",
     "send-error",
     "abort-error",
     "timeout",
@@ -94,7 +100,7 @@ if (childCase) {
 }
 finish();
 
-async function verifyRealWorker(failFirst: boolean) {
+async function verifyRealWorker(failFirst: boolean | "abi") {
   const moduleUrl = new URL(
     "../../features/graph-editor/compute/graph-compute.worker.ts",
     import.meta.url,
@@ -108,7 +114,8 @@ async function verifyRealWorker(failFirst: boolean) {
       if (url !== ${JSON.stringify(RUST_KERNEL_URL)}) throw new Error("Unexpected kernel URL");
       calls++;
       await new Promise(resolve => setTimeout(resolve, 30));
-      if (${failFirst} && calls === 1) return new Response(null, {status: 404});
+      if (${failFirst === true} && calls === 1) return new Response(null, {status: 404});
+      if (${failFirst === "abi"}) return new Response(new Uint8Array([0,97,115,109,1,0,0,0]));
       return new Response(await readFile(new URL(${JSON.stringify(bytesUrl)})));
     };
     await import(${JSON.stringify(moduleUrl)});
@@ -136,6 +143,18 @@ async function verifyRealWorker(failFirst: boolean) {
   };
   try {
     await bounded(readyPromise, "real worker starts");
+    if (failFirst === "abi") {
+      worker.postMessage({
+        id: 1,
+        job: { kind: "layout", model, layout: "force" },
+      } satisfies ComputeRequest);
+      const incompatible = await responseFor(1);
+      expect(
+        "error" in incompatible && incompatible.failure === "permanent",
+        "the real Worker classifies incompatible modules as permanent failures",
+      );
+      return;
+    }
     if (failFirst) {
       worker.postMessage({
         id: 1,
@@ -143,7 +162,9 @@ async function verifyRealWorker(failFirst: boolean) {
       } satisfies ComputeRequest);
       const failed = await responseFor(1);
       expect(
-        "error" in failed && failed.error.includes("download failed"),
+        "error" in failed &&
+          failed.failure === "transient" &&
+          failed.error.includes("download failed"),
         "real Worker reports Wasm initialization failure",
       );
     } else {
@@ -160,6 +181,8 @@ async function verifyRealWorker(failFirst: boolean) {
     const layout = await responseFor(2);
     expect(
       "result" in layout &&
+        (layout.kernels.force_layout ?? 0) > 0 &&
+        !layout.kernels.resolve_overlaps &&
         JSON.stringify(layout.result) ===
           JSON.stringify(createManualLayoutCommand(model, "force", "b")),
       "real Worker produces the same force intent as the reference",
@@ -176,6 +199,8 @@ async function verifyRealWorker(failFirst: boolean) {
     const overlaps = await responseFor(3);
     expect(
       "result" in overlaps &&
+        (overlaps.kernels.resolve_overlaps ?? 0) > 0 &&
+        !overlaps.kernels.force_layout &&
         JSON.stringify(overlaps.result) ===
           JSON.stringify(resolveNodeOverlaps(model)),
       "real Worker keeps measured capsule geometry and overlap metadata",
@@ -264,6 +289,15 @@ async function verifyRealWorker(failFirst: boolean) {
           JSON.stringify([...expectedDrag]),
       "interactive Worker uses the same reroute set and retains unaffected edge routes",
     );
+    worker.postMessage({
+      id: 6,
+      job: { kind: "routing", model, options: { mode: "simple" } },
+    } satisfies ComputeRequest);
+    const simple = await responseFor(6);
+    expect(
+      "result" in simple && Object.keys(simple.kernels).length === 0,
+      "a real JS-only Worker route does not claim Rust kernel execution",
+    );
   } finally {
     worker.terminate();
   }
@@ -281,6 +315,11 @@ async function verifyRealWorker(failFirst: boolean) {
 }
 
 async function verifyClient(scenario: string) {
+  let now = 0;
+  Object.defineProperty(performance, "now", {
+    configurable: true,
+    value: () => now,
+  });
   const events = new EventTarget();
   const pagehideListeners = new Set<EventListenerOrEventListenerObject>();
   const fakeWindow = {
@@ -327,7 +366,7 @@ async function verifyClient(scenario: string) {
     throwOnCancel = false;
     constructor(url: URL, options: WorkerOptions) {
       if (scenario === "constructor")
-        throw new Error("worker construction denied");
+        throw new DOMException("worker construction denied", "SecurityError");
       expect(
         url.pathname.endsWith("graph-compute.worker.ts") &&
           options.type === "module",
@@ -336,8 +375,10 @@ async function verifyClient(scenario: string) {
       workers.push(this);
     }
     postMessage(request: ComputeRequest) {
+      if (scenario === "send-error")
+        throw new DOMException("message not cloneable", "DataCloneError");
       if (
-        scenario === "send-error" ||
+        (scenario === "transient-send" && workers.length === 1) ||
         (this.throwOnCancel && "cancel" in request)
       )
         throw new Error("transport failure");
@@ -346,9 +387,15 @@ async function verifyClient(scenario: string) {
     terminate() {
       this.terminated = true;
     }
-    emit(response: ComputeResponse) {
+    emit(
+      response:
+        | { id: number; result: ComputeValue; kernels?: RustKernelCalls }
+        | Extract<ComputeResponse, { error: string }>,
+    ) {
       this.onmessage?.({
-        data: structuredClone(response),
+        data: structuredClone(
+          "result" in response ? { kernels: {}, ...response } : response,
+        ),
       } as MessageEvent<ComputeResponse>);
     }
   }
@@ -396,6 +443,93 @@ async function verifyClient(scenario: string) {
     } finally {
       globalThis.setTimeout = originalSetTimeout;
     }
+    now = 1000;
+    const retried = computeOverlapsInWorker(model);
+    const replacement = workers.at(-1)!;
+    const request = replacement.messages.at(-1)! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    replacement.emit({ id: request.id, result: resolveNodeOverlaps(model) });
+    expect(
+      (await retried) !== null && workers.length === 2,
+      "a timed-out Worker can recover after its cooldown",
+    );
+    events.dispatchEvent(new Event("pagehide"));
+    return;
+  }
+  if (
+    scenario === "transient-response" ||
+    scenario === "transient-send" ||
+    scenario === "retry-limit"
+  ) {
+    const failures = scenario === "retry-limit" ? 3 : 1;
+    for (let attempt = 0; attempt < failures; attempt++) {
+      const failed = computeLayoutInWorker(model, "force");
+      const active = workers.at(-1)!;
+      if (scenario !== "transient-send") {
+        const request = active.messages.at(-1)! as Extract<
+          ComputeRequest,
+          { id: number }
+        >;
+        active.emit({
+          id: request.id,
+          error: "temporary download failure",
+          failure: "transient",
+        });
+      }
+      expect(
+        // Retry attempts must finish before advancing the fake cooldown clock.
+        // eslint-disable-next-line no-await-in-loop
+        (await failed) === null && active.terminated,
+        "transient failures resolve pending work and stop the failed Worker",
+      );
+      expect(
+        // eslint-disable-next-line no-await-in-loop
+        (await computeOverlapsInWorker(model)) === null &&
+          workers.length === attempt + 1 &&
+          pagehideListeners.size === 0,
+        "cooldown avoids repeated construction and releases pagehide listeners",
+      );
+      now += (attempt + 1) * 1000;
+    }
+    if (scenario === "retry-limit") {
+      now += 100_000;
+      expect(
+        (await computeLayoutInWorker(model, "force")) === null &&
+          workers.length === 3,
+        "three consecutive failures stop retries for this page",
+      );
+      return;
+    }
+    const retried = computeOverlapsInWorker(model);
+    const replacement = workers.at(-1)!;
+    const request = replacement.messages.at(-1)! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    replacement.emit({ id: request.id, result: resolveNodeOverlaps(model) });
+    expect(
+      (await retried) !== null && workers.length === 2,
+      "a later request restores a successful Worker after the cooldown",
+    );
+    // Success resets the failure budget, so a new fault waits one second.
+    const fault = computeOverlapsInWorker(model);
+    replacement.onerror!();
+    expect((await fault) === null, "a later transport fault also settles work");
+    now += 1000;
+    const recovered = computeOverlapsInWorker(model);
+    const third = workers.at(-1)!;
+    const thirdRequest = third.messages.at(-1)! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    third.emit({ id: thirdRequest.id, result: resolveNodeOverlaps(model) });
+    expect(
+      (await recovered) !== null && workers.length === 3,
+      "successful recovery resets the cooldown and consecutive-failure count",
+    );
+    events.dispatchEvent(new Event("pagehide"));
     return;
   }
   if (scenario === "abort-error") {
@@ -438,7 +572,11 @@ async function verifyClient(scenario: string) {
   >;
   if (scenario === "response-error" || scenario === "event-error") {
     if (scenario === "response-error")
-      active.emit({ id: firstRequest.id, error: "kernel unavailable" });
+      active.emit({
+        id: firstRequest.id,
+        error: "unsupported kernel ABI",
+        failure: "permanent",
+      });
     else active.onerror!();
     expect(
       (await first) === null && (await second) === null && active.terminated,
@@ -447,8 +585,29 @@ async function verifyClient(scenario: string) {
     expect(
       (await computeLayoutInWorker(model, "force")) === null &&
         workers.length === 1,
-      "kernel failures do not repeatedly restart an unavailable Worker",
+      "failed Workers are not repeatedly created before recovery is allowed",
     );
+    now = 1000;
+    if (scenario === "response-error") {
+      expect(
+        (await computeLayoutInWorker(model, "force")) === null &&
+          workers.length === 1,
+        "permanent ABI failures are not retried after the cooldown",
+      );
+    } else {
+      const retry = computeOverlapsInWorker(model);
+      const replacement = workers.at(-1)!;
+      const request = replacement.messages.at(-1)! as Extract<
+        ComputeRequest,
+        { id: number }
+      >;
+      replacement.emit({ id: request.id, result: resolveNodeOverlaps(model) });
+      expect(
+        (await retry) !== null && workers.length === 2,
+        "Worker event errors recover after the cooldown",
+      );
+      events.dispatchEvent(new Event("pagehide"));
+    }
     return;
   }
   const secondRequest = active.messages[1]! as Extract<
@@ -460,12 +619,41 @@ async function verifyClient(scenario: string) {
   active.emit({
     id: firstRequest.id,
     result: createManualLayoutCommand(model, "force"),
+    kernels: { force_layout: 2 },
   });
   expect(
     JSON.stringify(await second) === JSON.stringify(expectedOverlap) &&
       (await first) !== null &&
       workers.length === 1,
     "out-of-order responses settle the matching IDs in a shared Worker",
+  );
+  expect(
+    performance.getEntriesByName("graph-compute:layout:worker").length === 1 &&
+      performance.getEntriesByName("graph-compute:layout:wasm").length === 1 &&
+      (
+        performance.getEntriesByName(
+          "graph-compute:layout:wasm:force_layout",
+        )[0] as PerformanceMark
+      ).detail.calls === 2 &&
+      performance.getEntriesByName("graph-compute:overlap:wasm").length === 0,
+    "only actual kernel calls create Wasm marks, with their exact counts",
+  );
+  const jsOnly = computeLayoutInWorker(model, "line");
+  const jsOnlyRequest = active.messages.at(-1)! as Extract<
+    ComputeRequest,
+    { id: number }
+  >;
+  active.emit({
+    id: jsOnlyRequest.id,
+    result: createManualLayoutCommand(model, "line"),
+  });
+  await jsOnly;
+  expect(
+    performance.getEntriesByName("graph-compute:layout:worker").length === 1 &&
+      performance.getEntriesByName("graph-compute:layout:wasm").length === 0 &&
+      performance.getEntriesByName("graph-compute:layout:wasm:force_layout")
+        .length === 0,
+    "a newer JS-only job clears older Rust evidence while marking Worker completion",
   );
   const aborted = new AbortController();
   aborted.abort();
@@ -555,7 +743,11 @@ async function verifyClient(scenario: string) {
   >;
   // Owner-side events already queued before terminate must remain confined to
   // their original Worker even when another Worker has since been created.
-  active.emit({ id: replacementRequest.id, error: "late transport error" });
+  active.emit({
+    id: replacementRequest.id,
+    error: "late transport error",
+    failure: "permanent",
+  });
   active.onerror!();
   expect(
     !replacement.terminated,
