@@ -6,6 +6,9 @@ import {
 } from "../../scripts/build-headers";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
+
+import { RUST_KERNEL_URL } from "../../features/graph-editor/compute/kernel-asset";
 
 import {
   APP_DESCRIPTION,
@@ -63,6 +66,34 @@ for (const path of [
   "out/favicon.ico",
 ]) {
   expectFile(path);
+}
+
+const exportedKernelPath = `out${RUST_KERNEL_URL}`;
+const publicKernelPath = `public${RUST_KERNEL_URL}`;
+expectFile(exportedKernelPath);
+expectFile(publicKernelPath);
+if (
+  existsSync(join(root, exportedKernelPath)) &&
+  existsSync(join(root, publicKernelPath))
+) {
+  const exportedKernel = readFileSync(join(root, exportedKernelPath));
+  const publicKernel = readFileSync(join(root, publicKernelPath));
+  const contentHash = createHash("sha256")
+    .update(exportedKernel)
+    .digest("hex")
+    .slice(0, 16);
+  expect(
+    WebAssembly.validate(exportedKernel),
+    "the exported Rust kernel should be a valid Wasm module",
+  );
+  expect(
+    exportedKernel.equals(publicKernel),
+    "the exported Wasm should match the public artifact requested by the runtime",
+  );
+  expect(
+    RUST_KERNEL_URL === `/wasm/graph-kernels.${contentHash}.wasm`,
+    "the exported Wasm URL should fingerprint its contents for immutable caching",
+  );
 }
 
 const wrangler = readText("wrangler.jsonc");
@@ -332,6 +363,26 @@ expect(
   const cspOf = (path: string) =>
     resolveHeaders(rules, path).get("content-security-policy") ?? "";
   const pages = collectPageScriptHashes();
+  const kernelHeaders = resolveHeaders(rules, RUST_KERNEL_URL);
+  expect(
+    kernelHeaders.get("content-type") === "application/wasm",
+    "the exported Wasm should be served with the WebAssembly MIME type",
+  );
+  expect(
+    kernelHeaders.get("cache-control") ===
+      "public, max-age=31536000, immutable",
+    "the content-addressed Wasm should retain one-year immutable caching",
+  );
+  expect(
+    pages.every((page) =>
+      cspOf(page.route)
+        .split(";")
+        .find((directive) => directive.trim().startsWith("script-src "))
+        ?.split(/\s+/)
+        .includes("'wasm-unsafe-eval'"),
+    ),
+    "every exported page's script CSP should allow WebAssembly compilation",
+  );
   const missing = pages.flatMap((page) => {
     const csp = cspOf(page.route);
     return page.hashes.filter((hash) => !csp.includes(hash));

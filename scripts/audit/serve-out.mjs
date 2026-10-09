@@ -22,6 +22,7 @@ const types = {
   ".svg": "image/svg+xml",
   ".txt": "text/plain; charset=utf-8",
   ".xml": "application/xml",
+  ".wasm": "application/wasm",
 };
 
 createServer((req, res) => {

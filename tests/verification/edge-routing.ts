@@ -1420,8 +1420,17 @@ function verifyLoopRoutingWork() {
             const overlap = Math.max(0, options.nodeClearancePx - distance);
             score += overlap * overlap;
           }
+          // Rust's hypot and the browser's Math.hypot can differ by a few ulps.
+          // The chosen direction below must still match the exhaustive result.
+          const candidateScore = scoreLoopDirection(
+            candidate,
+            source,
+            nodes,
+            options,
+          );
           expect(
-            scoreLoopDirection(candidate, source, nodes, options) === score,
+            Math.abs(candidateScore - score) <=
+              Math.max(1e-10, Math.abs(score) * 1e-12),
             "candidate bounds should preserve exhaustive loop collision scores",
           );
           return score < best.score ||

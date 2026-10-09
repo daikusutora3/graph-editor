@@ -1,6 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import {
+  initializeRustKernel,
+  getRustKernelReady,
+  subscribeRustKernel,
+} from "../compute/rust-kernel";
+import { computeRoutingInWorker } from "../compute/worker-client";
 
 import { computeCytoscapeEdgeRoutingMeta } from "../adapters/cytoscape/cytoscape-adapter";
 import type { GraphModel } from "../core/graph/model";
@@ -22,6 +35,14 @@ import {
 type RoutingMeta = ReturnType<typeof computeCytoscapeEdgeRoutingMeta>;
 
 export function useEdgeRoutingMeta(graph: GraphModel) {
+  const kernelReady = useSyncExternalStore(
+    subscribeRustKernel,
+    getRustKernelReady,
+    () => false,
+  );
+  useEffect(() => {
+    if (graph.nodes.length) void initializeRustKernel().catch(() => {});
+  }, [graph.nodes.length]);
   // Edges stay straight unless the setting is on; then parallel edges fan
   // out and edges bend just enough to clear nodes sitting on their path.
   const [fontRevision, setFontRevision] = useState(0);
@@ -78,6 +99,7 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   useEffect(() => {
     let frame: number | null = null;
     let cancelled = false;
+    const controller = new AbortController();
     let sourceCache = cacheRef.current;
     let task: ReturnType<typeof createEdgeRoutingTask> | null = null;
     const refine = () => {
@@ -113,12 +135,42 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
       }
       frame = requestAnimationFrame(refine);
     };
-    frame = requestAnimationFrame(refine);
+    const start = async () => {
+      const current = cacheRef.current;
+      const pending =
+        current?.key === cacheKey
+          ? edgeRoutingProgress(current.meta).pendingEdgeIds
+          : null;
+      if (pending && !pending.length) return;
+      const result = await computeRoutingInWorker(
+        withMeasuredNodeGeometry(graph),
+        {
+          ...edgeRoutingOptions,
+          previousMeta: pending
+            ? current!.meta
+            : readPreviousAutomaticRoutingMeta(
+                graph,
+                routingSnapshotRef.current,
+              ),
+          rerouteEdgeIds: pending ? new Set(pending) : null,
+        },
+        controller.signal,
+      );
+      if (cancelled || cacheRef.current !== sourceCache) return;
+      if (result) {
+        acceptRoutingMeta(graph, result);
+        setAsyncMeta(result);
+      } else {
+        frame = requestAnimationFrame(refine);
+      }
+    };
+    void start();
     return () => {
       cancelled = true;
+      controller.abort();
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [cacheKey, graph, edgeRoutingOptions, acceptRoutingMeta]);
+  }, [cacheKey, graph, edgeRoutingOptions, acceptRoutingMeta, kernelReady]);
 
   return {
     edgeRoutingMeta,

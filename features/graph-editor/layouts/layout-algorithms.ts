@@ -1,4 +1,6 @@
 import { resolveNodeOverlaps } from "./resolve-node-overlaps";
+import { tryRustForceLayout } from "../compute/wasm-layouts";
+import { stableHypot } from "../compute/numeric";
 /**
  * The layout algorithms themselves. Each takes a GraphModel and returns
  * positions; manual-layouts.ts is the registry that wires them to the UI.
@@ -130,6 +132,24 @@ export function* createForceComponentTask(
       [indexById.get(source)!, indexById.get(target)!] as const,
   );
   const ideal = LAYOUT_TARGET_EDGE_LENGTH;
+  const accelerated = tryRustForceLayout(
+    positions,
+    indexedEdges,
+    nodeIds.map((_, index) => pseudoRandom(index + 1) - 0.5),
+    ideal,
+  );
+  if (accelerated) {
+    return normalizeForcePositions(
+      Object.fromEntries(
+        nodeIds.map((nodeId, index) => [
+          nodeId,
+          { x: accelerated[index * 2]!, y: accelerated[index * 2 + 1]! },
+        ]),
+      ),
+      edges,
+      ideal,
+    );
+  }
   let temperature = ideal * 0.8;
 
   for (let iteration = 0; iteration < 180; iteration += 1) {
@@ -142,12 +162,12 @@ export function* createForceComponentTask(
         const secondPosition = positions[second]!;
         let dx = firstPosition.x - secondPosition.x;
         let dy = firstPosition.y - secondPosition.y;
-        let distance = Math.hypot(dx, dy);
+        let distance = stableHypot(dx, dy);
 
         if (distance < 0.01) {
           dx = pseudoRandom(first + 1) - 0.5;
           dy = pseudoRandom(second + 1) - 0.5;
-          distance = Math.hypot(dx, dy) || 1;
+          distance = stableHypot(dx, dy) || 1;
         }
 
         const force = (ideal * ideal) / distance;
@@ -167,7 +187,7 @@ export function* createForceComponentTask(
       const targetPosition = positions[target]!;
       const dx = sourcePosition.x - targetPosition.x;
       const dy = sourcePosition.y - targetPosition.y;
-      const distance = Math.max(0.01, Math.hypot(dx, dy));
+      const distance = Math.max(0.01, stableHypot(dx, dy));
       const force = (distance * distance) / ideal;
       const offsetX = (dx / distance) * force;
       const offsetY = (dy / distance) * force;
@@ -181,7 +201,7 @@ export function* createForceComponentTask(
     for (let index = 0; index < nodeIds.length; index++) {
       const point = positions[index]!;
       const delta = displacement[index]!;
-      const length = Math.max(0.01, Math.hypot(delta.x, delta.y));
+      const length = Math.max(0.01, stableHypot(delta.x, delta.y));
       const step = Math.min(length, temperature);
 
       positions[index] = {

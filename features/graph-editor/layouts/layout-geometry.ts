@@ -2,6 +2,7 @@ import type { NodeId } from "../core/graph/model";
 
 import type { GraphNode } from "../core/graph/model";
 import { nodeGeometryWidth, NODE_SIZE_PX } from "../core/graph/node-size";
+import { tryRustNodeClearance } from "../compute/wasm-layouts";
 
 export const LAYOUT_NODE_CLEARANCE = 104;
 export const LAYOUT_COMPONENT_GAP = 180;
@@ -260,6 +261,17 @@ export function* createNodeClearanceTask(
   // before the (comparatively expensive) pill extent math.
   const maxRequired = 2 * Math.max(halfHeight, ...halfWidths.values()) + gap;
   const maxRequiredSquared = maxRequired * maxRequired;
+  const accelerated = tryRustNodeClearance(
+    entries.map(([, point]) => point),
+    entries.map(([id]) =>
+      Math.max(0, (halfWidths.get(id) ?? halfHeight) - halfHeight),
+    ),
+    required,
+    maxRequiredSquared,
+  );
+  if (accelerated !== null) {
+    return accelerated > 1 ? scalePositions(positions, accelerated) : positions;
+  }
   let scale = 1;
 
   for (let i = 0; i < entries.length; i += 1) {

@@ -1,0 +1,624 @@
+//! Batched numeric edge-routing work. Graph identities and resumable scheduling
+//! stay in TypeScript; a candidate is scored in one Wasm call.
+
+use crate::numeric::hypot;
+use std::slice;
+
+#[derive(Clone, Copy)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+#[derive(Clone, Copy)]
+struct Segment {
+    start: Point,
+    control: Point,
+    end: Point,
+}
+struct Piece {
+    start: Point,
+    end: Point,
+    error: f64,
+}
+
+struct Curve<'a> {
+    distances: &'a [f64],
+    weights: &'a [f64],
+}
+impl<'a> Curve<'a> {
+    unsafe fn from_ptr(ptr: *const f64) -> Self {
+        let distances_len = *ptr as usize;
+        let weights_len = *ptr.add(1) as usize;
+        Self {
+            distances: slice::from_raw_parts(ptr.add(2), distances_len),
+            weights: slice::from_raw_parts(ptr.add(2 + distances_len), weights_len),
+        }
+    }
+
+    fn segments(&self, source: Point, target: Point) -> Vec<Segment> {
+        let dx = target.x - source.x;
+        let dy = target.y - source.y;
+        let length = hypot(dx, dy);
+        let nx = if length == 0.0 { 0.0 } else { -dy / length };
+        let ny = if length == 0.0 { 0.0 } else { dx / length };
+        let count = self.distances.len().min(self.weights.len());
+        let controls: Vec<Point> = (0..count)
+            .map(|i| Point {
+                x: source.x + dx * self.weights[i] + nx * self.distances[i],
+                y: source.y + dy * self.weights[i] + ny * self.distances[i],
+            })
+            .collect();
+        (0..count)
+            .map(|i| Segment {
+                start: if i == 0 {
+                    source
+                } else {
+                    midpoint(controls[i - 1], controls[i])
+                },
+                control: controls[i],
+                end: if i + 1 == count {
+                    target
+                } else {
+                    midpoint(controls[i], controls[i + 1])
+                },
+            })
+            .collect()
+    }
+
+    fn maximum_offset(&self) -> f64 {
+        self.distances
+            .iter()
+            .fold(0.0, |value, distance| value.max(distance.abs()))
+    }
+
+    fn zigzag(&self) -> f64 {
+        let mut score = 0.0;
+        for pair in self.distances.windows(2) {
+            if sign(pair[0]) != sign(pair[1]) {
+                score += (pair[0] - pair[1]).abs() * 2.0;
+            }
+        }
+        score
+    }
+}
+
+fn sign(value: f64) -> f64 {
+    if value == 0.0 {
+        0.0
+    } else {
+        value.signum()
+    }
+}
+fn midpoint(a: Point, b: Point) -> Point {
+    Point {
+        x: (a.x + b.x) / 2.0,
+        y: (a.y + b.y) / 2.0,
+    }
+}
+fn quadratic_point(segment: Segment, t: f64) -> Point {
+    let u = 1.0 - t;
+    Point {
+        x: u * u * segment.start.x + 2.0 * u * t * segment.control.x + t * t * segment.end.x,
+        y: u * u * segment.start.y + 2.0 * u * t * segment.control.y + t * t * segment.end.y,
+    }
+}
+fn samples(segments: &[Segment], source: Point, target: Point, per_segment: usize) -> Vec<Point> {
+    if segments.is_empty() {
+        return vec![source, target];
+    }
+    let mut points = Vec::with_capacity(segments.len() * per_segment + 1);
+    for (index, segment) in segments.iter().enumerate() {
+        for i in if index == 0 { 0 } else { 1 }..=per_segment {
+            points.push(quadratic_point(*segment, i as f64 / per_segment as f64));
+        }
+    }
+    points
+}
+fn point_segment_distance(p: Point, a: Point, b: Point) -> f64 {
+    let dx = b.x - a.x;
+    let dy = b.y - a.y;
+    let squared = dx * dx + dy * dy;
+    let denominator = if squared == 0.0 { 1.0 } else { squared };
+    let t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / denominator)
+        .max(0.0)
+        .min(1.0);
+    hypot(p.x - a.x - t * dx, p.y - a.y - t * dy)
+}
+fn segment_distance(a: Point, b: Point, c: Point, d: Point) -> f64 {
+    if a.y != b.y {
+        let t = (c.y - a.y) / (b.y - a.y);
+        let x = a.x + t * (b.x - a.x);
+        if t >= 0.0 && t <= 1.0 && x >= c.x && x <= d.x {
+            return 0.0;
+        }
+    }
+    point_segment_distance(a, c, d)
+        .min(point_segment_distance(b, c, d))
+        .min(point_segment_distance(c, a, b))
+        .min(point_segment_distance(d, a, b))
+}
+fn subdivide(segment: Segment, depth: usize, pieces: &mut Vec<Piece>) {
+    let error = point_segment_distance(segment.control, segment.start, segment.end) / 2.0;
+    if error <= 0.25 || depth >= 16 {
+        pieces.push(Piece {
+            start: segment.start,
+            end: segment.end,
+            error,
+        });
+        return;
+    }
+    let a = midpoint(segment.start, segment.control);
+    let b = midpoint(segment.end, segment.control);
+    let mid = midpoint(a, b);
+    subdivide(
+        Segment {
+            start: segment.start,
+            control: a,
+            end: mid,
+        },
+        depth + 1,
+        pieces,
+    );
+    subdivide(
+        Segment {
+            start: mid,
+            control: b,
+            end: segment.end,
+        },
+        depth + 1,
+        pieces,
+    );
+}
+
+/// The JS host's hypot can round an adaptive split tie differently. Only the
+/// final collision operation needs strict count compatibility at that tie.
+fn subdivide_final_route(
+    segment: Segment,
+    depth: usize,
+    pieces: &mut Vec<Piece>,
+    tolerance: f64,
+) -> bool {
+    let error = point_segment_distance(segment.control, segment.start, segment.end) / 2.0;
+    let ambiguous = (error - 0.25).abs() <= tolerance || !error.is_finite();
+    if error <= 0.25 || depth >= 16 {
+        pieces.push(Piece {
+            start: segment.start,
+            end: segment.end,
+            error,
+        });
+        return ambiguous;
+    }
+    let a = midpoint(segment.start, segment.control);
+    let b = midpoint(segment.end, segment.control);
+    let mid = midpoint(a, b);
+    let first = subdivide_final_route(
+        Segment {
+            start: segment.start,
+            control: a,
+            end: mid,
+        },
+        depth + 1,
+        pieces,
+        tolerance,
+    );
+    let second = subdivide_final_route(
+        Segment {
+            start: mid,
+            control: b,
+            end: segment.end,
+        },
+        depth + 1,
+        pieces,
+        tolerance,
+    );
+    ambiguous || first || second
+}
+fn curve_midpoint(segments: &[Segment], source: Point, target: Point) -> Point {
+    let points = samples(segments, source, target, 16);
+    let mut lengths = Vec::with_capacity(points.len() - 1);
+    let mut total = 0.0;
+    for pair in points.windows(2) {
+        total += hypot(pair[1].x - pair[0].x, pair[1].y - pair[0].y);
+        lengths.push(total);
+    }
+    let target_length = total / 2.0;
+    if let Some(i) = lengths.iter().position(|length| *length >= target_length) {
+        let previous = if i == 0 { 0.0 } else { lengths[i - 1] };
+        let segment_length = lengths[i] - previous;
+        let ratio = if segment_length == 0.0 {
+            0.0
+        } else {
+            (target_length - previous) / segment_length
+        };
+        Point {
+            x: points[i].x + (points[i + 1].x - points[i].x) * ratio,
+            y: points[i].y + (points[i + 1].y - points[i].y) * ratio,
+        }
+    } else {
+        midpoint(source, target)
+    }
+}
+
+/// nodes = [x,y,half_width]*N; curve = [distance_count,weight_count,distances...,weights...].
+/// output = [collisions,score,work_units]. Source/target indices can be -1.
+#[no_mangle]
+pub unsafe extern "C" fn routing_node_shape(
+    nodes_ptr: *const f64,
+    curve_ptr: *const f64,
+    output_ptr: *mut f64,
+    node_count: usize,
+    source_index: f64,
+    target_index: f64,
+    sx: f64,
+    sy: f64,
+    tx: f64,
+    ty: f64,
+    clearance: f64,
+) {
+    let nodes = slice::from_raw_parts(nodes_ptr, node_count * 3);
+    let curve = Curve::from_ptr(curve_ptr);
+    let source = Point { x: sx, y: sy };
+    let target = Point { x: tx, y: ty };
+    let segments = curve.segments(source, target);
+    let mut pieces = Vec::new();
+    for segment in &segments {
+        subdivide(*segment, 0, &mut pieces);
+    }
+    let offset = curve.maximum_offset();
+    let reach = offset + clearance + 120.0;
+    let min_x = sx.min(tx) - reach;
+    let max_x = sx.max(tx) + reach;
+    let min_y = sy.min(ty) - reach;
+    let max_y = sy.max(ty) + reach;
+    let mut collisions = 0.0;
+    let mut penetration = 0.0;
+    let mut units = 0.0;
+    for (i, node) in nodes.chunks_exact(3).enumerate() {
+        if i as f64 == source_index || i as f64 == target_index {
+            continue;
+        }
+        if node[0] + node[2] < min_x
+            || node[0] - node[2] > max_x
+            || node[1] < min_y
+            || node[1] > max_y
+        {
+            continue;
+        }
+        units += 1.0;
+        let span = (node[2] - 24.0).max(0.0);
+        let left = Point {
+            x: node[0] - span,
+            y: node[1],
+        };
+        let right = Point {
+            x: node[0] + span,
+            y: node[1],
+        };
+        let mut minimum = f64::INFINITY;
+        for piece in &pieces {
+            minimum =
+                minimum.min(segment_distance(piece.start, piece.end, left, right) - piece.error);
+        }
+        let overlap = (clearance - minimum).max(0.0);
+        if overlap > 0.0 {
+            collisions += 1.0;
+            penetration += overlap * overlap;
+        }
+    }
+    let points = samples(&segments, source, target, 12);
+    let mut length = 0.0;
+    for pair in points.windows(2) {
+        length += hypot(pair[1].x - pair[0].x, pair[1].y - pair[0].y);
+    }
+    let extra = (length - hypot(tx - sx, ty - sy)).max(0.0);
+    let out = slice::from_raw_parts_mut(output_ptr, 3);
+    out[0] = collisions;
+    out[1] = collisions * 1_000_000.0
+        + penetration * 1_000.0
+        + extra * 0.2
+        + offset * 0.03
+        + curve.weights.len() as f64 * 0.4
+        + curve.zigzag();
+    out[2] = units;
+}
+
+/// Final-route collision checks use a tighter pruning box than candidate
+/// scoring. Keep its 48px reach and 30px distance threshold independent of
+/// the configurable candidate clearance. output = [collision_count,work_units,
+/// needs_js_reference]. Rare hypot/split ties defer to JS's strict comparison.
+#[no_mangle]
+pub unsafe extern "C" fn routing_node_collisions(
+    nodes_ptr: *const f64,
+    curve_ptr: *const f64,
+    output_ptr: *mut f64,
+    node_count: usize,
+    source_index: f64,
+    target_index: f64,
+    sx: f64,
+    sy: f64,
+    tx: f64,
+    ty: f64,
+) {
+    let nodes = slice::from_raw_parts(nodes_ptr, node_count * 3);
+    let curve = Curve::from_ptr(curve_ptr);
+    let source = Point { x: sx, y: sy };
+    let target = Point { x: tx, y: ty };
+    let coordinate_scale = 1.0_f64
+        .max(sx.abs())
+        .max(sy.abs())
+        .max(tx.abs())
+        .max(ty.abs())
+        .max(curve.maximum_offset());
+    let tolerance = 1e-7_f64.max(f64::EPSILON * coordinate_scale * 32.0);
+    let mut needs_js = false;
+    let mut pieces = Vec::new();
+    for segment in curve.segments(source, target) {
+        needs_js |= subdivide_final_route(segment, 0, &mut pieces, tolerance);
+    }
+    let reach = curve.maximum_offset() + 48.0;
+    let min_x = sx.min(tx) - reach;
+    let max_x = sx.max(tx) + reach;
+    let min_y = sy.min(ty) - reach;
+    let max_y = sy.max(ty) + reach;
+    let mut collisions = 0.0;
+    let mut units = 0.0;
+    for (i, node) in nodes.chunks_exact(3).enumerate() {
+        if i as f64 == source_index || i as f64 == target_index {
+            continue;
+        }
+        if node[0] + node[2] < min_x
+            || node[0] - node[2] > max_x
+            || node[1] < min_y
+            || node[1] > max_y
+        {
+            continue;
+        }
+        units += 1.0;
+        let span = (node[2] - 24.0).max(0.0);
+        let left = Point {
+            x: node[0] - span,
+            y: node[1],
+        };
+        let right = Point {
+            x: node[0] + span,
+            y: node[1],
+        };
+        let mut minimum = f64::INFINITY;
+        for piece in &pieces {
+            minimum =
+                minimum.min(segment_distance(piece.start, piece.end, left, right) - piece.error);
+        }
+        let node_scale = coordinate_scale
+            .max(node[0].abs())
+            .max(node[1].abs())
+            .max(node[2].abs());
+        let tolerance = 1e-7_f64.max(f64::EPSILON * node_scale * 32.0);
+        if (minimum - 30.0).abs() <= tolerance || (!pieces.is_empty() && !minimum.is_finite()) {
+            needs_js = true;
+        }
+        if minimum < 30.0 {
+            collisions += 1.0;
+        }
+    }
+    let out = slice::from_raw_parts_mut(output_ptr, 3);
+    out[0] = collisions;
+    out[1] = units;
+    out[2] = if needs_js && units > 0.0 { 1.0 } else { 0.0 };
+}
+
+fn segments_intersect(a: Point, b: Point, c: Point, d: Point) -> bool {
+    let abx = b.x - a.x;
+    let aby = b.y - a.y;
+    let cdx = d.x - c.x;
+    let cdy = d.y - c.y;
+    let denominator = abx * cdy - aby * cdx;
+    if denominator.abs() < 0.001 {
+        return false;
+    }
+    let acx = c.x - a.x;
+    let acy = c.y - a.y;
+    let along_ab = (acx * cdy - acy * cdx) / denominator;
+    let along_cd = (acx * aby - acy * abx) / denominator;
+    along_ab >= -1e-9 && along_ab <= 1.0 + 1e-9 && along_cd >= -1e-9 && along_cd <= 1.0 + 1e-9
+}
+
+/// other samples = [point_count,x,y,...] repeated for each already-pruned edge.
+#[no_mangle]
+pub unsafe extern "C" fn routing_crossings(
+    curve_ptr: *const f64,
+    other_ptr: *const f64,
+    output_ptr: *mut f64,
+    other_len: usize,
+    sx: f64,
+    sy: f64,
+    tx: f64,
+    ty: f64,
+) {
+    let curve = Curve::from_ptr(curve_ptr);
+    let source = Point { x: sx, y: sy };
+    let target = Point { x: tx, y: ty };
+    let points = samples(&curve.segments(source, target), source, target, 8);
+    let others = slice::from_raw_parts(other_ptr, other_len);
+    let mut cursor = 0;
+    let mut score = 0.0;
+    while cursor < others.len() {
+        let count = others[cursor] as usize;
+        cursor += 1;
+        let data = &others[cursor..cursor + count * 2];
+        let crossed = points.windows(2).any(|pair| {
+            (1..count).any(|i| {
+                segments_intersect(
+                    pair[0],
+                    pair[1],
+                    Point {
+                        x: data[(i - 1) * 2],
+                        y: data[(i - 1) * 2 + 1],
+                    },
+                    Point {
+                        x: data[i * 2],
+                        y: data[i * 2 + 1],
+                    },
+                )
+            })
+        });
+        if crossed {
+            score += 500.0;
+        }
+        cursor += count * 2;
+    }
+    *output_ptr = score;
+}
+
+/// labels = [anchor_x,anchor_y,width,height]*N.
+#[no_mangle]
+pub unsafe extern "C" fn routing_label_overlap(
+    curve_ptr: *const f64,
+    labels_ptr: *const f64,
+    output_ptr: *mut f64,
+    label_count: usize,
+    sx: f64,
+    sy: f64,
+    tx: f64,
+    ty: f64,
+    width: f64,
+    height: f64,
+) {
+    let curve = Curve::from_ptr(curve_ptr);
+    let source = Point { x: sx, y: sy };
+    let target = Point { x: tx, y: ty };
+    let anchor = curve_midpoint(&curve.segments(source, target), source, target);
+    let labels = slice::from_raw_parts(labels_ptr, label_count * 4);
+    let mut score = 0.0;
+    for label in labels.chunks_exact(4) {
+        let x = (width + label[2]) / 2.0 + 2.0 - (anchor.x - label[0]).abs();
+        let y = (height + label[3]) / 2.0 + 2.0 - (anchor.y - label[1]).abs();
+        if x > 0.0 && y > 0.0 {
+            score += 10_000.0 + x * y * 1.4;
+        }
+    }
+    *output_ptr = score;
+}
+
+/// Loop points retain JS trigonometry. Process all numeric obstacles together;
+/// the existing generator consumes results at its original yield boundaries.
+/// output = [overlap_score,work_units,collision_count]*N, preserving JS's sum
+/// order and generator work accounting even when each chunk is computed ahead.
+#[no_mangle]
+pub unsafe extern "C" fn routing_loop_obstacles(
+    nodes_ptr: *const f64,
+    points_ptr: *const f64,
+    output_ptr: *mut f64,
+    node_count: usize,
+    point_count: usize,
+    clearance: f64,
+    min_x: f64,
+    min_y: f64,
+    max_x: f64,
+    max_y: f64,
+    pill_nodes: u32,
+) {
+    let nodes = slice::from_raw_parts(nodes_ptr, node_count * 3);
+    let points = slice::from_raw_parts(points_ptr, point_count * 2);
+    let out = slice::from_raw_parts_mut(output_ptr, node_count * 3);
+    for (index, node) in nodes.chunks_exact(3).enumerate() {
+        let mut score = 0.0;
+        let mut units = 0.0;
+        let mut collisions = 0.0;
+        if pill_nodes == 0 {
+            units += 1.0;
+        }
+        if !(node[0] < min_x || node[0] > max_x || node[1] < min_y || node[1] > max_y) {
+            let span = if pill_nodes != 0 {
+                (node[2] - 24.0).max(0.0)
+            } else {
+                0.0
+            };
+            let mut distance = f64::INFINITY;
+            for point in points.chunks_exact(2) {
+                units += 1.0;
+                let dx = if pill_nodes != 0 {
+                    ((point[0] - node[0]).abs() - span).max(0.0)
+                } else {
+                    node[0] - point[0]
+                };
+                distance = distance.min(hypot(dx, node[1] - point[1]));
+            }
+            let overlap = (clearance - distance).max(0.0);
+            score = overlap * overlap;
+            if distance < clearance {
+                collisions = 1.0;
+            }
+        }
+        out[index * 3] = score;
+        out[index * 3 + 1] = units;
+        out[index * 3 + 2] = collisions;
+    }
+}
+
+#[cfg(test)]
+mod collision_tests {
+    use super::routing_node_collisions;
+
+    #[test]
+    fn final_route_threshold_and_pruning_work_are_independent() {
+        let nodes = [
+            -100.0, 0.0, 24.0, 100.0, 0.0, 24.0, 0.0, 29.99, 24.0, 0.0, 30.0, 24.0, 0.0, 48.0,
+            24.0, 0.0, 48.0000001, 24.0,
+        ];
+        let curve = [1.0, 1.0, 0.0, 0.5];
+        let mut out = [0.0; 3];
+        unsafe {
+            routing_node_collisions(
+                nodes.as_ptr(),
+                curve.as_ptr(),
+                out.as_mut_ptr(),
+                6,
+                0.0,
+                1.0,
+                -100.0,
+                0.0,
+                100.0,
+                0.0,
+            );
+        }
+        assert_eq!(out, [1.0, 3.0, 1.0]);
+    }
+
+    #[test]
+    fn wide_capsules_and_empty_curves_preserve_counts() {
+        let nodes = [-100.0, 0.0, 24.0, 100.0, 0.0, 24.0, 200.0, 0.0, 100.0];
+        let straight = [1.0, 1.0, 0.0, 0.5];
+        let empty = [0.0, 0.0];
+        let mut out = [0.0; 3];
+        unsafe {
+            routing_node_collisions(
+                nodes.as_ptr(),
+                straight.as_ptr(),
+                out.as_mut_ptr(),
+                3,
+                0.0,
+                1.0,
+                -100.0,
+                0.0,
+                100.0,
+                0.0,
+            );
+        }
+        assert_eq!(out, [1.0, 1.0, 0.0]);
+        unsafe {
+            routing_node_collisions(
+                nodes.as_ptr(),
+                empty.as_ptr(),
+                out.as_mut_ptr(),
+                3,
+                0.0,
+                1.0,
+                -100.0,
+                0.0,
+                100.0,
+                0.0,
+            );
+        }
+        assert_eq!(out, [0.0, 1.0, 0.0]);
+    }
+}
