@@ -3,7 +3,14 @@
 import type { ImportWarning } from "../../io/import-types";
 import { useAtomValue } from "jotai";
 import type { RefObject } from "react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { evaluateGraphInput } from "../../io/import-graph";
 import { initializeRustKernel } from "../../compute/rust-kernel";
@@ -14,6 +21,11 @@ import { graphSettingsAtom } from "../../shell/state/graph-atoms";
 import { useDebouncedValue } from "../../ui/hooks/use-debounced-value";
 
 import { useApplyGraphModel } from "./use-apply-graph-model";
+import {
+  createStarterFileReader,
+  IDLE_FILE_READ_STATE,
+  type StarterFileReadState,
+} from "./starter-file-read";
 
 export type StarterTab = "paste" | "sample";
 
@@ -37,6 +49,27 @@ export function useGraphStarterState({
   const [issues, setIssues] = useState<ImportWarning[]>([]);
   const [tab, setTab] = useState<StarterTab>("paste");
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
+  const importFormatRef = useRef(importFormat);
+  const [fileReadState, setFileReadState] =
+    useState<StarterFileReadState>(IDLE_FILE_READ_STATE);
+  const fileReaderRef = useRef<ReturnType<
+    typeof createStarterFileReader
+  > | null>(null);
+  if (!fileReaderRef.current) {
+    fileReaderRef.current = createStarterFileReader({
+      getFormat: () => importFormatRef.current,
+      onInput: (text) => {
+        setInputText(text);
+        setIssues([]);
+      },
+      onState: setFileReadState,
+    });
+  }
+  const fileReader = fileReaderRef.current;
+  const cancelFileRead = useCallback(
+    () => fileReader.invalidate(),
+    [fileReader],
+  );
   const importOptions = useMemo<ImportOptions>(
     () => ({
       ...graphSettings,
@@ -83,18 +116,24 @@ export function useGraphStarterState({
       : (preview?.warnings ?? []);
 
   const close = () => {
+    cancelFileRead();
     onClose();
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Invalidate before asynchronous completion can touch a closed/reopened
+    // starter, including the closing animation while its footer still exists.
+    cancelFileRead();
     if (!open) {
-      return;
+      return cancelFileRead;
     }
 
     setInputText("");
     setIssues([]);
     setImportFormat("auto");
-  }, [open]);
+    importFormatRef.current = "auto";
+    return cancelFileRead;
+  }, [cancelFileRead, open]);
 
   useEffect(() => {
     if (!open || tab !== "paste") {
@@ -136,11 +175,13 @@ export function useGraphStarterState({
   };
 
   const setInput = (value: string) => {
+    cancelFileRead();
     setInputText(value);
     setIssues([]);
   };
 
   const selectImportFormat = (value: ImportFormat) => {
+    importFormatRef.current = value;
     setImportFormat(value);
     setIssues([]);
   };
@@ -149,6 +190,9 @@ export function useGraphStarterState({
     applyText,
     analysis,
     close,
+    cancelFileRead,
+    fileReadState,
+    readFile: fileReader.read,
     inputText,
     importFormat,
     issues,

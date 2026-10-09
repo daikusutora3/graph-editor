@@ -99,6 +99,9 @@ type Messages = {
     paste: string;
     sample: string;
     loadingSamples: string;
+    readingFile: string;
+    fileReadFailed: string;
+    fileTooLarge: (limit: number) => string;
     autoDetectHelp: string;
     formatLabel: string;
     autoFormat: string;
@@ -668,6 +671,11 @@ const ja: Messages = {
     paste: "貼り付け",
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
+    readingFile: "ファイルを読み込み中…",
+    fileReadFailed:
+      "ファイルを読み込めませんでした。入力内容は保持されています。もう一度選択してください。",
+    fileTooLarge: (limit: number) =>
+      `ファイルが大きすぎます。${limit.toLocaleString("ja-JP")}文字以内にしてください。入力内容は保持されています。`,
     autoDetectHelp: "対応形式を入力内容から判定します",
     formatLabel: "形式",
     autoFormat: "自動判定",
@@ -1187,6 +1195,11 @@ const en: Messages = {
     paste: "Paste",
     sample: "Samples",
     loadingSamples: "Loading samples",
+    readingFile: "Reading file…",
+    fileReadFailed:
+      "The file could not be read. Your input is retained. Select the file again to retry.",
+    fileTooLarge: (limit: number) =>
+      `The file exceeds the ${limit.toLocaleString("en-US")}-character limit. Your input is retained.`,
     autoDetectHelp: "Detects the supported format from your input.",
     formatLabel: "Format",
     autoFormat: "Auto detect",
@@ -1705,6 +1718,10 @@ const zhHans: Messages = {
     paste: "粘贴",
     sample: "示例",
     loadingSamples: "正在加载示例",
+    readingFile: "正在读取文件…",
+    fileReadFailed: "无法读取文件。已保留当前输入。请重新选择文件后重试。",
+    fileTooLarge: (limit: number) =>
+      `文件超过 ${limit.toLocaleString("zh-CN")} 个字符的限制。已保留当前输入。`,
     autoDetectHelp: "根据输入内容检测支持的格式。",
     formatLabel: "格式",
     autoFormat: "自动检测",

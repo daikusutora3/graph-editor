@@ -2,7 +2,7 @@
 // across viewport widths and every panel. Usage:
 //   bun scripts/audit/ui-audit.mjs            (dev server on :3000)
 //   THEME=dark BASE_URL=http://localhost:3000 bun scripts/audit/ui-audit.mjs
-import { chromium } from "playwright";
+import { chromium, devices } from "playwright";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const AUDIT = `(async () => {
@@ -17,14 +17,20 @@ const AUDIT = `(async () => {
   const rects = (els) => els.map((el) => ({ el, r: el.getBoundingClientRect() }));
   const overlap = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
   const label = (el) => (el.getAttribute("aria-label") || el.textContent || el.tagName).trim().slice(0, 24);
+  const touchInput = /iPhone|iPad|iPod|Android/i.test(navigator.platform + " " + navigator.userAgent) || (/Mac/i.test(navigator.platform) && navigator.maxTouchPoints > 1);
+  const input = touchInput ? "touch" : "pointer";
   const scan = (state) => {
-    const touch = main.dataset.layout === "mobile";
-    const minSize = touch ? 44 : 30;
+    state = input + " " + state;
+    const mobileLayout = main.dataset.layout === "mobile";
+    const minHeight = mobileLayout ? 44 : 30;
     const M = main.getBoundingClientRect();
     const interactive = [...main.querySelectorAll("button,input,select,textarea,a[href],[role=radio],[role=checkbox],[role=switch],[role=menuitem]")].filter(visible);
     for (const el of interactive) {
       const r = el.getBoundingClientRect();
-      if (el.tagName !== "TEXTAREA" && (Math.round(r.width) < minSize || Math.round(r.height) < minSize) && !el.closest("[data-edge-node-hitbox],.ge-select-node-hitbox,[class*=cursor-text]"))
+      const pointerOnly = el.hasAttribute("data-range-selection-trigger");
+      const minWidth = pointerOnly ? 24 : minHeight;
+      if (pointerOnly && touchInput) findings.push(state + ": pointer-only range trigger visible on touch input");
+      if (el.tagName !== "TEXTAREA" && (r.width < minWidth - 0.1 || r.height < minHeight - 0.1) && !el.closest("[data-edge-node-hitbox],.ge-select-node-hitbox,[class*=cursor-text]"))
         findings.push(state + ": target too small " + label(el) + " " + Math.round(r.width) + "x" + Math.round(r.height));
       if (!el.getAttribute("aria-label") && !el.textContent.trim() && !["INPUT","SELECT","TEXTAREA"].includes(el.tagName))
         findings.push(state + ": unlabeled control " + el.tagName);
@@ -53,33 +59,36 @@ const AUDIT = `(async () => {
   const node = main.querySelector(".ge-select-node-hitbox"); if (node) { node.click(); await wait(300); scan(w + " selected"); document.body.click(); await wait(100); }
   const panelsToOpen = mobile ? ["メニュー", "書き出し", "PNG 画像", "グラフを読み込む", "アプリメニューを開く"] : ["配置", "設定", "書き出し", "PNG 画像", "グラフを読み込む", "アプリメニューを開く"];
   for (const p of panelsToOpen) { if (await openPanel(p)) { await wait(p === "PNG 画像" ? 1200 : 0); scan(w + " " + p); await close(); } }
-  return [w + " " + main.dataset.layout + " theme=" + document.documentElement.dataset.theme + " nodes=" + main.querySelectorAll(".ge-select-node-hitbox").length + " panels=" + main.querySelectorAll(".ge-panel").length, ...new Set(findings)];
+  return [input + " " + w + " " + main.dataset.layout + " theme=" + document.documentElement.dataset.theme + " nodes=" + main.querySelectorAll(".ge-select-node-hitbox").length + " panels=" + main.querySelectorAll(".ge-panel").length, ...new Set(findings)];
 })()`;
 const browser = await chromium.launch();
 const all = [];
-for (const width of [375, 414, 600, 768, 900, 1100, 1280, 1440, 1920]) {
-  const ctx = await browser.newContext({
-    viewport: { width, height: 900 },
-    locale: "ja-JP",
-    colorScheme: process.env.THEME === "dark" ? "dark" : "light",
-  });
-  if (process.env.THEME)
-    await ctx.addInitScript(
-      (t) => localStorage.setItem("graph-editor-theme", t),
-      process.env.THEME,
-    );
-  const page = await ctx.newPage();
-  await page.goto(BASE_URL, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1500);
-  // load a sample so selection / layouts have content
-  const sample = page.getByRole("button", { name: /cycle/i });
-  await sample.first().click();
-  await page.locator('[data-canvas-ready="true"]').waitFor();
-  await page.locator("button.ge-select-node-hitbox").first().waitFor();
-  await page.waitForTimeout(800);
-  const res = await page.evaluate(AUDIT);
-  all.push(...res);
-  await ctx.close();
+for (const input of ["pointer", "touch"]) {
+  for (const width of [320, 375, 414, 600, 768, 900, 1100, 1280, 1440, 1920]) {
+    const ctx = await browser.newContext({
+      ...(input === "touch" ? devices["Pixel 7"] : {}),
+      viewport: { width, height: 900 },
+      locale: "ja-JP",
+      colorScheme: process.env.THEME === "dark" ? "dark" : "light",
+    });
+    if (process.env.THEME)
+      await ctx.addInitScript(
+        (t) => localStorage.setItem("graph-editor-theme", t),
+        process.env.THEME,
+      );
+    const page = await ctx.newPage();
+    await page.goto(BASE_URL, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1500);
+    // load a sample so selection / layouts have content
+    const sample = page.getByRole("button", { name: /cycle/i });
+    await sample.first().click();
+    await page.locator('[data-canvas-ready="true"]').waitFor();
+    await page.locator("button.ge-select-node-hitbox").first().waitFor();
+    await page.waitForTimeout(800);
+    const res = await page.evaluate(AUDIT);
+    all.push(...res);
+    await ctx.close();
+  }
 }
 await browser.close();
 const findings = all.filter((line) => !/ nodes=\d+ panels=\d+$/.test(line));

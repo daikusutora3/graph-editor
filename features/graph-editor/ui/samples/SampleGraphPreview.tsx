@@ -9,7 +9,14 @@ import {
   NODE_FONT_PX,
   NODE_SIZE_PX,
 } from "../../core/graph/node-size";
-import { edgeCurveSvgPath } from "../../core/layout/edge-route-geometry";
+import {
+  edgeCurveSegments,
+  edgeCurveSvgPath,
+} from "../../core/layout/edge-route-geometry";
+import {
+  previewCurveBounds,
+  type PreviewCurvePoints,
+} from "./preview-curve-bounds";
 import { cn } from "@/lib/utils";
 
 type SampleGraphPreviewProps = {
@@ -34,7 +41,12 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
   const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
   const editorLike = variant === "editor";
-  const bounds = getModelBounds(model, edgeRouting, editorLike);
+  const bounds = getModelBounds(
+    model,
+    edgeRouting,
+    editorLike,
+    focus ? 1.1 : 1,
+  );
   const nodeCount = model.nodes.length;
   const edgeCount = model.edges.length;
   const softenDenseEdges =
@@ -310,14 +322,7 @@ export function createPreviewEdgePath({
     return createLoopPath(source, radius, scale, routing);
   }
 
-  const dx = target.x - source.x;
-  const dy = target.y - source.y;
-  const length = Math.hypot(dx, dy);
-  const shrink = directed && length > 0 ? radius * 1.9 : 0;
-  const end = {
-    x: target.x - (dx / Math.max(length, 1)) * shrink,
-    y: target.y - (dy / Math.max(length, 1)) * shrink,
-  };
+  const end = previewEdgeEndpoint(source, target, directed, radius);
   return edgeCurveSvgPath(source, end, {
     controlPointDistancesPx: (
       routing?.controlPointDistancesPx ?? [routing?.bowPx ?? 0]
@@ -327,6 +332,32 @@ export function createPreviewEdgePath({
 }
 
 function createLoopPath(
+  source: { x: number; y: number },
+  radius: number,
+  scale: number,
+  routing:
+    | {
+        loopDirectionDeg: number;
+        loopSweepDeg: number;
+        loopStepSizePx?: number;
+      }
+    | undefined,
+) {
+  const { start, end, controlA, controlB } = createLoopGeometry(
+    source,
+    radius,
+    scale,
+    routing,
+  );
+  return [
+    `M${round(start.x)} ${round(start.y)}`,
+    `C${round(controlA.x)} ${round(controlA.y)}`,
+    `${round(controlB.x)} ${round(controlB.y)}`,
+    `${round(end.x)} ${round(end.y)}`,
+  ].join(" ");
+}
+
+function createLoopGeometry(
   source: { x: number; y: number },
   radius: number,
   scale: number,
@@ -365,22 +396,37 @@ function createLoopPath(
     y: source.y + Math.sin(endAngle) * loopRadius,
   };
 
-  return [
-    `M${round(start.x)} ${round(start.y)}`,
-    `C${round(controlA.x)} ${round(controlA.y)}`,
-    `${round(controlB.x)} ${round(controlB.y)}`,
-    `${round(end.x)} ${round(end.y)}`,
-  ].join(" ");
+  return { start, end, controlA, controlB };
+}
+
+function previewEdgeEndpoint(
+  source: { x: number; y: number },
+  target: { x: number; y: number },
+  directed: boolean,
+  radius: number,
+) {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const length = Math.hypot(dx, dy);
+  const shrink = directed && length > 0 ? radius * 1.9 : 0;
+  // A 1px denominator floor changes the arrow direction when the same short
+  // chord is evaluated before and after fitting. Normalize every nonzero chord.
+  const denominator = length || 1;
+  return {
+    x: target.x - (dx / denominator) * shrink,
+    y: target.y - (dy / denominator) * shrink,
+  };
 }
 
 function round(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function getModelBounds(
+export function getModelBounds(
   model: GraphModel,
   routes: ReturnType<typeof computeEdgeRouting>,
   editorLike: boolean,
+  radiusScale = 1,
 ) {
   if (model.nodes.length === 0) {
     return { minX: -1, minY: -1, width: 2, height: 2 };
@@ -398,26 +444,61 @@ function getModelBounds(
   );
   const ys = model.nodes.flatMap((node) =>
     editorLike
-      ? [node.y - NODE_SIZE_PX / 2, node.y + NODE_SIZE_PX / 2]
+      ? [
+          node.y - (NODE_SIZE_PX / 2) * radiusScale,
+          node.y + (NODE_SIZE_PX / 2) * radiusScale,
+        ]
       : [node.y],
   );
+  const radius = (NODE_SIZE_PX / 2) * (editorLike ? radiusScale : 1);
   const nodes = new Map(model.nodes.map((node) => [node.id, node]));
   for (const edge of model.edges) {
-    if (edge.source !== edge.target) continue;
     const node = nodes.get(edge.source);
+    const target = nodes.get(edge.target);
     const route = routes.get(edge.id);
-    if (!node || !route) continue;
-    const radius = normalizeLoopStepSize(route.loopStepSizePx) * 1.4;
-    const direction = ((route.loopDirectionDeg - 90) * Math.PI) / 180;
-    const sweep = (route.loopSweepDeg * Math.PI) / 180;
-    xs.push(
-      node.x - nodeGeometryWidth(node) / 2,
-      node.x + nodeGeometryWidth(node) / 2,
+    if (!node || !target) continue;
+    if (node.x === target.x && node.y === target.y) {
+      const loop = createLoopGeometry(node, radius, 1, route);
+      includeCurve([loop.start, loop.controlA, loop.controlB, loop.end]);
+      if (!editorLike) {
+        // Gallery nodes stay a fixed screen size. Keep the existing roomy loop
+        // reservation; their radius is independent of the graph fit scale.
+        xs.push(
+          node.x - nodeGeometryWidth(node) / 2,
+          node.x + nodeGeometryWidth(node) / 2,
+          loop.controlA.x,
+          loop.controlB.x,
+        );
+        ys.push(
+          node.y - NODE_SIZE_PX / 2,
+          node.y + NODE_SIZE_PX / 2,
+          loop.controlA.y,
+          loop.controlB.y,
+        );
+      }
+      continue;
+    }
+    const end = previewEdgeEndpoint(
+      node,
+      target,
+      model.settings.directed,
+      editorLike ? radius : 0,
     );
-    ys.push(node.y - NODE_SIZE_PX / 2, node.y + NODE_SIZE_PX / 2);
-    for (const angle of [direction - sweep / 2, direction + sweep / 2]) {
-      xs.push(node.x + Math.cos(angle) * radius);
-      ys.push(node.y + Math.sin(angle) * radius);
+    const distances = route?.controlPointDistancesPx ?? [route?.bowPx ?? 0];
+    // Gallery arrowheads use a fixed screen radius. Shortening a very short
+    // chord can reverse its normal as the graph scales, so reserve both sides.
+    const curveDistances =
+      !editorLike && model.settings.directed
+        ? [distances, distances.map((distance) => -distance)]
+        : [distances];
+    for (const controlPointDistancesPx of curveDistances) {
+      const segments = edgeCurveSegments(node, end, {
+        controlPointDistancesPx,
+        controlPointWeights: route?.controlPointWeights ?? [0.5],
+      });
+      for (const { start, control, end: segmentEnd } of segments) {
+        includeCurve([start, control, segmentEnd]);
+      }
     }
   }
   const minX = Math.min(...xs);
@@ -431,4 +512,10 @@ function getModelBounds(
     width: Math.max(1, maxX - minX),
     height: Math.max(1, maxY - minY),
   };
+
+  function includeCurve(points: PreviewCurvePoints) {
+    const curveBounds = previewCurveBounds(points);
+    xs.push(curveBounds.minX, curveBounds.maxX);
+    ys.push(curveBounds.minY, curveBounds.maxY);
+  }
 }

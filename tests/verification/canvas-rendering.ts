@@ -1,10 +1,14 @@
-import cytoscape, { type Core, type Css, type EventHandler } from "cytoscape";
+import { createCalculationCanvas } from "../fixtures/calculation-canvas";
+import cytoscape from "cytoscape";
 
 import { refreshCytoscapeGeometry } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-geometry-refresh";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
 import { afterCytoscapeRender } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-render-request";
 import { startVisibleTimeout } from "../../features/graph-editor/adapters/browser/visible-timeout";
-import { readEdgeLabelHitboxes } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
+import {
+  readNodeHitboxes,
+  readEdgeLabelHitboxes,
+} from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 import { reconcileEdgeLabelHitboxes } from "../../features/graph-editor/canvas/rendered-hitbox-reconciliation";
 import {
   applyCytoscapeRoutingMeta,
@@ -19,8 +23,11 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createVerification } from "./harness";
 
+import { createRenderedHitboxReader } from "../../features/graph-editor/adapters/cytoscape/rendered-hitbox-reader";
+
 const { expect, finish } = createVerification("Canvas rendering");
 
+verifyIncrementalHitboxes();
 verifyCachedRouteBounds();
 verifyAffectedGeometry();
 verifyLabelDimensions();
@@ -47,98 +54,6 @@ function fixture(): GraphModel {
   };
 }
 
-type CalculationRenderer = {
-  registerNodeShapes: () => void;
-  registerArrowShapes: () => void;
-  registerCalculationListeners: () => void;
-  flushRenderedStyleQueue: () => void;
-};
-type GeometryCollection = {
-  cleanStyle: () => void;
-  dirtyBoundingBoxCache: () => void;
-};
-
-/** Real Cytoscape projections and bbox cache; only font measurement is stubbed.
- * No DOM or canvas raster is involved. Native screenshots cover that separately.
- */
-function createCalculationCanvas(
-  graph: GraphModel,
-  edgeRoutingMeta?: ReadonlyMap<string, EdgeRoutingMeta>,
-) {
-  const cy = cytoscape({
-    headless: true,
-    styleEnabled: true,
-    layout: { name: "preset" },
-    elements: definitions(graph, edgeRoutingMeta),
-    style: [
-      { selector: "node", style: { width: 48, height: 48, shape: "ellipse" } },
-      {
-        selector: "edge",
-        style: {
-          "curve-style": "unbundled-bezier",
-          "control-point-distances": "data(controlPointDistances)",
-          "control-point-weights": "data(controlPointWeights)",
-          "loop-direction": "data(loopDirection)",
-          "loop-sweep": "data(loopSweep)",
-          label: "data(label)",
-          "font-size": 12,
-          "text-background-padding": "5px",
-          "text-rotation": "none",
-        },
-      },
-      {
-        selector: "edge:loop",
-        style: {
-          "control-point-step-size": "data(loopStepSize)",
-        } as unknown as Css.Edge,
-      },
-    ],
-  });
-  // Use the installed renderer's exact projection/cache implementation.
-  const Base = cytoscape("renderer", "base") as {
-    prototype: CalculationRenderer;
-  };
-  const renderer = Object.assign(Object.create(Base.prototype), {
-    cy,
-    destroyed: false,
-    bezierProjPcts: [0.05, 0.225, 0.4, 0.5, 0.6, 0.775, 0.95],
-    beforeRenderCallbacks: [],
-    beforeRenderPriorities: { eleCalcs: 300 },
-    notify() {},
-    isHeadless: () => false,
-    calculateLabelDimensions: (_element: unknown, text: string) => ({
-      width: text.length * 7,
-      height: 12,
-      labelActualDescent: 3,
-    }),
-    binder: (target: Core) => {
-      const chain = {
-        on: (events: string, handler: EventHandler) => {
-          target.on(events, handler);
-          return chain;
-        },
-      };
-      return chain;
-    },
-  }) as CalculationRenderer;
-  renderer.registerNodeShapes();
-  renderer.registerArrowShapes();
-  const internals = cy as unknown as {
-    _private: { renderer: CalculationRenderer };
-  };
-  // Test-only replacement runs the installed projections without a DOM canvas.
-  // eslint-disable-next-line no-underscore-dangle
-  internals._private.renderer = renderer;
-  renderer.registerCalculationListeners();
-  const geometry = cy.elements() as unknown as GeometryCollection;
-  geometry.cleanStyle();
-  geometry.dirtyBoundingBoxCache();
-  renderer.flushRenderedStyleQueue();
-  cy.elements().boundingBox();
-  renderer.flushRenderedStyleQueue();
-  return { cy, renderer };
-}
-
 function definitions(
   graph: GraphModel,
   edgeRoutingMeta?: ReadonlyMap<string, EdgeRoutingMeta>,
@@ -148,6 +63,92 @@ function definitions(
       edgeRoutingMeta ??
       new Map(graph.edges.map((edge) => [edge.id, defaultEdgeRoutingMeta])),
   });
+}
+
+function verifyIncrementalHitboxes() {
+  let graph = fixture();
+  const { cy } = createCalculationCanvas(graph);
+  const reader = createRenderedHitboxReader(cy);
+  const check = (message: string) => {
+    const snapshot = reader.read(graph, true);
+    expect(
+      JSON.stringify(snapshot.nodes) ===
+        JSON.stringify(readNodeHitboxes(cy, graph)),
+      `${message}: node geometry equals a full read`,
+    );
+    expect(
+      JSON.stringify(snapshot.edges) ===
+        JSON.stringify(readEdgeLabelHitboxes(cy, graph)),
+      `${message}: edge geometry equals a full read`,
+    );
+    return snapshot;
+  };
+  try {
+    const initial = check("initial");
+    const unchanged = reader.read(graph, true);
+    expect(
+      initial.nodes === unchanged.nodes && initial.edges === unchanged.edges,
+      "idle frames reuse the geometry snapshot",
+    );
+    cy.getElementById("a").position({ x: 60, y: 40 });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("a")));
+    const moved = check("node movement");
+    expect(
+      initial.nodes[3] === moved.nodes[3] &&
+        initial.edges![2] === moved.edges![2],
+      "moving one node retains remote entries",
+    );
+    cy.getElementById("de").data({ bow: 70, controlPointDistances: [70] });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("de")));
+    check("remote routing change");
+    cy.getElementById("a").style("width", 220);
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("a")));
+    check("label/width style change");
+    cy.zoom(1.5);
+    cy.pan({ x: 100, y: 80 });
+    check("zoom and pan");
+    expect(
+      reader.read(graph, false).edges === null,
+      "drawing modes skip edge geometry",
+    );
+    cy.getElementById("d").position({ x: 720, y: 20 });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("d")));
+    reader.read(graph, false);
+    check("returning to selection reads hidden geometry");
+    graph = {
+      ...graph,
+      edges: [
+        ...graph.edges,
+        { id: "ab2", source: "a", target: "b", label: "2" },
+      ],
+    };
+    refreshCytoscapeGeometry(
+      syncCytoscapeElements(cy, definitions(graph)).changedElements,
+    );
+    check("parallel addition");
+    cy.getElementById("ab").data({ bow: -64, controlPointDistances: [-64] });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("ab")));
+    check("parallel routing update");
+    graph = {
+      ...graph,
+      edges: graph.edges.filter((edge) => edge.id !== "ab2"),
+    };
+    refreshCytoscapeGeometry(
+      syncCytoscapeElements(cy, definitions(graph)).changedElements,
+    );
+    check("parallel removal");
+    graph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === "a" ? { ...node, label: "renamed" } : node,
+      ),
+    };
+    syncCytoscapeElements(cy, definitions(graph));
+    check("model label update");
+  } finally {
+    reader.dispose();
+    cy.destroy();
+  }
 }
 
 function verifySizedLoopGeometry() {

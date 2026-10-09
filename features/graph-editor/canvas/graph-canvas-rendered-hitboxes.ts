@@ -14,11 +14,10 @@ import type { EditorMode } from "../shell/state/editor-state";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
 
 import {
-  readEdgeLabelHitboxes,
-  readNodeHitboxes,
   type EdgeLabelHitbox,
   type NodeHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
+import { createRenderedHitboxReader } from "../adapters/cytoscape/rendered-hitbox-reader";
 import { readGraphOutOfView } from "../adapters/cytoscape/graph-canvas-viewport";
 import {
   reconcileEdgeLabelHitboxes,
@@ -48,15 +47,22 @@ export function useRenderedHitboxes({
   const hitboxLayerRef = useRef<HTMLDivElement | null>(null);
   const basePanRef = useRef({ x: 0, y: 0 });
   const readPanRef = useRef({ x: 0, y: 0 });
+  const readerRef = useRef<{
+    cy: Core;
+    reader: ReturnType<typeof createRenderedHitboxReader>;
+  } | null>(null);
 
   const updateRenderedHitboxesNow = useCallback(
     (cy: Core) => {
       // cy.pan() returns Cytoscape's live object; snapshot it.
       const pan = cy.pan();
       readPanRef.current = { x: pan.x, y: pan.y };
-      const nextNodeHitboxes = readNodeHitboxes(cy, graph);
-      const nextEdgeLabelHitboxes =
-        mode === "select" ? readEdgeLabelHitboxes(cy, graph) : null;
+      if (readerRef.current?.cy !== cy) {
+        readerRef.current?.reader.dispose();
+        readerRef.current = { cy, reader: createRenderedHitboxReader(cy) };
+      }
+      const { nodes: nextNodeHitboxes, edges: nextEdgeLabelHitboxes } =
+        readerRef.current.reader.read(graph, mode === "select");
       const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
 
       setNodeHitboxes((current) =>
@@ -157,6 +163,14 @@ export function useRenderedHitboxes({
       pendingHitboxCyRef.current = null;
     },
     [updateRenderedHitboxesNow],
+  );
+
+  useEffect(
+    () => () => {
+      readerRef.current?.reader.dispose();
+      readerRef.current = null;
+    },
+    [],
   );
 
   return {

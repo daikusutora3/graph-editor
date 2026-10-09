@@ -2,7 +2,7 @@
 import { integrityCopy } from "../../i18n/integrity-copy";
 
 import { CircleAlert, FileInput, FolderOpen } from "lucide-react";
-import { lazy, Suspense, type RefObject, useRef } from "react";
+import { lazy, Suspense, type RefObject, useLayoutEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -57,6 +57,7 @@ function canApplyStarter(starter: StarterState) {
 
   return (
     Boolean(starter.inputText.trim()) &&
+    starter.fileReadState.status !== "reading" &&
     starter.analysis?.status === "detected" &&
     Boolean(
       previewModel &&
@@ -134,6 +135,21 @@ export function StarterPasteBody({
           </span>
         </div>
       </div>
+      {starter.fileReadState.status === "reading" ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-xs text-[var(--muted)]"
+        >
+          {messages.starter.readingFile}
+        </p>
+      ) : starter.fileReadState.status === "failed" ? (
+        <p role="alert" className="text-xs text-[var(--danger)]">
+          {starter.fileReadState.reason === "too-large"
+            ? messages.starter.fileTooLarge(starter.fileReadState.limit)
+            : messages.starter.fileReadFailed}
+        </p>
+      ) : null}
       <div className="ge-paste-grid grid min-h-[352px] flex-1 grid-cols-1 gap-3 sm:min-h-[220px] sm:grid-cols-[minmax(0,1fr)_176px]">
         <textarea
           ref={textareaRef}
@@ -223,13 +239,8 @@ export function StarterPasteFooter({
   const canApply = canApplyStarter(starter);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const openFile = async (file: File | undefined) => {
-    if (!file) {
-      return;
-    }
-
-    starter.setInput(await file.text());
-  };
+  // Switching to samples removes this footer without closing the starter.
+  useLayoutEffect(() => starter.cancelFileRead, [starter.cancelFileRead]);
 
   return (
     <div className="grid w-full min-w-0 grid-cols-2 items-center gap-2 @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap">
@@ -262,7 +273,7 @@ export function StarterPasteFooter({
         tabIndex={-1}
         aria-hidden="true"
         onChange={(event) => {
-          void openFile(event.currentTarget.files?.[0]);
+          void starter.readFile(event.currentTarget.files?.[0]);
           event.currentTarget.value = "";
         }}
       />

@@ -27,6 +27,8 @@ const suites = [
   { name: "autosave", path: "tests/verification/autosave.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
   { name: "samples", path: "tests/verification/samples.ts" },
+  { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
+  { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
   {
     name: "sample-parameters",
     path: "tests/verification/sample-parameters.ts",
@@ -56,6 +58,10 @@ const suites = [
     path: "tests/verification/storage-notifications.ts",
   },
   { name: "io", path: "tests/verification/io-contracts.ts" },
+  {
+    name: "starter-file-read",
+    path: "tests/verification/starter-file-read.ts",
+  },
   { name: "tikz", path: "tests/verification/tikz.ts" },
   { name: "screenshot", path: "tests/verification/screenshot.ts" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },

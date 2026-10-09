@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { IconButton } from "../primitives";
+import { tabbableElements } from "../primitives/focus-navigation";
 import type {
   EditorLayout,
   EditorPanel,
@@ -32,25 +33,8 @@ type EditorPanelShellProps = {
 };
 
 const CHROME_CONTROL_SELECTOR = "[data-editor-chrome-control='true']";
-const FOCUSABLE_SELECTOR = [
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  "a[href]",
-  "[tabindex]:not([tabindex='-1'])",
-].join(",");
-
-function focusableElements(root: HTMLElement | null) {
-  return root
-    ? [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
-        (element) => element.offsetParent !== null,
-      )
-    : [];
-}
-
 function firstFocusable(root: HTMLElement | null) {
-  const elements = focusableElements(root);
+  const elements = tabbableElements(root);
   // Prefer the first control after the close button so keyboard users land
   // on the panel's own content.
   return (
@@ -61,7 +45,7 @@ function firstFocusable(root: HTMLElement | null) {
 }
 
 function trapTab(event: ReactKeyboardEvent, root: HTMLElement | null) {
-  const elements = focusableElements(root);
+  const elements = tabbableElements(root);
 
   if (elements.length === 0) {
     return;
