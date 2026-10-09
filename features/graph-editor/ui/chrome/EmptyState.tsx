@@ -90,7 +90,7 @@ export function EmptyState({
     <div
       className={
         mobile
-          ? "pointer-events-none absolute inset-0 z-50 grid place-items-center px-4 pt-[72px] pb-[100px]"
+          ? "pointer-events-none absolute inset-0 z-50 grid place-items-center px-4 pt-[72px] pb-[calc(var(--ge-mobile-controls-bottom,92px)+8px)]"
           : "pointer-events-none absolute inset-0 z-50 grid place-items-center px-5 pt-20 pb-[120px]"
       }
     >

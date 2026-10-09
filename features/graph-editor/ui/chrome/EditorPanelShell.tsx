@@ -6,7 +6,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   ReactNode,
 } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -96,8 +96,62 @@ export function EditorPanelShell({
   const { messages } = useI18n();
   const sectionRef = useRef<HTMLElement | null>(null);
   const mobile = layout === "mobile";
+  const mobileSheet = mobile && panel !== "app";
   const fullscreen = mobile && panel === "starter";
   const modal = panel === "starter" || panel === "shortcuts";
+  const [anchorPosition, setAnchorPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    if (mobileSheet || modal) {
+      setAnchorPosition(null);
+      return;
+    }
+    const section = sectionRef.current;
+    const container = section?.closest<HTMLElement>("[data-layout]");
+    const anchor = container?.querySelector<HTMLElement>(
+      `[data-editor-panel-trigger="${panel === "menu" ? "settings" : panel}"]`,
+    );
+    if (!section || !container || !anchor) {
+      setAnchorPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const bounds = container.getBoundingClientRect();
+      const trigger = anchor.getBoundingClientRect();
+      const margin = mobile ? 12 : 16;
+      const panelWidth = section.offsetWidth;
+      const desiredLeft =
+        panel === "app"
+          ? trigger.left - bounds.left
+          : panel === "export" || panel === "png"
+            ? trigger.right - bounds.left - panelWidth
+            : trigger.left - bounds.left + (trigger.width - panelWidth) / 2;
+      const left = Math.max(
+        margin,
+        Math.min(desiredLeft, bounds.width - panelWidth - margin),
+      );
+      const top = Math.max(
+        margin,
+        Math.min(
+          trigger.bottom - bounds.top + 8,
+          bounds.height - section.offsetHeight - margin,
+        ),
+      );
+      setAnchorPosition((current) =>
+        current?.left === left && current.top === top ? current : { left, top },
+      );
+    };
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(container);
+    observer.observe(anchor);
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [mobile, mobileSheet, modal, panel]);
 
   useEffect(() => {
     if (state !== "open") {
@@ -167,34 +221,24 @@ export function EditorPanelShell({
   }, [mobile, onClose, panel, state]);
 
   const positionStyle: CSSProperties | undefined = (() => {
-    if (mobile) {
+    if (mobileSheet) {
       return undefined;
     }
 
-    if (panel === "app") {
-      return { top: 76, left: 16, width: width ?? 264 };
-    }
-
-    if (panel === "layouts" || panel === "menu") {
+    if (!modal) {
       return {
-        top: 76,
-        left: "50%",
-        transform: "translateX(calc(-50% + 150px))",
-        width: width ?? 372,
+        top: anchorPosition?.top ?? 76,
+        left: anchorPosition?.left ?? 16,
+        width:
+          width ??
+          (panel === "app"
+            ? 264
+            : panel === "settings"
+              ? 340
+              : panel === "layouts" || panel === "menu"
+                ? 372
+                : 384),
       };
-    }
-
-    if (panel === "settings") {
-      return {
-        top: 76,
-        left: "50%",
-        transform: `translateX(calc(-50% + ${layout === "compact" ? 150 : 236}px))`,
-        width: width ?? 340,
-      };
-    }
-
-    if (panel === "export" || panel === "png") {
-      return { top: 72, right: 16, width: width ?? 384 };
     }
 
     return {
@@ -221,7 +265,7 @@ export function EditorPanelShell({
       <div
         className={cn(
           "absolute z-[90] max-w-[calc(100%-32px)]",
-          mobile && "inset-x-0 bottom-0 max-w-none",
+          mobileSheet && "inset-x-0 bottom-0 max-w-none",
           fullscreen && "inset-0",
         )}
         style={positionStyle}
@@ -238,7 +282,7 @@ export function EditorPanelShell({
             scrollOwner === "child" &&
               !fullscreen &&
               "h-[min(760px,calc(var(--ge-viewport-height,100dvh)-80px))]",
-            mobile
+            mobileSheet
               ? cn(
                   "ge-sheet bg-[var(--panel-solid)] shadow-[0_-12px_40px_-20px_rgb(17_24_39/0.3)]",
                   fullscreen
@@ -265,7 +309,7 @@ export function EditorPanelShell({
             }
           }}
         >
-          {mobile && !fullscreen ? (
+          {mobileSheet && !fullscreen ? (
             <div className="flex justify-center pt-2">
               <span className="h-1 w-9 rounded-full bg-[var(--fill-2)]" />
             </div>

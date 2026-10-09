@@ -192,7 +192,11 @@ export function Toast({
   return (
     <HintPill
       key={message}
-      position={mobile ? "bottom-[96px]" : "bottom-[76px]"}
+      position={
+        mobile
+          ? "bottom-[calc(var(--ge-mobile-controls-bottom,92px)+4px)]"
+          : "bottom-[76px]"
+      }
       text={message}
       tone="toast"
     />

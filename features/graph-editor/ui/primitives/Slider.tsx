@@ -8,9 +8,9 @@ import { focusRing } from "./styles";
 import { SectionLabel } from "./Text";
 
 /**
- * Range control with an optional set of presets. Presets are drawn at their
- * true position along the track (with tick marks) so the thumb always sits
- * directly above the value it represents.
+ * Range control with an optional set of presets. Tick marks retain their true
+ * position along the track. Mobile preset buttons use a separate even row so
+ * their touch targets stay apart when nearby values share a short track.
  */
 export function Slider({
   label,
@@ -88,7 +88,7 @@ export function Slider({
         />
       </div>
       {presets ? (
-        <div className="touch:h-11 relative h-8">
+        <div className="touch:grid touch:h-auto touch:auto-cols-[minmax(0,1fr)] touch:grid-flow-col touch:gap-1 relative h-8">
           {presets.map((preset, index) => {
             const r = toRatio(preset, min, max);
             const align =
@@ -105,21 +105,23 @@ export function Slider({
                 aria-pressed={current === preset}
                 onClick={() => onChange(preset)}
                 className={cn(
-                  "touch:h-11 touch:px-3 touch:text-control absolute top-0 h-8 rounded-md px-2 font-mono text-xs font-semibold transition-colors",
+                  "touch:static touch:h-11 touch:min-w-0 touch:translate-x-0 touch:px-1 touch:text-control absolute top-0 left-[var(--ge-preset-x)] h-8 translate-x-[var(--ge-preset-shift)] rounded-md px-2 font-mono text-xs font-semibold transition-colors",
                   focusRing,
                   current === preset
                     ? "bg-[var(--accent-fill-soft)] text-[var(--accent-text)]"
                     : "text-[var(--text-2)] hover:bg-[var(--fill)]",
                 )}
-                style={{
-                  left: `calc(${percent(r)} + (0.5 - ${r}) * var(--ge-thumb))`,
-                  transform:
-                    align === "start"
-                      ? "translateX(calc(-1 * var(--ge-thumb) / 2))"
-                      : align === "end"
-                        ? "translateX(calc(-100% + var(--ge-thumb) / 2))"
-                        : "translateX(-50%)",
-                }}
+                style={
+                  {
+                    "--ge-preset-x": `calc(${percent(r)} + (0.5 - ${r}) * var(--ge-thumb))`,
+                    "--ge-preset-shift":
+                      align === "start"
+                        ? "calc(-1 * var(--ge-thumb) / 2)"
+                        : align === "end"
+                          ? "calc(-100% + var(--ge-thumb) / 2)"
+                          : "-50%",
+                  } as CSSProperties
+                }
               >
                 {preset}
               </button>

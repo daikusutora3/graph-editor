@@ -50,7 +50,7 @@ export function Segment<T extends string>({
             aria-label={`${label}: ${option.label}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              "text-control flex min-w-0 items-center justify-center gap-1.5 px-2 whitespace-nowrap transition-colors",
+              "text-control flex min-w-0 items-center justify-center gap-1.5 px-2 py-1 transition-colors",
               "focus-visible:relative focus-visible:z-10",
               focusRing,
               size === "md" ? "min-h-9" : "min-h-[30px]",
@@ -64,7 +64,9 @@ export function Segment<T extends string>({
             {selected ? (
               <Check className="size-3.5 shrink-0" aria-hidden="true" />
             ) : null}
-            <span className="truncate">{option.label}</span>
+            <span className="min-w-0 text-center leading-snug [overflow-wrap:anywhere] whitespace-normal">
+              {option.label}
+            </span>
           </button>
         );
       })}

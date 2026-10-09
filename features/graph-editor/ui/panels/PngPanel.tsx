@@ -81,8 +81,8 @@ export function PngPanelBody({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-2.5">
-        <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-2.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <SectionLabel>{messages.screenshot.scope}</SectionLabel>
           <Segment
             label={messages.screenshot.scope}
@@ -95,7 +95,7 @@ export function PngPanelBody({
             onChange={onScopeChange}
           />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <SectionLabel>{messages.screenshot.background}</SectionLabel>
           <Segment
             label={messages.screenshot.background}

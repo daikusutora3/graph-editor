@@ -88,7 +88,12 @@ export function RangeSelectionMenu({
         aria-controls={open ? menuId : undefined}
         active={mode === "select"}
         disabled={panel !== null}
-        className={cn("w-6 rounded-l-none", above ? "h-[52px]" : "h-10")}
+        className={cn(
+          // This menu is hidden on touch devices; a narrow window should keep
+          // its pointer target compact instead of squeezing the Select button.
+          "touch:w-6 touch:rounded-l-none w-6 rounded-l-none",
+          above ? "touch:h-[52px] h-[52px]" : "h-10",
+        )}
         onClick={() => {
           onOpen();
           setOpen((current) => !current);

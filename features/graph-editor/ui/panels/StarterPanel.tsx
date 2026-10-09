@@ -239,7 +239,9 @@ export function StarterPasteFooter({
         className="touch:min-h-11 h-auto min-h-10 min-w-0 py-2 whitespace-normal"
         onClick={onUseSample}
       >
-        {messages.chrome.starterUseSample}
+        <span className="min-w-0 whitespace-normal">
+          {messages.chrome.starterUseSample}
+        </span>
       </Button>
       <Button
         size="lg"
@@ -248,7 +250,9 @@ export function StarterPasteFooter({
         onClick={() => fileInputRef.current?.click()}
       >
         <FolderOpen className="size-icon-sm" aria-hidden="true" />
-        {messages.chrome.starterOpenFile}
+        <span className="min-w-0 whitespace-normal">
+          {messages.chrome.starterOpenFile}
+        </span>
       </Button>
       <input
         ref={fileInputRef}
@@ -270,11 +274,13 @@ export function StarterPasteFooter({
         onClick={() => starter.applyText()}
       >
         <FileInput className="size-icon-sm" aria-hidden="true" />
-        {starter.visibleIssues.length
-          ? integrityCopy[locale === "ja" ? "ja" : "en"].partial(
-              starter.preview?.model.edges.length ?? 0,
-            )
-          : messages.chrome.starterApply}
+        <span className="min-w-0 [overflow-wrap:anywhere] whitespace-normal">
+          {starter.visibleIssues.length
+            ? integrityCopy[locale === "ja" ? "ja" : "en"].partial(
+                starter.preview?.model.edges.length ?? 0,
+              )
+            : messages.chrome.starterApply}
+        </span>
       </Button>
     </div>
   );
@@ -323,14 +329,14 @@ function AmbiguousFormatChoices({
   );
 
   return (
-    <fieldset className="rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3">
+    <fieldset className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3">
       <legend className="text-control px-1 font-semibold text-[var(--text)]">
         {messages.starter.ambiguousTitle}
       </legend>
       <p className="mb-2 text-xs text-[var(--muted)]">
         {messages.starter.ambiguousHelp}
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-1 gap-2 @min-[640px]/editor:grid-cols-2">
         {strongest.map((candidate) => (
           <AmbiguousFormatChoice
             key={candidate.formatKind}
@@ -357,7 +363,7 @@ function AmbiguousFormatChoice({
       type="button"
       onClick={() => onSelect(candidate.formatKind)}
       className={cn(
-        "touch:min-h-11 flex min-h-10 flex-1 items-center justify-between gap-3 rounded-lg px-3 text-left text-xs",
+        "touch:min-h-11 flex min-h-10 min-w-0 flex-col items-start gap-1 rounded-lg px-3 py-2 text-left text-xs",
         raisedControl,
         focusRing,
       )}

@@ -63,7 +63,7 @@ export function LayoutsPanel({
         <SectionLabel>{messages.chrome.layouts}</SectionLabel>
       ) : null}
       <div className="grid grid-cols-3 gap-1.5">
-        {layoutPanelOrder.map((kind) => {
+        {layoutPanelOrder.map((kind, index) => {
           const reason = disabledReasons.get(kind) ?? null;
           const layout = messages.layouts[kind];
 
@@ -76,13 +76,20 @@ export function LayoutsPanel({
               data-tooltip={
                 reason ? messages.layouts.disabled[reason] : layout.tooltip
               }
+              data-tooltip-side={
+                index % 3 === 0
+                  ? "bottom-start"
+                  : index % 3 === 2
+                    ? "bottom-end"
+                    : undefined
+              }
               onClick={() => {
                 if (!reason) {
                   onApplyLayout(kind);
                 }
               }}
               className={cn(
-                "touch:h-11 text-control h-10 truncate rounded-lg px-2 font-semibold transition-colors",
+                "touch:min-h-11 text-control min-h-10 min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-normal transition-colors",
                 focusRing,
                 reason ? disabledControl : raisedControl,
               )}

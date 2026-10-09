@@ -2,12 +2,13 @@
 
 import { Maximize2, Minus, Plus } from "lucide-react";
 import type { CSSProperties, MutableRefObject, RefObject } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import { IconButton, focusRing } from "../ui/primitives";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { InlineEditTarget, RenderedPoint } from "./graph-canvas-types";
+import { clampInlineEditCenterX } from "./graph-canvas-inline-edit";
 
 type ZoomControlsProps = {
   disabled: boolean;
@@ -229,6 +230,42 @@ export function InlineEditForm({
   onValueChange,
 }: InlineEditFormProps) {
   const { messages } = useI18n();
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  useLayoutEffect(() => {
+    const form = formRef.current;
+    const canvas = form?.closest<HTMLElement>("[data-canvas-ready]");
+
+    if (!form || !canvas || !position) return;
+
+    const fitHorizontally = () => {
+      const bounds = form.getBoundingClientRect();
+      const canvasBounds = canvas.getBoundingClientRect();
+      if (!bounds.width || !canvasBounds.width) return;
+
+      // Recover the graph anchor even after an earlier clamp, including the
+      // hitbox layer's pan translation. Shorter input returns to that anchor.
+      const currentLeft = parseFloat(form.style.left);
+      const centerX =
+        bounds.left +
+        bounds.width / 2 -
+        canvasBounds.left +
+        position.x -
+        currentLeft;
+      const clampedX = clampInlineEditCenterX(
+        centerX,
+        bounds.width,
+        canvasBounds.width,
+      );
+      form.style.left = `${position.x + clampedX - centerX}px`;
+    };
+
+    fitHorizontally();
+    const observer = new ResizeObserver(fitHorizontally);
+    observer.observe(form);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [edit, position, style]);
 
   if (!edit || !position) {
     return null;
@@ -236,6 +273,7 @@ export function InlineEditForm({
 
   return (
     <form
+      ref={formRef}
       className={[
         "ge-inline-edit-form pointer-events-auto absolute z-40 -translate-x-1/2 -translate-y-1/2",
         edit.kind === "node-label"

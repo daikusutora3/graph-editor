@@ -82,11 +82,13 @@ export function ExportPanelBody({
             aria-label={label}
             aria-pressed={detail === "PNG" ? undefined : active}
             active={active}
-            className="h-auto min-h-20 min-w-0 flex-col gap-1 px-1 py-2 text-center whitespace-normal"
+            className="touch:h-auto touch:px-1 h-auto min-h-20 min-w-0 flex-col gap-1 px-1 py-2 text-center whitespace-normal"
             onClick={onClick}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />
-            <span className="text-xs leading-snug">{label}</span>
+            <span className="w-full text-xs leading-snug [overflow-wrap:anywhere] whitespace-normal">
+              {label}
+            </span>
             <span className="text-[10px] font-normal">{detail}</span>
           </Button>
         ))}

@@ -3,6 +3,7 @@ import { integrityCopy } from "../i18n/integrity-copy";
 
 import type { Core } from "cytoscape";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { cn } from "@/lib/utils";
 
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
@@ -603,12 +604,21 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             ) : null;
 
           if (layout !== "mobile") {
-            // Desktop bottom row mirrors the top row: a three-column grid keeps
-            // the centered selection bar and the zoom pill from overlapping.
+            // Compact windows reserve space for zoom beside the wrapping palette.
+            // Wide windows retain the centered three-column desktop layout.
             return (
-              <div className="pointer-events-none absolute inset-x-6 bottom-6 z-40 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
-                <span />
-                <div className="flex justify-center">{selectionBar}</div>
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-6 bottom-6 z-40 grid items-end gap-3",
+                  layout === "compact"
+                    ? "grid-cols-[minmax(0,1fr)_auto]"
+                    : "grid-cols-[1fr_auto_1fr]",
+                )}
+              >
+                {layout === "desktop" ? <span /> : null}
+                <div className="flex min-w-0 justify-center">
+                  {selectionBar}
+                </div>
                 <div className="flex justify-end">
                   <ZoomControls
                     disabled={!graphHasElements}
@@ -629,7 +639,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
           // "fit" button that only appears when the graph is off-screen. The
           // stack keeps it clear of the selection bar and the bottom toolbar.
           return (
-            <div className="pointer-events-none absolute inset-x-3 bottom-[92px] z-40 flex flex-col items-stretch gap-2">
+            <div className="pointer-events-none absolute inset-x-3 bottom-[var(--ge-mobile-controls-bottom,92px)] z-40 flex flex-col items-stretch gap-2">
               {isGraphOutOfView ? (
                 <div className="flex justify-end">
                   <FitToViewButton onFitView={fitView} />

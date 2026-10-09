@@ -4,7 +4,11 @@ import type { SampleGraphKind } from "../../samples/sample-graphs";
 import type { EdgeId, GraphModel } from "../../core/graph/model";
 import { computeEdgeRouting } from "../../core/layout/edge-routing";
 import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
-import { nodeGeometryWidth, NODE_SIZE_PX } from "../../core/graph/node-size";
+import {
+  nodeGeometryWidth,
+  NODE_FONT_PX,
+  NODE_SIZE_PX,
+} from "../../core/graph/node-size";
 import { edgeCurveSvgPath } from "../../core/layout/edge-route-geometry";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +33,8 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
 }: SampleGraphPreviewProps) {
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
   const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
-  const bounds = getModelBounds(model, edgeRouting);
+  const editorLike = variant === "editor";
+  const bounds = getModelBounds(model, edgeRouting, editorLike);
   const nodeCount = model.nodes.length;
   const edgeCount = model.edges.length;
   const softenDenseEdges =
@@ -53,9 +58,8 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     y: offsetY + (y - bounds.minY) * scale,
   });
   const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
-  const editorLike = variant === "editor";
   const baseRadius = editorLike
-    ? Math.min(width, height) / (dense ? 21 : 16)
+    ? (NODE_SIZE_PX / 2) * scale
     : veryDense
       ? 2.2
       : dense
@@ -226,6 +230,7 @@ function PreviewNodes({
     editorLike,
     lastIndex,
     showLabels,
+    scale,
   } = context;
   return nodes.map((node, offset) => {
     const index = startIndex + offset;
@@ -239,14 +244,27 @@ function PreviewNodes({
           : "var(--canvas-node)";
     return (
       <g key={node.id}>
-        <circle
-          cx={point.x}
-          cy={point.y}
-          r={radius}
-          fill={fill}
-          stroke="var(--canvas-node-border)"
-          strokeWidth={nodeStrokeWidth}
-        />
+        {editorLike ? (
+          <rect
+            x={point.x - (nodeGeometryWidth(node) * scale) / 2}
+            y={point.y - radius}
+            width={nodeGeometryWidth(node) * scale}
+            height={radius * 2}
+            rx={radius}
+            fill={fill}
+            stroke="var(--canvas-node-border)"
+            strokeWidth={nodeStrokeWidth}
+          />
+        ) : (
+          <circle
+            cx={point.x}
+            cy={point.y}
+            r={radius}
+            fill={fill}
+            stroke="var(--canvas-node-border)"
+            strokeWidth={nodeStrokeWidth}
+          />
+        )}
         {showLabels ? (
           <text
             x={point.x}
@@ -255,7 +273,7 @@ function PreviewNodes({
             textAnchor="middle"
             dominantBaseline="central"
             fontFamily="var(--font-ui)"
-            fontSize={Math.max(8, radius * 0.92)}
+            fontSize={NODE_FONT_PX * scale}
             fontWeight={600}
           >
             {node.label}
@@ -362,13 +380,27 @@ function round(value: number) {
 function getModelBounds(
   model: GraphModel,
   routes: ReturnType<typeof computeEdgeRouting>,
+  editorLike: boolean,
 ) {
   if (model.nodes.length === 0) {
     return { minX: -1, minY: -1, width: 2, height: 2 };
   }
 
-  const xs = model.nodes.map((node) => node.x);
-  const ys = model.nodes.map((node) => node.y);
+  // The paste preview includes labels, so fit the whole pill and scale its
+  // text with it. Fitting only node centres clips long labels at the frame.
+  const xs = model.nodes.flatMap((node) =>
+    editorLike
+      ? [
+          node.x - nodeGeometryWidth(node) / 2,
+          node.x + nodeGeometryWidth(node) / 2,
+        ]
+      : [node.x],
+  );
+  const ys = model.nodes.flatMap((node) =>
+    editorLike
+      ? [node.y - NODE_SIZE_PX / 2, node.y + NODE_SIZE_PX / 2]
+      : [node.y],
+  );
   const nodes = new Map(model.nodes.map((node) => [node.id, node]));
   for (const edge of model.edges) {
     if (edge.source !== edge.target) continue;

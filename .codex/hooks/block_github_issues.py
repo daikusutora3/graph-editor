@@ -104,6 +104,27 @@ LOCAL_GRAPH_SAVE_SCREENSHOT = re.compile(
     r"'/tmp/graph-editor-text-weights.png', await localGraphTab\.getScreenshot\(\{ emit: false \}\)\);\s*"
 )
 
+
+# Read only the documented viewport capability for the authorized local IAB
+# review. These calls do not inspect or operate another tab or application.
+LOCAL_GRAPH_REVIEW_DOCS = re.compile(
+    r"\s*(?:await cua\.rewriteDocumentation\(\);|let localGraphBrowser = await cua\.getBrowser\(\{ id: 'iab' \}\);|"
+    r"nodeRepl\.write\(await \(await localGraphBrowser\.capabilities\.get\('viewport'\)\)\.documentation\(\)\);|"
+    r"nodeRepl\.write\(await agent\.documentation\.get\('(?:screenshots|local-web-development)'\)\);)\s*"
+)
+LOCAL_GRAPH_REVIEW_SCREENSHOT = re.compile(
+    r"\s*await \(await import\('node:fs/promises'\)\)\.writeFile\("
+    r"'/tmp/graph-editor-ui-review/(?:before|after)-[a-z0-9-]+\.(?:png|jpg)', "
+    r"await localGraphTab\.getScreenshot\(\{ emit: false \}\)\);\s*"
+)
+
+
+LOCAL_GRAPH_REVIEW_VIEWPORT = re.compile(
+    r"\s*await \(await localGraphBrowser\.capabilities\.get\('viewport'\)\)\."
+    r"(?:reset\(\)|set\(\{ width: (?:320|360|375|390|480|600|640|767|768|960|1280), "
+    r"height: (?:390|720|900) \}\));\s*"
+)
+
 def _compact_json(value: Any) -> str:
     try:
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
@@ -144,6 +165,9 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
             or LOCAL_GRAPH_ACTION.fullmatch(code)
             or LOCAL_GRAPH_RELOAD.fullmatch(code)
             or LOCAL_GRAPH_SAVE_SCREENSHOT.fullmatch(code)
+            or LOCAL_GRAPH_REVIEW_DOCS.fullmatch(code)
+            or LOCAL_GRAPH_REVIEW_SCREENSHOT.fullmatch(code)
+            or LOCAL_GRAPH_REVIEW_VIEWPORT.fullmatch(code)
             or ISSUE_BROWSER_OPEN.fullmatch(code)
             or ISSUE_BROWSER_BIND.fullmatch(code)
             or ISSUE_BROWSER_READ.fullmatch(code)
@@ -266,6 +290,28 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "await localGraphTab.click(cua.getApp('Safari'));"}),
         ("mcp__cua_repl__js", {"code": "await localGraphTab.goto('https://github.com/daikusutora3/graph-editor/issues/1');"}),
         ("mcp__cua_repl__js", {"code": "await localGraphTab.reload(); await issueTab.click(1);"}),
+    ])
+    allowed.extend([
+        ("mcp__cua_repl__js", {"code": "let localGraphBrowser = await cua.getBrowser({ id: 'iab' });"}),
+        ("mcp__cua_repl__js", {"code": "nodeRepl.write(await (await localGraphBrowser.capabilities.get('viewport')).documentation());"}),
+        ("mcp__cua_repl__js", {"code": "nodeRepl.write(await agent.documentation.get('screenshots'));"}),
+        ("mcp__cua_repl__js", {"code": "await (await import('node:fs/promises')).writeFile('/tmp/graph-editor-ui-review/before-320-png.png', await localGraphTab.getScreenshot({ emit: false }));"}),
+    ])
+    blocked.extend([
+        ("mcp__cua_repl__js", {"code": "let localGraphBrowser = await cua.getBrowser({ id: 'chrome' });"}),
+        ("mcp__cua_repl__js", {"code": "nodeRepl.write(await (await localGraphBrowser.capabilities.get('history')).documentation());"}),
+        ("mcp__cua_repl__js", {"code": "await (await import('node:fs/promises')).writeFile('/tmp/other.png', await localGraphTab.getScreenshot({ emit: false }));"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.getScreenshot(); await issueTab.click(1);"}),
+    ])
+    allowed.extend([
+        ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).set({ width: 320, height: 900 });"}),
+        ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).reset();"}),
+        ("mcp__cua_repl__js", {"code": "await (await import('node:fs/promises')).writeFile('/tmp/graph-editor-ui-review/after-320-png.jpg', await localGraphTab.getScreenshot({ emit: false }));"}),
+    ])
+    blocked.extend([
+        ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).set({ width: arbitraryWidth, height: 900 });"}),
+        ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).reset(); await issueTab.click(1);"}),
+        ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).set({ width: 320, height: 900, url: 'https://example.com' });"}),
     ])
     for tool_name, tool_input in blocked:
         assert should_block(tool_name, tool_input), (tool_name, tool_input)
