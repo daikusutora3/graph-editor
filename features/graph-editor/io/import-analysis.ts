@@ -268,6 +268,7 @@ function probeAdjacencyMatrix(
 
   if (
     hasWeightedValue &&
+    size === 3 &&
     source.rows.every((row) => row.length === 3) &&
     looksLikeOutOfRangeWeightedEdgeRows(source.rows, size)
   ) {

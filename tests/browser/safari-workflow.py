@@ -91,6 +91,23 @@ class Session:
     def click(self, element):
         self.command("POST", f"/element/{element}/click", {})
 
+    def open_panel(self, label, panel):
+        # SafariDriver can swallow the first click after refreshing an
+        # unfocused window. Retry only an idempotent panel-opening action,
+        # and only after checking that it is still closed.
+        script = "return !!document.querySelector(arguments[0])".replace(
+            "arguments[0]", json.dumps(f"[data-editor-panel={panel}]"))
+        for attempt in range(2):
+            if self.js(script):
+                return
+            self.click(self.button(label))
+            try:
+                self.wait(script, timeout=3)
+                return
+            except AssertionError:
+                if attempt == 1:
+                    raise
+
     def screenshot(self, name):
         time.sleep(0.3)
         (OUTPUT / f"{name}.png").write_bytes(base64.b64decode(self.command("GET", "/screenshot")))
@@ -690,7 +707,9 @@ def run_multi_selection_review(session):
                 summary: document.querySelector('.ge-selection-summary')?.textContent.trim() ?? '',
                 inlineEditors: [...document.querySelectorAll('.ge-inline-edit-input')].map(e=>e.value),
                 activeElement: {tag:document.activeElement.tagName,label:document.activeElement.getAttribute('aria-label')},
-                keyEvents: window.__multiKeys
+                keyEvents: window.__multiKeys,
+                paletteClick: window.__multiPaletteClick ?? null,
+                paletteEvents: window.__multiPaletteEvents ?? []
             };""")
 
         def verify(stage, expected, ids=selected_ids):
@@ -790,10 +809,25 @@ def run_multi_selection_review(session):
                 # SafariDriver 26.6 emits U+001F rather than ArrowDown for this
                 # native chord. Exercise the shortcut through an explicit DOM
                 # event and record the limit; correct native events never retry.
-                session.js("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true,cancelable:true}));document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true}));")
+                session.js("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true,cancelable:true}));document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true}));document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'Shift',code:'ShiftLeft',shiftKey:false,bubbles:true}));")
                 keyboard_limit = "SafariDriver sent U+001F for Shift+ArrowDown; shifted nudge used a DOM KeyboardEvent"
+            session.command("DELETE", "/actions")
             after_down = moved(after_right, 0, 10)
             before_color = verify("shift-arrow-down", after_down)
+            current_stage = "palette-green-click"
+            session.js("""window.__multiPaletteEvents=[];
+                for(const type of ['pointerdown','pointerup','click'])document.addEventListener(type,e=>{
+                    const button=e.target.closest?.('button');
+                    window.__multiPaletteEvents.push({type,label:button?.getAttribute('aria-label')??null,
+                        target:e.target.tagName,x:e.clientX,y:e.clientY,shift:e.shiftKey,
+                        ctrl:e.ctrlKey,meta:e.metaKey,trusted:e.isTrusted});
+                },true);
+                const button=document.querySelector('[role=radio][aria-label="Node color: Green"]');
+                const r=button.getBoundingClientRect();const x=r.x+r.width/2,y=r.y+r.height/2;
+                window.__multiPaletteClick={rect:{x:r.x,y:r.y,width:r.width,height:r.height},
+                    hit:document.elementFromPoint(x,y)?.closest('button')?.getAttribute('aria-label'),
+                    animations:button.closest('[role=toolbar]')?.getAnimations().map(a=>({state:a.playState,time:a.currentTime}))};
+            """)
             session.click(session.element('[role=radio][aria-label="Node color: Green"]'))
             after_color = json.loads(json.dumps(after_down))
             for node in after_color["nodes"]:
@@ -847,12 +881,42 @@ def run_rust_compute_review(session):
     def mark(kind):
         return session.wait("return performance.getEntriesByName(arguments[0]).length".replace("arguments[0]", json.dumps(f"graph-compute:{kind}:wasm")), timeout=30)
 
+    # Start with an empty graph so input-time loading, rather than canvas
+    # routing, makes the Rust integer scanner available before the preview.
+    load({**RANGE_FIXTURE, "nodes": [], "edges": []})
+    session.click(session.button("Load a graph"))
+    matrix_text = "\n".join(" ".join("1" if abs(source - target) == 1 else "0"
+                                   for target in range(128)) for source in range(128))
+    textarea = session.element("textarea")
+    session.js("const e=arguments[0];Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,arguments[1]);e.dispatchEvent(new Event('input',{bubbles:true}));", {ELEMENT: textarea}, matrix_text)
+    mark("import")
+    session.wait("return [...document.querySelectorAll('[data-editor-panel=starter] button')].some(e=>e.textContent.trim()==='Apply to graph'&&!e.disabled)")
+    session.screenshot("rust-integer-matrix-preview-128")
+    session.click(session.button("Apply to graph"))
+    session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return g?.nodes.length===128&&g?.edges.length===127&&!document.querySelector('[data-editor-panel=starter]')")
+    matrix_saved = saved()
+    assert matrix_saved["nodes"][0]["label"] == "0"
+    assert matrix_saved["edges"][0]["source"] == "n0" and matrix_saved["edges"][0]["target"] == "n1"
+    session.click(session.button("Undo"))
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.length===0")
+    session.click(session.button("Redo"))
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.length===128")
+    assert saved() == matrix_saved
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
+    assert saved() == matrix_saved
+    results.append({"scenario": "integer-matrix-128", "status": "passed", "rustPreview": True,
+                    "undoRedo": True, "reloadPreserved": True,
+                    "inputMethod": "textarea value setter and input event"})
+    (OUTPUT / "rust-compute-progress.json").write_text(json.dumps({"status": "in_progress", "results": results}, indent=2))
+    print("Rust integer matrix: preview, Apply, Undo/Redo and reload passed", flush=True)
+
     chain = {**RANGE_FIXTURE,
              "nodes": [{"id": f"n{i}", "label": str(i), "order": i, "x": i * 20, "y": 0} for i in range(200)],
              "edges": [{"id": f"e{i}", "source": f"n{i}", "target": f"n{i + 1}"} for i in range(199)]}
     load(chain)
     baseline = saved()
-    session.click(session.button("Layout"))
+    session.open_panel("Layout", "layouts")
     session.js("window.__rustFrames=0;window.__rustFrameActive=true;const tick=()=>{if(window.__rustFrameActive){window.__rustFrames++;requestAnimationFrame(tick)}};requestAnimationFrame(tick);")
     started = time.monotonic()
     session.click(session.button("Auto layout: Force-directed"))
@@ -871,13 +935,13 @@ def run_rust_compute_review(session):
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.some(n=>n.y!==0)")
     assert saved() == laid_out
     session.command("POST", "/refresh", {})
-    session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
     assert saved() == laid_out, "Computed positions persist after reload"
     results.append({"scenario": "force-200", "status": "passed", "workflowFrames": frame_count,
                     "workflowSeconds": time.monotonic() - started,
                     "limits": "Duration and frames include WebDriver commands and debounced saving; they do not isolate rendering during CPU computation"})
 
-    session.click(session.button("Layout"))
+    session.open_panel("Layout", "layouts")
     session.js("document.querySelector('[aria-label=\"Auto layout: Force-directed\"]').click();document.querySelector('[aria-label^=\"Grid:\"]').click();")
     session.wait("return !document.querySelector('[data-editor-panel=layouts] [role=status]')")
     # Pending computation ends before the debounced storage write. Verify the
@@ -894,7 +958,7 @@ def run_rust_compute_review(session):
                "edges": []}
     load(crowded)
     baseline = saved()
-    session.click(session.button("Layout"))
+    session.open_panel("Layout", "layouts")
     session.click(session.button("Resolve overlap: Move nodes apart"))
     mark("overlap")
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.some(n=>n.y!==0)")
@@ -924,6 +988,25 @@ def run_rust_compute_review(session):
     assert session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));") == snapshot
     results.append({"scenario": "routing-10-loops", "status": "passed", "reloadPreserved": True})
 
+    wide_loops = {**loops,
+                  "nodes": [{"id": "a", "label": "幅のある自己ループ頂点", "order": 0, "x": 0, "y": 0}],
+                  "edges": [{"id": f"wide-loop-{i}", "source": "a", "target": "a", "label": f"label {i}"} for i in range(32)]}
+    load(wide_loops)
+    mark("routing")
+    session.wait(RANGE_CY + "return cy.edges().length===32&&cy.getElementById('a').width()>48")
+    wide_saved = saved()
+    wide_snapshot = session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));")
+    assert len(wide_snapshot) == 32
+    session.screenshot("routing-wide-32-loops")
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
+    mark("routing")
+    assert session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));") == wide_snapshot
+    assert saved() == wide_saved, "Loop scratch preparation must not persist geometry"
+    results.append({"scenario": "routing-wide-32-loops", "status": "passed", "reloadPreserved": True})
+    (OUTPUT / "rust-compute-progress.json").write_text(json.dumps({"status": "in_progress", "results": results}, indent=2))
+    print("Wide 32-loop routing and reload passed", flush=True)
+
     obstacle = {**RANGE_FIXTURE,
                 "settings": {**RANGE_FIXTURE["settings"], "autoEdgeRouting": True},
                 "nodes": [{"id": "a", "label": "A", "order": 0, "x": -160, "y": 0},
@@ -947,15 +1030,21 @@ def run_rust_compute_review(session):
         return session.js(RANGE_CY + """
             const edge=cy.getElementById('ab'),node=cy.getElementById('c');
             const control=edge.controlPoints();
-            if(control?.length!==1)throw new Error('Expected one rendered quadratic control point');
-            const a=edge.sourceEndpoint(),b=edge.targetEndpoint(),c=control[0],p=node.position();
+            if(!control?.length)throw new Error('Expected rendered quadratic control points');
+            const source=edge.sourceEndpoint(),target=edge.targetEndpoint(),p=node.position();
             const radius=node.height()/2,span=Math.max(0,(node.width()-node.height())/2);
             let gap=Infinity;
-            for(let i=0;i<=1000;i++){
-                const t=i/1000,u=1-t;
-                const x=u*u*a.x+2*u*t*c.x+t*t*b.x;
-                const y=u*u*a.y+2*u*t*c.y+t*t*b.y;
-                gap=Math.min(gap,Math.hypot(Math.max(0,Math.abs(x-p.x)-span),y-p.y)-radius);
+            const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+            for(let piece=0;piece<control.length;piece++){
+                const a=piece===0?source:mid(control[piece-1],control[piece]);
+                const b=piece===control.length-1?target:mid(control[piece],control[piece+1]);
+                const c=control[piece];
+                for(let i=0;i<=1000;i++){
+                    const t=i/1000,u=1-t;
+                    const x=u*u*a.x+2*u*t*c.x+t*t*b.x;
+                    const y=u*u*a.y+2*u*t*c.y+t*t*b.y;
+                    gap=Math.min(gap,Math.hypot(Math.max(0,Math.abs(x-p.x)-span),y-p.y)-radius);
+                }
             }
             return gap;
         """)
@@ -978,6 +1067,32 @@ def run_rust_compute_review(session):
     session.screenshot("rust-routing-drag-committed")
     results.append({"scenario": "routing-native-obstacle-drag", "status": "passed", "previewOnlyUntilRelease": True, "undoRedoRouting": True,
                     "minimumPreviewCurveGapPx": preview_gap, "minimumCommittedCurveGapPx": committed_gap})
+
+    # The 64-node projection gate must also work with the browser's measured
+    # capsule width. Other nodes stay far away so this isolates one obstacle.
+    projected = {**obstacle,
+                 "nodes": [{"id": "a", "label": "A", "order": 0, "x": -220, "y": 0},
+                           {"id": "b", "label": "B", "order": 1, "x": 220, "y": 0},
+                           {"id": "c", "label": "幅のある頂点ラベル", "order": 2, "x": 0, "y": 0}]
+                          + [{"id": f"far{i}", "label": str(i), "order": i + 3,
+                              "x": 10000 + i * 120, "y": 10000} for i in range(61)]}
+    load(projected)
+    mark("routing")
+    projected_saved = saved()
+    assert len(projected_saved["nodes"]) == 64
+    session.wait(RANGE_CY + "return Math.abs(cy.getElementById('ab').data('bow'))>0")
+    session.js(RANGE_CY + "cy.zoom(1);cy.pan({x:container.clientWidth/2,y:400});")
+    projected_gap = curve_gap()
+    assert projected_gap >= 4, ("The projected route must clear the measured wide capsule", projected_gap)
+    projected_route = session.js(RANGE_CY + "return {distances:cy.getElementById('ab').data('controlPointDistances'),weights:cy.getElementById('ab').data('controlPointWeights')};")
+    session.screenshot("rust-projected-wide-obstacle-64")
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
+    mark("routing")
+    assert session.js(RANGE_CY + "return {distances:cy.getElementById('ab').data('controlPointDistances'),weights:cy.getElementById('ab').data('controlPointWeights')};") == projected_route
+    assert saved() == projected_saved, "Automatic projection must not persist routing geometry"
+    results.append({"scenario": "routing-projected-wide-obstacle-64", "status": "passed",
+                    "minimumCurveGapPx": projected_gap, "reloadPreserved": True})
     (OUTPUT / "rust-compute-results.json").write_text(json.dumps({"status": "passed", "review": "Expert review", "results": results}, indent=2))
     print("Rust/Wasm Safari: force, overlap, routing, cancellation, undo/redo and persistence passed", flush=True)
     return results
@@ -1020,7 +1135,7 @@ def main():
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))
         if session:
             try:
-                (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {trace:window.__focusTrace,active:document.activeElement.tagName,input:document.querySelector('textarea')?.value,panels:[...document.querySelectorAll('[data-editor-panel]')].map(e=>({panel:e.dataset.editorPanel,state:e.dataset.panelState})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.textContent,label:e.getAttribute('aria-label'),expanded:e.getAttribute('aria-expanded')}))}"), indent=2))
+                (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {visibility:document.visibilityState,focused:document.hasFocus(),ready:document.querySelector('[data-canvas-ready]')?.getAttribute('data-canvas-ready'),compute:performance.getEntriesByType('mark').filter(e=>e.name.startsWith('graph-compute:')).map(e=>e.name),trace:window.__focusTrace,active:document.activeElement.tagName,input:document.querySelector('textarea')?.value,panels:[...document.querySelectorAll('[data-editor-panel]')].map(e=>({panel:e.dataset.editorPanel,state:e.dataset.panelState})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.textContent,label:e.getAttribute('aria-label'),expanded:e.getAttribute('aria-expanded')}))}"), indent=2))
                 (OUTPUT / "range-failure-state.json").write_text(json.dumps(session.js("return {events:window.__rangeEvents, nodes:[...document.querySelectorAll('.ge-select-node-hitbox')].map(e=>({label:e.getAttribute('aria-label'),inert:e.closest('[inert]')?.outerHTML.slice(0,400)})), modes:[...document.querySelectorAll('[data-graph-shortcut-target][aria-pressed]')].map(e=>({label:e.getAttribute('aria-label'),pressed:e.getAttribute('aria-pressed')}))}"), indent=2))
                 session.screenshot("failure")
             except Exception:

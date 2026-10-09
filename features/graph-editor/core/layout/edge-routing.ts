@@ -5,6 +5,10 @@ import type {
 } from "./edge-routing-shared";
 import { createLoopGroupRoutingTask } from "./edge-routing-loops";
 import { countCurveNodeCollisions as nodeCollisions } from "./edge-routing-collisions";
+import {
+  projectRustEdgeObstacles,
+  type ProjectedObstacleCluster,
+} from "../../compute/wasm-routing";
 import { clamp } from "./edge-routing-shared";
 import { compareCurvePreference } from "./edge-routing-scoring";
 import {
@@ -991,6 +995,31 @@ function* chooseEdgeCurve(
     return simpleCurve;
   }
 
+  // A clear straight route needs no obstacle projection or bent candidates.
+  // Keep the first candidate's original yield/work boundary, then reuse its
+  // evaluation if node or label obstacles require the remaining search.
+  yield;
+  const straightEvaluation = scoreCurveNodeAndShape(
+    simpleCurve,
+    source,
+    target,
+    edge,
+    nodes,
+    options,
+  );
+  if (
+    straightEvaluation.collisions === 0 &&
+    scoreCurveLabelOverlap(
+      edge,
+      edges,
+      nodesById,
+      simpleCurve,
+      options,
+      resolvedMeta,
+    ) === 0
+  )
+    return simpleCurve;
+
   const obstacles = projectedEdgeObstacles(
     edge,
     source,
@@ -999,9 +1028,9 @@ function* chooseEdgeCurve(
     options.nodeClearancePx,
   );
 
-  const candidates = edgeBowCandidates(0, options.candidateBowPx).map((bowPx) =>
-    singleBowCurve(bowPx),
-  );
+  const candidates = edgeBowCandidates(0, options.candidateBowPx)
+    .slice(1)
+    .map((bowPx) => singleBowCurve(bowPx));
 
   if (obstacles.length > 0) {
     candidates.push(
@@ -1019,10 +1048,10 @@ function* chooseEdgeCurve(
     curve: EdgeCurveGeometry;
     collisions: number;
     score: number;
-  }[] = [];
-  let minimumCollisions = Infinity;
+  }[] = [{ curve: simpleCurve, ...straightEvaluation }];
+  let minimumCollisions = straightEvaluation.collisions;
   let best = simpleCurve;
-  let bestScore = Infinity;
+  let bestScore = straightEvaluation.score;
   for (const candidate of candidates) {
     yield;
     const evaluation = scoreCurveNodeAndShape(
@@ -1086,20 +1115,21 @@ function* chooseEdgeCurve(
   return clampCurveDistances(best, -MAX_BOW_PX, MAX_BOW_PX);
 }
 
-type ProjectedObstacleCluster = {
-  endWeight: number;
-  negativeDistancePx: number;
-  positiveDistancePx: number;
-  startWeight: number;
-};
-
-function projectedEdgeObstacles(
+export function projectedEdgeObstacles(
   edge: GraphEdge,
   source: GraphNode,
   target: GraphNode,
   nodes: GraphNode[],
   baseClearancePx: number,
 ) {
+  const rust = projectRustEdgeObstacles(
+    edge,
+    source,
+    target,
+    nodes,
+    baseClearancePx,
+  );
+  if (rust !== null) return rust;
   const dx = target.x - source.x;
   const dy = target.y - source.y;
   const length = Math.hypot(dx, dy);

@@ -1,9 +1,12 @@
 //! Batched numeric kernels. The browser supplies measured geometry and retains
-//! graph IDs, editing history and rendering. All ABI buffers contain f64 values.
+//! graph IDs, editing history and rendering. ABI buffers use f64 allocations;
+//! the import scanner reads packed text bytes from its input allocation.
 
+pub mod import;
 pub mod interactive;
 pub mod layouts;
 pub mod numeric;
+pub mod obstacles;
 pub mod overlaps;
 pub mod routing;
 

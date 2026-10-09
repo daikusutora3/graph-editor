@@ -148,6 +148,37 @@ for (let index = 0; index < 60; index++) {
   }));
   check(curve, fixture.source, fixture.target, fixture.edge, nodes);
 }
+
+// Curve-piece AABB rejection must retain near-threshold geometry even after
+// large translations. Include circular/wide spines, far pieces, and multiple
+// control points while staying inside the final-route Rust coordinate gate.
+const rawBeforeRejectionCases = rawCases;
+for (const translation of [0, 1e9, 1e12 - 1000]) {
+  const source = { ...fixture.source, x: translation - 220, y: -translation };
+  const target = { ...fixture.target, x: translation + 220, y: -translation };
+  const nodes = [
+    source,
+    target,
+    ...Array.from({ length: 90 }, (_, index) => ({
+      id: `piece-rejection${index}`,
+      order: index + 2,
+      label: "1",
+      measuredWidth: index % 2 === 0 ? 48 : 192,
+      x: translation + ((index * 73) % 720) - 360,
+      y: -translation + ((index * 37) % 400) - 200,
+    })),
+  ];
+  for (const curve of [
+    { controlPointDistancesPx: [0], controlPointWeights: [0.5] },
+    { controlPointDistancesPx: [128], controlPointWeights: [0.5] },
+    { controlPointDistancesPx: [90, -60], controlPointWeights: [0.3, 0.7] },
+  ])
+    check(curve, source, target, fixture.edge, nodes);
+}
+expect(
+  rawCases - rawBeforeRejectionCases >= 6,
+  "prepared-piece rejection comparisons execute the Rust kernel",
+);
 for (const mutate of [
   () => {
     fixture.nodes[2]!.y = 4000;
