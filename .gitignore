@@ -17,3 +17,4 @@ tsconfig.tsbuildinfo
 .local-bin/
 .claude/*
 !.claude/settings.json
+rust/**/target/

@@ -1,4 +1,10 @@
 import { nodeGeometryWidth } from "../graph/node-size";
+import {
+  scoreRustCurveCrossings,
+  scoreRustCurveLabelOverlap,
+  scoreRustCurveNodeAndShape,
+  type RoutingLabelObstacle,
+} from "../../compute/wasm-routing";
 import { singleBowCurve } from "./edge-route-geometry";
 import type { EdgeRoutingMeta } from "./edge-routing";
 import { edgeHasVisibleLabel } from "./edge-routing-shared";
@@ -58,6 +64,18 @@ export function scoreCurveNodeAndShape(
   nodes: GraphNode[],
   options: ResolvedEdgeRoutingOptions,
 ) {
+  const rustScore = scoreRustCurveNodeAndShape(
+    curve,
+    source,
+    target,
+    edge,
+    nodes,
+    options.nodeClearancePx,
+  );
+  if (rustScore) {
+    options.work.units += rustScore.units;
+    return { collisions: rustScore.collisions, score: rustScore.score };
+  }
   const distanceToNode = createCurveNodeDistance(source, target, curve);
   let collisionCount = 0;
   let penetrationScore = 0;
@@ -118,9 +136,8 @@ export function scoreCurveCrossings(
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
 ) {
-  const samples = sampleEdgeCurve(source, target, curve, 8);
   const bounds = curveBounds(source, target, curve, 0);
-  let score = 0;
+  const obstacles: EdgeCurvePoint[][] = [];
 
   for (const otherEdge of edges) {
     if (
@@ -153,14 +170,21 @@ export function scoreCurveCrossings(
     }
 
     options.work.units += EDGE_PAIR_UNITS;
-    const otherSamples = cachedCurveSamples(
-      options.work,
-      `${otherEdge.id}:${resolvedMeta.has(otherEdge.id) ? "r" : "p"}`,
-      otherSource,
-      otherTarget,
-      otherCurve,
+    obstacles.push(
+      cachedCurveSamples(
+        options.work,
+        `${otherEdge.id}:${resolvedMeta.has(otherEdge.id) ? "r" : "p"}`,
+        otherSource,
+        otherTarget,
+        otherCurve,
+      ),
     );
-
+  }
+  const rustScore = scoreRustCurveCrossings(curve, source, target, obstacles);
+  if (rustScore !== null) return rustScore;
+  const samples = sampleEdgeCurve(source, target, curve, 8);
+  let score = 0;
+  for (const otherSamples of obstacles) {
     for (let index = 1; index < samples.length; index += 1) {
       const segmentStart = samples[index - 1];
       const segmentEnd = samples[index];
@@ -346,9 +370,8 @@ export function scoreCurveLabelOverlap(
     return 0;
   }
 
-  const anchor = edgeCurveMidpoint(source, target, curve);
   const size = edgeLabelSize(edge, options.work);
-  let score = 0;
+  const labels: RoutingLabelObstacle[] = [];
 
   for (const otherEdge of edges) {
     if (
@@ -381,6 +404,19 @@ export function scoreCurveLabelOverlap(
       });
     options.work.units += NODE_CHECK_UNITS;
     const otherSize = edgeLabelSize(otherEdge, options.work);
+    labels.push({ anchor: otherAnchor, size: otherSize });
+  }
+  if (labels.length === 0) return 0;
+  // Rust saves midpoint sampling work for multi-control candidates. For simple
+  // curves or many cached anchors, copying labels costs more than JS arithmetic.
+  const rustScore =
+    curve.controlPointWeights.length >= 3 && labels.length <= 64
+      ? scoreRustCurveLabelOverlap(curve, source, target, size, labels)
+      : null;
+  if (rustScore !== null) return rustScore;
+  const anchor = edgeCurveMidpoint(source, target, curve);
+  let score = 0;
+  for (const { anchor: otherAnchor, size: otherSize } of labels) {
     const overlapX =
       (size.width + otherSize.width) / 2 +
       2 -

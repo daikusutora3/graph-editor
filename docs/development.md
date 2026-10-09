@@ -198,6 +198,11 @@ and supporting evidence rather than unrelated implementation work.
 
 ## Static build and headers
 
+Numeric kernels and Worker execution are described in
+[Rust/Wasm computation](verification/rust-compute.md). Rebuild edited Rust with
+`bun run build:wasm`; ordinary builds verify the checked-in artifact with
+`bun run check:wasm` and do not require a Rust toolchain.
+
 ```bash
 bun run build
 ```

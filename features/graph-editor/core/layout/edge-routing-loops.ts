@@ -1,4 +1,5 @@
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
+import { scoreRustLoopObstacles } from "../../compute/wasm-routing";
 /** Self-loop placement: picks the direction with the most free space. */
 import type { GraphNode, GraphEdge, EdgeId } from "../graph/model";
 import {
@@ -173,10 +174,26 @@ function* scoreLoopDirectionTask(
   const maxY = Math.max(...loopPoints.map((point) => point.y)) + reach;
   let score =
     Math.abs(normalizeDegrees(directionDeg - options.loopDirectionDeg)) * 0.01;
-
+  let rustScores: Float64Array | null = null;
   for (const [index, node] of nodes.entries()) {
-    if (index % 32 === 0) yield;
+    if (index % 32 === 0) {
+      yield;
+      if (index === 0)
+        rustScores = scoreRustLoopObstacles(
+          nodes,
+          loopPoints,
+          options.nodeClearancePx,
+          { x1: minX, y1: minY, x2: maxX, y2: maxY },
+          false,
+        );
+    }
     if (node.id === source.id) continue;
+    if (rustScores) {
+      const resultIndex = index * 3;
+      options.work.units += rustScores[resultIndex + 1]!;
+      score += rustScores[resultIndex]!;
+      continue;
+    }
     options.work.units++;
     if (node.x < minX || node.x > maxX || node.y < minY || node.y > maxY)
       continue;
@@ -558,8 +575,23 @@ function* scoreLoopLayout(
       )
         collisions++;
       const samples = nativeLoopSamplePoints(source, route);
-      for (const node of nodes) {
+      let rustScores: Float64Array | null = null;
+      for (const [index, node] of nodes.entries()) {
         yield;
+        if (index === 0)
+          rustScores = scoreRustLoopObstacles(
+            nodes,
+            samples,
+            30,
+            { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity },
+            true,
+          );
+        if (rustScores) {
+          const resultIndex = index * 3;
+          options.work.units += rustScores[resultIndex + 1]!;
+          collisions += rustScores[resultIndex + 2]!;
+          continue;
+        }
         const a = Math.max(0, nodeGeometryWidth(node) / 2 - 24);
         let distance = Infinity;
         for (const sample of samples) {

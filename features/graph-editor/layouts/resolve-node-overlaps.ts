@@ -1,5 +1,6 @@
 import type { GraphModel, NodePositionMap } from "../core/graph/model";
 import { NODE_SIZE_PX, nodeGeometryWidth } from "../core/graph/node-size";
+import { tryRustOverlaps } from "../compute/wasm-layouts";
 
 export const OVERLAP_GAP_PX = 12;
 export type OverlapResult = {
@@ -37,6 +38,25 @@ export function* createOverlapTask(
     ),
   );
   const required = NODE_SIZE_PX + OVERLAP_GAP_PX;
+  yield;
+  const rustResult = tryRustOverlaps(nodes, spans, model.settings.snapToGrid);
+  if (rustResult) {
+    for (const [index, node] of nodes.entries()) {
+      positions[node.id] = {
+        x: rustResult.coordinates[index * 2]!,
+        y: rustResult.coordinates[index * 2 + 1]!,
+      };
+    }
+    return {
+      positions,
+      remainingPairs: rustResult.remainingPairs,
+      status: rustResult.remainingPairs
+        ? "unresolved"
+        : rustResult.changed
+          ? "resolved"
+          : "unchanged",
+    };
+  }
   let changed = false;
   function* scan(move: boolean, limit = Infinity): Generator<void, number> {
     let remaining = 0;

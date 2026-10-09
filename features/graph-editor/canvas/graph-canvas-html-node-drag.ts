@@ -6,6 +6,8 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import { useCallback, useEffect, useRef } from "react";
+import { computeRoutingInWorker } from "../compute/worker-client";
+import { withMeasuredNodeGeometry } from "../adapters/browser/node-geometry";
 
 import { createMoveNodesCommand } from "../core/graph/graph-intents";
 import type {
@@ -78,6 +80,7 @@ export function useHtmlNodeDrag({
   const htmlNodeDragRef = useRef<HtmlNodeDragState | null>(null);
   const routingFrameRef = useRef<number | null>(null);
   const routingRequestRef = useRef(0);
+  const dragComputeControllerRef = useRef<AbortController | null>(null);
   const routingActiveRef = useRef(false);
   const dragPositionRevisionRef = useRef(0);
   const dragRoutingPendingRef = useRef(false);
@@ -106,6 +109,7 @@ export function useHtmlNodeDrag({
   );
 
   const cancelScheduledDragFrame = useCallback(() => {
+    dragComputeControllerRef.current?.abort();
     routingRequestRef.current++;
     routingActiveRef.current = false;
     dragRoutingPendingRef.current = false;
@@ -205,6 +209,33 @@ export function useHtmlNodeDrag({
             },
           );
           let routingCost = 0;
+          const finishRouting = (meta: Map<EdgeId, EdgeRoutingMeta>) => {
+            routingActiveRef.current = false;
+            lastDragRoutingCostRef.current = routingCost;
+            dragRoutingBaselineRef.current = meta;
+            if (positionRevision === dragPositionRevisionRef.current) {
+              dragRoutingPendingRef.current = false;
+              refreshCytoscapeGeometry(
+                withCytoscapeBatch(cy, () =>
+                  applyCytoscapeRoutingMeta(cy, meta),
+                ),
+              );
+              acceptRoutingMeta(positioned, meta);
+              schedulePostRoutingHitboxes(cy);
+            } else if (dragRoutingPendingRef.current) {
+              const nextInterval = Math.min(
+                MAX_INTERACTIVE_EDGE_ROUTING_INTERVAL_MS,
+                Math.max(INTERACTIVE_EDGE_ROUTING_INTERVAL_MS, routingCost * 3),
+              );
+              dragRoutingTimerRef.current = window.setTimeout(
+                () => {
+                  dragRoutingTimerRef.current = null;
+                  syncDragPreview(cy, true);
+                },
+                Math.max(0, nextInterval - (performance.now() - now)),
+              );
+            }
+          };
           const advance = () => {
             routingFrameRef.current = null;
             if (cy.destroyed() || request !== routingRequestRef.current) return;
@@ -214,40 +245,42 @@ export function useHtmlNodeDrag({
               step = task.next();
             routingCost += performance.now() - start;
             if (step.done) {
-              routingActiveRef.current = false;
-              lastDragRoutingCostRef.current = routingCost;
-              dragRoutingBaselineRef.current = step.value;
-              if (positionRevision === dragPositionRevisionRef.current) {
-                dragRoutingPendingRef.current = false;
-                refreshCytoscapeGeometry(
-                  withCytoscapeBatch(cy, () =>
-                    applyCytoscapeRoutingMeta(cy, step.value),
-                  ),
-                );
-                acceptRoutingMeta(positioned, step.value);
-                schedulePostRoutingHitboxes(cy);
-              } else if (dragRoutingPendingRef.current) {
-                // The result can seed the next pass but must not overwrite
-                // routes for positions that have since moved.
-                const nextInterval = Math.min(
-                  MAX_INTERACTIVE_EDGE_ROUTING_INTERVAL_MS,
-                  Math.max(
-                    INTERACTIVE_EDGE_ROUTING_INTERVAL_MS,
-                    routingCost * 3,
-                  ),
-                );
-                dragRoutingTimerRef.current = window.setTimeout(
-                  () => {
-                    dragRoutingTimerRef.current = null;
-                    syncDragPreview(cy, true);
-                  },
-                  Math.max(0, nextInterval - (performance.now() - now)),
-                );
-              }
+              finishRouting(step.value);
             } else routingFrameRef.current = requestAnimationFrame(advance);
           };
           lastDragRoutingAtRef.current = now;
-          advance();
+          dragComputeControllerRef.current?.abort();
+          const controller = new AbortController();
+          dragComputeControllerRef.current = controller;
+          const started = performance.now();
+          void computeRoutingInWorker(
+            withMeasuredNodeGeometry(positioned),
+            {
+              ...edgeRoutingOptions,
+              previousMeta: dragRoutingBaselineRef.current,
+            },
+            controller.signal,
+            {
+              movedNodeIds: new Set(draggingNodeIdsRef.current),
+              nodes: [
+                ...positioned.nodes,
+                ...graph.nodes.filter((node) =>
+                  draggingNodeIdsRef.current.has(node.id),
+                ),
+              ],
+            },
+          ).then((meta) => {
+            if (
+              cy.destroyed() ||
+              controller.signal.aborted ||
+              request !== routingRequestRef.current
+            )
+              return;
+            if (meta) {
+              routingCost = performance.now() - started;
+              finishRouting(meta);
+            } else advance();
+          });
         } else if (dragRoutingTimerRef.current === null) {
           dragRoutingTimerRef.current = window.setTimeout(() => {
             dragRoutingTimerRef.current = null;

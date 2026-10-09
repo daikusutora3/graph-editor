@@ -4,6 +4,7 @@ import type {
   RoutingWork,
 } from "./edge-routing-shared";
 import { createLoopGroupRoutingTask } from "./edge-routing-loops";
+import { countCurveNodeCollisions as nodeCollisions } from "./edge-routing-collisions";
 import { clamp } from "./edge-routing-shared";
 import { compareCurvePreference } from "./edge-routing-scoring";
 import {
@@ -21,7 +22,6 @@ import type {
 } from "../graph/model";
 import { normalizeEdgeRoutingOverride } from "../graph/edge-routing-overrides";
 import {
-  createCurveNodeDistance,
   curveThroughChordOffset,
   offsetEdgeCurve,
   reverseEdgeCurve,
@@ -1350,34 +1350,6 @@ function routingDisplayModel(model: GraphModel): GraphModel {
       weight: undefined,
     })),
   };
-}
-
-function nodeCollisions(
-  curve: EdgeCurveGeometry,
-  edge: GraphEdge,
-  source: GraphNode,
-  target: GraphNode,
-  nodes: GraphNode[],
-  work?: RoutingWork,
-) {
-  const reach =
-    Math.max(0, ...curve.controlPointDistancesPx.map(Math.abs)) + NODE_SIZE_PX;
-  let count = 0;
-  const distanceToNode = createCurveNodeDistance(source, target, curve);
-  for (const node of nodes) {
-    if (node.id === edge.source || node.id === edge.target) continue;
-    const halfWidth = nodeGeometryWidth(node) / 2;
-    if (
-      node.x + halfWidth < Math.min(source.x, target.x) - reach ||
-      node.x - halfWidth > Math.max(source.x, target.x) + reach ||
-      node.y < Math.min(source.y, target.y) - reach ||
-      node.y > Math.max(source.y, target.y) + reach
-    )
-      continue;
-    if (work) work.units += 1;
-    if (distanceToNode(node) < NODE_SIZE_PX / 2 + 6) count++;
-  }
-  return count;
 }
 
 export function edgeRoutingProgress(

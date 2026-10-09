@@ -183,6 +183,7 @@ def routing_snapshot(session):
         if (!cy || !graph || cy.nodes().length !== 7 || cy.edges().length !== 6) return null;
         return {
             settings: graph.settings,
+            routingCompletedAt: performance.getEntriesByName('graph-compute:routing:wasm').at(-1)?.startTime ?? null,
             nodes: graph.nodes.map(({id, x, y}) => ({id, x, y})),
             edges: cy.edges().map(e => ({
                 id: e.id(), source: e.data('source'), target: e.data('target'),
@@ -194,7 +195,7 @@ def routing_snapshot(session):
     """)
 
 
-def settled_routing(session):
+def settled_routing(session, worker_after=None):
     # Require the saved layout and renderer data to remain unchanged for half a
     # second, so a provisional frame cannot produce either a pass or a failure.
     deadline = time.monotonic() + 15
@@ -202,6 +203,13 @@ def settled_routing(session):
     stable_since = None
     while time.monotonic() < deadline:
         snapshot = routing_snapshot(session)
+        if (worker_after is not None and (snapshot is None
+                or snapshot["routingCompletedAt"] is None
+                or snapshot["routingCompletedAt"] < worker_after)):
+            previous = None
+            stable_since = None
+            time.sleep(0.1)
+            continue
         if snapshot is not None and snapshot == previous:
             if time.monotonic() - stable_since >= 0.5:
                 return snapshot
@@ -209,7 +217,8 @@ def settled_routing(session):
             previous = snapshot
             stable_since = time.monotonic()
         time.sleep(0.1)
-    raise AssertionError("The seven-node tree canvas routing did not settle")
+    raise AssertionError("The seven-node tree canvas routing did not settle after its requested Worker completion: "
+                         + json.dumps({"workerAfter": worker_after, "snapshot": snapshot}))
 
 
 def run_edge_routing_regression(session):
@@ -248,8 +257,8 @@ def run_edge_routing_regression(session):
         variant = f"{'weighted' if weighted else 'unweighted'}-{'directed' if directed else 'undirected'}"
         snapshots = []
 
-        def record(stage, expect_straight):
-            snapshot = settled_routing(session)
+        def record(stage, expect_straight, worker_after=None):
+            snapshot = settled_routing(session, worker_after)
             assert snapshot["settings"]["weighted"] == weighted and snapshot["settings"]["directed"] == directed
             assert snapshot["settings"]["autoEdgeRouting"] is True, "Edge offset remains enabled"
             curved = [edge for edge in snapshot["edges"] if any(abs(distance) > 0.001 for distance in edge["distances"])]
@@ -266,8 +275,9 @@ def run_edge_routing_regression(session):
 
         record("sample", True)
         for cycle in (1, 2):
+            worker_after = session.js("return performance.now()")
             session.click(session.button("Line: Input order"))
-            record(f"line-{cycle}", False)
+            record(f"line-{cycle}", False, worker_after)
             session.click(session.button("Tree: Root downward"))
             record(f"tree-{cycle}", True)
         session.click(session.button("Layout"))
@@ -408,6 +418,17 @@ def range_drag(session, points, keys, expected_nodes, expected_edges, summary,
         session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
             {"type": "keyUp", "value": RANGE_KEYS[key]} for key in reversed(keys)]}]})
     session.command("DELETE", "/actions")
+    modifier_recovery = False
+    if len(keys) > 1 and session.js("const e=window.__rangeEvents?.at(-1);return !!e&&(e.ctrl||e.meta||e.shift);"):
+        # SafariDriver can clear its action source while leaving native modifier
+        # flags set after a chord. Press/release each key as a separate action
+        # to restore the isolated driver's native state, without changing DOM.
+        for key in ("alt", "shift", "ctrl", "meta"):
+            session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
+                {"type": "keyDown", "value": RANGE_KEYS[key]},
+                {"type": "keyUp", "value": RANGE_KEYS[key]}]}]})
+        session.command("DELETE", "/actions")
+        modifier_recovery = True
     session.wait(RANGE_CY + "return cy.nodes(':selected').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_nodes)) +
                  " && cy.edges(':selected').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_edges)) +
                  " && document.querySelector('.ge-selection-summary')?.textContent.trim() === " + json.dumps(summary))
@@ -420,6 +441,7 @@ def range_drag(session, points, keys, expected_nodes, expected_edges, summary,
     assert_range_menu_closed(session)
     print(f"{name}: preview, selected IDs and visible selection passed", flush=True)
     return {"name": name, "keys": list(keys), "releaseModifiersBeforePointerUp": release_before_up,
+            "nativeModifierRecovery": modifier_recovery,
             "nodes": committed["nodes"], "edges": committed["edges"], "summary": committed["summary"]}
 
 
@@ -653,6 +675,7 @@ def run_multi_selection_review(session):
         session.command("POST", "/refresh", {})
         session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length === 4")
         session.js(RANGE_CY + "cy.zoom(1); cy.pan({x:container.clientWidth/2,y:400});")
+        session.js("window.__multiKeys=[];for(const type of ['keydown','keyup'])window.addEventListener(type,e=>window.__multiKeys.push({type,key:e.key,shift:e.shiftKey,ctrl:e.ctrlKey,meta:e.metaKey,target:e.target.tagName,prevented:e.defaultPrevented}),true);")
         baseline = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
         stages = []
         current_stage = "load"
@@ -666,7 +689,8 @@ def run_multi_selection_review(session):
                 pressedNodes: [...document.querySelectorAll('.ge-select-node-hitbox')].map(e=>({label:e.getAttribute('aria-label'),pressed:e.getAttribute('aria-pressed')==='true'})),
                 summary: document.querySelector('.ge-selection-summary')?.textContent.trim() ?? '',
                 inlineEditors: [...document.querySelectorAll('.ge-inline-edit-input')].map(e=>e.value),
-                activeElement: {tag:document.activeElement.tagName,label:document.activeElement.getAttribute('aria-label')}
+                activeElement: {tag:document.activeElement.tagName,label:document.activeElement.getAttribute('aria-label')},
+                keyEvents: window.__multiKeys
             };""")
 
         def verify(stage, expected, ids=selected_ids):
@@ -761,6 +785,13 @@ def run_multi_selection_review(session):
                 {"type": "keyDown", "value": RANGE_KEYS["shift"]},
                 {"type": "keyDown", "value": "\ue015"}, {"type": "keyUp", "value": "\ue015"},
                 {"type": "keyUp", "value": RANGE_KEYS["shift"]}]}]})
+            keyboard_limit = None
+            if session.js("const keys=window.__multiKeys.slice(-4);return keys.some(e=>e.type==='keydown'&&e.shift&&e.key==='\\u001f')&&!keys.some(e=>e.type==='keydown'&&e.key==='ArrowDown');"):
+                # SafariDriver 26.6 emits U+001F rather than ArrowDown for this
+                # native chord. Exercise the shortcut through an explicit DOM
+                # event and record the limit; correct native events never retry.
+                session.js("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true,cancelable:true}));document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true}));")
+                keyboard_limit = "SafariDriver sent U+001F for Shift+ArrowDown; shifted nudge used a DOM KeyboardEvent"
             after_down = moved(after_right, 0, 10)
             before_color = verify("shift-arrow-down", after_down)
             session.click(session.element('[role=radio][aria-label="Node color: Green"]'))
@@ -789,13 +820,166 @@ def run_multi_selection_review(session):
             assert restored["saved"] == after_color, (variant, "reload", restored)
             assert [(n["id"], n["x"], n["y"]) for n in restored["liveNodes"]] == [(n["id"], n["x"], n["y"]) for n in after_color["nodes"]], (variant, "reload", restored)
             stages.append({"stage": "reload", **restored})
-            results.append({"variant": variant, "status": "passed", "stages": stages})
+            results.append({"variant": variant, "status": "passed", "stages": stages, "keyboardLimit": keyboard_limit})
             (OUTPUT / "multi-selection-results.json").write_text(json.dumps({"status": "passed" if len(results) == 3 else "in_progress", "results": results}, indent=2))
         except Exception as error:
             failure = {"variant": variant, "stage": current_stage, "error": str(error), "snapshot": snapshot(), "completedStages": stages}
             (OUTPUT / "multi-selection-failure.json").write_text(json.dumps(failure, indent=2))
             session.screenshot(f"multi-selection-{variant}-failure")
             raise
+    return results
+
+
+def run_rust_compute_review(session):
+    """Expert review of the real editor and its deployed Worker/Wasm assets."""
+    session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
+    results = []
+
+    def load(fixture):
+        session.navigate("/en")
+        session.js("localStorage.clear();localStorage.setItem('graph-editor-graph',arguments[0]);localStorage.setItem('graph-editor-theme','light');", json.dumps(fixture))
+        session.command("POST", "/refresh", {})
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
+
+    def saved():
+        return session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
+
+    def mark(kind):
+        return session.wait("return performance.getEntriesByName(arguments[0]).length".replace("arguments[0]", json.dumps(f"graph-compute:{kind}:wasm")), timeout=30)
+
+    chain = {**RANGE_FIXTURE,
+             "nodes": [{"id": f"n{i}", "label": str(i), "order": i, "x": i * 20, "y": 0} for i in range(200)],
+             "edges": [{"id": f"e{i}", "source": f"n{i}", "target": f"n{i + 1}"} for i in range(199)]}
+    load(chain)
+    baseline = saved()
+    session.click(session.button("Layout"))
+    session.js("window.__rustFrames=0;window.__rustFrameActive=true;const tick=()=>{if(window.__rustFrameActive){window.__rustFrames++;requestAnimationFrame(tick)}};requestAnimationFrame(tick);")
+    started = time.monotonic()
+    session.click(session.button("Auto layout: Force-directed"))
+    mark("layout")
+    session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return g.nodes.some(n=>n.y!==0)")
+    laid_out = saved()
+    frame_count = session.js("window.__rustFrameActive=false;return window.__rustFrames")
+    assert frame_count > 0, "The editor renders during the complete layout workflow"
+    assert len(laid_out["nodes"]) == 200 and len(laid_out["edges"]) == 199
+    assert all(isinstance(n["x"], (int, float)) and isinstance(n["y"], (int, float)) for n in laid_out["nodes"])
+    session.screenshot("rust-force-200")
+    session.click(session.button("Undo"))
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.every(n=>n.y===0)")
+    assert saved() == baseline, "Worker result is one undoable command"
+    session.click(session.button("Redo"))
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.some(n=>n.y!==0)")
+    assert saved() == laid_out
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+    assert saved() == laid_out, "Computed positions persist after reload"
+    results.append({"scenario": "force-200", "status": "passed", "workflowFrames": frame_count,
+                    "workflowSeconds": time.monotonic() - started,
+                    "limits": "Duration and frames include WebDriver commands and debounced saving; they do not isolate rendering during CPU computation"})
+
+    session.click(session.button("Layout"))
+    session.js("document.querySelector('[aria-label=\"Auto layout: Force-directed\"]').click();document.querySelector('[aria-label^=\"Grid:\"]').click();")
+    session.wait("return !document.querySelector('[data-editor-panel=layouts] [role=status]')")
+    # Pending computation ends before the debounced storage write. Verify the
+    # actual Grid result has persisted before testing that it stays unchanged.
+    session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return g.nodes.every((n,i)=>n.x===(i%15)*128&&n.y===Math.floor(i/15)*104)")
+    grid = saved()
+    time.sleep(0.5)
+    assert saved() == grid, "Superseded force result cannot replace Grid"
+    results.append({"scenario": "superseded-layout", "status": "passed"})
+
+    crowded = {**RANGE_FIXTURE,
+               "settings": {**RANGE_FIXTURE["settings"], "snapToGrid": True},
+               "nodes": [{"id": f"n{i}", "label": str(i), "order": i, "x": 0, "y": 0} for i in range(80)],
+               "edges": []}
+    load(crowded)
+    baseline = saved()
+    session.click(session.button("Layout"))
+    session.click(session.button("Resolve overlap: Move nodes apart"))
+    mark("overlap")
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.some(n=>n.y!==0)")
+    separated = saved()
+    assert all(n["x"] % 24 == 0 and n["y"] % 24 == 0 for n in separated["nodes"])
+    for i, node in enumerate(separated["nodes"]):
+        for other in separated["nodes"][i + 1:]:
+            assert ((node["x"]-other["x"])**2 + (node["y"]-other["y"])**2)**0.5 >= 60 - 0.00001
+    session.screenshot("rust-overlap-80")
+    session.click(session.button("Undo"))
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.every(n=>n.x===0&&n.y===0)")
+    assert saved() == baseline
+    results.append({"scenario": "overlap-80", "status": "passed", "gridPreserved": True})
+
+    loops = {**RANGE_FIXTURE,
+             "settings": {**RANGE_FIXTURE["settings"], "autoEdgeRouting": True},
+             "nodes": [{"id": "a", "label": "0", "order": 0, "x": 0, "y": 0}],
+             "edges": [{"id": f"loop-{i}", "source": "a", "target": "a"} for i in range(10)]}
+    load(loops)
+    mark("routing")
+    snapshot = session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));")
+    assert len(snapshot) == 10 and len(set(e["direction"] for e in snapshot)) == 10
+    session.screenshot("rust-routing-10-loops")
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
+    mark("routing")
+    assert session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));") == snapshot
+    results.append({"scenario": "routing-10-loops", "status": "passed", "reloadPreserved": True})
+
+    obstacle = {**RANGE_FIXTURE,
+                "settings": {**RANGE_FIXTURE["settings"], "autoEdgeRouting": True},
+                "nodes": [{"id": "a", "label": "A", "order": 0, "x": -160, "y": 0},
+                          {"id": "b", "label": "B", "order": 1, "x": 160, "y": 0},
+                          {"id": "c", "label": "C", "order": 2, "x": 0, "y": 180}],
+                "edges": [{"id": "ab", "source": "a", "target": "b"}]}
+    load(obstacle)
+    mark("routing")
+    session.wait(RANGE_CY + "return cy.getElementById('ab').data('bow')===0")
+    baseline = saved()
+    start = session.js(RANGE_CY + "cy.zoom(1);cy.pan({x:container.clientWidth/2,y:400});const p=cy.getElementById('c').renderedPosition(),r=container.getBoundingClientRect();performance.clearMarks('graph-compute:routing:wasm');return {x:p.x+r.x,y:p.y+r.y};")
+    session.wait("return !document.querySelector('.ge-select-node-hitbox')?.closest('[inert]')")
+    session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+        {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(start["x"]), "y": round(start["y"])},
+        {"type": "pointerDown", "button": 0},
+        {"type": "pointerMove", "duration": 400, "origin": "pointer", "x": 0, "y": -180}]}]})
+    session.wait(RANGE_CY + "return cy.getElementById('c').position('y')===0&&Math.abs(cy.getElementById('ab').data('bow'))>0")
+    mark("routing")
+    assert saved() == baseline, "Worker routing during drag must not persist the preview"
+    def curve_gap():
+        return session.js(RANGE_CY + """
+            const edge=cy.getElementById('ab'),node=cy.getElementById('c');
+            const control=edge.controlPoints();
+            if(control?.length!==1)throw new Error('Expected one rendered quadratic control point');
+            const a=edge.sourceEndpoint(),b=edge.targetEndpoint(),c=control[0],p=node.position();
+            const radius=node.height()/2,span=Math.max(0,(node.width()-node.height())/2);
+            let gap=Infinity;
+            for(let i=0;i<=1000;i++){
+                const t=i/1000,u=1-t;
+                const x=u*u*a.x+2*u*t*c.x+t*t*b.x;
+                const y=u*u*a.y+2*u*t*c.y+t*t*b.y;
+                gap=Math.min(gap,Math.hypot(Math.max(0,Math.abs(x-p.x)-span),y-p.y)-radius);
+            }
+            return gap;
+        """)
+    preview_gap = curve_gap()
+    assert preview_gap >= 4, ("The rendered preview curve must clear the obstacle capsule", preview_gap)
+    session.screenshot("rust-routing-drag-preview")
+    session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+        {"type": "pointerUp", "button": 0}]}]})
+    session.command("DELETE", "/actions")
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[2].y===0")
+    dragged = saved()
+    session.click(session.button("Undo"))
+    session.wait(RANGE_CY + "return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[2].y===180&&cy.getElementById('ab').data('bow')===0")
+    assert saved() == baseline
+    session.click(session.button("Redo"))
+    session.wait(RANGE_CY + "return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[2].y===0&&Math.abs(cy.getElementById('ab').data('bow'))>0")
+    assert saved() == dragged
+    committed_gap = curve_gap()
+    assert committed_gap >= 4, ("The rendered curve after Redo must clear the obstacle capsule", committed_gap)
+    session.screenshot("rust-routing-drag-committed")
+    results.append({"scenario": "routing-native-obstacle-drag", "status": "passed", "previewOnlyUntilRelease": True, "undoRedoRouting": True,
+                    "minimumPreviewCurveGapPx": preview_gap, "minimumCommittedCurveGapPx": committed_gap})
+    (OUTPUT / "rust-compute-results.json").write_text(json.dumps({"status": "passed", "review": "Expert review", "results": results}, indent=2))
+    print("Rust/Wasm Safari: force, overlap, routing, cancellation, undo/redo and persistence passed", flush=True)
     return results
 
 
@@ -822,6 +1006,7 @@ def main():
         if sys.argv[1:] == ["--self-loops"]:
             run_self_loop_review(session)
             return
+        compute_results = run_rust_compute_review(session)
         multi_results = run_multi_selection_review(session)
         (OUTPUT / "multi-selection-results.json").write_text(json.dumps({"status": "passed", "results": multi_results}, indent=2))
         menu_results = run_range_menu_review(session)
@@ -829,7 +1014,7 @@ def main():
         results = run_range_selection(session)
         (OUTPUT / "range-selection-results.json").write_text(json.dumps({"status": "passed", "results": results}, indent=2))
         results += run_edge_routing_regression(session) + run_editor_review(session)
-        results = multi_results + menu_results + results
+        results = compute_results + multi_results + menu_results + results
         (OUTPUT / "results.json").write_text(json.dumps({"status": "passed", "capabilities": session.capabilities, "results": results, "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}, indent=2))
     except Exception as error:
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))

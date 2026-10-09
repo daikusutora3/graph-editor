@@ -2,6 +2,11 @@ import { withMeasuredNodeGeometry } from "../../adapters/browser/node-geometry";
 import { createOverlapTask } from "../../layouts/resolve-node-overlaps";
 import { createMoveNodesCommand } from "../../core/graph/graph-intents";
 import { atom } from "jotai";
+import {
+  computeLayoutInWorker,
+  computeOverlapsInWorker,
+} from "../../compute/worker-client";
+import { withRustKernelSuppressed } from "../../compute/rust-kernel";
 
 import { createEmptyGraphModel } from "../../core/graph/graph-factory";
 import {
@@ -39,8 +44,11 @@ type ReplaceGraphOptions = {
   clearSelection?: boolean;
   selectMode?: boolean;
 };
+const layoutControllerAtom = atom<AbortController | null>(null);
 
-export const resetEditorSessionAtom = atom(null, (_get, set) => {
+export const resetEditorSessionAtom = atom(null, (get, set) => {
+  get(layoutControllerAtom)?.abort();
+  set(layoutControllerAtom, null);
   set(layoutRequestAtom, null);
   set(layoutPendingRequestAtom, null);
   set(editorModeAtom, "select");
@@ -102,6 +110,7 @@ export const layoutPendingAtom = atom(
 export const applyManualLayoutAtom = atom(
   null,
   (get, set, kind: LayoutKind) => {
+    get(layoutControllerAtom)?.abort();
     const graph = get(graphAtom);
     const revision = get(graphRevisionAtom);
     const selection = get(selectionAtom);
@@ -118,26 +127,54 @@ export const applyManualLayoutAtom = atom(
     const measured = withMeasuredNodeGeometry(graph);
     if (kind === "spread" || kind === "force") {
       return (async () => {
+        const controller = new AbortController();
+        set(layoutControllerAtom, controller);
+        const superseded = () =>
+          controller.signal.aborted ||
+          get(graphAtom) !== graph ||
+          get(graphRevisionAtom) !== revision ||
+          get(layoutRequestAtom) !== request;
         const task =
           kind === "spread"
             ? createOverlapTask(measured)
             : createManualLayoutTask(measured, kind, rootNodeId);
+        const nextFallbackStep = () =>
+          withRustKernelSuppressed(() => task.next());
         try {
+          const computed =
+            kind === "spread"
+              ? await computeOverlapsInWorker(measured, controller.signal)
+              : await computeLayoutInWorker(
+                  measured,
+                  kind,
+                  rootNodeId,
+                  controller.signal,
+                );
+          if (superseded())
+            return {
+              status: "rejected" as const,
+              message: "Layout superseded",
+            };
+          if (computed) {
+            if (!("positions" in computed))
+              return set(executeCommandAtom, computed);
+            const command = set(
+              executeCommandAtom,
+              createMoveNodesCommand("Resolve overlaps", computed.positions),
+            );
+            return { ...command, overlap: computed };
+          }
           while (true) {
-            if (
-              get(graphAtom) !== graph ||
-              get(graphRevisionAtom) !== revision ||
-              get(layoutRequestAtom) !== request
-            ) {
+            if (superseded()) {
               return {
                 status: "rejected" as const,
                 message: "Layout superseded",
               };
             }
             const deadline = performance.now() + 4;
-            let step = task.next();
+            let step = nextFallbackStep();
             while (!step.done && performance.now() < deadline)
-              step = task.next();
+              step = nextFallbackStep();
             if (step.done) {
               if (!("positions" in step.value)) {
                 return set(executeCommandAtom, step.value);
@@ -156,6 +193,9 @@ export const applyManualLayoutAtom = atom(
             await new Promise<void>((resolve) => setTimeout(resolve, 0));
           }
         } finally {
+          controller.abort();
+          if (get(layoutControllerAtom) === controller)
+            set(layoutControllerAtom, null);
           if (get(layoutPendingRequestAtom) === request) {
             set(layoutPendingRequestAtom, null);
           }

@@ -1,6 +1,19 @@
 import { spawnSync } from "node:child_process";
 
 const suites = [
+  { name: "wasm-runtime", path: "tests/verification/wasm-runtime.ts" },
+  { name: "wasm-worker", path: "tests/verification/wasm-worker.ts" },
+  { name: "wasm-layouts", path: "tests/verification/wasm-layouts.ts" },
+  { name: "wasm-overlaps", path: "tests/verification/wasm-overlaps.ts" },
+  { name: "wasm-routing", path: "tests/verification/wasm-routing.ts" },
+  {
+    name: "wasm-routing-collisions",
+    path: "tests/verification/wasm-routing-collisions.ts",
+  },
+  {
+    name: "wasm-interactive-routing",
+    path: "tests/verification/wasm-interactive-routing.ts",
+  },
   { name: "integrity", path: "tests/verification/integrity.ts" },
   { name: "autosave", path: "tests/verification/autosave.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
