@@ -3,4 +3,4 @@ set -eu
 
 repo_root=$(git rev-parse --show-toplevel)
 /usr/bin/python3 "$repo_root/.codex/hooks/block_github_issues.py" --self-test
-exec bun run "$repo_root/scripts/privacy-check.ts" --staged
+exec node "$repo_root/scripts/toolchain.mjs" run "$repo_root/scripts/privacy-check.ts" --staged

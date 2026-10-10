@@ -20,7 +20,17 @@
     "nextjs"
   ],
   "packageManager": "bun@1.4.2",
+  "engines": {
+    "node": "24.15.0",
+    "bun": "1.4.2"
+  },
   "scripts": {
+    "toolchain:check": "node scripts/toolchain.mjs --check",
+    "preinstall": "node scripts/toolchain.mjs --check",
+    "predev": "node scripts/toolchain.mjs --check",
+    "prebuild": "node scripts/toolchain.mjs --check",
+    "precheck": "node scripts/toolchain.mjs --check",
+    "precheck:all": "node scripts/toolchain.mjs --check",
     "dev": "next dev",
     "build": "bun run check:wasm && next build && bun run scripts/build-headers.ts",
     "build:wasm": "bun run scripts/build-wasm.ts",
@@ -57,20 +67,20 @@
     "clsx": "2.1.1",
     "cytoscape": "3.34.3",
     "jotai": "3.0.1",
-    "lucide-react": "1.50.0",
-    "nanoid": "6.0.1",
-    "next": "16.3.8",
+    "lucide-react": "1.55.0",
+    "nanoid": "6.0.2",
+    "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "26.6.4",
+    "@types/node": "24.19.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "oxlint": "1.86.0",
-    "playwright": "1.63.0",
-    "prettier": "3.9.9",
+    "oxlint": "1.87.0",
+    "playwright": "1.64.0",
+    "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "0.8.1",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2"

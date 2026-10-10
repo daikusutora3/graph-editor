@@ -53,7 +53,7 @@ export function Slider({
           </span>
         </output>
       </div>
-      <div className="touch:h-11 relative flex h-8 items-center">
+      <div className="relative flex h-8 items-center touch:h-11">
         <span
           aria-hidden="true"
           className="absolute inset-x-0 h-1 rounded-full bg-[var(--fill-2)]"
@@ -88,7 +88,7 @@ export function Slider({
         />
       </div>
       {presets ? (
-        <div className="touch:grid touch:h-auto touch:auto-cols-[minmax(0,1fr)] touch:grid-flow-col touch:gap-1 relative h-8">
+        <div className="relative h-8 touch:grid touch:h-auto touch:auto-cols-[minmax(0,1fr)] touch:grid-flow-col touch:gap-1">
           {presets.map((preset, index) => {
             const r = toRatio(preset, min, max);
             const align =
@@ -105,7 +105,7 @@ export function Slider({
                 aria-pressed={current === preset}
                 onClick={() => onChange(preset)}
                 className={cn(
-                  "touch:static touch:h-11 touch:min-w-0 touch:translate-x-0 touch:px-1 touch:text-control absolute top-0 left-[var(--ge-preset-x)] h-8 translate-x-[var(--ge-preset-shift)] rounded-md px-2 font-mono text-xs font-semibold transition-colors",
+                  "absolute top-0 left-[var(--ge-preset-x)] h-8 translate-x-[var(--ge-preset-shift)] rounded-md px-2 font-mono text-xs font-semibold transition-colors touch:static touch:h-11 touch:min-w-0 touch:translate-x-0 touch:px-1 touch:text-control",
                   focusRing,
                   current === preset
                     ? "bg-[var(--accent-fill-soft)] text-[var(--accent-text)]"

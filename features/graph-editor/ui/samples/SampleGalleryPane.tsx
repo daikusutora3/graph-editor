@@ -124,7 +124,7 @@ export function SampleGalleryPane({
     <div className="ge-fade-in flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-col gap-2 px-4 pt-3.5 pb-3">
         <div className="flex items-center gap-3">
-          <label className="ge-focus touch:h-11 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
+          <label className="ge-focus flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)] touch:h-11">
             <Search className="size-3.5 shrink-0" aria-hidden="true" />
             <input
               ref={searchRef}
@@ -135,14 +135,14 @@ export function SampleGalleryPane({
               onChange={(event) => setSampleQuery(event.target.value)}
               placeholder={messages.samples.searchPlaceholder}
               aria-label={messages.samples.searchAria}
-              className="text-control h-full min-w-0 flex-1 bg-transparent font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)] [&::-webkit-search-cancel-button]:appearance-none"
+              className="h-full min-w-0 flex-1 bg-transparent text-control font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)] [&::-webkit-search-cancel-button]:appearance-none"
             />
             {sampleQuery ? (
               <button
                 type="button"
                 aria-label={messages.samples.clearSearch}
                 onClick={() => setSampleQuery("")}
-                className={`touch:size-11 -mr-2 grid size-8 shrink-0 place-items-center rounded-md ${focusRing}`}
+                className={`-mr-2 grid size-8 shrink-0 place-items-center rounded-md touch:size-11 ${focusRing}`}
               >
                 <X className="size-3.5" aria-hidden="true" />
               </button>
@@ -177,7 +177,7 @@ export function SampleGalleryPane({
       >
         <details className="shrink-0 text-xs text-[var(--muted)]">
           <summary
-            className={`touch:min-h-11 flex min-h-8 cursor-pointer items-center rounded-md font-semibold ${focusRing}`}
+            className={`flex min-h-8 cursor-pointer items-center rounded-md font-semibold touch:min-h-11 ${focusRing}`}
           >
             {messages.samples.generationSettings}
           </summary>
@@ -246,7 +246,7 @@ export function SampleGalleryPane({
                     {messages.samples.group[group.key].note}
                   </div>
                 </div>
-                <div className="text-meta font-mono font-semibold text-[var(--muted)] tabular-nums">
+                <div className="font-mono text-meta font-semibold text-[var(--muted)] tabular-nums">
                   {group.samples.length}
                 </div>
               </div>

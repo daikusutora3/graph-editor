@@ -304,7 +304,7 @@ export function EditorPanelShell({
                 {title}
               </h2>
               {meta ? (
-                <span className="text-meta font-mono font-semibold text-[var(--muted)]">
+                <span className="font-mono text-meta font-semibold text-[var(--muted)]">
                   {meta}
                 </span>
               ) : null}

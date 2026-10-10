@@ -117,7 +117,7 @@ export function StarterPasteBody({
             role="status"
             aria-live="polite"
             className={cn(
-              "text-meta font-mono font-semibold whitespace-nowrap",
+              "font-mono text-meta font-semibold whitespace-nowrap",
               hasIssues && inputText.trim()
                 ? "text-[var(--danger)]"
                 : "text-[var(--muted)]",
@@ -152,7 +152,7 @@ export function StarterPasteBody({
               }
             }
           }}
-          className="ge-focus ge-scrollbar text-control min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3.5 font-mono leading-[1.5] text-[var(--text)] outline-none placeholder:text-[var(--muted)] @min-[480px]/editor:px-4 @min-[480px]/editor:text-sm @min-[480px]/editor:leading-[1.6]"
+          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3.5 font-mono text-control leading-[1.5] text-[var(--text)] outline-none placeholder:text-[var(--muted)] @min-[480px]/editor:px-4 @min-[480px]/editor:text-sm @min-[480px]/editor:leading-[1.6]"
         />
         <div
           aria-label={messages.starter.preview}
@@ -244,7 +244,7 @@ export function StarterPasteFooter({
       <Button
         size="lg"
         variant="secondary"
-        className="touch:min-h-11 h-auto min-h-10 min-w-0 py-2 whitespace-normal"
+        className="h-auto min-h-10 min-w-0 py-2 whitespace-normal touch:min-h-11"
         onClick={onUseSample}
       >
         <span className="min-w-0 whitespace-normal">
@@ -254,7 +254,7 @@ export function StarterPasteFooter({
       <Button
         size="lg"
         variant="secondary"
-        className="touch:min-h-11 h-auto min-h-10 min-w-0 py-2 whitespace-normal [&>svg]:shrink-0"
+        className="h-auto min-h-10 min-w-0 py-2 whitespace-normal touch:min-h-11 [&>svg]:shrink-0"
         onClick={() => fileInputRef.current?.click()}
       >
         <FolderOpen className="size-icon-sm" aria-hidden="true" />
@@ -278,7 +278,7 @@ export function StarterPasteFooter({
         disabled={!canApply}
         size="lg"
         variant={canApply ? "primary" : "disabled"}
-        className="touch:min-h-11 col-span-2 h-auto min-h-10 max-w-full min-w-0 px-4 py-2 whitespace-normal @min-[640px]/editor:ml-auto [&>svg]:shrink-0"
+        className="col-span-2 h-auto min-h-10 max-w-full min-w-0 px-4 py-2 whitespace-normal @min-[640px]/editor:ml-auto touch:min-h-11 [&>svg]:shrink-0"
         onClick={() => starter.applyText()}
       >
         <FileInput className="size-icon-sm" aria-hidden="true" />
@@ -334,7 +334,7 @@ function AmbiguousFormatChoices({
 
   return (
     <fieldset className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3">
-      <legend className="text-control px-1 font-semibold text-[var(--text)]">
+      <legend className="px-1 text-control font-semibold text-[var(--text)]">
         {messages.starter.ambiguousTitle}
       </legend>
       <p className="mb-2 text-xs text-[var(--muted)]">
@@ -367,7 +367,7 @@ function AmbiguousFormatChoice({
       type="button"
       onClick={() => onSelect(candidate.formatKind)}
       className={cn(
-        "touch:min-h-11 flex min-h-10 min-w-0 flex-col items-start gap-1 rounded-lg px-3 py-2 text-left text-xs",
+        "flex min-h-10 min-w-0 flex-col items-start gap-1 rounded-lg px-3 py-2 text-left text-xs touch:min-h-11",
         raisedControl,
         focusRing,
       )}

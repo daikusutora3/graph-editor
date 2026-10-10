@@ -204,7 +204,7 @@ export function PngPanelBody({
       >
         <div className="flex h-8 shrink-0 items-center justify-between border-b border-[var(--hair)] px-3">
           <SectionLabel>{messages.screenshot.preview}</SectionLabel>
-          <span className="text-meta font-mono font-semibold text-[var(--muted)] tabular-nums">
+          <span className="font-mono text-meta font-semibold text-[var(--muted)] tabular-nums">
             {dimensions}
           </span>
         </div>

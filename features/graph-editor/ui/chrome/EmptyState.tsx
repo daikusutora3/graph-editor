@@ -204,7 +204,7 @@ export function EmptyState({
                 aria-label={messages.samples.applyAria(sample.label)}
                 onClick={() => onLoadSample(sample.model)}
                 className={cn(
-                  "touch:h-11 text-control group inline-flex h-9 items-center gap-2 rounded-md px-2.5 font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
+                  "group inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-control font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] touch:h-11",
                   focusRing,
                 )}
               >
