@@ -1,6 +1,4 @@
 "use client";
-import { integrityCopy } from "../../i18n/integrity-copy";
-
 import { CircleAlert, FileInput, FolderOpen } from "lucide-react";
 import { lazy, Suspense, type RefObject, useLayoutEffect, useRef } from "react";
 
@@ -28,6 +26,10 @@ const IMPORT_FORMAT_EXAMPLES: Record<ImportFormat, string> = {
   json: '{ "version": 1, "nodes": [...], "edges": [...], "settings": {...} }',
 };
 import type { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
+import {
+  canApplyStarterInput,
+  getStarterInputStatus,
+} from "../../workflows/starter/starter-input-status";
 import { Button, Select, focusRing, raisedControl } from "../primitives";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/sample-gallery-layout";
 import { SampleGraphPreview } from "../samples/SampleGraphPreview";
@@ -52,22 +54,6 @@ const importFormatOptions: ImportFormatKind[] = [
   "json",
 ];
 
-function canApplyStarter(starter: StarterState) {
-  const previewModel = starter.preview?.model;
-
-  return (
-    Boolean(starter.inputText.trim()) &&
-    starter.fileReadState.status !== "reading" &&
-    starter.analysis?.status === "detected" &&
-    Boolean(
-      previewModel &&
-      (previewModel.nodes.length > 0 ||
-        previewModel.edges.length > 0 ||
-        starter.preview?.warnings.length === 0),
-    )
-  );
-}
-
 export function StarterPasteBody({
   starter,
   textareaRef,
@@ -78,7 +64,8 @@ export function StarterPasteBody({
   const { locale, messages } = useI18n();
   const { analysis, importFormat, inputText, preview, visibleIssues } = starter;
   const previewModel = preview?.model;
-  const canApply = canApplyStarter(starter);
+  const inputStatus = getStarterInputStatus(starter);
+  const canApply = canApplyStarterInput(inputStatus);
   const hasIssues =
     visibleIssues.length > 0 ||
     analysis?.status === "ambiguous" ||
@@ -89,15 +76,20 @@ export function StarterPasteBody({
       ? "error"
       : "warning";
   // Empty input is already announced by the preview pane; keep the header quiet.
-  const meta = !inputText.trim()
-    ? ""
-    : canApply && previewModel && !hasIssues
-      ? `${messages.chrome.starterMeta(previewModel.nodes.length, previewModel.edges.length)}${
-          previewModel.settings.indexBase === 0 ? " · 0-indexed" : ""
-        }`
-      : hasIssues
-        ? messages.starter.needsReview
-        : messages.chrome.starterWaiting;
+  const meta =
+    inputStatus === "empty"
+      ? ""
+      : inputStatus === "reading"
+        ? messages.starter.readingFile
+        : inputStatus === "checking"
+          ? messages.starter.checkingInput
+          : canApply && previewModel && !hasIssues
+            ? `${messages.chrome.starterMeta(previewModel.nodes.length, previewModel.edges.length)}${
+                previewModel.settings.indexBase === 0 ? " · 0-indexed" : ""
+              }`
+            : hasIssues
+              ? messages.starter.needsReview
+              : messages.chrome.starterWaiting;
 
   return (
     <>
@@ -135,15 +127,7 @@ export function StarterPasteBody({
           </span>
         </div>
       </div>
-      {starter.fileReadState.status === "reading" ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className="text-xs text-[var(--muted)]"
-        >
-          {messages.starter.readingFile}
-        </p>
-      ) : starter.fileReadState.status === "failed" ? (
+      {starter.fileReadState.status === "failed" ? (
         <p role="alert" className="text-xs text-[var(--danger)]">
           {starter.fileReadState.reason === "too-large"
             ? messages.starter.fileTooLarge(starter.fileReadState.limit)
@@ -168,7 +152,7 @@ export function StarterPasteBody({
               }
             }
           }}
-          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-4 py-3.5 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+          className="ge-focus ge-scrollbar text-control min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3.5 font-mono leading-[1.5] text-[var(--text)] outline-none placeholder:text-[var(--muted)] @min-[480px]/editor:px-4 @min-[480px]/editor:text-sm @min-[480px]/editor:leading-[1.6]"
         />
         <div
           aria-label={messages.starter.preview}
@@ -183,9 +167,13 @@ export function StarterPasteBody({
             />
           ) : (
             <span className="px-3 text-center text-xs font-semibold text-[var(--muted)]">
-              {inputText.trim() && hasIssues
-                ? messages.starter.needsReview
-                : messages.starter.previewEmpty}
+              {inputStatus === "reading"
+                ? messages.starter.readingFile
+                : inputStatus === "checking"
+                  ? messages.starter.checkingInput
+                  : inputStatus === "review"
+                    ? messages.starter.needsReview
+                    : messages.starter.previewEmpty}
             </span>
           )}
         </div>
@@ -235,8 +223,17 @@ export function StarterPasteFooter({
   starter: StarterState;
   onUseSample: () => void;
 }) {
-  const { messages, locale } = useI18n();
-  const canApply = canApplyStarter(starter);
+  const { messages } = useI18n();
+  const inputStatus = getStarterInputStatus(starter);
+  const canApply = canApplyStarterInput(inputStatus);
+  const actionLabel = {
+    empty: messages.chrome.starterApply,
+    reading: messages.starter.readingFile,
+    checking: messages.starter.checkingInput,
+    review: messages.starter.reviewInput,
+    ready: messages.chrome.starterApply,
+    warning: messages.starter.applyWithWarnings,
+  }[inputStatus];
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Switching to samples removes this footer without closing the starter.
@@ -286,11 +283,7 @@ export function StarterPasteFooter({
       >
         <FileInput className="size-icon-sm" aria-hidden="true" />
         <span className="min-w-0 [overflow-wrap:anywhere] whitespace-normal">
-          {starter.visibleIssues.length
-            ? integrityCopy[locale === "ja" ? "ja" : "en"].partial(
-                starter.preview?.model.edges.length ?? 0,
-              )
-            : messages.chrome.starterApply}
+          {actionLabel}
         </span>
       </Button>
     </div>

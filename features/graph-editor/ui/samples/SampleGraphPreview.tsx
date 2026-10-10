@@ -17,6 +17,14 @@ import {
   previewCurveBounds,
   type PreviewCurvePoints,
 } from "./preview-curve-bounds";
+import { EDGE_WIDTH, NODE_BORDER_WIDTH } from "../../core/view/graph-paint";
+import { clipPreviewEdgeAtTarget } from "./preview-edge-clip";
+import {
+  PREVIEW_ARROW_HALF_WIDTH,
+  PREVIEW_ARROW_LENGTH,
+  PREVIEW_ARROW_REACH,
+  previewArrowVertices,
+} from "./preview-arrow";
 import { cn } from "@/lib/utils";
 
 type SampleGraphPreviewProps = {
@@ -41,7 +49,7 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
   const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
   const editorLike = variant === "editor";
-  const bounds = getModelBounds(
+  const modelBounds = getModelBounds(
     model,
     edgeRouting,
     editorLike,
@@ -56,7 +64,40 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     sampleKind === "clebsch";
   const dense = nodeCount >= 12 || edgeCount >= 30 || softenDenseEdges;
   const veryDense = nodeCount >= 16 || edgeCount >= 40;
-  const pad = Math.min(width, height) * (veryDense ? 0.07 : 0.1);
+  const galleryRadius =
+    (veryDense ? 2.2 : dense ? 2.8 : Math.min(width, height) / 28) *
+    (focus ? 1.1 : 1);
+  const galleryNodeStroke = Math.max(1, galleryRadius * 0.55);
+  const galleryEdgeStroke = Math.max(0.9, galleryRadius * 0.42);
+  const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
+  const bounds = editorLike
+    ? getEditorPaintBounds(model, edgeRouting, modelBounds, focus ? 1.1 : 1)
+    : modelBounds;
+  // Editor paint scales with the model; only its readable stroke floors need
+  // pixel space. Gallery nodes and markers keep a fixed screen size instead.
+  const fixedPaintMargin = editorLike
+    ? model.settings.directed
+      ? PREVIEW_ARROW_REACH
+      : 0.5
+    : Math.max(
+        galleryRadius + galleryNodeStroke / 2,
+        (model.settings.directed
+          ? PREVIEW_ARROW_REACH * galleryEdgeStroke
+          : galleryEdgeStroke / 2) +
+          (model.edges.some((edge) => {
+            const source = nodeById.get(edge.source);
+            const target = nodeById.get(edge.target);
+            return (
+              source && target && source.x === target.x && source.y === target.y
+            );
+          })
+            ? galleryRadius * 1.5
+            : 0),
+      );
+  const pad = Math.max(
+    Math.min(width, height) * (veryDense ? 0.07 : 0.1),
+    fixedPaintMargin + 1,
+  );
   const innerWidth = Math.max(1, width - pad * 2);
   const innerHeight = Math.max(1, height - pad * 2);
   const scale = Math.min(
@@ -69,20 +110,13 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     x: offsetX + (x - bounds.minX) * scale,
     y: offsetY + (y - bounds.minY) * scale,
   });
-  const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
-  const baseRadius = editorLike
-    ? (NODE_SIZE_PX / 2) * scale
-    : veryDense
-      ? 2.2
-      : dense
-        ? 2.8
-        : Math.min(width, height) / 28;
-  const radius = focus ? baseRadius * 1.1 : baseRadius;
+  const baseRadius = editorLike ? (NODE_SIZE_PX / 2) * scale : galleryRadius;
+  const radius = editorLike && focus ? baseRadius * 1.1 : baseRadius;
   const nodeStrokeWidth = editorLike
-    ? Math.max(1.5, radius * 0.2)
+    ? Math.max(0.75, NODE_BORDER_WIDTH * scale)
     : Math.max(1, radius * 0.55);
   const edgeStrokeWidth = editorLike
-    ? Math.max(2, radius * 0.26)
+    ? Math.max(1, EDGE_WIDTH * scale)
     : Math.max(0.9, radius * 0.42);
   const lastIndex = Math.max(0, model.nodes.length - 1);
   const showLabels = editorLike && nodeCount <= 12;
@@ -115,14 +149,18 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
         <defs>
           <marker
             id={markerId}
-            markerHeight="4.5"
-            markerWidth="5.25"
+            markerHeight={PREVIEW_ARROW_HALF_WIDTH * 2}
+            markerWidth={PREVIEW_ARROW_LENGTH}
+            markerUnits="strokeWidth"
             orient="auto"
-            refX="5"
-            refY="2.25"
-            viewBox="0 0 5.25 4.5"
+            refX={PREVIEW_ARROW_LENGTH}
+            refY={PREVIEW_ARROW_HALF_WIDTH}
+            viewBox={`0 0 ${PREVIEW_ARROW_LENGTH} ${PREVIEW_ARROW_HALF_WIDTH * 2}`}
           >
-            <path d="M0 0L5.25 2.25L0 4.5Z" fill="var(--canvas-edge)" />
+            <path
+              d={`M0 0L${PREVIEW_ARROW_LENGTH} ${PREVIEW_ARROW_HALF_WIDTH}L0 ${PREVIEW_ARROW_HALF_WIDTH * 2}Z`}
+              fill="var(--canvas-edge)"
+            />
           </marker>
         </defs>
       ) : null}
@@ -190,6 +228,7 @@ function PreviewEdges({
     radius,
     scale,
     edgeStrokeWidth,
+    editorLike,
     veryDense,
     dense,
   } = context;
@@ -209,6 +248,7 @@ function PreviewEdges({
       scale,
       source: a,
       target: b,
+      targetWidth: editorLike ? nodeGeometryWidth(target) * scale : radius * 2,
     });
     return (
       <path
@@ -247,6 +287,7 @@ function PreviewNodes({
   return nodes.map((node, offset) => {
     const index = startIndex + offset;
     const point = toPoint(node.x, node.y);
+    const pillRadius = Math.min((nodeGeometryWidth(node) * scale) / 2, radius);
     const fill = editorLike
       ? "var(--canvas-node)"
       : index === 0
@@ -262,7 +303,8 @@ function PreviewNodes({
             y={point.y - radius}
             width={nodeGeometryWidth(node) * scale}
             height={radius * 2}
-            rx={radius}
+            rx={pillRadius}
+            ry={pillRadius}
             fill={fill}
             stroke="var(--canvas-node-border)"
             strokeWidth={nodeStrokeWidth}
@@ -303,6 +345,7 @@ export function createPreviewEdgePath({
   scale,
   source,
   target,
+  targetWidth = radius * 2,
 }: {
   directed: boolean;
   radius: number;
@@ -317,18 +360,61 @@ export function createPreviewEdgePath({
   scale: number;
   source: { x: number; y: number };
   target: { x: number; y: number };
+  targetWidth?: number;
 }) {
   if (source.x === target.x && source.y === target.y) {
     return createLoopPath(source, radius, scale, routing);
   }
 
-  const end = previewEdgeEndpoint(source, target, directed, radius);
-  return edgeCurveSvgPath(source, end, {
+  const curve = {
     controlPointDistancesPx: (
       routing?.controlPointDistancesPx ?? [routing?.bowPx ?? 0]
     ).map((distance) => distance * scale),
     controlPointWeights: routing?.controlPointWeights ?? [0.5],
-  });
+  };
+  if (!directed) return edgeCurveSvgPath(source, target, curve);
+  const segments = clippedPreviewSegments(
+    source,
+    target,
+    curve,
+    targetWidth,
+    radius,
+  );
+  return [
+    `M${round(source.x)} ${round(source.y)}`,
+    ...segments.map(
+      ({ control, end }) =>
+        `Q${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`,
+    ),
+  ].join("");
+}
+
+function clippedPreviewSegments(
+  source: { x: number; y: number },
+  target: { x: number; y: number },
+  curve: {
+    controlPointDistancesPx: readonly number[];
+    controlPointWeights: readonly number[];
+  },
+  targetWidth: number,
+  radius: number,
+) {
+  const original = edgeCurveSegments(source, target, curve);
+  return clipPreviewEdgeAtTarget(
+    original.length > 0
+      ? original
+      : [
+          {
+            start: source,
+            control: {
+              x: (source.x + target.x) / 2,
+              y: (source.y + target.y) / 2,
+            },
+            end: target,
+          },
+        ],
+    { centre: target, width: targetWidth, height: radius * 2 },
+  );
 }
 
 function createLoopPath(
@@ -399,27 +485,64 @@ function createLoopGeometry(
   return { start, end, controlA, controlB };
 }
 
-function previewEdgeEndpoint(
-  source: { x: number; y: number },
-  target: { x: number; y: number },
-  directed: boolean,
-  radius: number,
-) {
-  const dx = target.x - source.x;
-  const dy = target.y - source.y;
-  const length = Math.hypot(dx, dy);
-  const shrink = directed && length > 0 ? radius * 1.9 : 0;
-  // A 1px denominator floor changes the arrow direction when the same short
-  // chord is evaluated before and after fitting. Normalize every nonzero chord.
-  const denominator = length || 1;
-  return {
-    x: target.x - (dx / denominator) * shrink,
-    y: target.y - (dy / denominator) * shrink,
-  };
-}
-
 function round(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function getEditorPaintBounds(
+  model: GraphModel,
+  routes: ReturnType<typeof computeEdgeRouting>,
+  bounds: ReturnType<typeof getModelBounds>,
+  radiusScale: number,
+) {
+  let minX = bounds.minX;
+  let maxX = bounds.minX + bounds.width;
+  let minY = bounds.minY;
+  let maxY = bounds.minY + bounds.height;
+  if (model.settings.directed) {
+    const nodes = new Map(model.nodes.map((node) => [node.id, node]));
+    const radius = (NODE_SIZE_PX / 2) * radiusScale;
+    for (const edge of model.edges) {
+      const source = nodes.get(edge.source);
+      const target = nodes.get(edge.target);
+      if (!source || !target) continue;
+      const routing = routes.get(edge.id);
+      let tip, control;
+      if (source.x === target.x && source.y === target.y) {
+        const loop = createLoopGeometry(source, radius, 1, routing);
+        tip = loop.end;
+        control = loop.controlB;
+      } else {
+        const segment = clippedPreviewSegments(
+          source,
+          target,
+          {
+            controlPointDistancesPx: routing?.controlPointDistancesPx ?? [
+              routing?.bowPx ?? 0,
+            ],
+            controlPointWeights: routing?.controlPointWeights ?? [0.5],
+          },
+          nodeGeometryWidth(target),
+          radius,
+        ).at(-1)!;
+        tip = segment.end;
+        control = segment.control;
+      }
+      for (const point of previewArrowVertices(tip, control, EDGE_WIDTH)) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.y);
+        maxY = Math.max(maxY, point.y);
+      }
+    }
+  }
+  const strokeMargin = Math.max(NODE_BORDER_WIDTH, EDGE_WIDTH) / 2;
+  return {
+    minX: minX - strokeMargin,
+    minY: minY - strokeMargin,
+    width: maxX - minX + strokeMargin * 2,
+    height: maxY - minY + strokeMargin * 2,
+  };
 }
 
 export function getModelBounds(
@@ -478,27 +601,13 @@ export function getModelBounds(
       }
       continue;
     }
-    const end = previewEdgeEndpoint(
-      node,
-      target,
-      model.settings.directed,
-      editorLike ? radius : 0,
-    );
     const distances = route?.controlPointDistancesPx ?? [route?.bowPx ?? 0];
-    // Gallery arrowheads use a fixed screen radius. Shortening a very short
-    // chord can reverse its normal as the graph scales, so reserve both sides.
-    const curveDistances =
-      !editorLike && model.settings.directed
-        ? [distances, distances.map((distance) => -distance)]
-        : [distances];
-    for (const controlPointDistancesPx of curveDistances) {
-      const segments = edgeCurveSegments(node, end, {
-        controlPointDistancesPx,
-        controlPointWeights: route?.controlPointWeights ?? [0.5],
-      });
-      for (const { start, control, end: segmentEnd } of segments) {
-        includeCurve([start, control, segmentEnd]);
-      }
+    const segments = edgeCurveSegments(node, target, {
+      controlPointDistancesPx: distances,
+      controlPointWeights: route?.controlPointWeights ?? [0.5],
+    });
+    for (const { start, control, end: segmentEnd } of segments) {
+      includeCurve([start, control, segmentEnd]);
     }
   }
   const minX = Math.min(...xs);

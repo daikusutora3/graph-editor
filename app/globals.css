@@ -778,14 +778,19 @@
   }
 }
 
-/* Keep mobile input readable and leave room for editing above the keyboard. */
-@media (max-width: 767px) {
+/* Touch inputs keep a readable size and avoid focus zoom on mobile browsers.
+ * A narrow mouse/keyboard window retains each control's regular type scale.
+ */
+@media (max-width: 767px) and (pointer: coarse) and (hover: none) {
   [data-editor-panel] input,
   [data-editor-panel] textarea,
   [data-editor-panel] select {
     font-size: 16px;
   }
+}
 
+/* Leave room for editing above the keyboard. */
+@media (max-width: 767px) {
   [data-keyboard-open="true"] .ge-paste-grid {
     min-height: 120px;
     flex: none;

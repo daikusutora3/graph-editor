@@ -19,7 +19,7 @@ import {
 import {
   reconcileEdgeLabelHitboxes,
   reconcileNodeHitboxes,
-} from "../../features/graph-editor/canvas/rendered-hitbox-reconciliation";
+} from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
 import {
   graphModelToCytoscapeElements,
   createGraphCanvasStylesheet,

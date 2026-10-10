@@ -40,6 +40,14 @@ build. This is an expert review with viewport overrides.
 
 ## Measurements
 
+The geometry numbers below are the historical run for this batch. A later
+review found that the headless preset layout automatically fitted its 1px
+viewport, collapsing zoom to `1e-50`. Geometry comparison still passed, but
+movement was almost invisible in rendered coordinates. The fixture now uses
+`fit: false`; use the corrected zoom=1 comparison in
+[the follow-up report](editor-input-routing.md) for current performance claims.
+The Worker clone comparison is independent of that viewport issue.
+
 Reproduce the CPU benchmark with:
 
 ```bash

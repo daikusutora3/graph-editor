@@ -66,6 +66,8 @@ export function SelectionActionBar({
   const mixedSelection = selectedNodes.length > 0 && selectedEdges.length > 0;
   const swatchKind =
     mixedSelection || selectedNodes.length > 0 ? "node" : "edge";
+  const selectableColors =
+    swatchKind === "node" ? SELECTABLE_NODE_COLORS : SELECTABLE_EDGE_COLORS;
   const activeColor = (() => {
     const colors = mixedSelection
       ? new Set([...nodeColors, ...edgeColors])
@@ -121,17 +123,19 @@ export function SelectionActionBar({
               : messages.canvas.edgeColor
           }
           onKeyDown={rovingFocusKeyDown}
-          className={cn(
-            "flex max-w-full items-center border-[var(--line)]",
+          style={
             chrome.layout === "mobile"
-              ? "flex-wrap justify-center gap-y-1 border-x py-1"
-              : "gap-0 border-x px-1.5 py-1",
+              ? { width: selectableColors.length * 44 }
+              : undefined
+          }
+          className={cn(
+            "max-w-full items-center border-x border-[var(--line)] py-1",
+            chrome.layout === "mobile"
+              ? "grid min-w-0 auto-cols-fr grid-flow-col gap-0"
+              : "flex gap-0 px-1.5",
           )}
         >
-          {(swatchKind === "node"
-            ? SELECTABLE_NODE_COLORS
-            : SELECTABLE_EDGE_COLORS
-          ).map((color) => (
+          {selectableColors.map((color) => (
             <ColorSwatch
               key={color}
               color={color}
@@ -215,7 +219,7 @@ function ColorSwatch({
       onClick={onPick}
       className={cn(
         "group grid shrink-0 place-items-center rounded-full bg-transparent p-0 focus-visible:outline-none",
-        large ? "size-11" : "size-[30px]",
+        large ? "h-11 w-full min-w-0" : "size-[30px]",
       )}
     >
       <span

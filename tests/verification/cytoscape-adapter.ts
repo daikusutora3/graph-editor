@@ -28,7 +28,7 @@ import { snapPositionToNodeDragGrid } from "../../features/graph-editor/canvas/g
 import {
   reconcileEdgeLabelHitboxes,
   reconcileNodeHitboxes,
-} from "../../features/graph-editor/canvas/rendered-hitbox-reconciliation";
+} from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
 import type {
   EdgeLabelHitbox,
   NodeHitbox,

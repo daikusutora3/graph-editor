@@ -100,6 +100,8 @@ type Messages = {
     sample: string;
     loadingSamples: string;
     readingFile: string;
+    checkingInput: string;
+    reviewInput: string;
     fileReadFailed: string;
     fileTooLarge: (limit: number) => string;
     autoDetectHelp: string;
@@ -672,6 +674,8 @@ const ja: Messages = {
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
     readingFile: "ファイルを読み込み中…",
+    checkingInput: "入力を確認中…",
+    reviewInput: "入力を確認してください",
     fileReadFailed:
       "ファイルを読み込めませんでした。入力内容は保持されています。もう一度選択してください。",
     fileTooLarge: (limit: number) =>
@@ -1196,6 +1200,8 @@ const en: Messages = {
     sample: "Samples",
     loadingSamples: "Loading samples",
     readingFile: "Reading file…",
+    checkingInput: "Checking input…",
+    reviewInput: "Review the input",
     fileReadFailed:
       "The file could not be read. Your input is retained. Select the file again to retry.",
     fileTooLarge: (limit: number) =>
@@ -1719,6 +1725,8 @@ const zhHans: Messages = {
     sample: "示例",
     loadingSamples: "正在加载示例",
     readingFile: "正在读取文件…",
+    checkingInput: "正在检查输入…",
+    reviewInput: "请检查输入",
     fileReadFailed: "无法读取文件。已保留当前输入。请重新选择文件后重试。",
     fileTooLarge: (limit: number) =>
       `文件超过 ${limit.toLocaleString("zh-CN")} 个字符的限制。已保留当前输入。`,

@@ -32,6 +32,7 @@ import {
   type RoutingDelta,
 } from "../../features/graph-editor/compute/routing-result";
 import { interactiveRerouteEdgeIdsTask } from "../../features/graph-editor/core/layout/interactive-routing";
+import { restoreRoutingInteractionNodes } from "../../features/graph-editor/compute/routing-interaction";
 import { createManualLayoutCommand } from "../../features/graph-editor/layouts/manual-layouts";
 import { resolveNodeOverlaps } from "../../features/graph-editor/layouts/resolve-node-overlaps";
 import {
@@ -77,6 +78,7 @@ if (childCase) {
   await verifyClient(childCase);
 } else {
   verifyRoutingDelta();
+  verifyRoutingInteraction();
   expect(
     (await computeLayoutInWorker(model, "force")) === null,
     "server rendering uses the fallback without a browser Worker",
@@ -121,6 +123,43 @@ function routeMeta(bowPx: number): EdgeRoutingMeta {
     controlPointDistancesPx: [bowPx],
     controlPointWeights: [0.5],
   };
+}
+
+function verifyRoutingInteraction() {
+  const current = [
+    { id: "a", label: "first", order: 0, x: 0, y: 0, color: "blue" as const },
+    { id: "b", label: "B", order: 1, x: 100, y: 0 },
+    { id: "a", label: "duplicate", order: 2, x: 200, y: 0 },
+  ];
+  const previous = [
+    { ...current[0]!, x: -100 },
+    { ...current[2]!, x: -200 },
+  ];
+  const measuredModel = {
+    ...model,
+    nodes: current.map((node) => ({ ...node, measuredWidth: 999 })),
+  };
+  const legacy = [...current, ...previous];
+  const compact = restoreRoutingInteractionNodes(measuredModel, {
+    previousNodes: previous,
+    movedNodeIds: new Set(["a"]),
+  });
+  expect(
+    JSON.stringify(compact) === JSON.stringify(legacy) &&
+      new Map(compact.map((node) => [node.id, node])).get("a") ===
+        previous[1] &&
+      !compact.some((node) => "measuredWidth" in node),
+    "compact interactions retain obstacle order, both positions, colors, estimated widths and duplicate-id last-wins lookup",
+  );
+  expect(
+    measuredModel.nodes.every((node) => node.measuredWidth === 999) &&
+      compact !== current &&
+      restoreRoutingInteractionNodes(measuredModel, {
+        nodes: legacy,
+        movedNodeIds: new Set(["a"]),
+      }) === legacy,
+    "interaction restoration preserves the measured route model and the legacy full-node contract",
+  );
 }
 
 function verifyRoutingDelta() {
@@ -329,12 +368,15 @@ async function verifyRealWorker(failFirst: boolean | "abi") {
       createEdgeRoutingTask(dragGraph, { mode: "simple" }),
     );
     const interaction = {
-      nodes: [...dragGraph.nodes, { ...dragGraph.nodes[2]!, y: 0 }],
+      previousNodes: [{ ...dragGraph.nodes[2]!, y: 0 }],
       movedNodeIds: new Set(["c"]),
     };
     const reroute = complete(
       interactiveRerouteEdgeIdsTask(
-        { ...dragGraph, nodes: interaction.nodes },
+        {
+          ...dragGraph,
+          nodes: [...dragGraph.nodes, ...interaction.previousNodes],
+        },
         baseline,
         interaction.movedNodeIds,
       ),
@@ -390,6 +432,35 @@ async function verifyRealWorker(failFirst: boolean | "abi") {
     expect(
       "result" in simple && Object.keys(simple.kernels).length === 0,
       "a real JS-only Worker route does not claim Rust kernel execution",
+    );
+    const measuredDrag = {
+      ...dragGraph,
+      nodes: dragGraph.nodes.map((node) =>
+        node.id === "c"
+          ? { ...node, x: 1000, y: 0, measuredWidth: 2400 }
+          : node,
+      ),
+    };
+    const previousNodes = [{ ...dragGraph.nodes[2]!, x: 1000 }];
+    worker.postMessage({
+      id: 7,
+      job: {
+        kind: "routing",
+        model: measuredDrag,
+        options: { mode: "quality", previousMeta: baseline },
+        interaction: {
+          previousNodes,
+          movedNodeIds: new Set(["c"]),
+        },
+      },
+    } satisfies ComputeRequest);
+    const retainedMeasured = await responseFor(7);
+    expect(
+      "routingDelta" in retainedMeasured &&
+        [...retainedMeasured.routingDelta.values()].every(
+          (value) => value === null,
+        ),
+      "compact Worker selection keeps historical estimated widths while the routing model retains measured widths",
     );
   } finally {
     worker.terminate();
@@ -511,7 +582,10 @@ async function verifyClient(scenario: string) {
     ]);
     const firstSnapshot = new Map(firstBaseline);
     const secondSnapshot = new Map(secondBaseline);
-    const interaction = { nodes: model.nodes, movedNodeIds: new Set(["a"]) };
+    const interaction = {
+      previousNodes: [model.nodes[0]!],
+      movedNodeIds: new Set(["a"]),
+    };
     const routingModel = {
       ...model,
       edges: [...model.edges, { id: "ac", source: "a", target: "c" }],
@@ -931,7 +1005,7 @@ async function verifyClient(scenario: string) {
       rerouteEdgeIds: new Set(["ab"]),
     },
     undefined,
-    { nodes: model.nodes, movedNodeIds: new Set(["a"]) },
+    { previousNodes: [model.nodes[0]!], movedNodeIds: new Set(["a"]) },
   );
   const routedRequest = active.messages.at(-1)! as Extract<
     ComputeRequest,
@@ -955,8 +1029,11 @@ async function verifyClient(scenario: string) {
   );
   expect(
     routedRequest.job.kind === "routing" &&
-      routedRequest.job.interaction?.movedNodeIds.has("a") === true,
-    "client sends drag interaction with its moved-node Set",
+      routedRequest.job.interaction?.movedNodeIds.has("a") === true &&
+      "previousNodes" in routedRequest.job.interaction &&
+      routedRequest.job.interaction.previousNodes.length === 1 &&
+      !Object.hasOwn(routedRequest.job.interaction, "nodes"),
+    "client sends only the old moved nodes alongside the moved-node Set",
   );
 
   await verifyEditor(active);
