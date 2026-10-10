@@ -1,7 +1,12 @@
 import { memo, useId } from "react";
 
 import type { SampleGraphKind } from "../../samples/sample-graphs";
-import type { EdgeId, GraphModel } from "../../core/graph/model";
+import type {
+  EdgeId,
+  GraphColor,
+  GraphModel,
+  GraphNode,
+} from "../../core/graph/model";
 import { computeEdgeRouting } from "../../core/layout/edge-routing";
 import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
 import {
@@ -49,6 +54,11 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
   const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
   const editorLike = variant === "editor";
+  const arrowScale = editorLike ? model.settings.arrowScale : 1;
+  const markerColors: Array<GraphColor> =
+    editorLike && model.edges.length > 0
+      ? [...new Set(model.edges.map((edge) => edge.color ?? "paper"))]
+      : ["paper"];
   const modelBounds = getModelBounds(
     model,
     edgeRouting,
@@ -77,7 +87,7 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   // pixel space. Gallery nodes and markers keep a fixed screen size instead.
   const fixedPaintMargin = editorLike
     ? model.settings.directed
-      ? PREVIEW_ARROW_REACH
+      ? PREVIEW_ARROW_REACH * arrowScale
       : 0.5
     : Math.max(
         galleryRadius + galleryNodeStroke / 2,
@@ -119,7 +129,7 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     ? Math.max(1, EDGE_WIDTH * scale)
     : Math.max(0.9, radius * 0.42);
   const lastIndex = Math.max(0, model.nodes.length - 1);
-  const showLabels = editorLike && nodeCount <= 12;
+  const showLabels = editorLike && model.settings.showNodeLabels;
   const context: PreviewContext = {
     model,
     markerId,
@@ -147,21 +157,24 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     >
       {model.settings.directed ? (
         <defs>
-          <marker
-            id={markerId}
-            markerHeight={PREVIEW_ARROW_HALF_WIDTH * 2}
-            markerWidth={PREVIEW_ARROW_LENGTH}
-            markerUnits="strokeWidth"
-            orient="auto"
-            refX={PREVIEW_ARROW_LENGTH}
-            refY={PREVIEW_ARROW_HALF_WIDTH}
-            viewBox={`0 0 ${PREVIEW_ARROW_LENGTH} ${PREVIEW_ARROW_HALF_WIDTH * 2}`}
-          >
-            <path
-              d={`M0 0L${PREVIEW_ARROW_LENGTH} ${PREVIEW_ARROW_HALF_WIDTH}L0 ${PREVIEW_ARROW_HALF_WIDTH * 2}Z`}
-              fill="var(--canvas-edge)"
-            />
-          </marker>
+          {markerColors.map((color) => (
+            <marker
+              key={color}
+              id={previewMarkerId(markerId, color)}
+              markerHeight={PREVIEW_ARROW_HALF_WIDTH * 2 * arrowScale}
+              markerWidth={PREVIEW_ARROW_LENGTH * arrowScale}
+              markerUnits="strokeWidth"
+              orient="auto"
+              refX={PREVIEW_ARROW_LENGTH}
+              refY={PREVIEW_ARROW_HALF_WIDTH}
+              viewBox={`0 0 ${PREVIEW_ARROW_LENGTH} ${PREVIEW_ARROW_HALF_WIDTH * 2}`}
+            >
+              <path
+                d={`M0 0L${PREVIEW_ARROW_LENGTH} ${PREVIEW_ARROW_HALF_WIDTH}L0 ${PREVIEW_ARROW_HALF_WIDTH * 2}Z`}
+                fill={previewEdgeColor(color)}
+              />
+            </marker>
+          ))}
         </defs>
       ) : null}
       {chunkPreviewItems(model.edges).map((edges) => (
@@ -248,18 +261,26 @@ function PreviewEdges({
       scale,
       source: a,
       target: b,
-      targetWidth: editorLike ? nodeGeometryWidth(target) * scale : radius * 2,
+      targetWidth: editorLike
+        ? previewNodeWidth(model, target) * scale
+        : radius * 2,
     });
     return (
       <path
         key={edge.id}
         d={path}
         fill="none"
-        stroke="var(--canvas-edge)"
+        stroke={
+          editorLike ? previewEdgeColor(edge.color) : "var(--canvas-edge)"
+        }
         strokeLinecap="round"
         strokeWidth={edgeStrokeWidth}
-        opacity={veryDense ? 0.56 : dense ? 0.68 : 0.78}
-        markerEnd={model.settings.directed ? `url(#${markerId})` : undefined}
+        opacity={editorLike ? 1 : veryDense ? 0.56 : dense ? 0.68 : 0.78}
+        markerEnd={
+          model.settings.directed
+            ? `url(#${previewMarkerId(markerId, editorLike ? edge.color : undefined)})`
+            : undefined
+        }
       />
     );
   });
@@ -287,9 +308,11 @@ function PreviewNodes({
   return nodes.map((node, offset) => {
     const index = startIndex + offset;
     const point = toPoint(node.x, node.y);
-    const pillRadius = Math.min((nodeGeometryWidth(node) * scale) / 2, radius);
+    const width = previewNodeWidth(model, node) * scale;
+    const pillRadius = Math.min(width / 2, radius);
+    const paint = previewNodePaint(node.color);
     const fill = editorLike
-      ? "var(--canvas-node)"
+      ? paint.fill
       : index === 0
         ? "var(--canvas-node-yellow)"
         : index === lastIndex && model.nodes.length > 2
@@ -299,14 +322,14 @@ function PreviewNodes({
       <g key={node.id}>
         {editorLike ? (
           <rect
-            x={point.x - (nodeGeometryWidth(node) * scale) / 2}
+            x={point.x - width / 2}
             y={point.y - radius}
-            width={nodeGeometryWidth(node) * scale}
+            width={width}
             height={radius * 2}
             rx={pillRadius}
             ry={pillRadius}
             fill={fill}
-            stroke="var(--canvas-node-border)"
+            stroke={paint.border}
             strokeWidth={nodeStrokeWidth}
           />
         ) : (
@@ -323,7 +346,7 @@ function PreviewNodes({
           <text
             x={point.x}
             y={point.y}
-            fill="var(--canvas-node-text)"
+            fill={paint.text}
             textAnchor="middle"
             dominantBaseline="central"
             fontFamily="var(--font-ui)"
@@ -336,6 +359,38 @@ function PreviewNodes({
       </g>
     );
   });
+}
+
+function previewNodeWidth(model: GraphModel, node: GraphNode) {
+  return model.settings.showNodeLabels ? nodeGeometryWidth(node) : NODE_SIZE_PX;
+}
+
+function previewNodePaint(color: GraphColor | undefined) {
+  const colored = color && color !== "paper";
+  return {
+    fill: colored ? `var(--canvas-node-${color})` : "var(--canvas-node)",
+    border: colored
+      ? color === "white" || color === "black"
+        ? "var(--canvas-edge)"
+        : `var(--canvas-edge-${color})`
+      : "var(--canvas-node-border)",
+    text:
+      color === "white"
+        ? "#111827"
+        : color === "black"
+          ? "#f8fafc"
+          : "var(--canvas-node-text)",
+  };
+}
+
+function previewEdgeColor(color: GraphColor | undefined) {
+  return color && color !== "paper"
+    ? `var(--canvas-edge-${color})`
+    : "var(--canvas-edge)";
+}
+
+function previewMarkerId(id: string, color: GraphColor | undefined) {
+  return color && color !== "paper" ? `${id}-${color}` : id;
 }
 
 export function createPreviewEdgePath({
@@ -522,13 +577,17 @@ function getEditorPaintBounds(
             ],
             controlPointWeights: routing?.controlPointWeights ?? [0.5],
           },
-          nodeGeometryWidth(target),
+          previewNodeWidth(model, target),
           radius,
         ).at(-1)!;
         tip = segment.end;
         control = segment.control;
       }
-      for (const point of previewArrowVertices(tip, control, EDGE_WIDTH)) {
+      for (const point of previewArrowVertices(
+        tip,
+        control,
+        EDGE_WIDTH * model.settings.arrowScale,
+      )) {
         minX = Math.min(minX, point.x);
         maxX = Math.max(maxX, point.x);
         minY = Math.min(minY, point.y);
@@ -560,8 +619,8 @@ export function getModelBounds(
   const xs = model.nodes.flatMap((node) =>
     editorLike
       ? [
-          node.x - nodeGeometryWidth(node) / 2,
-          node.x + nodeGeometryWidth(node) / 2,
+          node.x - previewNodeWidth(model, node) / 2,
+          node.x + previewNodeWidth(model, node) / 2,
         ]
       : [node.x],
   );

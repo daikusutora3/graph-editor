@@ -2,7 +2,9 @@ import { guideExamples } from "../../lib/guide-examples";
 import { defaultGraphSettings } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
+  createGraphExportTask,
   exportGraph,
+  graphExportProblem,
   hasLossyAdjacencyExport,
   type GraphExportFormat,
 } from "../../features/graph-editor/io/export-graph";
@@ -442,6 +444,60 @@ expectMatrixExportError(
   },
   "parallel-edges",
 );
+
+for (const weight of ["tag#1", "a//b", "#foo", "https://x", "//"]) {
+  const model: GraphModel = {
+    ...weightedDirectedModel,
+    settings: { ...weightedDirectedModel.settings, weightKind: "string" },
+    edges: [{ id: "text", source: "n0", target: "n1", weight }],
+  };
+  for (const format of ["edge-list", "adjacency-list"] as const) {
+    for (const run of [
+      () => exportGraph(model, format),
+      () => createGraphExportTask(model, format).next(),
+    ]) {
+      let error: unknown;
+      try {
+        run();
+      } catch (caught) {
+        error = caught;
+      }
+      expect(
+        graphExportProblem(model, format) === "weight-token" &&
+          error instanceof Error &&
+          error.message === "weight-token",
+        `${format} should reject comment markers in weights before producing text: ${weight}`,
+      );
+    }
+  }
+  expect(
+    graphExportProblem(model, "json") === null &&
+      JSON.stringify(importGraphInput(exportGraph(model, "json")).model) ===
+        JSON.stringify(model),
+    `JSON should preserve comment markers in weights: ${weight}`,
+  );
+  expect(
+    graphExportProblem(model, "tikz") === null &&
+      exportGraph(model, "tikz").includes("\\begin{tikzpicture}"),
+    `TikZ should retain its escaped-label export for comment markers: ${weight}`,
+  );
+  expect(
+    exportGraph(
+      { ...model, settings: { ...model.settings, weighted: false } },
+      "edge-list",
+    ) === "3 1\n0 1",
+    "hidden weights should not block unweighted text exports",
+  );
+}
+for (const weight of ["tag/1", "-2", "日本語"]) {
+  const model: GraphModel = {
+    ...weightedDirectedModel,
+    settings: { ...weightedDirectedModel.settings, weightKind: "string" },
+    edges: [{ id: "text", source: "n0", target: "n1", weight }],
+  };
+  for (const format of ["edge-list", "adjacency-list"] as const)
+    assertRoundTrip(model, format);
+}
 
 const largestPlainMatrix: GraphModel = {
   ...createEmptyGraphModel(),

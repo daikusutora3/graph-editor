@@ -2,6 +2,10 @@ import { spawnSync } from "node:child_process";
 
 const suites = [
   { name: "toolchain", path: "tests/verification/toolchain.ts" },
+  {
+    name: "static-preview-server",
+    path: "tests/verification/static-preview-server.ts",
+  },
   { name: "wasm-runtime", path: "tests/verification/wasm-runtime.ts" },
   { name: "wasm-worker", path: "tests/verification/wasm-worker.ts" },
   { name: "wasm-layouts", path: "tests/verification/wasm-layouts.ts" },
@@ -69,6 +73,7 @@ const suites = [
   },
   { name: "tikz", path: "tests/verification/tikz.ts" },
   { name: "screenshot", path: "tests/verification/screenshot.ts" },
+  { name: "image-export", path: "tests/verification/image-export.ts" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },
   { name: "i18n", path: "tests/verification/i18n-literals.ts" },
   { name: "canvas", path: "tests/verification/canvas-logic.ts" },

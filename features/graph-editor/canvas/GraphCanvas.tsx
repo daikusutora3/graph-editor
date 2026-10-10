@@ -131,6 +131,8 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
 
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
+  const edgeSourceNodeIdRef = useRef(edgeDraft.sourceNodeId);
+  edgeSourceNodeIdRef.current = edgeDraft.sourceNodeId;
   const rangeSelectionFilterRef = useRef<RangeSelectionFilter>("all");
   const chrome = useMemo<GraphCanvasChrome>(() => ({ layout }), [layout]);
 
@@ -138,6 +140,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     cyRef,
     selectionRef,
     suppressSelectionSyncRef,
+    edgeSourceNodeIdRef,
   });
   const { editFeedback, showEditFeedback } = useEditFeedback();
   const {

@@ -91,6 +91,7 @@ if (childCase) {
     "constructor",
     "response-error",
     "event-error",
+    "event-message-error",
     "transient-response",
     "transient-send",
     "retry-limit",
@@ -100,6 +101,13 @@ if (childCase) {
     "routing-delta",
     "routing-delta-error",
     "routing-delta-wrong-job",
+    "response-null",
+    "response-missing-result",
+    "response-null-diagnostics",
+    "response-array-diagnostics",
+    "diagnostic-mark-error",
+    "diagnostic-clear-error",
+    "cleanup-error",
   ]) {
     const result = spawnSync(
       "bun",
@@ -526,6 +534,7 @@ async function verifyClient(scenario: string) {
     messages: ComputeRequest[] = [];
     onmessage: ((event: MessageEvent<ComputeResponse>) => void) | null = null;
     onerror: (() => void) | null = null;
+    onmessageerror: (() => void) | null = null;
     terminated = false;
     throwOnCancel = false;
     constructor(url: URL, options: WorkerOptions) {
@@ -557,10 +566,13 @@ async function verifyClient(scenario: string) {
         | { id: number; routingDelta: RoutingDelta; kernels?: RustKernelCalls }
         | Extract<ComputeResponse, { error: string }>,
     ) {
+      this.emitRaw(
+        "error" in response ? response : { kernels: {}, ...response },
+      );
+    }
+    emitRaw(response: unknown) {
       this.onmessage?.({
-        data: structuredClone(
-          "error" in response ? response : { kernels: {}, ...response },
-        ),
+        data: structuredClone(response),
       } as MessageEvent<ComputeResponse>);
     }
   }
@@ -568,6 +580,160 @@ async function verifyClient(scenario: string) {
     configurable: true,
     value: FakeWorker,
   });
+
+  if (scenario.startsWith("response-") && scenario !== "response-error") {
+    const controller = new AbortController();
+    const first = computeLayoutInWorker(
+      model,
+      "force",
+      undefined,
+      controller.signal,
+    );
+    const second = computeOverlapsInWorker(model);
+    const active = workers[0]!;
+    const request = active.messages[0]! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    const malformed =
+      scenario === "response-null"
+        ? null
+        : scenario === "response-missing-result"
+          ? { id: request.id, kernels: {} }
+          : {
+              id: request.id,
+              result: createManualLayoutCommand(model, "force"),
+              kernels: scenario === "response-null-diagnostics" ? null : [],
+            };
+    try {
+      active.emitRaw(malformed);
+    } catch {
+      expect(false, "malformed response exceptions cannot escape the client");
+    }
+    controller.abort();
+    const settled = await bounded(
+      Promise.all([first, second]),
+      "malformed responses must settle every pending request",
+    );
+    expect(
+      settled.every((result) => result === null) &&
+        active.terminated &&
+        pagehideListeners.size === 0,
+      "invalid response data, results and diagnostics fall back and release the Worker",
+    );
+    expect(
+      !performance
+        .getEntriesByType("mark")
+        .some((entry) => entry.name.startsWith("graph-compute:")),
+      "malformed replies do not create Worker or Rust success marks",
+    );
+    now = 100_000;
+    expect(
+      (await computeOverlapsInWorker(model)) === null && workers.length === 1,
+      "protocol failures remain unavailable instead of retrying an incompatible transport",
+    );
+    return;
+  }
+
+  if (scenario.startsWith("diagnostic-")) {
+    const originalMark = performance.mark.bind(performance);
+    const originalClear = performance.clearMarks.bind(performance);
+    const failingMethod =
+      scenario === "diagnostic-mark-error" ? "mark" : "clearMarks";
+    Object.defineProperty(performance, failingMethod, {
+      configurable: true,
+      value: () => {
+        throw new Error("instrumentation unavailable");
+      },
+    });
+    const first = computeLayoutInWorker(model, "force");
+    const second = computeOverlapsInWorker(model);
+    const active = workers[0]!;
+    const firstRequest = active.messages[0]! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    const secondRequest = active.messages[1]! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    const command = createManualLayoutCommand(model, "force");
+    try {
+      active.emit({
+        id: firstRequest.id,
+        result: command,
+        kernels: { force_layout: 2 },
+      });
+      expect(
+        JSON.stringify(await bounded(first, "diagnostic fault completion")) ===
+          JSON.stringify(command) && !active.terminated,
+        "optional instrumentation exceptions retain completed results and their transport",
+      );
+    } finally {
+      Object.defineProperty(performance, "mark", {
+        configurable: true,
+        value: originalMark,
+      });
+      Object.defineProperty(performance, "clearMarks", {
+        configurable: true,
+        value: originalClear,
+      });
+    }
+    active.emit({
+      id: secondRequest.id,
+      result: resolveNodeOverlaps(model),
+    });
+    expect(
+      (await second) !== null && workers.length === 1 && !active.terminated,
+      "diagnostic failure leaves concurrent work and the retry budget intact",
+    );
+    const failed = computeOverlapsInWorker(model);
+    active.onerror!();
+    expect((await failed) === null, "a later transport fault still falls back");
+    now = 1000;
+    const recovered = computeOverlapsInWorker(model);
+    const replacement = workers.at(-1)!;
+    const request = replacement.messages.at(-1)! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    replacement.emit({
+      id: request.id,
+      result: resolveNodeOverlaps(model),
+    });
+    expect(
+      (await recovered) !== null && workers.length === 2,
+      "instrumentation faults do not disable recovery after an actual transport fault",
+    );
+    events.dispatchEvent(new Event("pagehide"));
+    expect(
+      pagehideListeners.size === 0,
+      "instrumentation faults leave no pagehide listeners after shutdown",
+    );
+    return;
+  }
+
+  if (scenario === "cleanup-error") {
+    const signal = {
+      aborted: false,
+      addEventListener: () => {},
+      removeEventListener: () => {
+        throw new Error("host cleanup failed");
+      },
+    } as unknown as AbortSignal;
+    const first = computeLayoutInWorker(model, "force", undefined, signal);
+    const second = computeOverlapsInWorker(model);
+    workers[0]!.onerror!();
+    expect(
+      (await bounded(first, "cleanup fault completion")) === null &&
+        (await bounded(second, "concurrent cleanup fault completion")) ===
+          null &&
+        workers[0]!.terminated &&
+        pagehideListeners.size === 0,
+      "one failing cleanup still completes every request during Worker shutdown",
+    );
+    return;
+  }
 
   if (scenario.startsWith("routing-delta")) {
     const firstBaseline = new Map([
@@ -875,13 +1041,18 @@ async function verifyClient(scenario: string) {
     ComputeRequest,
     { id: number }
   >;
-  if (scenario === "response-error" || scenario === "event-error") {
+  if (
+    scenario === "response-error" ||
+    scenario === "event-error" ||
+    scenario === "event-message-error"
+  ) {
     if (scenario === "response-error")
       active.emit({
         id: firstRequest.id,
         error: "unsupported kernel ABI",
         failure: "permanent",
       });
+    else if (scenario === "event-message-error") active.onmessageerror!();
     else active.onerror!();
     expect(
       (await first) === null && (await second) === null && active.terminated,
@@ -1057,6 +1228,7 @@ async function verifyClient(scenario: string) {
     failure: "permanent",
   });
   active.onerror!();
+  active.onmessageerror!();
   expect(
     !replacement.terminated,
     "events from a terminated Worker cannot stop its replacement",

@@ -51,7 +51,9 @@ the Node launcher is the entry point that verifies before those operations.
 Open the URL printed by Next.js (normally `http://localhost:3000`). Installation
 runs `prepare`, which configures this checkout to use `.githooks`. The commit
 hook runs the repository policy self-test and staged privacy check; the push hook
-checks outgoing changes for private data.
+checks outgoing changes for private data. All three Git hooks, including the
+commit-message check, use the Node launcher and work with a checkout-local Bun
+even when Bun is absent from the shell's `PATH`.
 
 ## Code boundaries
 
@@ -259,3 +261,54 @@ The build transforms the [`public/_headers`](../public/_headers) template into
 The generated header checks enforce the 2,000-character line limit and avoid
 overlapping CSP rules. See [browser audits](../scripts/audit/README.md) to exercise
 those headers locally. `check:all` validates the build; it does not publish it.
+
+`node scripts/toolchain.mjs run serve:out` binds only to `127.0.0.1`, normally on
+port 3123. Set `PORT` to choose another local port. It serves only files whose
+canonical paths remain inside `out`, including symlink targets, and rejects
+malformed URI input and directory traversal. Header rules are loaded at startup;
+restart the server after rebuilding so CSP hashes match the new HTML.
+
+## Continuous verification and release connection
+
+[`.github/workflows/verify.yml`](../.github/workflows/verify.yml) runs the
+`check-all` job on pushes and pull requests using an Ubuntu runner. It installs
+Node from `.node-version`, Bun from `package.json`, and Rust with the components
+and target declared in `rust/graph-kernels/rust-toolchain.toml`. Dependencies are
+installed with the frozen lockfile before running the same
+`node scripts/toolchain.mjs run check:all` command as local release validation.
+The kernel currently has no registry dependencies, so its locked Cargo tests
+need no fetch step and remain offline.
+
+The workflow grants only `contents: read`, keeps checkout credentials out of the
+working tree, and contains no deploy command or repository secrets. The setup
+follows the official [Node action](https://github.com/actions/setup-node),
+[Bun action](https://github.com/oven-sh/setup-bun),
+[Rust toolchain file](https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file),
+and [GitHub permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions)
+documentation. Browser regressions remain separate from this job.
+
+Creating the workflow does not make another service wait for its result. The
+current GitHub ruleset and Cloudflare build settings have not been inspected or
+changed. To connect validation to publication:
+
+1. After the workflow's first successful run, require `check-all` for changes to
+   `main` through a [GitHub branch rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging).
+   This protects merges; account for any permitted direct pushes or rule bypass.
+2. Inspect the Worker's existing build and deploy commands in Cloudflare. For a
+   Workers Builds connection, use `.node-version`, set the build variable
+   `BUN_VERSION=1.4.2`, and ensure the declared Rust toolchain is installed.
+   Set `SKIP_DEPENDENCY_INSTALL=1` and use this build command:
+   `node scripts/toolchain.mjs install --frozen-lockfile && node scripts/toolchain.mjs run check:all`.
+   This runs installation and validation before the following deploy command.
+   These version and install controls are documented in the
+   [Cloudflare build image](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/);
+   the build/deploy sequence is described in
+   [build configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
+3. If the current Cloudflare build environment cannot provide that toolchain,
+   use a separately configured deployment job that depends on `check-all` and
+   publishes its validated output. Such a job requires an authorized deployment
+   setup; it is not part of this read-only CI workflow.
+
+Confirm the live build settings and checks before reporting an active production
+gate. A local pass or a workflow file alone does not establish that a public
+deployment waited for it.

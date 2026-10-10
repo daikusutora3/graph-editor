@@ -5,6 +5,7 @@ import {
   mkdirSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -80,6 +81,66 @@ try {
     correctCaller.status === 0,
     "The pinned caller should pass verification.",
   );
+
+  // Git hooks run outside the launcher's child PATH. Test that each hook can
+  // select the repository-local Bun when no Bun is available on its own PATH.
+  const nodeBinary = spawnSync("node", ["-p", "process.execPath"], {
+    encoding: "utf8",
+  }).stdout.trim();
+  const gitBinary = spawnSync("which", ["git"], {
+    encoding: "utf8",
+  }).stdout.trim();
+  const hookPath = join(fixture, "hook-path");
+  mkdirSync(hookPath);
+  symlinkSync(nodeBinary, join(hookPath, "node"));
+  symlinkSync(gitBinary, join(hookPath, "git"));
+  mkdirSync(join(fixture, ".githooks"));
+  mkdirSync(join(fixture, ".codex/hooks"), { recursive: true });
+  writeFileSync(
+    join(fixture, ".codex/hooks/block_github_issues.py"),
+    "import sys\nsys.exit(0)\n",
+  );
+  const initialized = spawnSync(gitBinary, ["init", "--quiet", fixture], {
+    encoding: "utf8",
+  });
+  if (initialized.status !== 0) throw new Error(initialized.stderr);
+  for (const [hook, args, expectedArgs] of [
+    ["pre-commit", [], ["--staged"]],
+    [
+      "commit-msg",
+      [join(fixture, "message with spaces.txt")],
+      ["--commit-message", join(fixture, "message with spaces.txt")],
+    ],
+    [
+      "pre-push",
+      ["origin", "test-remote"],
+      ["--pre-push", "origin", "test-remote"],
+    ],
+  ] as const) {
+    const target = join(fixture, ".githooks", hook);
+    copyFileSync(join(root, ".githooks", hook), target);
+    const result = spawnSync("/bin/sh", [target, ...args], {
+      cwd: fixture,
+      env: { ...process.env, PATH: hookPath, npm_execpath: "" },
+      encoding: "utf8",
+    });
+    expect(
+      result.status === 0,
+      `${hook} should select local Bun without relying on a global Bun.`,
+    );
+    const executed = JSON.parse(
+      result.stdout.trim().split("\n").at(-1) || "{}",
+    );
+    expect(
+      JSON.stringify(executed.args) ===
+        JSON.stringify([
+          "run",
+          join(fixture, "scripts/privacy-check.ts"),
+          ...expectedArgs,
+        ]),
+      `${hook} should preserve privacy-check arguments.`,
+    );
+  }
 
   fixtureBun(localBun, "1.3.14");
   const wrongLocal = run(["run", "sample"]);

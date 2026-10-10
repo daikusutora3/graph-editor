@@ -1,0 +1,49 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-all:
+    name: check-all
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install pinned Rust toolchain
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import tomllib
+          with open("rust/graph-kernels/rust-toolchain.toml", "rb") as source:
+              toolchain = tomllib.load(source)["toolchain"]
+          arguments = ["rustup", "toolchain", "install", toolchain["channel"], "--profile", toolchain["profile"]]
+          for key, option in [("components", "--component"), ("targets", "--target")]:
+              if toolchain.get(key):
+                  arguments.extend([option, ",".join(toolchain[key])])
+          subprocess.run(arguments, check=True)
+          PY
+      - name: Install locked dependencies
+        run: node scripts/toolchain.mjs install --frozen-lockfile
+      - name: Verify code, Rust, and static release
+        run: node scripts/toolchain.mjs run check:all

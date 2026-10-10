@@ -288,7 +288,8 @@ export function graphExportProblem(
       const weight = edge.weight ?? "1";
       return (
         !weight ||
-        /[\s,]/.test(weight) ||
+        /[\s,#]/.test(weight) ||
+        weight.includes("//") ||
         (format === "adjacency-list" && /[()]/.test(weight))
       );
     })
