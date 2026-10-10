@@ -28,9 +28,12 @@ export type ComputeJob =
       interaction?: RoutingInteraction;
     };
 export type RoutingInteraction = {
-  nodes: GraphNode[];
   movedNodeIds: ReadonlySet<NodeId>;
-};
+} & (
+  | { previousNodes: GraphNode[] }
+  // Existing callers may supply the full selection snapshot directly.
+  | { nodes: GraphNode[] }
+);
 export type ComputeValue =
   GraphIntent | OverlapResult | Map<string, EdgeRoutingMeta>;
 export type ComputeRequest =

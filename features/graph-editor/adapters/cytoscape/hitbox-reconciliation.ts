@@ -1,7 +1,41 @@
-import type {
-  EdgeLabelHitbox,
-  NodeHitbox,
-} from "../adapters/cytoscape/graph-canvas-hitboxes";
+import type { EdgeLabelHitbox, NodeHitbox } from "./graph-canvas-hitboxes";
+
+export function createNodeHitboxSnapshot() {
+  return createHitboxSnapshot(sameNodeHitbox);
+}
+
+export function createEdgeLabelHitboxSnapshot() {
+  return createHitboxSnapshot(sameEdgeLabelHitbox);
+}
+
+// A full read establishes order and the index. Local geometry invalidations
+// then compare only their replacements and copy the array only if needed.
+function createHitboxSnapshot<T extends { id: string }>(
+  same: (a: T, b: T) => boolean,
+) {
+  let snapshot: T[] = [];
+  let indexes = new Map<string, number>();
+  return {
+    reset(next: T[]) {
+      snapshot = reconcileHitboxes(snapshot, next, same);
+      indexes = new Map(snapshot.map((entry, index) => [entry.id, index]));
+      return snapshot;
+    },
+    replace(replacements: T[]) {
+      let next = snapshot;
+      for (const replacement of replacements) {
+        const index = indexes.get(replacement.id);
+        if (index === undefined) continue;
+        const previous = snapshot[index]!;
+        if (previous === replacement || same(previous, replacement)) continue;
+        if (next === snapshot) next = snapshot.slice();
+        next[index] = replacement;
+      }
+      snapshot = next;
+      return snapshot;
+    },
+  };
+}
 
 // Preserve unchanged entries as well as the whole array. Individual hitbox
 // components can then skip rendering when another node or edge moves.
@@ -24,6 +58,7 @@ function reconcileHitboxes<T extends { id: string }>(
   next: T[],
   same: (a: T, b: T) => boolean,
 ) {
+  if (current === next) return current;
   let changed = current.length !== next.length;
   let currentById: Map<string, T> | undefined;
   const reconciled = next.map((item, index) => {
@@ -33,7 +68,8 @@ function reconcileHitboxes<T extends { id: string }>(
       previous = currentById.get(item.id);
       changed = true;
     }
-    if (previous && same(previous, item)) return previous;
+    if (previous && (previous === item || same(previous, item)))
+      return previous;
     changed = true;
     return item;
   });

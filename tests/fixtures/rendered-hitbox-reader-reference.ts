@@ -1,23 +1,18 @@
 import type { Core, EventObject } from "cytoscape";
-import type { GraphModel } from "../../core/graph/model";
+// Snapshot of eb9e11e's reader, kept only as the benchmark baseline.
+import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   readEdgeLabelHitboxes,
   readNodeHitboxes,
   type EdgeLabelHitbox,
   type NodeHitbox,
-} from "./graph-canvas-hitboxes";
-import {
-  createNodeHitboxSnapshot,
-  createEdgeLabelHitboxSnapshot,
-} from "./hitbox-reconciliation";
+} from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 
 /** Reuse geometry between frames; changes from routing/style still invalidate it. */
 export function createRenderedHitboxReader(cy: Core) {
   let model: GraphModel | undefined;
   let nodes: NodeHitbox[] = [];
   let edges: EdgeLabelHitbox[] | null = null;
-  const nodeSnapshot = createNodeHitboxSnapshot();
-  const edgeSnapshot = createEdgeLabelHitboxSnapshot();
   let labels = new Map<string, string>();
   let modelEdges = new Map<string, GraphModel["edges"][number]>();
   let full = true;
@@ -65,20 +60,19 @@ export function createRenderedHitboxReader(cy: Core) {
         modelEdges = new Map(graph.edges.map((edge) => [edge.id, edge]));
       }
       if (reset) {
-        nodes = nodeSnapshot.reset(readNodeHitboxes(cy, graph));
-        edges = includeEdges
-          ? edgeSnapshot.reset(readEdgeLabelHitboxes(cy, graph))
-          : null;
+        nodes = readNodeHitboxes(cy, graph);
+        edges = includeEdges ? readEdgeLabelHitboxes(cy, graph) : null;
       } else {
         if (dirtyNodes.size)
-          nodes = nodeSnapshot.replace(
+          nodes = replaceDirty(
+            nodes,
             readNodeHitboxes(cy, graph, { ids: dirtyNodes, labels }),
           );
         if (includeEdges) {
-          if (edges === null)
-            edges = edgeSnapshot.reset(readEdgeLabelHitboxes(cy, graph));
+          if (edges === null) edges = readEdgeLabelHitboxes(cy, graph);
           else if (dirtyEdges.size)
-            edges = edgeSnapshot.replace(
+            edges = replaceDirty(
+              edges,
               readEdgeLabelHitboxes(cy, graph, {
                 ids: dirtyEdges,
                 edges: modelEdges,
@@ -98,4 +92,13 @@ export function createRenderedHitboxReader(cy: Core) {
       cy.off(events, invalidate);
     },
   };
+}
+
+function replaceDirty<T extends { id: string }>(
+  previous: T[],
+  replacements: T[],
+) {
+  if (!replacements.length) return previous;
+  const byId = new Map(replacements.map((entry) => [entry.id, entry]));
+  return previous.map((entry) => byId.get(entry.id) ?? entry);
 }

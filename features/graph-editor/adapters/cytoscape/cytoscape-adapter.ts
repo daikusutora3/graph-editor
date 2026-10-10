@@ -28,6 +28,7 @@ import type {
   GraphNode,
   NodeId,
 } from "../../core/graph/model";
+import { EDGE_WIDTH, NODE_BORDER_WIDTH } from "../../core/view/graph-paint";
 
 type CytoscapeNodeData = {
   id: NodeId;
@@ -91,7 +92,6 @@ export type CytoscapeElementOptions = {
   edgeRoutingOptions?: EdgeRoutingOptions;
 };
 
-const EDGE_WIDTH = 2.5;
 const SELECTED_EDGE_WIDTH = 3.5;
 const SELECTED_EDGE_ARROW_SCALE = EDGE_WIDTH / SELECTED_EDGE_WIDTH;
 const MULTI_EDGE_WIDTH = EDGE_WIDTH;
@@ -361,7 +361,7 @@ export function createGraphCanvasStylesheet(
         "background-color": palette.node,
         "background-opacity": 1,
         "border-color": palette.nodeBorder,
-        "border-width": 2,
+        "border-width": NODE_BORDER_WIDTH,
         color: palette.nodeText,
         content: "data(displayLabel)",
         "box-selection": "contain",

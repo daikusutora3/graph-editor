@@ -14,6 +14,7 @@ import type {
   ComputeValue,
 } from "./worker-protocol";
 import { createRoutingDelta } from "./routing-result";
+import { restoreRoutingInteractionNodes } from "./routing-interaction";
 
 // No DOM or browser measurement APIs enter this worker. Measured widths are
 // part of the immutable model supplied by the editor.
@@ -43,7 +44,13 @@ scope.onmessage = (event) => {
           ? (function* () {
               const rerouteEdgeIds = job.interaction
                 ? yield* interactiveRerouteEdgeIdsTask(
-                    { ...job.model, nodes: job.interaction.nodes },
+                    {
+                      ...job.model,
+                      nodes: restoreRoutingInteractionNodes(
+                        job.model,
+                        job.interaction,
+                      ),
+                    },
                     job.options.previousMeta ?? new Map(),
                     job.interaction.movedNodeIds,
                   )

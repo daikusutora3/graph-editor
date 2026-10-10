@@ -19,10 +19,6 @@ import {
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import { createRenderedHitboxReader } from "../adapters/cytoscape/rendered-hitbox-reader";
 import { readGraphOutOfView } from "../adapters/cytoscape/graph-canvas-viewport";
-import {
-  reconcileEdgeLabelHitboxes,
-  reconcileNodeHitboxes,
-} from "./rendered-hitbox-reconciliation";
 
 type UseRenderedHitboxesOptions = {
   graph: GraphModel;
@@ -46,7 +42,7 @@ export function useRenderedHitboxes({
   // layer with one CSS transform instead of rebuilding thousands of nodes.
   const hitboxLayerRef = useRef<HTMLDivElement | null>(null);
   const basePanRef = useRef({ x: 0, y: 0 });
-  const readPanRef = useRef({ x: 0, y: 0 });
+  const [hitboxPan, setHitboxPan] = useState({ x: 0, y: 0 });
   const readerRef = useRef<{
     cy: Core;
     reader: ReturnType<typeof createRenderedHitboxReader>;
@@ -56,7 +52,7 @@ export function useRenderedHitboxes({
     (cy: Core) => {
       // cy.pan() returns Cytoscape's live object; snapshot it.
       const pan = cy.pan();
-      readPanRef.current = { x: pan.x, y: pan.y };
+      const nextPan = { x: pan.x, y: pan.y };
       if (readerRef.current?.cy !== cy) {
         readerRef.current?.reader.dispose();
         readerRef.current = { cy, reader: createRenderedHitboxReader(cy) };
@@ -65,15 +61,16 @@ export function useRenderedHitboxes({
         readerRef.current.reader.read(graph, mode === "select");
       const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
 
-      setNodeHitboxes((current) =>
-        reconcileNodeHitboxes(current, nextNodeHitboxes),
-      );
+      // The reader preserves array/entry identity for unchanged geometry.
+      setNodeHitboxes(nextNodeHitboxes);
       // The hidden selection overlay retains its DOM between mode changes.
       // Leave its snapshot dormant until select mode needs live geometry again.
-      if (nextEdgeLabelHitboxes)
-        setEdgeLabelHitboxes((current) =>
-          reconcileEdgeLabelHitboxes(current, nextEdgeLabelHitboxes),
-        );
+      if (nextEdgeLabelHitboxes) setEdgeLabelHitboxes(nextEdgeLabelHitboxes);
+      // A pan can be cancelled by opposite node movement, leaving all rendered
+      // coordinates identical. Even then the layer's old translation must end.
+      setHitboxPan((current) =>
+        current.x === nextPan.x && current.y === nextPan.y ? current : nextPan,
+      );
       setIsGraphOutOfView((current) =>
         current === nextGraphOutOfView ? current : nextGraphOutOfView,
       );
@@ -84,12 +81,12 @@ export function useRenderedHitboxes({
   useLayoutEffect(() => {
     // Fresh hitboxes are already in the new pan frame; drop the transform in
     // the same commit so nothing jumps.
-    basePanRef.current = readPanRef.current;
+    basePanRef.current = hitboxPan;
 
     if (hitboxLayerRef.current) {
       hitboxLayerRef.current.style.transform = "";
     }
-  }, [nodeHitboxes, edgeLabelHitboxes]);
+  }, [nodeHitboxes, edgeLabelHitboxes, hitboxPan]);
 
   const panRenderedHitboxes = useCallback(
     (cy: Core) => {

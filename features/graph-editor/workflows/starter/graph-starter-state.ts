@@ -103,7 +103,16 @@ export function useGraphStarterState({
       evaluation: evaluateGraphInput(debouncedInputText, importOptions),
     };
   }, [debouncedInputText, importOptions, previewParseKey]);
-  const evaluation = parsedPreview?.evaluation ?? null;
+  // A debounced evaluation describes the previous input until parsing catches
+  // up. Keep its cached result for Apply, but do not present it as current.
+  const previewPending =
+    previewEnabled &&
+    Boolean(inputText.trim()) &&
+    parsedPreview?.key.inputText !== inputText;
+  const evaluation =
+    parsedPreview?.key.inputText === inputText
+      ? parsedPreview.evaluation
+      : null;
   const preview = evaluation?.result ?? null;
   const analysis = evaluation?.analysis ?? null;
   const previewWarnings =
@@ -198,6 +207,7 @@ export function useGraphStarterState({
     issues,
     open,
     preview,
+    previewPending,
     setImportFormat: selectImportFormat,
     visibleIssues: issues.length > 0 ? issues : previewWarnings,
     setInput,

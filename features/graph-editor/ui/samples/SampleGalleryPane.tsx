@@ -9,6 +9,7 @@ import {
   useDeferredValue,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,6 +46,7 @@ import {
 } from "../primitives";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 import { SAMPLE_GALLERY_GRID_CLASS } from "./sample-gallery-layout";
+import { focusAfterContentSwitch } from "../primitives/focus-after-content-switch";
 
 type SampleValues = Record<string, string>;
 
@@ -56,6 +58,8 @@ export function SampleGalleryPane({
   const store = useStore();
   const { messages } = useI18n();
   const applyGraphModel = useApplyGraphModel();
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  useLayoutEffect(() => focusAfterContentSwitch(searchRef.current), []);
   const [sampleQuery, setSampleQuery] = useState("");
   const [category, setCategory] = useState<SampleGraphGroupKey | "all">("all");
   // Generation settings are a local snapshot when the gallery opens.
@@ -123,6 +127,7 @@ export function SampleGalleryPane({
           <label className="ge-focus touch:h-11 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-ring)]">
             <Search className="size-3.5 shrink-0" aria-hidden="true" />
             <input
+              ref={searchRef}
               type="search"
               name="sample-search"
               value={sampleQuery}
@@ -402,7 +407,7 @@ const SampleCard = memo(function SampleCard({
       data-sample-kind={sample.kind}
       aria-label={title}
       noValidate
-      className="flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] shadow-[var(--shadow)]"
+      className="@container/sample-card flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] shadow-[var(--shadow)]"
       onCompositionStart={() => {
         isComposingRef.current = true;
       }}
@@ -430,10 +435,10 @@ const SampleCard = memo(function SampleCard({
           onApply(currentModel());
       }}
     >
-      <div className="grid grid-cols-[106px_minmax(0,1fr)] items-center gap-3 p-3">
+      <div className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-2 p-2.5 @min-[300px]/sample-card:grid-cols-[106px_minmax(0,1fr)] @min-[300px]/sample-card:gap-3 @min-[300px]/sample-card:p-3">
         <span
           ref={previewRef}
-          className="grid h-[88px] w-[106px] place-items-center overflow-hidden rounded-lg bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:12px_12px]"
+          className="grid h-[76px] w-[88px] place-items-center overflow-hidden rounded-lg bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:12px_12px] @min-[300px]/sample-card:h-[88px] @min-[300px]/sample-card:w-[106px]"
         >
           {model && !missingValue && !invalidValue && !previewUpdating ? (
             <SampleGraphPreview
@@ -441,11 +446,12 @@ const SampleCard = memo(function SampleCard({
               sampleKind={sample.kind}
               width={98}
               height={76}
+              className="h-auto w-[80px] @min-[300px]/sample-card:w-[98px]"
             />
           ) : null}
         </span>
         <span className="flex min-w-0 flex-col gap-1">
-          <span className="text-sm leading-tight font-bold break-words text-[var(--text)]">
+          <span className="text-control leading-tight font-bold break-words text-[var(--text)] @min-[300px]/sample-card:text-sm">
             {title}
           </span>
           <span className="text-xs leading-snug font-medium [overflow-wrap:anywhere] text-[var(--muted)]">

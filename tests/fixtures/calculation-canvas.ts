@@ -27,7 +27,9 @@ export function createCalculationCanvas(
   const cy = cytoscape({
     headless: true,
     styleEnabled: true,
-    layout: { name: "preset" },
+    // Headless has a 1px viewport; automatic fit would collapse zoom to 1e-50
+    // and make node movement invisible in rendered geometry assertions.
+    layout: { name: "preset", fit: false },
     elements: definitions(graph, edgeRoutingMeta),
     style: [
       { selector: "node", style: { width: 48, height: 48, shape: "ellipse" } },

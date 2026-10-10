@@ -62,6 +62,10 @@ const suites = [
     name: "starter-file-read",
     path: "tests/verification/starter-file-read.ts",
   },
+  {
+    name: "starter-input-ui",
+    path: "tests/verification/starter-input-ui.tsx",
+  },
   { name: "tikz", path: "tests/verification/tikz.ts" },
   { name: "screenshot", path: "tests/verification/screenshot.ts" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },

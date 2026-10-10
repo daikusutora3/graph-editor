@@ -9,7 +9,7 @@ import {
   readNodeHitboxes,
   readEdgeLabelHitboxes,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
-import { reconcileEdgeLabelHitboxes } from "../../features/graph-editor/canvas/rendered-hitbox-reconciliation";
+import { reconcileEdgeLabelHitboxes } from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
 import {
   applyCytoscapeRoutingMeta,
   graphModelToCytoscapeElements,
@@ -28,6 +28,7 @@ import { createRenderedHitboxReader } from "../../features/graph-editor/adapters
 const { expect, finish } = createVerification("Canvas rendering");
 
 verifyIncrementalHitboxes();
+verifyEqualGeometryAfterPan();
 verifyCachedRouteBounds();
 verifyAffectedGeometry();
 verifyLabelDimensions();
@@ -90,13 +91,38 @@ function verifyIncrementalHitboxes() {
       initial.nodes === unchanged.nodes && initial.edges === unchanged.edges,
       "idle frames reuse the geometry snapshot",
     );
-    cy.getElementById("a").position({ x: 60, y: 40 });
+    // Cytoscape may emit invalidations whose data changes do not affect any
+    // rendered geometry. They must not rebuild the React selection lists.
+    cy.getElementById("a").data("interactionTest", 1);
+    cy.getElementById("ab").data("interactionTest", 1);
+    const unchangedInvalidation = check("unrelated data invalidation");
+    expect(
+      initial.nodes === unchangedInvalidation.nodes &&
+        initial.edges === unchangedInvalidation.edges,
+      "invalidations without geometry changes preserve both arrays",
+    );
+    const initialJson = JSON.stringify(initial);
+    cy.getElementById("a").unlock().position({ x: 60, y: 40 });
     refreshCytoscapeGeometry(cy.collection(cy.getElementById("a")));
     const moved = check("node movement");
     expect(
       initial.nodes[3] === moved.nodes[3] &&
         initial.edges![2] === moved.edges![2],
       "moving one node retains remote entries",
+    );
+    expect(
+      JSON.stringify(initial) === initialJson &&
+        moved.nodes !== initial.nodes &&
+        moved.edges !== initial.edges,
+      "local updates publish new arrays without mutating previous snapshots",
+    );
+    const sameModel = check("unchanged geometry before model replacement");
+    graph = { ...graph, nodes: [...graph.nodes], edges: [...graph.edges] };
+    const replacedModel = check("equivalent graph model");
+    expect(
+      sameModel.nodes === replacedModel.nodes &&
+        sameModel.edges === replacedModel.edges,
+      "full reads of equivalent geometry preserve array identity",
     );
     cy.getElementById("de").data({ bow: 70, controlPointDistances: [70] });
     refreshCytoscapeGeometry(cy.collection(cy.getElementById("de")));
@@ -111,7 +137,7 @@ function verifyIncrementalHitboxes() {
       reader.read(graph, false).edges === null,
       "drawing modes skip edge geometry",
     );
-    cy.getElementById("d").position({ x: 720, y: 20 });
+    cy.getElementById("d").unlock().position({ x: 720, y: 20 });
     refreshCytoscapeGeometry(cy.collection(cy.getElementById("d")));
     reader.read(graph, false);
     check("returning to selection reads hidden geometry");
@@ -145,6 +171,65 @@ function verifyIncrementalHitboxes() {
     };
     syncCytoscapeElements(cy, definitions(graph));
     check("model label update");
+    // Removal/re-addition changes Cytoscape iteration order independently of
+    // model order. The local lookup must be rebuilt against that full read.
+    const detached = cy.getElementById("c").remove();
+    cy.add(detached);
+    refreshCytoscapeGeometry(cy.elements());
+    const reordered = check("element reorder");
+    const reorderedJson = JSON.stringify(reordered);
+    cy.getElementById("c").unlock().position({ x: 200, y: 220 });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("c")));
+    check("movement after reorder");
+    expect(
+      JSON.stringify(reordered) === reorderedJson,
+      "reindexed updates preserve the earlier ordered snapshot",
+    );
+    graph = {
+      ...graph,
+      nodes: graph.nodes.filter((node) => node.id !== "b"),
+      edges: graph.edges.filter((edge) => edge.target !== "b"),
+    };
+    refreshCytoscapeGeometry(
+      syncCytoscapeElements(cy, definitions(graph)).changedElements,
+    );
+    check("node removal");
+    cy.getElementById("e").unlock().position({ x: 900, y: 50 });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("e")));
+    check("movement after removal");
+    const beforeDormant = check("before dormant selection");
+    reader.read(graph, false);
+    const afterDormant = check("unchanged return to selection");
+    expect(
+      beforeDormant.nodes === afterDormant.nodes &&
+        beforeDormant.edges === afterDormant.edges,
+      "selection mode preserves unchanged dormant overlay arrays",
+    );
+  } finally {
+    reader.dispose();
+    cy.destroy();
+  }
+}
+
+function verifyEqualGeometryAfterPan() {
+  const graph = {
+    ...createEmptyGraphModel(),
+    nodes: [{ id: "a", label: "A", order: 0, x: 0, y: 0 }],
+  };
+  const { cy } = createCalculationCanvas(graph);
+  const reader = createRenderedHitboxReader(cy);
+  try {
+    const before = reader.read(graph, true);
+    cy.pan({ x: 100, y: 0 });
+    cy.getElementById("a").position({ x: -100, y: 0 });
+    refreshCytoscapeGeometry(cy.collection(cy.getElementById("a")));
+    const after = reader.read(graph, true);
+    expect(
+      before.nodes === after.nodes &&
+        before.edges === after.edges &&
+        cy.pan().x === 100,
+      "pan and opposite node movement reuse equal geometry: viewport synchronization cannot depend on array changes alone",
+    );
   } finally {
     reader.dispose();
     cy.destroy();
