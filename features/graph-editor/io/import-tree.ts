@@ -6,6 +6,7 @@ import {
 import {
   arrangeNodes,
   importLimitFailure,
+  importFailure,
   MAX_IMPORT_NODES,
   readImportSettings,
   splitTokens,
@@ -13,6 +14,7 @@ import {
   type ParsedLine,
 } from "./import-utils";
 import type { ImportResult } from "./import-types";
+import { importTextLimitWarning } from "./import-text-limits";
 import {
   inferTreeIndexBase,
   isRootedParentTreeLabels,
@@ -240,6 +242,21 @@ export function tryImportWeightedParentList(
     weighted: true,
     weightKind: "number",
   });
+
+  for (const [index, row] of rows.entries()) {
+    const warning = importTextLimitWarning(
+      row[1]!,
+      "edge-weight",
+      lines[index + 1]!.number,
+    );
+    if (warning)
+      return importFailure(
+        warning,
+        options,
+        "Weighted parent list",
+        "weighted-parent-list",
+      );
+  }
 
   model.nodes = createIndexedNodes(nodeCount, indexBase);
   rows.forEach(([, weight], index) => {

@@ -426,13 +426,22 @@ function verifyRenderedFit(
     },
   );
   const nodeCentres = new Map(nodes);
+  const visibleEdges = model.edges.filter((edge) => {
+    const source = model.nodes.find((node) => node.id === edge.source)!;
+    const target = model.nodes.find((node) => node.id === edge.target)!;
+    return (
+      edge.source === edge.target ||
+      source.x !== target.x ||
+      source.y !== target.y
+    );
+  });
   const routes = computeEdgeRouting(model, { mode: "simple" });
   if (model.settings.directed)
     assert.match(markup, /<marker\b[^>]*refX="5\.25"/);
   assert.equal(
     paths.length,
-    model.edges.length,
-    "every model edge is included in the SVG fit check",
+    visibleEdges.length,
+    "every visible edge is included, without an arrow for coincident distinct vertices",
   );
   for (const [edgeIndex, [pathTag, path]] of paths.entries()) {
     assert.equal(
@@ -525,7 +534,7 @@ function verifyRenderedFit(
         );
       }
     }
-    const edge = model.edges[edgeIndex];
+    const edge = visibleEdges[edgeIndex];
     const source = nodeCentres.get(edge.source)!;
     const target = nodeCentres.get(edge.target)!;
     const dx = target.x - source.x;

@@ -1,4 +1,5 @@
 import type { GraphNode } from "../core/graph/model";
+import { isGraphCoordinate } from "../core/graph/graph-coordinates";
 import { NODE_SIZE_PX } from "../core/graph/node-size";
 import type { EdgeCurveGeometry } from "../core/layout/edge-route-geometry";
 import { getRustKernelReady, runRustKernel } from "./rust-kernel";
@@ -9,14 +10,11 @@ export type InteractiveRoutingCandidate = {
   curve: EdgeCurveGeometry;
 };
 
-const MAX_COORDINATE = 1e12;
 const MIN_MOVED_NODES = 128;
 const MIN_TOTAL_EDGES = 128;
 const MIN_BATCH_EDGES = 8;
 
-function bounded(value: number) {
-  return Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE;
-}
+const bounded = isGraphCoordinate;
 
 export function canRustSelectInteractiveRoute({
   source,

@@ -4,6 +4,7 @@ import {
   detectIndexBase,
   ensureNodeByLabel,
   importLimitFailure,
+  importFailure,
   MAX_IMPORT_EDGES,
   MAX_IMPORT_NODES,
   type ImportOptions,
@@ -13,6 +14,7 @@ import {
 import { createImportSource, type ImportSource } from "./import-source";
 import type { NodeId } from "../core/graph/model";
 import type { ImportResult, ImportWarning } from "./import-types";
+import { importTextLimitWarning } from "./import-text-limits";
 
 export function tryImportLooseEdgeList(
   lines: ParsedLine[],
@@ -41,7 +43,16 @@ export function tryImportLooseEdgeList(
 
   const hasWeights = rows.some((row) => row.length === 3);
   const uniqueLabels = new Set<string>();
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
+    const line = lines[index]!.number;
+    const warning =
+      importTextLimitWarning(row[0]!, "node-label", line) ??
+      importTextLimitWarning(row[1]!, "node-label", line) ??
+      (row[2] === undefined
+        ? undefined
+        : importTextLimitWarning(row[2], "edge-weight", line));
+    if (warning)
+      return importFailure(warning, options, "Edge list", "edge-pairs");
     uniqueLabels.add(row[0]!);
     uniqueLabels.add(row[1]!);
   }

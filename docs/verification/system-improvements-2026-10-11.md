@@ -1,5 +1,10 @@
 # System improvements
 
+This document preserves the earlier implementation record. Publication and the
+subsequent audit fixes are tracked in
+[the system audit](system-audit-2026-10-11.md) and
+[audit improvements](system-audit-improvements-2026-10-11.md).
+
 Implemented on 2026-10-10–11, starting from
 `b1f94643fd4a3ee9e4281b91e9bdf405d863c006`. This report covers the eight findings
 accepted in the system review. It records local verification before commit and

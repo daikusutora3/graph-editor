@@ -16,6 +16,7 @@ import {
 } from "../../features/graph-editor/core/layout/edge-routing-collisions";
 import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/edge-routing";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
+import { GRAPH_MAX_ABS_COORDINATE } from "../../features/graph-editor/core/graph/graph-coordinates";
 import { collisionFixture } from "../fixtures/routing-collisions";
 import { createVerification } from "./harness";
 
@@ -153,7 +154,7 @@ for (let index = 0; index < 60; index++) {
 // large translations. Include circular/wide spines, far pieces, and multiple
 // control points while staying inside the final-route Rust coordinate gate.
 const rawBeforeRejectionCases = rawCases;
-for (const translation of [0, 1e9, 1e12 - 1000]) {
+for (const translation of [0, 1e8, GRAPH_MAX_ABS_COORDINATE - 1000]) {
   const source = { ...fixture.source, x: translation - 220, y: -translation };
   const target = { ...fixture.target, x: translation + 220, y: -translation };
   const nodes = [

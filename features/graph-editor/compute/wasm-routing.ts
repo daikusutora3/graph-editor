@@ -1,4 +1,5 @@
 import type { GraphEdge, GraphNode } from "../core/graph/model";
+import { isGraphCoordinate } from "../core/graph/graph-coordinates";
 import { nodeGeometryWidth } from "../core/graph/node-size";
 import type {
   EdgeCurveGeometry,
@@ -197,9 +198,7 @@ export function scoreRustCurveNodeAndShape(
 
 /** Dedicated final-route check: retain its tighter pruning and exact work
  * accounting instead of paying for candidate penetration/length scoring. */
-function boundedCollisionCoordinate(value: number) {
-  return Number.isFinite(value) && Math.abs(value) <= 1e12;
-}
+const boundedCollisionCoordinate = isGraphCoordinate;
 
 export function canRustCountCurveNodeCollisions(
   curve: EdgeCurveGeometry,

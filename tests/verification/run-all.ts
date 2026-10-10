@@ -8,6 +8,11 @@ const suites = [
   },
   { name: "wasm-runtime", path: "tests/verification/wasm-runtime.ts" },
   { name: "wasm-worker", path: "tests/verification/wasm-worker.ts" },
+  { name: "worker-lanes", path: "tests/verification/worker-lanes.ts" },
+  {
+    name: "worker-cancellation",
+    path: "tests/verification/worker-cancellation.ts",
+  },
   { name: "wasm-layouts", path: "tests/verification/wasm-layouts.ts" },
   { name: "wasm-overlaps", path: "tests/verification/wasm-overlaps.ts" },
   { name: "wasm-routing", path: "tests/verification/wasm-routing.ts" },
@@ -31,6 +36,10 @@ const suites = [
   { name: "integrity", path: "tests/verification/integrity.ts" },
   { name: "autosave", path: "tests/verification/autosave.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
+  {
+    name: "geometry-contracts",
+    path: "tests/verification/geometry-contracts.ts",
+  },
   { name: "samples", path: "tests/verification/samples.ts" },
   { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
   { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
@@ -50,6 +59,10 @@ const suites = [
     name: "routing-collision-reuse",
     path: "tests/verification/routing-collision-reuse.mjs",
   },
+  {
+    name: "routing-parallel-spacing",
+    path: "tests/verification/routing-parallel-spacing.mjs",
+  },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "canvas-rendering", path: "tests/verification/canvas-rendering.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
@@ -67,6 +80,14 @@ const suites = [
     path: "tests/verification/storage-notifications.ts",
   },
   { name: "io", path: "tests/verification/io-contracts.ts" },
+  {
+    name: "import-text-contracts",
+    path: "tests/verification/import-text-contracts.ts",
+  },
+  {
+    name: "starter-import-guard",
+    path: "tests/verification/starter-import-guard.mjs",
+  },
   {
     name: "starter-file-read",
     path: "tests/verification/starter-file-read.ts",

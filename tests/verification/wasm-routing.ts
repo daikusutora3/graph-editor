@@ -419,24 +419,25 @@ expect(
   "symmetric candidate scores retain exact ties",
 );
 
-// Finite JSON coordinates can exceed the safe arithmetic range of the numeric
-// backend. The adapter must retain the JS reference instead of overflowing a
-// squared projection and changing the selected candidate.
+// Canonical documents reject coordinates outside their operating range. Raw
+// scoring helpers still retain the JS reference if an external caller bypasses
+// that boundary instead of overflowing the numeric backend's projection.
 const extremeSource = { id: "a", label: "1", order: 0, x: 0, y: 0 };
 const extremeTarget = { id: "b", label: "2", order: 1, x: 1e160, y: 0 };
 const extremeEdge = { id: "extreme", source: "a", target: "b" };
-const extremeModel = parseGraphModelJson(
-  JSON.stringify({
-    ...createEmptyGraphModel(),
-    nodes: [
-      extremeSource,
-      extremeTarget,
-      { id: "c", label: "3", order: 2, x: 5e159, y: 20 },
-    ],
-    edges: [extremeEdge],
-  }),
-)!;
-expect(Boolean(extremeModel), "large finite coordinates remain valid JSON");
+const extremeModel: GraphModel = {
+  ...createEmptyGraphModel(),
+  nodes: [
+    extremeSource,
+    extremeTarget,
+    { id: "c", label: "3", order: 2, x: 5e159, y: 20 },
+  ],
+  edges: [extremeEdge],
+};
+expect(
+  parseGraphModelJson(JSON.stringify(extremeModel)) === null,
+  "large finite coordinates outside the document contract are rejected",
+);
 const extremeScore = () =>
   scoreCurveNodeAndShape(
     straight,

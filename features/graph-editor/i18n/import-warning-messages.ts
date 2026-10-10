@@ -18,6 +18,8 @@ const formatters: Record<Locale, (warning: ImportWarning) => string> = {
     switch (w.code) {
       case "empty-input":
         return "入力が空です。";
+      case "text-too-long":
+        return `${at}${w.field === "node-label" ? "頂点ラベル" : "辺の重み"}は ${count(w.count)} 文字です。${count(w.limit)} 文字以内にしてください。`;
       case "too-large":
         return `入力が大きすぎます: ${count(w.count)} ${
           w.kind === "input"
@@ -64,6 +66,8 @@ const formatters: Record<Locale, (warning: ImportWarning) => string> = {
     switch (w.code) {
       case "empty-input":
         return "输入为空。";
+      case "text-too-long":
+        return `${at}${w.field === "node-label" ? "顶点标签" : "边权"}有 ${count(w.count)} 个字符；最多允许 ${count(w.limit)} 个。`;
       case "too-large":
         return `输入过大: ${count(w.count)} ${
           w.kind === "input"

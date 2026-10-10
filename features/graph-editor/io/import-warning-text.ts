@@ -20,6 +20,8 @@ export function describeImportWarning(w: ImportWarning): string {
   switch (w.code) {
     case "empty-input":
       return "Empty input.";
+    case "text-too-long":
+      return `${at}${w.field === "node-label" ? "Node label" : "Edge weight"} has ${count(w.count)} characters; maximum is ${count(w.limit)}.`;
     case "too-large":
       return `Import is too large: ${count(w.count)} ${
         w.kind === "input"

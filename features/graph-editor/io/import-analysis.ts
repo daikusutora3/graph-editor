@@ -475,6 +475,7 @@ function probeLooseEdgeList(
   if (
     hasWeights &&
     options.weighted &&
+    options.weightKind !== "string" &&
     source.rows.some(
       (row) => row[2] != null && !Number.isFinite(Number(row[2])),
     )

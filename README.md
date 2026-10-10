@@ -66,6 +66,11 @@ JSON is lossless: it keeps node positions, colours and manual edge bends, and
 importing it restores the graph exactly. The edge list and adjacency formats carry structure and
 weights only.
 
+Node labels and edge weights accept at most 256 Unicode code points. Text
+imports report the field and line when this limit is exceeded, and reject the
+whole input without truncating it. JSON node coordinates must be finite and
+within ±1,000,000,000; out-of-range data is rejected without changing the graph.
+
 ### Using TikZ in LaTeX
 
 Choose **Export → TikZ (TeX)**, then copy the picture or save `graph.tex`.

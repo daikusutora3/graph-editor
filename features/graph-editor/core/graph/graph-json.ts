@@ -6,6 +6,7 @@ import {
   isGraphText,
 } from "./graph-limits";
 import { normalizeGraphColor } from "./colors";
+import { isGraphCoordinate } from "./graph-coordinates";
 import { normalizeEdgeRoutingOverride } from "./edge-routing-overrides";
 import { createEmptyGraphModel } from "./graph-factory";
 import { stripUndefinedProperties } from "./graph-utils";
@@ -158,8 +159,8 @@ function normalizeNode(value: unknown): GraphNode | null {
     typeof value.y !== "number" ||
     !Number.isSafeInteger(value.order) ||
     value.order < 0 ||
-    !Number.isFinite(value.x) ||
-    !Number.isFinite(value.y)
+    !isGraphCoordinate(value.x) ||
+    !isGraphCoordinate(value.y)
   ) {
     return null;
   }

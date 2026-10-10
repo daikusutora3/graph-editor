@@ -2,6 +2,7 @@ import { memo, useId } from "react";
 
 import type { SampleGraphKind } from "../../samples/sample-graphs";
 import type { GraphColor, GraphModel } from "../../core/graph/model";
+import { hasGraphCoordinatePositions } from "../../core/graph/graph-coordinates";
 import { computeEdgeRouting } from "../../core/layout/edge-routing";
 import { NODE_FONT_PX, NODE_SIZE_PX } from "../../core/graph/node-size";
 import { EDGE_WIDTH, NODE_BORDER_WIDTH } from "../../core/view/graph-paint";
@@ -43,6 +44,9 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   className,
 }: SampleGraphPreviewProps) {
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
+  // Imports/commands enforce this contract too. Protect standalone previews
+  // before bounds, routing or transforms can overflow on unvalidated input.
+  if (!hasGraphCoordinatePositions(model.nodes)) return null;
   const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
   const editorLike = variant === "editor";
   const arrowScale = editorLike ? model.settings.arrowScale : 1;
@@ -83,13 +87,9 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
         (model.settings.directed
           ? PREVIEW_ARROW_REACH * galleryEdgeStroke
           : galleryEdgeStroke / 2) +
-          (model.edges.some((edge) => {
-            const source = nodeById.get(edge.source);
-            const target = nodeById.get(edge.target);
-            return (
-              source && target && source.x === target.x && source.y === target.y
-            );
-          })
+          (model.edges.some(
+            (edge) => edge.source === edge.target && nodeById.has(edge.source),
+          )
             ? galleryRadius * 1.5
             : 0),
       );
@@ -234,6 +234,14 @@ function PreviewEdges({
   return edges.map((edge) => {
     const prepared = geometry.edgeById.get(edge.id);
     if (!prepared) return null;
+    // Distinct coincident vertices have no edge direction or visible length.
+    // Keep the edge in the model, without inventing a loop or protruding arrow.
+    if (
+      !prepared.loop &&
+      prepared.source.x === prepared.target.x &&
+      prepared.source.y === prepared.target.y
+    )
+      return null;
     const path = createPreparedPreviewEdgePath(prepared, {
       directed: model.settings.directed,
       radius,

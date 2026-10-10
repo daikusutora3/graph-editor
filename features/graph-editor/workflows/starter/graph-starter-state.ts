@@ -173,10 +173,7 @@ export function useGraphStarterState({
     const { analysis: currentAnalysis, result } = currentEvaluation;
     setIssues(result.warnings);
 
-    if (
-      currentAnalysis.status === "ambiguous" ||
-      currentAnalysis.status !== "detected"
-    ) {
+    if (currentAnalysis.status !== "detected" || result.status === "failure") {
       return;
     }
 
