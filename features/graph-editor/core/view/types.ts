@@ -43,4 +43,6 @@ export type GraphCanvasExportOptions = {
   maxWidth?: number;
   maxHeight?: number;
   includeSelection: boolean;
+  /** Preview cancellation; explicit copy/save exports omit this signal. */
+  signal?: AbortSignal;
 };

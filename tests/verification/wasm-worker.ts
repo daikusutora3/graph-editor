@@ -105,6 +105,17 @@ if (childCase) {
     "response-missing-result",
     "response-null-diagnostics",
     "response-array-diagnostics",
+    "result-layout-wrong-intent",
+    "result-layout-nonfinite-position",
+    "result-overlap-position",
+    "result-overlap-summary",
+    "result-routing-object",
+    "result-routing-null-route",
+    "result-routing-unequal-controls",
+    "result-routing-sparse-controls",
+    "result-routing-nonfinite",
+    "result-routing-delta-array",
+    "result-routing-delta-undefined",
     "diagnostic-mark-error",
     "diagnostic-clear-error",
     "cleanup-error",
@@ -580,6 +591,130 @@ async function verifyClient(scenario: string) {
     configurable: true,
     value: FakeWorker,
   });
+
+  const sparseControls: number[] = [];
+  sparseControls.length = 1;
+  const invalidReplies: Record<
+    string,
+    {
+      kind: "layout" | "overlap" | "routing";
+      result?: unknown;
+      delta?: unknown;
+    }
+  > = {
+    "result-layout-wrong-intent": {
+      kind: "layout",
+      result: {
+        type: "delete-selection",
+        selection: { nodeIds: ["a"], edgeIds: [] },
+      },
+    },
+    "result-layout-nonfinite-position": {
+      kind: "layout",
+      result: {
+        type: "move-nodes",
+        label: "Layout",
+        after: { a: { x: Infinity, y: 0 } },
+      },
+    },
+    "result-overlap-position": {
+      kind: "overlap",
+      result: {
+        status: "resolved",
+        remainingPairs: 0,
+        positions: { a: { x: 10 } },
+      },
+    },
+    "result-overlap-summary": {
+      kind: "overlap",
+      result: { status: "ready", remainingPairs: -1, positions: {} },
+    },
+    "result-routing-object": { kind: "routing", result: {} },
+    "result-routing-null-route": {
+      kind: "routing",
+      result: new Map([["ab", null]]),
+    },
+    "result-routing-unequal-controls": {
+      kind: "routing",
+      result: new Map([
+        ["ab", { ...routeMeta(10), controlPointWeights: [0.25, 0.75] }],
+      ]),
+    },
+    "result-routing-sparse-controls": {
+      kind: "routing",
+      result: new Map([
+        ["ab", { ...routeMeta(10), controlPointDistancesPx: sparseControls }],
+      ]),
+    },
+    "result-routing-nonfinite": {
+      kind: "routing",
+      result: new Map([["ab", { ...routeMeta(10), bowPx: NaN }]]),
+    },
+    "result-routing-delta-array": {
+      kind: "routing",
+      delta: [["ab", routeMeta(10)]],
+    },
+    "result-routing-delta-undefined": {
+      kind: "routing",
+      delta: new Map([["ab", undefined]]),
+    },
+  };
+  const invalid = Object.hasOwn(invalidReplies, scenario)
+    ? invalidReplies[scenario]
+    : undefined;
+  if (invalid) {
+    const controller = new AbortController();
+    const first =
+      invalid.kind === "layout"
+        ? computeLayoutInWorker(model, "force", undefined, controller.signal)
+        : invalid.kind === "overlap"
+          ? computeOverlapsInWorker(model, controller.signal)
+          : computeRoutingInWorker(
+              model,
+              { previousMeta: new Map([["ab", routeMeta(10)]]) },
+              controller.signal,
+              {
+                previousNodes: [model.nodes[0]!],
+                movedNodeIds: new Set(["a"]),
+              },
+            );
+    const other = computeOverlapsInWorker(model);
+    const active = workers[0]!;
+    const request = active.messages[0]! as Extract<
+      ComputeRequest,
+      { id: number }
+    >;
+    active.emitRaw({
+      id: request.id,
+      ...("delta" in invalid
+        ? { routingDelta: invalid.delta }
+        : { result: invalid.result }),
+      kernels: { routing_node_collisions: 3 },
+    });
+    controller.abort();
+    const results = await bounded(
+      Promise.all([first, other]),
+      "invalid job result completion",
+    );
+    expect(
+      results.every((result) => result === null) &&
+        active.terminated &&
+        pagehideListeners.size === 0,
+      `${scenario}: invalid job results release every pending request and fall back`,
+    );
+    expect(
+      !performance
+        .getEntriesByType("mark")
+        .some((entry) => entry.name.startsWith("graph-compute:")),
+      `${scenario}: incompatible results cannot create Worker or Rust success marks`,
+    );
+    now = 100_000;
+    expect(
+      (await computeOverlapsInWorker(model)) === null && workers.length === 1,
+      `${scenario}: an incompatible protocol is not retried`,
+    );
+    return;
+  }
 
   if (scenario.startsWith("response-") && scenario !== "response-error") {
     const controller = new AbortController();
@@ -1205,6 +1340,29 @@ async function verifyClient(scenario: string) {
       routedRequest.job.interaction.previousNodes.length === 1 &&
       !Object.hasOwn(routedRequest.job.interaction, "nodes"),
     "client sends only the old moved nodes alongside the moved-node Set",
+  );
+
+  const empty = createEmptyGraphModel();
+  const emptyResults = [
+    computeLayoutInWorker(empty, "grid"),
+    computeOverlapsInWorker(empty),
+    computeRoutingInWorker(empty, {}),
+  ];
+  const emptyRequests = active.messages.slice(-3) as Extract<
+    ComputeRequest,
+    { id: number }
+  >[];
+  active.emit({
+    id: emptyRequests[0]!.id,
+    result: createManualLayoutCommand(empty, "grid"),
+  });
+  active.emit({ id: emptyRequests[1]!.id, result: resolveNodeOverlaps(empty) });
+  active.emit({ id: emptyRequests[2]!.id, result: new Map() });
+  expect(
+    (await Promise.all(emptyResults)).every(
+      (emptyResult) => emptyResult !== null,
+    ) && !active.terminated,
+    "result validation accepts empty position maps and routing Maps for an empty graph",
   );
 
   await verifyEditor(active);

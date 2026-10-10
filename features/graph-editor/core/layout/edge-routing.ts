@@ -488,27 +488,16 @@ function* routingTask(
         }
         if (resolvedOptions.retainedMeta?.has(edge.id)) continue;
         let finalRoute = route;
-        if (
-          !edge.routing &&
-          edges.length > 1 &&
-          nodeCollisions(
-            route,
-            edge,
-            source,
-            target,
-            model.nodes,
-            resolvedOptions.work,
-          ) > 0
-        ) {
+        let finalCollisions = nodeCollisions(
+          route,
+          edge,
+          source,
+          target,
+          model.nodes,
+          resolvedOptions.work,
+        );
+        if (!edge.routing && edges.length > 1 && finalCollisions > 0) {
           // Evaluate offsets after applying the parallel lane, including the clamp.
-          let bestCollisions = nodeCollisions(
-            route,
-            edge,
-            source,
-            target,
-            model.nodes,
-            resolvedOptions.work,
-          );
           for (const offset of [24, -24, 48, -48, 96, -96, 180, -180]) {
             yield;
             const candidate = clampCurveDistances(
@@ -542,8 +531,8 @@ function* routingTask(
                     ),
                   ),
             );
-            if (distinct && collisions < bestCollisions) {
-              bestCollisions = collisions;
+            if (distinct && collisions < finalCollisions) {
+              finalCollisions = collisions;
               finalRoute = {
                 ...route,
                 ...candidate,
@@ -554,16 +543,7 @@ function* routingTask(
         }
         meta.set(edge.id, {
           ...finalRoute,
-          status: nodeCollisions(
-            finalRoute,
-            edge,
-            source,
-            target,
-            model.nodes,
-            resolvedOptions.work,
-          )
-            ? "unresolved"
-            : "ready",
+          status: finalCollisions ? "unresolved" : "ready",
         });
       }
     }

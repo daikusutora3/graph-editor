@@ -8,6 +8,7 @@ import {
   detectIndexBase,
   ensureNodeByLabel,
   importLimitFailure,
+  MAX_IMPORT_ADJACENCY_ENTRIES,
   MAX_IMPORT_EDGES,
   MAX_IMPORT_NODES,
   type ImportOptions,
@@ -16,7 +17,11 @@ import {
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
 import type { ImportResult, ImportWarning } from "./import-types";
-import { createImportSource, type ImportSource } from "./import-source";
+import {
+  createImportSource,
+  parseAdjacencyTarget,
+  type ImportSource,
+} from "./import-source";
 
 export function tryImportAdjacencyMatrix(
   lines: ParsedLine[],
@@ -176,7 +181,7 @@ export function tryImportAdjacencyList(
 ): ImportResult | null {
   const importSource = preparedSource ?? createImportSource(lines);
   let separator: string | undefined;
-  let edgeCount = 0;
+  let entryCount = 0;
   let hasWeightedTargets = false;
   const uniqueLabels = new Set<string>();
   const rowScan = {};
@@ -187,7 +192,7 @@ export function tryImportAdjacencyList(
     }
     separator = row.separator;
     const targets = row.targetTokens;
-    edgeCount += targets.length;
+    entryCount += targets.length;
     if (row.lastScan === rowScan) continue;
     row.lastScan = rowScan;
     uniqueLabels.add(row.sourceLabel);
@@ -212,11 +217,11 @@ export function tryImportAdjacencyList(
       "adjacency-list",
     );
   }
-  if (edgeCount > MAX_IMPORT_EDGES) {
+  if (entryCount > MAX_IMPORT_ADJACENCY_ENTRIES) {
     return importLimitFailure(
-      "edges",
-      edgeCount,
-      MAX_IMPORT_EDGES,
+      "adjacency-entries",
+      entryCount,
+      MAX_IMPORT_ADJACENCY_ENTRIES,
       options,
       "Adjacency list",
       "adjacency-list",
@@ -286,6 +291,16 @@ export function tryImportAdjacencyList(
     });
   });
 
+  if (model.edges.length > MAX_IMPORT_EDGES) {
+    return importLimitFailure(
+      "edges",
+      model.edges.length,
+      MAX_IMPORT_EDGES,
+      options,
+      "Adjacency list",
+      "adjacency-list",
+    );
+  }
   arrangeNodes(model);
 
   return {
@@ -293,19 +308,5 @@ export function tryImportAdjacencyList(
     warnings,
     format: "Adjacency list",
     formatKind: "adjacency-list",
-  };
-}
-
-function parseAdjacencyTarget(token: string) {
-  const weightedMatch = token.match(/^(.+)\(([^()]*)\)$/);
-
-  if (!weightedMatch) {
-    return { label: token, weight: undefined };
-  }
-
-  const [, label = "", weight = ""] = weightedMatch;
-  return {
-    label: label.trim(),
-    weight: weight.trim() || "1",
   };
 }

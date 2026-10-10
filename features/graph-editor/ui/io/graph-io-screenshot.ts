@@ -78,6 +78,7 @@ export function useGraphIOScreenshot({
   );
   const previewUrlRef = useRef("");
   const previewRequestRef = useRef(0);
+  const mountedRef = useRef(true);
   const copyResetTimeoutRef = useRef<number | null>(null);
   const downloadResetTimeoutRef = useRef<number | null>(null);
   const { exportPng } = useGraphCanvasApi();
@@ -138,7 +139,8 @@ export function useGraphIOScreenshot({
   // Reopening a pane restores its live revision; wait for those inputs instead
   // of exporting once with the dormant revision and again after the debounce.
   const previewReadyToRefresh =
-    currentPreviewInputKey === debouncedPreviewInputKey && previewStale;
+    currentPreviewInputKey === debouncedPreviewInputKey &&
+    (previewStale || visiblePreview.state !== "ready");
 
   const resetFeedback = () => {
     clearTimeoutRef(copyResetTimeoutRef);
@@ -165,23 +167,27 @@ export function useGraphIOScreenshot({
     );
   };
 
-  const createBlob = ({
-    background: exportBackground,
-    canvasHeightPx: exportCanvasHeightPx,
-    canvasWidthPx: exportCanvasWidthPx,
-    longEdgePx,
-    paddingPx,
-    scope: exportScope,
-  }: {
-    background: PngExportBackground;
-    canvasHeightPx: number;
-    canvasWidthPx: number;
-    longEdgePx: number;
-    paddingPx: number;
-    scope: PngExportScope;
-  }) => {
+  const createBlob = async (
+    {
+      background: exportBackground,
+      canvasHeightPx: exportCanvasHeightPx,
+      canvasWidthPx: exportCanvasWidthPx,
+      longEdgePx,
+      paddingPx,
+      scope: exportScope,
+    }: {
+      background: PngExportBackground;
+      canvasHeightPx: number;
+      canvasWidthPx: number;
+      longEdgePx: number;
+      paddingPx: number;
+      scope: PngExportScope;
+    },
+    signal?: AbortSignal,
+  ) => {
+    signal?.throwIfAborted();
     if (isGraphEmpty) {
-      return Promise.reject(new Error(IMAGE_EXPORT_ERROR.emptyGraph));
+      throw new Error(IMAGE_EXPORT_ERROR.emptyGraph);
     }
 
     const safePaddingPx =
@@ -194,23 +200,26 @@ export function useGraphIOScreenshot({
         ? { maxHeight: contentLongEdgePx, maxWidth: contentLongEdgePx }
         : {};
 
-    return exportPng({
+    const blob = await exportPng({
       scope: exportScope,
       background: exportBackground,
       ...sizeOptions,
       includeSelection: false,
-    })
-      .then(ensurePngBlob)
-      .then((blob) =>
-        addPngPadding(blob, {
-          background: exportBackground,
-          paddingPx: safePaddingPx,
-          targetWidthPx:
-            exportScope === "natural-fixed" ? exportCanvasWidthPx : undefined,
-          targetHeightPx:
-            exportScope === "natural-fixed" ? exportCanvasHeightPx : undefined,
-        }),
-      );
+      signal,
+    });
+    signal?.throwIfAborted();
+    return addPngPadding(
+      ensurePngBlob(blob),
+      {
+        background: exportBackground,
+        paddingPx: safePaddingPx,
+        targetWidthPx:
+          exportScope === "natural-fixed" ? exportCanvasWidthPx : undefined,
+        targetHeightPx:
+          exportScope === "natural-fixed" ? exportCanvasHeightPx : undefined,
+      },
+      signal,
+    );
   };
 
   function clearPreview() {
@@ -228,7 +237,7 @@ export function useGraphIOScreenshot({
     previewUrlRef.current = "";
   }
 
-  async function refreshPreview() {
+  async function refreshPreview(signal: AbortSignal) {
     const inputKey = debouncedPreviewInputKey;
     const requestId = previewRequestRef.current + 1;
     previewRequestRef.current = requestId;
@@ -250,18 +259,21 @@ export function useGraphIOScreenshot({
           },
     );
 
+    let objectUrl = "";
     try {
-      const blob = await createBlob(debouncedPreviewInput);
-      const objectUrl = URL.createObjectURL(blob);
-      const { height, width } = await readImageDimensions(objectUrl);
+      const blob = await createBlob(debouncedPreviewInput, signal);
+      signal.throwIfAborted();
+      objectUrl = URL.createObjectURL(blob);
+      const { height, width } = await readImageDimensions(objectUrl, signal);
 
       if (
+        signal.aborted ||
+        !mountedRef.current ||
         !shouldAcceptScreenshotPreviewRequest(
           previewRequestRef.current,
           requestId,
         )
       ) {
-        URL.revokeObjectURL(objectUrl);
         return;
       }
 
@@ -275,7 +287,10 @@ export function useGraphIOScreenshot({
         url: objectUrl,
         width,
       });
+      // Transfer ownership to the visible preview only after successful decode.
+      objectUrl = "";
     } catch (error) {
+      if (signal.aborted || !mountedRef.current) return;
       console.warn("Screenshot preview failed", error);
       if (
         shouldAcceptScreenshotPreviewRequest(
@@ -289,6 +304,7 @@ export function useGraphIOScreenshot({
         ) {
           setDownloadMessage(messages.screenshot.canvasTooSmall);
         }
+        revokePreviewUrl();
         setPreview({
           height: null,
           inputKey,
@@ -297,6 +313,8 @@ export function useGraphIOScreenshot({
           width: null,
         });
       }
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     }
   }
 
@@ -320,6 +338,7 @@ export function useGraphIOScreenshot({
     const pngBlobPromise = createBlobForAction();
 
     const markFailed = (message: string) => {
+      if (!mountedRef.current) return;
       console.warn("Screenshot copy failed", message);
       setCopyMessage(message);
       setCopyState("blocked");
@@ -339,6 +358,7 @@ export function useGraphIOScreenshot({
         }
 
         await writePngBlobToClipboard(pngBlobPromise);
+        if (!mountedRef.current) return;
         setCopyState("copied");
         scheduleCopyReset();
       } catch (error) {
@@ -349,6 +369,7 @@ export function useGraphIOScreenshot({
             pngBlob,
             `graph-editor-${formatTimestamp(new Date())}.png`,
           );
+          if (!mountedRef.current) return;
           setCopyMessage(messages.screenshot.copyFallbackSaved);
           setCopyState("saved");
           scheduleCopyReset();
@@ -376,6 +397,7 @@ export function useGraphIOScreenshot({
     setDownloadMessage("");
 
     const markFailed = (message: string) => {
+      if (!mountedRef.current) return;
       console.warn("Screenshot download failed", message);
       setDownloadMessage(message);
       setDownloadState("failed");
@@ -388,6 +410,7 @@ export function useGraphIOScreenshot({
           pngBlob,
           `graph-editor-${formatTimestamp(new Date())}.png`,
         );
+        if (!mountedRef.current) return;
         setDownloadState("saved");
         scheduleDownloadReset();
       } catch (error) {
@@ -456,29 +479,37 @@ export function useGraphIOScreenshot({
   };
 
   useEffect(() => {
-    if (!previewEnabled || isGraphEmpty || !previewReadyToRefresh) {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      previewRequestRef.current += 1;
+      clearTimeoutRef(copyResetTimeoutRef);
+      clearTimeoutRef(downloadResetTimeoutRef);
+      revokePreviewUrl();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isGraphEmpty) {
+      clearPreview();
+      return;
+    }
+    if (!previewEnabled || !previewReadyToRefresh) {
       return;
     }
 
-    void refreshPreview();
+    const controller = new AbortController();
+    void refreshPreview(controller.signal);
+    return () => controller.abort();
     // refreshPreview is recreated per render; the key captures its inputs.
+    // Loading/ready changes must not cancel the request that produces them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentPreviewInputKey,
     debouncedPreviewInputKey,
     isGraphEmpty,
     previewEnabled,
-    previewReadyToRefresh,
   ]);
-
-  useEffect(
-    () => () => {
-      clearTimeoutRef(copyResetTimeoutRef);
-      clearTimeoutRef(downloadResetTimeoutRef);
-      revokePreviewUrl();
-    },
-    [],
-  );
 
   return {
     background,
@@ -519,16 +550,35 @@ function clearTimeoutRef(ref: MutableRefObject<number | null>) {
   ref.current = null;
 }
 
-function readImageDimensions(url: string) {
+function readImageDimensions(url: string, signal?: AbortSignal) {
   return new Promise<{ height: number; width: number }>((resolve, reject) => {
     const image = new Image();
+    const cleanup = () => {
+      signal?.removeEventListener("abort", onAbort);
+      image.onload = null;
+      image.onerror = null;
+    };
+    const onAbort = () => {
+      cleanup();
+      image.src = "";
+      reject(signal?.reason);
+    };
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
     image.onload = () => {
+      cleanup();
       resolve({
         height: image.naturalHeight,
         width: image.naturalWidth,
       });
     };
-    image.onerror = () => reject(new Error("Could not read PNG dimensions"));
+    image.onerror = () => {
+      cleanup();
+      reject(new Error("Could not read PNG dimensions"));
+    };
     image.src = url;
   });
 }
@@ -546,45 +596,47 @@ async function addPngPadding(
     targetHeightPx?: number;
     targetWidthPx?: number;
   },
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted();
   if (paddingPx === 0 && !targetWidthPx && !targetHeightPx) {
     return blob;
   }
 
   const image = await createImageBitmap(blob);
-  let layout: ReturnType<typeof resolvePngCanvasLayout>;
+  let canvas: HTMLCanvasElement;
   try {
-    layout = resolvePngCanvasLayout(
+    signal?.throwIfAborted();
+    const layout = resolvePngCanvasLayout(
       image.width,
       image.height,
       paddingPx,
       targetWidthPx,
       targetHeightPx,
     );
-  } catch (error) {
+    canvas = document.createElement("canvas");
+    canvas.width = layout.width;
+    canvas.height = layout.height;
+
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not prepare padded PNG");
+
+    if (background !== "transparent") {
+      context.fillStyle = readPaddedPngBackground(background);
+      context.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    context.drawImage(image, layout.x, layout.y);
+  } finally {
     image.close();
-    throw error;
   }
-  const canvas = document.createElement("canvas");
-  canvas.width = layout.width;
-  canvas.height = layout.height;
-
-  const context = canvas.getContext("2d");
-  if (!context) {
-    image.close();
-    throw new Error("Could not prepare padded PNG");
-  }
-
-  if (background !== "transparent") {
-    context.fillStyle = readPaddedPngBackground(background);
-    context.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  context.drawImage(image, layout.x, layout.y);
-  image.close();
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((paddedBlob) => {
+      if (signal?.aborted) {
+        reject(signal.reason);
+        return;
+      }
       if (paddedBlob) {
         resolve(paddedBlob);
         return;

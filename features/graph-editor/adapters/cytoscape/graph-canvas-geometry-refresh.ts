@@ -16,7 +16,25 @@ export function refreshCytoscapeGeometry(changed: CollectionReturnValue) {
     .collection(changed)
     .filter((element) => !element.removed());
   affected.merge(affected.nodes().connectedEdges());
-  affected.merge(affected.edges().parallelEdges());
+  // Cytoscape expands every input edge against its incident edges. One
+  // representative per unordered endpoint pair avoids repeating that scan
+  // for all siblings, including reversed edges and self-loops.
+  const pairs = new Map<string, Set<string>>();
+  const representatives = affected.edges().filter((edge) => {
+    const source = edge.source().id();
+    const target = edge.target().id();
+    const first = source <= target ? source : target;
+    const second = source <= target ? target : source;
+    let targets = pairs.get(first);
+    if (targets?.has(second)) return false;
+    if (!targets) {
+      targets = new Set();
+      pairs.set(first, targets);
+    }
+    targets.add(second);
+    return true;
+  });
+  affected.merge(representatives.parallelEdges());
   if (affected.length === 0) return 0;
 
   // updateStyle marks these bounds dirty before boundingBox captures that flag.

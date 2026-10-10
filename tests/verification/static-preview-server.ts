@@ -2,6 +2,7 @@ import { once } from "node:events";
 import {
   mkdtempSync,
   mkdirSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -9,7 +10,11 @@ import {
 import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startStaticPreviewServer } from "../../scripts/audit/static-preview-server";
+import {
+  createStaticPreviewHandler,
+  parseStaticRedirects,
+  startStaticPreviewServer,
+} from "../../scripts/audit/static-preview-server";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Static preview server");
@@ -21,6 +26,9 @@ mkdirSync(join(out, "wasm"));
 writeFileSync(join(out, "index.html"), "<h1>Root</h1>");
 writeFileSync(join(out, "en.html"), "<h1>English</h1>");
 writeFileSync(join(out, "en/guide.html"), "<h1>Guide</h1>");
+mkdirSync(join(out, "zh-hans"));
+for (const route of ["zh-hans", "guide", "zh-hans/guide"])
+  writeFileSync(join(out, `${route}.html`), `<h1>${route}</h1>`);
 writeFileSync(join(out, "404.html"), "<h1>Missing</h1>");
 writeFileSync(join(out, "wasm/kernel.wasm"), "test-wasm-asset");
 writeFileSync(
@@ -30,10 +38,28 @@ writeFileSync(
   X-Frame-Options: DENY
 /en
   Content-Security-Policy: default-src 'self'
+/en/guide
+  Content-Security-Policy: default-src 'self'
+/
+  Content-Security-Policy: default-src 'self'
+/zh-hans
+  Content-Security-Policy: default-src 'self'
+/guide
+  Content-Security-Policy: default-src 'self'
+/zh-hans/guide
+  Content-Security-Policy: default-src 'self'
 /wasm/*
   Content-Type: application/wasm
   Cache-Control: public, max-age=31536000, immutable
 `,
+);
+const redirectText = readFileSync(
+  new URL("../../public/_redirects", import.meta.url),
+  "utf8",
+);
+writeFileSync(
+  join(out, "_redirects"),
+  `${redirectText}\n/with-query /en?mode=target#section 302\n/en/ /guide 308\n`,
 );
 writeFileSync(join(fixture, "private.txt"), "synthetic-private-value");
 symlinkSync(join(fixture, "private.txt"), join(out, "outside.txt"));
@@ -51,6 +77,76 @@ try {
     address.address === "127.0.0.1",
     "The preview must bind only IPv4 loopback.",
   );
+
+  // Alias requests are pure Request fixtures, never requests to the user's
+  // preview. Follow their Location through the exact handler used by HTTP.
+  const handler = createStaticPreviewHandler(out);
+  await Promise.all(
+    parseStaticRedirects(redirectText).flatMap((rule) =>
+      ["GET", "HEAD"].map(async (method) => {
+        const alias = handler(
+          new Request(`http://preview.invalid${rule.source}?mode=test`, {
+            method,
+          }),
+        );
+        expect(
+          alias.status === 301 &&
+            alias.headers.get("location") === `${rule.destination}?mode=test` &&
+            (await alias.text()) === "",
+          `Canonical aliases should redirect before assets: ${method} ${rule.source}`,
+        );
+        expect(
+          !alias.headers.has("content-security-policy"),
+          "_headers should apply to the destination asset, after redirects.",
+        );
+        const destination = handler(
+          new Request(
+            `http://preview.invalid${alias.headers.get("location")}`,
+            {
+              method,
+            },
+          ),
+        );
+        expect(
+          destination.status === 200 &&
+            destination.headers.get("content-security-policy") ===
+              "default-src 'self'" &&
+            destination.headers.get("x-frame-options") === "DENY",
+          `Redirect destinations should serve their page CSP: ${rule.destination}`,
+        );
+      }),
+    ),
+  );
+  const overriddenQuery = handler(
+    new Request("http://preview.invalid/with-query?mode=source"),
+  );
+  expect(
+    overriddenQuery.headers.get("location") === "/en?mode=target#section",
+    "An explicit destination query should replace the incoming query.",
+  );
+  expect(
+    handler(new Request("http://preview.invalid/en/?mode=test")).headers.get(
+      "location",
+    ) === "/en?mode=test",
+    "The first matching redirect rule should win.",
+  );
+  for (const unsupported of [
+    "/blog/* /posts/:splat 301",
+    "/old https://example.invalid/new 301",
+    "/old /new 200",
+    "/old /new 301 extra",
+  ]) {
+    let rejected = false;
+    try {
+      parseStaticRedirects(unsupported);
+    } catch {
+      rejected = true;
+    }
+    expect(
+      rejected,
+      "Unsupported redirect syntax must fail instead of silently drifting.",
+    );
+  }
 
   function get(path: string, method = "GET") {
     return new Promise<{

@@ -14,6 +14,7 @@ import {
   syncCytoscapeSelection,
 } from "./graph-canvas-viewport";
 import { withCytoscapeBatch } from "./cytoscape-batch";
+import { awaitAbortable } from "../browser/abortable";
 
 type GraphImageExportOptions = {
   cyRef: MutableRefObject<Core | null>;
@@ -57,10 +58,11 @@ export function createGraphImageExporter({
       () => {},
       () => {},
     );
-    return result;
+    return awaitAbortable(result, detail.signal);
   };
 
   async function render(cy: Core | null, detail: GraphCanvasExportOptions) {
+    detail.signal?.throwIfAborted();
     if (!cy || cyRef.current !== cy || cy.destroyed()) {
       throw new Error("Graph canvas is not ready");
     }
@@ -84,8 +86,12 @@ export function createGraphImageExporter({
         cy.nodes(".edge-source").removeClass("edge-source");
       }
 
-      await document.fonts?.ready;
-      await nextAnimationFrame();
+      await awaitAbortable(
+        Promise.resolve(document.fonts?.ready),
+        detail.signal,
+      );
+      await awaitAbortable(nextAnimationFrame(), detail.signal);
+      detail.signal?.throwIfAborted();
       if (cyRef.current !== cy || cy.destroyed()) {
         throw new Error("Graph canvas is not ready");
       }
@@ -100,7 +106,9 @@ export function createGraphImageExporter({
         }
       });
 
-      return await cy.png({
+      // PNG encoding cannot be interrupted. Keep the renderer owner until it
+      // settles, even when the preview caller has already stopped waiting.
+      const blob = await cy.png({
         output: "blob-promise",
         full: detail.scope !== "viewport",
         scale:
@@ -111,7 +119,10 @@ export function createGraphImageExporter({
         maxHeight: detail.maxHeight,
         bg: readExportBackground(detail.background),
       });
+      detail.signal?.throwIfAborted();
+      return blob;
     } catch (error) {
+      if (detail.signal?.aborted) throw detail.signal.reason;
       throw new Error(exportImageErrorCode(error), { cause: error });
     } finally {
       try {

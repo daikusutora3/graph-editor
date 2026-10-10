@@ -2,7 +2,10 @@ import { isDeepStrictEqual } from "node:util";
 import { createStore } from "jotai/vanilla";
 
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
-import { updateNodeCommand } from "../../features/graph-editor/core/graph/graph-intents";
+import {
+  replaceModelCommand,
+  updateNodeCommand,
+} from "../../features/graph-editor/core/graph/graph-intents";
 import { serializeGraphModel } from "../../features/graph-editor/core/graph/graph-json";
 import {
   applyGraphPatch,
@@ -33,6 +36,8 @@ import {
 import {
   executeCommandAtom,
   historyAtom,
+  futureAtom,
+  clearHistoryAtom,
   redoAtom,
   undoAtom,
 } from "../../features/graph-editor/shell/state/history-atoms";
@@ -208,6 +213,7 @@ expect(
 );
 
 verifyMixedClipboard();
+verifyHistoryBudgets();
 
 const originals = Object.fromEntries(
   ["window", "document", "navigator"].map((name) => [
@@ -471,4 +477,99 @@ function verifyMixedClipboard() {
       "mixed paste preserves valid copied and existing endpoints while skipping an edge whose unselected endpoint disappeared",
     );
   }
+}
+
+function verifyHistoryBudgets() {
+  const smallStore = createStore();
+  smallStore.set(syncExternalGraphAtom, graph);
+  for (let edit = 1; edit <= 160; edit += 1)
+    smallStore.set(executeCommandAtom, updateNodeCommand("a", { x: edit }));
+  expect(
+    smallStore.get(historyAtom).length === 150,
+    "small edits retain all 150 undo entries",
+  );
+  for (let edit = 0; edit < 150; edit += 1) smallStore.set(undoAtom);
+  expect(
+    smallStore.get(graphAtom).nodes[0]?.x === 10 &&
+      smallStore.get(futureAtom).length === 150,
+    "the count budget drops only the ten oldest small edits",
+  );
+  for (let edit = 0; edit < 150; edit += 1) smallStore.set(redoAtom);
+  expect(
+    smallStore.get(graphAtom).nodes[0]?.x === 160,
+    "all retained small edits can be redone",
+  );
+
+  const largeStore = createStore();
+  const snapshots: GraphModel[] = [];
+  for (let version = 0; version < 12; version += 1) {
+    const model: GraphModel = {
+      ...createEmptyGraphModel({ weighted: true, weightKind: "string" }),
+      nodes: Array.from({ length: 1000 }, (_, order) => ({
+        id: `n${order}`,
+        label: `${version}:${order}:`.padEnd(256, "n"),
+        order,
+        x: order,
+        y: version,
+      })),
+      edges: Array.from({ length: 5000 }, (_, index) => ({
+        id: `e${index}`,
+        source: `n${index % 1000}`,
+        target: `n${(index * 7 + 1) % 1000}`,
+        weight: `${version}:${index}:`.padEnd(256, "w"),
+      })),
+    };
+    snapshots.push(model);
+    const result = largeStore.set(
+      executeCommandAtom,
+      replaceModelCommand(model),
+    );
+    expect(
+      result.status === "applied",
+      "near-limit JSON replacements remain valid commands",
+    );
+  }
+  const retained = largeStore.get(historyAtom).length;
+  expect(
+    retained >= 1 && retained < snapshots.length,
+    "the memory budget prunes old large replacements before 150 entries",
+  );
+  for (let edit = 0; edit < retained; edit += 1) largeStore.set(undoAtom);
+  expect(
+    isDeepStrictEqual(
+      largeStore.get(graphAtom),
+      snapshots[snapshots.length - retained - 1],
+    ),
+    "large-history eviction leaves an exact contiguous undo sequence",
+  );
+  for (let edit = 0; edit < retained; edit += 1) largeStore.set(redoAtom);
+  expect(
+    isDeepStrictEqual(largeStore.get(graphAtom), snapshots.at(-1)) &&
+      largeStore.get(historyAtom).length === retained,
+    "redo retains the same large-operation budget and final document",
+  );
+  largeStore.set(undoAtom);
+  largeStore.set(executeCommandAtom, updateNodeCommand("n0", { x: -1 }));
+  expect(
+    largeStore.get(futureAtom).length === 0,
+    "a new edit discards the pruned branch's redo documents",
+  );
+  largeStore.set(clearHistoryAtom);
+  expect(
+    largeStore.get(historyAtom).length === 0 &&
+      largeStore.get(futureAtom).length === 0,
+    "clearing history releases both history and redo ownership",
+  );
+  for (let edit = 1; edit <= 160; edit += 1)
+    largeStore.set(executeCommandAtom, updateNodeCommand("n0", { x: edit }));
+  expect(
+    largeStore.get(historyAtom).length === 150,
+    "small node edits keep 150 entries even in a near-limit graph because unchanged edges are not charged again",
+  );
+  for (let edit = 0; edit < 150; edit += 1) largeStore.set(undoAtom);
+  expect(
+    largeStore.get(graphAtom).nodes[0]?.x === 10 &&
+      largeStore.get(graphAtom).edges.length === 5000,
+    "the retained small edits in a large graph remain exactly undoable",
+  );
 }

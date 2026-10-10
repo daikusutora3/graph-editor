@@ -46,6 +46,10 @@ const suites = [
   { name: "layout-topology", path: "tests/verification/layout-topology.ts" },
   { name: "overlaps", path: "tests/verification/overlaps.ts" },
   { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
+  {
+    name: "routing-collision-reuse",
+    path: "tests/verification/routing-collision-reuse.mjs",
+  },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "canvas-rendering", path: "tests/verification/canvas-rendering.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
@@ -74,6 +78,7 @@ const suites = [
   { name: "tikz", path: "tests/verification/tikz.ts" },
   { name: "screenshot", path: "tests/verification/screenshot.ts" },
   { name: "image-export", path: "tests/verification/image-export.ts" },
+  { name: "canvas-lifecycle", path: "tests/verification/canvas-lifecycle.mjs" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },
   { name: "i18n", path: "tests/verification/i18n-literals.ts" },
   { name: "canvas", path: "tests/verification/canvas-logic.ts" },

@@ -262,6 +262,115 @@ await verifyPrePaintChanges(true);
     f.cy.destroy();
   }
 }
+// Superseded previews do not render, while explicit copy/save stays queued.
+{
+  const f = fixture();
+  try {
+    const first = f.exportPng(detail);
+    await paint();
+    const oldPreview = new AbortController();
+    const canceled = f.exportPng({ ...detail, signal: oldPreview.signal }).then(
+      () => false,
+      (error: unknown) => error === oldPreview.signal.reason,
+    );
+    const action = f.exportPng({ ...detail, includeSelection: true });
+    oldPreview.abort();
+    expect(
+      await canceled,
+      "a queued canceled preview settles before encoding completes",
+    );
+    f.completions.shift()!.resolve(new Blob(["first"]));
+    await first;
+    await paint();
+    expect(
+      f.renders.length === 2 && f.renders[1]!.selected.join() === "a",
+      "superseded preview work is skipped and an explicit action retains its policy",
+    );
+    f.completions.shift()!.resolve(new Blob(["action"]));
+    await action;
+  } finally {
+    f.cy.destroy();
+  }
+}
+// Canceling an already-running encoder must not release the renderer owner.
+{
+  const f = fixture();
+  try {
+    const controller = new AbortController();
+    const preview = f
+      .exportPng({ ...detail, signal: controller.signal })
+      .catch((error: unknown) => error);
+    await paint();
+    const action = f.exportPng(detail);
+    controller.abort();
+    expect(
+      (await preview) === controller.signal.reason,
+      "the preview caller stops waiting for an obsolete active PNG",
+    );
+    await microtasks();
+    expect(
+      f.renders.length === 1 && f.suppressSelectionSyncRef.current,
+      "active encoding keeps exclusive selection ownership until it settles",
+    );
+    f.selectionRef.current = { nodeIds: ["b"], edgeIds: [] };
+    f.completions.shift()!.resolve(new Blob(["obsolete"]));
+    await paint();
+    f.completions.shift()!.resolve(new Blob(["action"]));
+    await action;
+    expect(
+      f.renders.length === 2 &&
+        f.cy.getElementById("b").selected() &&
+        !f.suppressSelectionSyncRef.current,
+      "the next action proceeds after cancellation and restores current selection",
+    );
+  } finally {
+    f.cy.destroy();
+  }
+}
+// An unresolved font load should not keep obsolete work at the queue head.
+{
+  const f = fixture();
+  const originalFontsReady = document.fonts.ready;
+  let finishFonts!: () => void;
+  Object.defineProperty(document.fonts, "ready", {
+    configurable: true,
+    value: new Promise<void>((resolve) => {
+      finishFonts = resolve;
+    }),
+  });
+  try {
+    const controller = new AbortController();
+    const preview = f
+      .exportPng({ ...detail, signal: controller.signal })
+      .catch((error: unknown) => error);
+    await microtasks();
+    controller.abort();
+    expect(
+      (await preview) === controller.signal.reason,
+      "cancellation settles a preview while fonts are unresolved",
+    );
+    await microtasks();
+    expect(
+      !f.suppressSelectionSyncRef.current && f.renders.length === 0,
+      "pre-encoding cancellation restores selection and releases the renderer",
+    );
+    Object.defineProperty(document.fonts, "ready", {
+      configurable: true,
+      value: originalFontsReady,
+    });
+    const action = f.exportPng(detail);
+    await paint();
+    f.completions.shift()!.resolve(new Blob(["action"]));
+    await action;
+  } finally {
+    finishFonts();
+    Object.defineProperty(document.fonts, "ready", {
+      configurable: true,
+      value: originalFontsReady,
+    });
+    f.cy.destroy();
+  }
+}
 finish();
 
 async function verifyPrePaintChanges(includeSelection: boolean) {

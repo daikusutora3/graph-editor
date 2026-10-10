@@ -22,6 +22,12 @@ import {
 import { previewCurveBounds } from "../../features/graph-editor/ui/samples/preview-curve-bounds";
 import { clipPreviewEdgeAtTarget } from "../../features/graph-editor/ui/samples/preview-edge-clip";
 import {
+  preparePreviewGeometry,
+  type PreviewGeometryWork,
+} from "../../features/graph-editor/ui/samples/preview-geometry";
+import { samplePreviewSvgCases } from "../fixtures/sample-preview-svg-cases";
+import samplePreviewSvg from "../fixtures/sample-preview-svg.json";
+import {
   createGraphCanvasStylesheet,
   type GraphCanvasPalette,
 } from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
@@ -29,6 +35,7 @@ import {
 verifyPreviewPaintMatchesCanvas();
 verifyClippingFixtures();
 verifyPreviewSettings();
+verifyPreparedGeometry();
 
 const quadratic = previewCurveBounds([
   { x: 0, y: 0 },
@@ -253,6 +260,113 @@ for (const targetX of [0.1, 0.5, 1]) {
 }
 
 console.log("Sample preview bounds verification passed");
+
+function verifyPreparedGeometry() {
+  const cases = samplePreviewSvgCases();
+  for (const { name, ...props } of cases) {
+    const golden = (samplePreviewSvg as Record<string, string>)[name];
+    if (!golden) continue;
+    // Attribute precision below one millionth of a screen pixel is irrelevant
+    // to paint. Normalize it so Math.sin host rounding cannot break CI.
+    const actual = renderToStaticMarkup(
+      createElement(SampleGraphPreview, props),
+    ).replace(/[-+]?\d+\.\d+(?:e[-+]?\d+)?/gi, (number) =>
+      String(Number(Number(number).toFixed(6))),
+    );
+    assert.equal(actual, golden, `${name}: complete representative SVG`);
+  }
+
+  const { model } = cases.find(({ name }) => name === "chunked-editor")!;
+  const work: PreviewGeometryWork = {
+    nodeIndexBuilds: 0,
+    nodeWidthReads: 0,
+    edgeSegmentBuilds: 0,
+    targetClips: 0,
+    loopBuilds: 0,
+  };
+  const geometry = preparePreviewGeometry(
+    model,
+    computeEdgeRouting(model, { mode: "simple" }),
+    true,
+    1,
+    work,
+  );
+  assert.deepEqual(
+    work,
+    {
+      nodeIndexBuilds: 1,
+      nodeWidthReads: 260,
+      edgeSegmentBuilds: 259,
+      targetClips: 259,
+      loopBuilds: 0,
+    },
+    "one shared index, width and curve/clip preparation per directed editor preview",
+  );
+  assert.equal(geometry.nodeById.get("n259"), model.nodes[259]);
+  assert.equal(geometry.edgeById.size, 259);
+  assert(
+    geometry.edgeById.get("e0")!.clippedSegments,
+    "arrow bounds and SVG share the prepared target clip",
+  );
+  const markup = renderToStaticMarkup(
+    createElement(SampleGraphPreview, { model, variant: "editor" }),
+  );
+  assert.equal(
+    [...markup.matchAll(/<rect\b/g)].length,
+    260,
+    "all node chunks are rendered",
+  );
+  assert.equal(
+    [...markup.matchAll(/<path\b[^>]*stroke=/g)].length,
+    259,
+    "all edge chunks are rendered",
+  );
+
+  const mixed = cases.find(
+    ({ name }) => name === "true-editor-false-true-98",
+  )!.model;
+  const mixedWork: PreviewGeometryWork = {
+    nodeIndexBuilds: 0,
+    nodeWidthReads: 0,
+    edgeSegmentBuilds: 0,
+    targetClips: 0,
+    loopBuilds: 0,
+  };
+  const mixedGeometry = preparePreviewGeometry(
+    mixed,
+    computeEdgeRouting(mixed, { mode: "simple" }),
+    true,
+    1,
+    mixedWork,
+  );
+  assert.deepEqual(mixedWork, {
+    nodeIndexBuilds: 1,
+    nodeWidthReads: 3,
+    edgeSegmentBuilds: 3,
+    targetClips: 3,
+    loopBuilds: 1,
+  });
+  assert(
+    !mixedGeometry.edgeById.has("missing"),
+    "dangling endpoints are omitted consistently",
+  );
+  const gallery = preparePreviewGeometry(
+    mixed,
+    computeEdgeRouting(mixed, { mode: "simple" }),
+    false,
+  );
+  assert(
+    !gallery.edgeById.get("straight")!.clippedSegments,
+    "fixed screen-size gallery targets are clipped after fitting",
+  );
+  console.log(
+    JSON.stringify({
+      previewNodes: model.nodes.length,
+      previewEdges: model.edges.length,
+      work,
+    }),
+  );
+}
 
 function createModel(
   directed = false,

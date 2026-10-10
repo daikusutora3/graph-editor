@@ -255,14 +255,13 @@ expect(
   "nonfinite node geometry retains JS",
 );
 
-for (const [tx, ty, x, y, expected] of [
-  [
-    39.76905130695133, 113.2184726895089, -8.420092518901559, 66.55149917149228,
-    256,
-  ],
+// Math.hypot is implementation-approximated. These ties must follow this
+// host's JS decision, which can differ by one ULP between macOS and Linux.
+for (const [tx, ty, x, y] of [
+  [39.76905130695133, 113.2184726895089, -8.420092518901559, 66.55149917149228],
   [
     23.933966519708743, 117.5889673678337, -17.430258582104052,
-    64.77797531384404, 0,
+    64.77797531384404,
   ],
 ]) {
   const source = { id: "s", order: 0, label: "", x: 0, y: 0 };
@@ -292,6 +291,9 @@ for (const [tx, ty, x, y, expected] of [
       nodes,
     ) === null,
     "strict hypot rounding boundary requests the original JS decision",
+  );
+  const expected = withRustKernelSuppressed(() =>
+    countCurveNodeCollisions(curve, smallStraight.edge, source, target, nodes),
   );
   const work = { units: 0, samples: new Map() };
   expect(

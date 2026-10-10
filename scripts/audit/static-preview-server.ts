@@ -64,24 +64,77 @@ function findFile(directory: string, candidate: string) {
   }
 }
 
-/** A local-only static export server. Header rules are loaded once per start. */
-export function startStaticPreviewServer(
-  outDirectory: string,
-  port: number,
-  onListening?: () => void,
-) {
+type StaticRedirect = { source: string; destination: string; status: number };
+
+/** Support the exact local redirects used by this export; reject silent drift. */
+export function parseStaticRedirects(text: string): StaticRedirect[] {
+  return text.split("\n").flatMap((rawLine, index) => {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) return [];
+    const [source, destination, code = "302", ...extra] = line.split(/\s+/);
+    const status = Number(code);
+    if (
+      !source?.startsWith("/") ||
+      source.startsWith("//") ||
+      /[*:?#]/.test(source) ||
+      !destination?.startsWith("/") ||
+      destination.startsWith("//") ||
+      /[*:]/.test(destination) ||
+      ![301, 302, 303, 307, 308].includes(status) ||
+      extra.length > 0
+    ) {
+      throw new Error(
+        `Unsupported static _redirects rule on line ${index + 1}`,
+      );
+    }
+    return [{ source, destination, status }];
+  });
+}
+
+/** The same handler can verify Request fixtures without opening a browser. */
+export function createStaticPreviewHandler(outDirectory: string) {
   const directory = realpathSync(outDirectory);
   const rules = parseHeaderRules(
     readFileSync(join(directory, "_headers"), "utf8"),
   );
-  return createServer((request, response) => {
+  let redirects: StaticRedirect[] = [];
+  try {
+    redirects = parseStaticRedirects(
+      readFileSync(join(directory, "_redirects"), "utf8"),
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  return (request: Pick<Request, "method" | "url">) => {
     try {
       if (request.method !== "GET" && request.method !== "HEAD") {
-        response.writeHead(405, { allow: "GET, HEAD" });
-        response.end("Method Not Allowed");
-        return;
+        return new Response("Method Not Allowed", {
+          status: 405,
+          headers: { allow: "GET, HEAD" },
+        });
       }
-      const path = requestPath(request.url ?? "/");
+      // Native HTTP supplies the original request target; Request fixtures
+      // supply an absolute URL. Keep raw dot segments for the security check.
+      const target = request.url.replace(/^https?:\/\/[^/]+/, "") || "/";
+      const path = requestPath(target);
+      const redirect = redirects.find((rule) => rule.source === path);
+      if (redirect) {
+        const queryIndex = target.indexOf("?");
+        const query = queryIndex < 0 ? "" : target.slice(queryIndex);
+        const destination = new URL(
+          redirect.destination,
+          "http://preview.invalid",
+        );
+        if (!redirect.destination.includes("?")) destination.search = query;
+        // Cloudflare evaluates redirects before _headers and before assets.
+        return new Response(null, {
+          status: redirect.status,
+          headers: {
+            location:
+              destination.pathname + destination.search + destination.hash,
+          },
+        });
+      }
       const candidate = resolve(
         directory,
         `.${path === "/" ? "/index.html" : path}`,
@@ -94,13 +147,18 @@ export function startStaticPreviewServer(
       file ??= findFile(directory, join(directory, "404.html"));
       if (!file) throw new Error("Missing static 404 page");
       const contents = readFileSync(file);
-      response.writeHead(status, {
-        "content-type":
-          contentTypes[extname(file)] ?? "application/octet-stream",
-        "content-length": contents.length,
-        ...Object.fromEntries(resolveHeaders(rules, path)),
-      });
-      response.end(request.method === "HEAD" ? undefined : contents);
+      return new Response(
+        request.method === "HEAD" ? null : new Uint8Array(contents),
+        {
+          status,
+          headers: {
+            "content-type":
+              contentTypes[extname(file)] ?? "application/octet-stream",
+            "content-length": String(contents.length),
+            ...Object.fromEntries(resolveHeaders(rules, path)),
+          },
+        },
+      );
     } catch (error) {
       const status =
         error instanceof URIError
@@ -108,17 +166,39 @@ export function startStaticPreviewServer(
           : error instanceof PreviewRequestError
             ? error.status
             : 500;
-      response.writeHead(status, {
-        "content-type": "text/plain; charset=utf-8",
-        "x-content-type-options": "nosniff",
-      });
-      response.end(
-        status === 400
-          ? "Bad Request"
-          : status === 403
-            ? "Forbidden"
-            : "Internal Server Error",
+      return new Response(
+        request.method === "HEAD"
+          ? null
+          : status === 400
+            ? "Bad Request"
+            : status === 403
+              ? "Forbidden"
+              : "Internal Server Error",
+        {
+          status,
+          headers: {
+            "content-type": "text/plain; charset=utf-8",
+            "x-content-type-options": "nosniff",
+          },
+        },
       );
     }
+  };
+}
+
+/** A local-only static export server. Rules are loaded once per start. */
+export function startStaticPreviewServer(
+  outDirectory: string,
+  port: number,
+  onListening?: () => void,
+) {
+  const handler = createStaticPreviewHandler(outDirectory);
+  return createServer(async (request, response) => {
+    const result = handler({
+      method: request.method ?? "GET",
+      url: request.url ?? "/",
+    });
+    response.writeHead(result.status, Object.fromEntries(result.headers));
+    response.end(Buffer.from(await result.arrayBuffer()));
   }).listen(port, "127.0.0.1", onListening);
 }

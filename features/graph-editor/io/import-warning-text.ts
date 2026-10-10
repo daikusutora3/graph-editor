@@ -22,7 +22,11 @@ export function describeImportWarning(w: ImportWarning): string {
       return "Empty input.";
     case "too-large":
       return `Import is too large: ${count(w.count)} ${
-        w.kind === "input" ? "input characters" : w.kind
+        w.kind === "input"
+          ? "input characters"
+          : w.kind === "adjacency-entries"
+            ? "adjacency list entries"
+            : w.kind
       }, maximum is ${count(w.limit)}.`;
     case "invalid-format":
       return `Input is not a valid ${formatNames[w.formatKind]}.`;
