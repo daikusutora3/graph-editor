@@ -113,8 +113,9 @@ type SelectEdgeHitboxesProps = {
   weighted: boolean;
   onContextMenu: (edge: EdgeLabelHitbox, event: CanvasPointer) => void;
   /** Drag-to-bend: preview while dragging, commit on release, cancel on
-   * escape/pointer cancel. `zoom` converts rendered px to graph px. */
-  zoom: number;
+   * escape/pointer cancel. Read precise zoom when handling the pointer rather
+   * than using the rounded display percentage. */
+  getZoom: () => number;
   onBendPreview: (edgeId: EdgeId, bend: EdgeBend) => RenderedPoint | null;
   onBendCommit: (edgeId: EdgeId, bend: EdgeBend) => void;
   onBendCancel: (edgeId: EdgeId) => void;
@@ -217,7 +218,7 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
             x: event.clientX - (bounds?.left ?? 0),
             y: event.clientY - (bounds?.top ?? 0),
           },
-          propsRef.current.zoom,
+          propsRef.current.getZoom(),
         );
         propsRef.current.onBendPreview(edge.id, bend.bend);
       },

@@ -1,5 +1,5 @@
 import { GRAPH_MAX_JSON_CHARS } from "../core/graph/graph-limits";
-import { MAX_IMPORT_NODES } from "./import-utils";
+import { MAX_IMPORT_ADJACENCY_ENTRIES, MAX_IMPORT_NODES } from "./import-utils";
 import type { GraphModel } from "../core/graph/model";
 import {
   looksLikeGraphJson,
@@ -16,7 +16,11 @@ import {
   type ImportOptions,
   readLines,
 } from "./import-utils";
-import { createImportSource, type ImportSource } from "./import-source";
+import {
+  createImportSource,
+  parseAdjacencyTarget,
+  type ImportSource,
+} from "./import-source";
 import {
   isRootedParentTreeLabels,
   isUndirectedTreeLabels,
@@ -189,7 +193,7 @@ function collectCandidates(
 ): ImportCandidate[] {
   const candidates: ImportCandidate[] = [];
 
-  pushCandidate(candidates, probeAdjacencyList(source));
+  pushCandidate(candidates, probeAdjacencyList(source, options));
   pushCandidate(candidates, probeAdjacencyMatrix(source, options));
   pushCandidate(candidates, probeParentList(source, options));
   pushCandidate(candidates, probeTreeEdgeList(source, options));
@@ -209,11 +213,15 @@ function pushCandidate(
   }
 }
 
-function probeAdjacencyList(source: ImportSource): ImportCandidate | null {
+function probeAdjacencyList(
+  source: ImportSource,
+  options: ImportOptions,
+): ImportCandidate | null {
   let expectedSeparator: string | undefined;
   const labels = new Set<string>();
   const rowScan = {};
-  let edgeCount = 0;
+  let entryCount = 0;
+  const undirectedPairs = new Set<string>();
 
   for (const line of source.lines) {
     const row = source.readAdjacencyRow(line.text);
@@ -229,17 +237,22 @@ function probeAdjacencyList(source: ImportSource): ImportCandidate | null {
       return null;
     }
 
-    edgeCount += row.targetTokens.length;
+    entryCount += row.targetTokens.length;
     if (row.lastScan === rowScan) continue;
     row.lastScan = rowScan;
     labels.add(sourceLabel);
     for (const token of row.targetTokens) {
-      const match = token.match(/^(.+?)(?:\(([^()]*)\))?$/);
-      const targetLabel = match?.[1]?.trim();
+      const targetLabel = parseAdjacencyTarget(token).label;
       if (!targetLabel) {
         return null;
       }
       labels.add(targetLabel);
+      if (
+        !options.directed &&
+        expectedSeparator !== "->" &&
+        entryCount <= MAX_IMPORT_ADJACENCY_ENTRIES
+      )
+        undirectedPairs.add(JSON.stringify([sourceLabel, targetLabel].sort()));
     }
   }
 
@@ -248,7 +261,14 @@ function probeAdjacencyList(source: ImportSource): ImportCandidate | null {
     strength: "exact",
     evidence: ["adjacency-syntax"],
     nodeCount: labels.size,
-    edgeCount,
+    // Beyond the entry budget, avoid retaining a potentially huge pair index
+    // or presenting an incomplete graph count as an exact number.
+    edgeCount:
+      entryCount > MAX_IMPORT_ADJACENCY_ENTRIES
+        ? undefined
+        : options.directed || expectedSeparator === "->"
+          ? entryCount
+          : undirectedPairs.size,
   };
 }
 

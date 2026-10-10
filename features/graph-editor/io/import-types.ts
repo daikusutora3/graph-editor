@@ -32,7 +32,7 @@ export type ImportWarning =
   | { code: "empty-input" }
   | {
       code: "too-large";
-      kind: "input" | "nodes" | "edges";
+      kind: "input" | "nodes" | "edges" | "adjacency-entries";
       count: number;
       limit: number;
     }

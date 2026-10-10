@@ -98,6 +98,7 @@ export function GraphCanvas() {
 function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
+  const getZoom = useCallback(() => cyRef.current?.zoom() ?? 1, []);
   const draggingNodeIdsRef = useRef<ReadonlySet<NodeId>>(new Set());
   const suppressSelectionSyncRef = useRef(false);
   const [edgeCursor, setEdgeCursor] = useState<RenderedPoint | null>(null);
@@ -702,7 +703,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
                 weighted={graph.settings.weighted}
                 onSelect={selectEdge}
                 onEdit={openEdgeInlineEdit}
-                zoom={zoomPercent / 100}
+                getZoom={getZoom}
                 onBendPreview={previewEdgeBow}
                 onBendCommit={(edgeId, bend) => {
                   const result = executeCommand(

@@ -55,16 +55,34 @@ export function createImportSource(lines: ParsedLine[]) {
 export type ImportSource = ReturnType<typeof createImportSource>;
 
 function readAdjacencyRow(text: string): AdjacencyRow | null {
-  const separators = text.match(/->|:/g);
-  const separator = separators?.[0];
-  if (separators?.length !== 1 || separator === undefined) return null;
+  const separator = text.match(/->|:/)?.[0];
+  if (separator === undefined) return null;
   const separatorIndex = text.indexOf(separator);
+  const targetTokens = splitTokens(
+    text.slice(separatorIndex + separator.length),
+  );
+  // Row separators in a target's weight are data. Reject any remaining
+  // separator in the target label so malformed rows still cannot be truncated.
+  if (
+    targetTokens.some(
+      (token) =>
+        /->|:/.test(token) && /->|:/.test(parseAdjacencyTarget(token).label),
+    )
+  )
+    return null;
   return {
     separator,
     sourceLabel: text.slice(0, separatorIndex).trim(),
-    targetTokens: splitTokens(text.slice(separatorIndex + separator.length)),
+    targetTokens,
     lastScan: undefined,
   };
+}
+
+export function parseAdjacencyTarget(token: string) {
+  const weightedMatch = token.match(/^(.+)\(([^()]*)\)$/);
+  if (!weightedMatch) return { label: token, weight: undefined };
+  const [, label = "", weight = ""] = weightedMatch;
+  return { label: label.trim(), weight: weight.trim() || "1" };
 }
 
 function readNumericMatrix(rows: string[][]): NumericImportMatrix | null {

@@ -1,36 +1,27 @@
 import { memo, useId } from "react";
 
 import type { SampleGraphKind } from "../../samples/sample-graphs";
-import type {
-  EdgeId,
-  GraphColor,
-  GraphModel,
-  GraphNode,
-} from "../../core/graph/model";
+import type { GraphColor, GraphModel } from "../../core/graph/model";
 import { computeEdgeRouting } from "../../core/layout/edge-routing";
-import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
-import {
-  nodeGeometryWidth,
-  NODE_FONT_PX,
-  NODE_SIZE_PX,
-} from "../../core/graph/node-size";
-import {
-  edgeCurveSegments,
-  edgeCurveSvgPath,
-} from "../../core/layout/edge-route-geometry";
-import {
-  previewCurveBounds,
-  type PreviewCurvePoints,
-} from "./preview-curve-bounds";
+import { NODE_FONT_PX, NODE_SIZE_PX } from "../../core/graph/node-size";
 import { EDGE_WIDTH, NODE_BORDER_WIDTH } from "../../core/view/graph-paint";
-import { clipPreviewEdgeAtTarget } from "./preview-edge-clip";
 import {
   PREVIEW_ARROW_HALF_WIDTH,
   PREVIEW_ARROW_LENGTH,
   PREVIEW_ARROW_REACH,
-  previewArrowVertices,
 } from "./preview-arrow";
 import { cn } from "@/lib/utils";
+import {
+  createPreparedPreviewEdgePath,
+  preparePreviewGeometry,
+  type PreparedPreviewGeometry,
+} from "./preview-geometry";
+export {
+  createPreviewEdgePath,
+  getModelBounds,
+  preparePreviewGeometry,
+  type PreviewGeometryWork,
+} from "./preview-geometry";
 
 type SampleGraphPreviewProps = {
   model: GraphModel;
@@ -59,7 +50,7 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     editorLike && model.edges.length > 0
       ? [...new Set(model.edges.map((edge) => edge.color ?? "paper"))]
       : ["paper"];
-  const modelBounds = getModelBounds(
+  const geometry = preparePreviewGeometry(
     model,
     edgeRouting,
     editorLike,
@@ -79,10 +70,8 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
     (focus ? 1.1 : 1);
   const galleryNodeStroke = Math.max(1, galleryRadius * 0.55);
   const galleryEdgeStroke = Math.max(0.9, galleryRadius * 0.42);
-  const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
-  const bounds = editorLike
-    ? getEditorPaintBounds(model, edgeRouting, modelBounds, focus ? 1.1 : 1)
-    : modelBounds;
+  const nodeById = geometry.nodeById;
+  const bounds = geometry.paintBounds;
   // Editor paint scales with the model; only its readable stroke floors need
   // pixel space. Gallery nodes and markers keep a fixed screen size instead.
   const fixedPaintMargin = editorLike
@@ -133,8 +122,7 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   const context: PreviewContext = {
     model,
     markerId,
-    nodeById,
-    edgeRouting,
+    geometry,
     toPoint,
     radius,
     scale,
@@ -211,8 +199,7 @@ function chunkPreviewItems<T>(items: readonly T[]) {
 type PreviewContext = {
   model: GraphModel;
   markerId: string;
-  nodeById: Map<string, GraphModel["nodes"][number]>;
-  edgeRouting: ReturnType<typeof computeEdgeRouting>;
+  geometry: PreparedPreviewGeometry;
   toPoint: (x: number, y: number) => { x: number; y: number };
   radius: number;
   scale: number;
@@ -235,8 +222,7 @@ function PreviewEdges({
   const {
     model,
     markerId,
-    nodeById,
-    edgeRouting,
+    geometry,
     toPoint,
     radius,
     scale,
@@ -246,23 +232,16 @@ function PreviewEdges({
     dense,
   } = context;
   return edges.map((edge) => {
-    const source = nodeById.get(edge.source);
-    const target = nodeById.get(edge.target);
-    if (!source || !target) return null;
-    const a = toPoint(source.x, source.y);
-    const b = toPoint(target.x, target.y);
-    const path = createPreviewEdgePath({
+    const prepared = geometry.edgeById.get(edge.id);
+    if (!prepared) return null;
+    const path = createPreparedPreviewEdgePath(prepared, {
       directed: model.settings.directed,
       radius,
-      routing:
-        edgeRouting.get(edge.id) ??
-        edgeRouting.get(edge.id as EdgeId) ??
-        undefined,
       scale,
-      source: a,
-      target: b,
+      toPoint,
+      editorLike,
       targetWidth: editorLike
-        ? previewNodeWidth(model, target) * scale
+        ? geometry.nodeWidths.get(prepared.target.id)! * scale
         : radius * 2,
     });
     return (
@@ -304,11 +283,12 @@ function PreviewNodes({
     lastIndex,
     showLabels,
     scale,
+    geometry,
   } = context;
   return nodes.map((node, offset) => {
     const index = startIndex + offset;
     const point = toPoint(node.x, node.y);
-    const width = previewNodeWidth(model, node) * scale;
+    const width = geometry.nodeWidths.get(node.id)! * scale;
     const pillRadius = Math.min(width / 2, radius);
     const paint = previewNodePaint(node.color);
     const fill = editorLike
@@ -361,10 +341,6 @@ function PreviewNodes({
   });
 }
 
-function previewNodeWidth(model: GraphModel, node: GraphNode) {
-  return model.settings.showNodeLabels ? nodeGeometryWidth(node) : NODE_SIZE_PX;
-}
-
 function previewNodePaint(color: GraphColor | undefined) {
   const colored = color && color !== "paper";
   return {
@@ -391,299 +367,4 @@ function previewEdgeColor(color: GraphColor | undefined) {
 
 function previewMarkerId(id: string, color: GraphColor | undefined) {
   return color && color !== "paper" ? `${id}-${color}` : id;
-}
-
-export function createPreviewEdgePath({
-  directed,
-  radius,
-  routing,
-  scale,
-  source,
-  target,
-  targetWidth = radius * 2,
-}: {
-  directed: boolean;
-  radius: number;
-  routing?: {
-    bowPx: number;
-    controlPointDistancesPx?: readonly number[];
-    controlPointWeights?: readonly number[];
-    loopDirectionDeg: number;
-    loopSweepDeg: number;
-    loopStepSizePx?: number;
-  };
-  scale: number;
-  source: { x: number; y: number };
-  target: { x: number; y: number };
-  targetWidth?: number;
-}) {
-  if (source.x === target.x && source.y === target.y) {
-    return createLoopPath(source, radius, scale, routing);
-  }
-
-  const curve = {
-    controlPointDistancesPx: (
-      routing?.controlPointDistancesPx ?? [routing?.bowPx ?? 0]
-    ).map((distance) => distance * scale),
-    controlPointWeights: routing?.controlPointWeights ?? [0.5],
-  };
-  if (!directed) return edgeCurveSvgPath(source, target, curve);
-  const segments = clippedPreviewSegments(
-    source,
-    target,
-    curve,
-    targetWidth,
-    radius,
-  );
-  return [
-    `M${round(source.x)} ${round(source.y)}`,
-    ...segments.map(
-      ({ control, end }) =>
-        `Q${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`,
-    ),
-  ].join("");
-}
-
-function clippedPreviewSegments(
-  source: { x: number; y: number },
-  target: { x: number; y: number },
-  curve: {
-    controlPointDistancesPx: readonly number[];
-    controlPointWeights: readonly number[];
-  },
-  targetWidth: number,
-  radius: number,
-) {
-  const original = edgeCurveSegments(source, target, curve);
-  return clipPreviewEdgeAtTarget(
-    original.length > 0
-      ? original
-      : [
-          {
-            start: source,
-            control: {
-              x: (source.x + target.x) / 2,
-              y: (source.y + target.y) / 2,
-            },
-            end: target,
-          },
-        ],
-    { centre: target, width: targetWidth, height: radius * 2 },
-  );
-}
-
-function createLoopPath(
-  source: { x: number; y: number },
-  radius: number,
-  scale: number,
-  routing:
-    | {
-        loopDirectionDeg: number;
-        loopSweepDeg: number;
-        loopStepSizePx?: number;
-      }
-    | undefined,
-) {
-  const { start, end, controlA, controlB } = createLoopGeometry(
-    source,
-    radius,
-    scale,
-    routing,
-  );
-  return [
-    `M${round(start.x)} ${round(start.y)}`,
-    `C${round(controlA.x)} ${round(controlA.y)}`,
-    `${round(controlB.x)} ${round(controlB.y)}`,
-    `${round(end.x)} ${round(end.y)}`,
-  ].join(" ");
-}
-
-function createLoopGeometry(
-  source: { x: number; y: number },
-  radius: number,
-  scale: number,
-  routing:
-    | {
-        loopDirectionDeg: number;
-        loopSweepDeg: number;
-        loopStepSizePx?: number;
-      }
-    | undefined,
-) {
-  const direction = (((routing?.loopDirectionDeg ?? -45) - 90) * Math.PI) / 180;
-  const sweep = ((routing?.loopSweepDeg ?? 70) * Math.PI) / 180;
-  const stepSize = normalizeLoopStepSize(routing?.loopStepSizePx);
-  // Keep gallery icons readable while larger loops fit their reserved bounds.
-  const loopRadius = Math.max(
-    radius * 1.5,
-    Math.min(radius * 3 * (stepSize / 40), 1.4 * stepSize * scale),
-  );
-  const startAngle = direction - sweep / 2;
-  const endAngle = direction + sweep / 2;
-  const start = {
-    x: source.x + Math.cos(startAngle) * radius,
-    y: source.y + Math.sin(startAngle) * radius,
-  };
-  const end = {
-    x: source.x + Math.cos(endAngle) * radius,
-    y: source.y + Math.sin(endAngle) * radius,
-  };
-  const controlA = {
-    x: source.x + Math.cos(startAngle) * loopRadius,
-    y: source.y + Math.sin(startAngle) * loopRadius,
-  };
-  const controlB = {
-    x: source.x + Math.cos(endAngle) * loopRadius,
-    y: source.y + Math.sin(endAngle) * loopRadius,
-  };
-
-  return { start, end, controlA, controlB };
-}
-
-function round(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-function getEditorPaintBounds(
-  model: GraphModel,
-  routes: ReturnType<typeof computeEdgeRouting>,
-  bounds: ReturnType<typeof getModelBounds>,
-  radiusScale: number,
-) {
-  let minX = bounds.minX;
-  let maxX = bounds.minX + bounds.width;
-  let minY = bounds.minY;
-  let maxY = bounds.minY + bounds.height;
-  if (model.settings.directed) {
-    const nodes = new Map(model.nodes.map((node) => [node.id, node]));
-    const radius = (NODE_SIZE_PX / 2) * radiusScale;
-    for (const edge of model.edges) {
-      const source = nodes.get(edge.source);
-      const target = nodes.get(edge.target);
-      if (!source || !target) continue;
-      const routing = routes.get(edge.id);
-      let tip, control;
-      if (source.x === target.x && source.y === target.y) {
-        const loop = createLoopGeometry(source, radius, 1, routing);
-        tip = loop.end;
-        control = loop.controlB;
-      } else {
-        const segment = clippedPreviewSegments(
-          source,
-          target,
-          {
-            controlPointDistancesPx: routing?.controlPointDistancesPx ?? [
-              routing?.bowPx ?? 0,
-            ],
-            controlPointWeights: routing?.controlPointWeights ?? [0.5],
-          },
-          previewNodeWidth(model, target),
-          radius,
-        ).at(-1)!;
-        tip = segment.end;
-        control = segment.control;
-      }
-      for (const point of previewArrowVertices(
-        tip,
-        control,
-        EDGE_WIDTH * model.settings.arrowScale,
-      )) {
-        minX = Math.min(minX, point.x);
-        maxX = Math.max(maxX, point.x);
-        minY = Math.min(minY, point.y);
-        maxY = Math.max(maxY, point.y);
-      }
-    }
-  }
-  const strokeMargin = Math.max(NODE_BORDER_WIDTH, EDGE_WIDTH) / 2;
-  return {
-    minX: minX - strokeMargin,
-    minY: minY - strokeMargin,
-    width: maxX - minX + strokeMargin * 2,
-    height: maxY - minY + strokeMargin * 2,
-  };
-}
-
-export function getModelBounds(
-  model: GraphModel,
-  routes: ReturnType<typeof computeEdgeRouting>,
-  editorLike: boolean,
-  radiusScale = 1,
-) {
-  if (model.nodes.length === 0) {
-    return { minX: -1, minY: -1, width: 2, height: 2 };
-  }
-
-  // The paste preview includes labels, so fit the whole pill and scale its
-  // text with it. Fitting only node centres clips long labels at the frame.
-  const xs = model.nodes.flatMap((node) =>
-    editorLike
-      ? [
-          node.x - previewNodeWidth(model, node) / 2,
-          node.x + previewNodeWidth(model, node) / 2,
-        ]
-      : [node.x],
-  );
-  const ys = model.nodes.flatMap((node) =>
-    editorLike
-      ? [
-          node.y - (NODE_SIZE_PX / 2) * radiusScale,
-          node.y + (NODE_SIZE_PX / 2) * radiusScale,
-        ]
-      : [node.y],
-  );
-  const radius = (NODE_SIZE_PX / 2) * (editorLike ? radiusScale : 1);
-  const nodes = new Map(model.nodes.map((node) => [node.id, node]));
-  for (const edge of model.edges) {
-    const node = nodes.get(edge.source);
-    const target = nodes.get(edge.target);
-    const route = routes.get(edge.id);
-    if (!node || !target) continue;
-    if (node.x === target.x && node.y === target.y) {
-      const loop = createLoopGeometry(node, radius, 1, route);
-      includeCurve([loop.start, loop.controlA, loop.controlB, loop.end]);
-      if (!editorLike) {
-        // Gallery nodes stay a fixed screen size. Keep the existing roomy loop
-        // reservation; their radius is independent of the graph fit scale.
-        xs.push(
-          node.x - nodeGeometryWidth(node) / 2,
-          node.x + nodeGeometryWidth(node) / 2,
-          loop.controlA.x,
-          loop.controlB.x,
-        );
-        ys.push(
-          node.y - NODE_SIZE_PX / 2,
-          node.y + NODE_SIZE_PX / 2,
-          loop.controlA.y,
-          loop.controlB.y,
-        );
-      }
-      continue;
-    }
-    const distances = route?.controlPointDistancesPx ?? [route?.bowPx ?? 0];
-    const segments = edgeCurveSegments(node, target, {
-      controlPointDistancesPx: distances,
-      controlPointWeights: route?.controlPointWeights ?? [0.5],
-    });
-    for (const { start, control, end: segmentEnd } of segments) {
-      includeCurve([start, control, segmentEnd]);
-    }
-  }
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-
-  return {
-    minX,
-    minY,
-    width: Math.max(1, maxX - minX),
-    height: Math.max(1, maxY - minY),
-  };
-
-  function includeCurve(points: PreviewCurvePoints) {
-    const curveBounds = previewCurveBounds(points);
-    xs.push(curveBounds.minX, curveBounds.maxX);
-    ys.push(curveBounds.minY, curveBounds.maxY);
-  }
 }

@@ -13,6 +13,7 @@ import type {
 } from "./worker-protocol";
 import { restoreRoutingDelta } from "./routing-result";
 import type { RoutingDelta } from "./routing-result";
+import { isComputeResult } from "./worker-result";
 
 type Pending = {
   complete: (result: ComputeValue | null) => void;
@@ -131,7 +132,10 @@ function getWorker() {
           }
           let result: ComputeValue;
           if ("routingDelta" in response) {
-            if (!request.restoreRouting)
+            if (
+              !request.restoreRouting ||
+              !(response.routingDelta instanceof Map)
+            )
               throw new Error("Unexpected routing delta");
             result = request.restoreRouting(response.routingDelta);
           } else {
@@ -139,6 +143,8 @@ function getWorker() {
               throw new Error("Missing Worker result");
             result = response.result;
           }
+          if (!isComputeResult(request.kind, result))
+            throw new Error("Invalid Worker result");
           if (
             !response.kernels ||
             typeof response.kernels !== "object" ||

@@ -17,6 +17,7 @@ import {
 } from "../../features/graph-editor/io/import-graph";
 import {
   MAX_IMPORT_EDGES,
+  MAX_IMPORT_ADJACENCY_ENTRIES,
   MAX_IMPORT_INPUT_CHARS,
   MAX_IMPORT_NODES,
   readLines,
@@ -107,15 +108,15 @@ for (const format of ["auto", "adjacency-list"] as const) {
         JSON.stringify([
           {
             code: "too-large",
-            kind: "edges",
+            kind: "adjacency-entries",
             count: rowCount * 3,
-            limit: MAX_IMPORT_EDGES,
+            limit: MAX_IMPORT_ADJACENCY_ENTRIES,
           },
         ]) &&
       (format !== "auto" ||
         (repeatedTargets.analysis.candidates[0]?.nodeCount === 4 &&
-          repeatedTargets.analysis.candidates[0]?.edgeCount === rowCount * 3)),
-    "repeated adjacency rows should preserve exact counts and limit diagnostics",
+          repeatedTargets.analysis.candidates[0]?.edgeCount === undefined)),
+    "repeated adjacency rows should retain exact entry-limit diagnostics without materializing an oversized graph",
   );
 }
 
@@ -1068,6 +1069,126 @@ expect(
   nonNumericAdjacencyWeight.model.edges[0]?.weight === "x" &&
     nonNumericAdjacencyWeight.warnings.length === 0,
   "weighted adjacency-list import should preserve text weights",
+);
+
+for (const weight of ["tag:1", "a->b", "first:a->last", "a/b", "状態"]) {
+  for (const directed of [false, true]) {
+    const model: GraphModel = {
+      ...plainUndirectedModel,
+      edges: [{ ...plainUndirectedModel.edges[0]!, weight }],
+      settings: {
+        ...plainUndirectedModel.settings,
+        directed,
+        weighted: true,
+        weightKind: "string",
+      },
+    };
+    const text = exportGraph(model, "adjacency-list");
+    for (const format of ["auto", "adjacency-list"] as const) {
+      const imported = evaluateGraphInput(text, {
+        format,
+        directed,
+        weighted: true,
+        weightKind: "string",
+      });
+      expect(
+        imported.result.status === "success" &&
+          imported.result.model.edges.length === 1 &&
+          imported.result.model.edges[0]?.weight === weight &&
+          imported.analysis.candidates[0]?.edgeCount === 1,
+        `${format} adjacency lists preserve ${weight} as weight data for directed=${directed}`,
+      );
+    }
+  }
+}
+for (const input of ["a: b(x:y): c", "a -> b(x->y)->c", "a: b(unclosed:c"]) {
+  expect(
+    evaluateGraphInput(input, { format: "adjacency-list" }).result.status ===
+      "failure",
+    "separators outside a complete target weight still reject the entire row",
+  );
+}
+
+const limitAdjacencyNodes = Array.from({ length: 101 }, (_, order) => ({
+  id: `n${order}`,
+  label: String(order),
+  order,
+  x: order,
+  y: 0,
+}));
+const limitAdjacencyEdges: GraphModel["edges"] = [];
+for (
+  let source = 0;
+  source < 101 && limitAdjacencyEdges.length <= MAX_IMPORT_EDGES;
+  source += 1
+)
+  for (
+    let target = source + 1;
+    target < 101 && limitAdjacencyEdges.length <= MAX_IMPORT_EDGES;
+    target += 1
+  )
+    limitAdjacencyEdges.push({
+      id: `e${limitAdjacencyEdges.length}`,
+      source: `n${source}`,
+      target: `n${target}`,
+    });
+for (const edgeCount of [2501, MAX_IMPORT_EDGES]) {
+  const model: GraphModel = {
+    ...createEmptyGraphModel(),
+    nodes: limitAdjacencyNodes,
+    edges: limitAdjacencyEdges.slice(0, edgeCount),
+  };
+  const text = exportGraph(model, "adjacency-list");
+  for (const format of ["auto", "adjacency-list"] as const) {
+    const imported = evaluateGraphInput(text, { format });
+    expect(
+      imported.result.status === "success" &&
+        imported.result.model.edges.length === edgeCount &&
+        imported.analysis.candidates[0]?.edgeCount === edgeCount,
+      `${edgeCount} simple undirected edges survive a symmetric adjacency-list round trip with ${format} detection`,
+    );
+  }
+}
+const oversizedDirectedAdjacency = exportGraph(
+  {
+    ...createEmptyGraphModel({ directed: true }),
+    nodes: limitAdjacencyNodes,
+    edges: limitAdjacencyEdges,
+  },
+  "adjacency-list",
+);
+const tooManyAdjacencyEdges = evaluateGraphInput(oversizedDirectedAdjacency, {
+  format: "adjacency-list",
+  directed: true,
+});
+expect(
+  tooManyAdjacencyEdges.result.status === "failure" &&
+    JSON.stringify(tooManyAdjacencyEdges.result.warnings) ===
+      JSON.stringify([
+        {
+          code: "too-large",
+          kind: "edges",
+          count: MAX_IMPORT_EDGES + 1,
+          limit: MAX_IMPORT_EDGES,
+        },
+      ]),
+  "a larger entry budget cannot admit more than 5000 actual directed edges",
+);
+const entryWarning = evaluateGraphInput(
+  "a: b\n".repeat(MAX_IMPORT_ADJACENCY_ENTRIES + 1),
+  {
+    format: "adjacency-list",
+  },
+).result.warnings[0]!;
+expect(
+  entryWarning.code === "too-large" &&
+    entryWarning.kind === "adjacency-entries" &&
+    formatImportWarning(entryWarning, "en").includes(
+      "adjacency list entries",
+    ) &&
+    formatImportWarning(entryWarning, "ja").includes("隣接リスト要素") &&
+    formatImportWarning(entryWarning, "zh-Hans").includes("邻接表项"),
+  "repeated entries remain bounded and have an accurate warning in every locale",
 );
 
 for (const [format, input] of [

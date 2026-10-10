@@ -103,7 +103,7 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
               selectedEdgeIds={selectedEdges}
               rangeSelectionActive={rangeSelectionActive}
               weighted={false}
-              zoom={1}
+              getZoom={() => 1}
               onContextMenu={observe}
               onBendPreview={() => {
                 observe();

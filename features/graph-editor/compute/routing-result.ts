@@ -24,7 +24,7 @@ export function restoreRoutingDelta(
 ) {
   const result = new Map<string, EdgeRoutingMeta>();
   for (const [id, meta] of delta) {
-    const value = meta ?? previous.get(id);
+    const value = meta === null ? previous.get(id) : meta;
     if (!value) throw new Error("Routing response has no matching baseline");
     result.set(id, value);
   }

@@ -75,7 +75,7 @@ function overlay(nodeCount: number, edgeCount: number) {
         selectedEdgeIds={emptySelection}
         rangeSelectionActive={false}
         weighted
-        zoom={1}
+        getZoom={() => 1}
         onContextMenu={noOperation}
         onBendPreview={() => null}
         onBendCommit={noOperation}

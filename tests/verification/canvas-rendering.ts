@@ -1,6 +1,6 @@
 import { createCalculationCanvas } from "../fixtures/calculation-canvas";
 import cytoscape from "cytoscape";
-import type { Core, EventObject } from "cytoscape";
+import type { CollectionReturnValue, Core, EventObject } from "cytoscape";
 
 import { refreshCytoscapeGeometry } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-geometry-refresh";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
@@ -34,11 +34,143 @@ verifyRepeatedHitboxGeometry();
 verifyEqualGeometryAfterPan();
 verifyCachedRouteBounds();
 verifyAffectedGeometry();
+verifyParallelGeometryExpansion();
 verifyLabelDimensions();
 verifySizedLoopGeometry();
 verifyVisibleDeadline();
 verifyRenderRequestCancellation();
 finish();
+
+function verifyParallelGeometryExpansion() {
+  let graph: GraphModel = {
+    ...fixture(),
+    settings: {
+      ...fixture().settings,
+      allowMultiEdges: true,
+      allowSelfLoops: true,
+    },
+    edges: [
+      ...Array.from({ length: 200 }, (_, index) => ({
+        id: `parallel${index}`,
+        source: index % 2 ? "a" : "b",
+        target: index % 2 ? "b" : "a",
+        label: String(index),
+      })),
+      { id: "loop1", source: "a", target: "a", label: "first loop" },
+      { id: "loop2", source: "a", target: "a", label: "second loop" },
+      { id: "de", source: "d", target: "e", label: "remote" },
+    ],
+  };
+  const current = createCalculationCanvas(graph).cy;
+  const reference = createCalculationCanvas(graph).cy;
+  const prototype = Object.getPrototypeOf(current.collection()) as {
+    parallelEdges: CollectionReturnValue["parallelEdges"];
+  };
+  const original = prototype.parallelEdges;
+  let expanded: number[] = [];
+  const refresh = (changed: CollectionReturnValue) => {
+    prototype.parallelEdges = function (this: CollectionReturnValue) {
+      expanded.push(this.length);
+      return original.call(this);
+    };
+    try {
+      expanded = [];
+      return refreshCytoscapeGeometry(changed);
+    } finally {
+      prototype.parallelEdges = original;
+    }
+  };
+  const refreshReference = (changed: CollectionReturnValue) => {
+    const affected = changed
+      .cy()
+      .collection(changed)
+      .filter((element) => !element.removed());
+    affected.merge(affected.nodes().connectedEdges());
+    affected.merge(affected.edges().parallelEdges());
+    const geometry = affected as unknown as {
+      updateStyle(): void;
+      boundingBox(options: { useCache: false }): void;
+    };
+    geometry.updateStyle();
+    geometry.boundingBox({ useCache: false });
+  };
+  const compare = (message: string) => {
+    expect(
+      JSON.stringify(readNodeHitboxes(current, graph)) ===
+        JSON.stringify(readNodeHitboxes(reference, graph)) &&
+        JSON.stringify(readEdgeLabelHitboxes(current, graph)) ===
+          JSON.stringify(readEdgeLabelHitboxes(reference, graph)),
+      `${message}: representative expansion retains exact reference shapes and order`,
+    );
+  };
+  try {
+    for (let pass = 0; pass < 4; pass++) {
+      for (const cy of [current, reference])
+        cy.getElementById("a").position({ x: pass * 7, y: pass * -11 });
+      expect(
+        refresh(current.getElementById("a")) === 203 && expanded[0] === 2,
+        "moving a node expands one reversed-edge group and one loop group, regardless of sibling count",
+      );
+      refreshReference(reference.getElementById("a"));
+      compare(`move ${pass}`);
+    }
+    for (const cy of [current, reference])
+      cy.getElementById("parallel0").data({
+        controlPointDistances: [96],
+        bow: 96,
+      });
+    expect(
+      refresh(current.getElementById("parallel0")) === 200 && expanded[0] === 1,
+      "a single reversed-edge change still refreshes every sibling exactly once",
+    );
+    refreshReference(reference.getElementById("parallel0"));
+    compare("reversed route change");
+
+    graph = {
+      ...graph,
+      edges: graph.edges.filter((edge) => edge.id !== "loop1"),
+    };
+    refresh(syncCytoscapeElements(current, definitions(graph)).changedElements);
+    refreshReference(
+      syncCytoscapeElements(reference, definitions(graph)).changedElements,
+    );
+    compare("self-loop removal");
+    graph = {
+      ...graph,
+      edges: [
+        ...graph.edges,
+        { id: "loop3", source: "a", target: "a", label: "new loop" },
+      ],
+    };
+    expect(
+      refresh(
+        syncCytoscapeElements(current, definitions(graph)).changedElements,
+      ) === 2 && expanded[0] === 1,
+      "adding a self-loop expands only its current loop group",
+    );
+    refreshReference(
+      syncCytoscapeElements(reference, definitions(graph)).changedElements,
+    );
+    compare("self-loop addition");
+    graph = {
+      ...graph,
+      edges: graph.edges.filter((edge) => edge.id !== "parallel0"),
+    };
+    refresh(syncCytoscapeElements(current, definitions(graph)).changedElements);
+    refreshReference(
+      syncCytoscapeElements(reference, definitions(graph)).changedElements,
+    );
+    compare("parallel removal");
+    expect(
+      refresh(current.collection()) === 0,
+      "empty geometry changes do not expand any group",
+    );
+  } finally {
+    prototype.parallelEdges = original;
+    current.destroy();
+    reference.destroy();
+  }
+}
 
 function fixture(): GraphModel {
   return {

@@ -20,7 +20,13 @@ const formatters: Record<Locale, (warning: ImportWarning) => string> = {
         return "入力が空です。";
       case "too-large":
         return `入力が大きすぎます: ${count(w.count)} ${
-          w.kind === "input" ? "文字" : w.kind === "nodes" ? "頂点" : "辺"
+          w.kind === "input"
+            ? "文字"
+            : w.kind === "nodes"
+              ? "頂点"
+              : w.kind === "adjacency-entries"
+                ? "隣接リスト要素"
+                : "辺"
         }、上限は ${count(w.limit)} です。`;
       case "invalid-format":
         return `${messagesByLocale.ja.starter.formats[w.formatKind]}として読み取れません。`;
@@ -60,7 +66,13 @@ const formatters: Record<Locale, (warning: ImportWarning) => string> = {
         return "输入为空。";
       case "too-large":
         return `输入过大: ${count(w.count)} ${
-          w.kind === "input" ? "字符" : w.kind === "nodes" ? "顶点" : "边"
+          w.kind === "input"
+            ? "字符"
+            : w.kind === "nodes"
+              ? "顶点"
+              : w.kind === "adjacency-entries"
+                ? "邻接表项"
+                : "边"
         }，上限是 ${count(w.limit)}。`;
       case "invalid-format":
         return `无法按${messagesByLocale["zh-Hans"].starter.formats[w.formatKind]}读取。`;

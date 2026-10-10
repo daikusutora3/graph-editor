@@ -7,6 +7,7 @@ import type {
   GraphModel,
   GraphIntent,
   GraphTransaction,
+  GraphPatch,
 } from "../../core/graph/model";
 import { edgeDraftAtom, selectionAtom } from "./editor-atoms";
 import {
@@ -28,6 +29,10 @@ export const canUndoAtom = atom((get) => get(historyAtom).length > 0);
 export const canRedoAtom = atom((get) => get(futureAtom).length > 0);
 
 const MAX_HISTORY_ENTRIES = 150;
+// A count alone lets repeated near-limit imports retain hundreds of megabytes.
+// Estimate patch text, objects and reference arrays without serializing again.
+const MAX_HISTORY_RETAINED_BYTES = 32 * 1024 * 1024;
+const historyCostCache = new WeakMap<GraphTransaction, number>();
 
 export const executeCommandAtom = atom(
   null,
@@ -141,8 +146,49 @@ function appendHistory(
   transaction: GraphTransaction,
 ) {
   const nextHistory = [...history, transaction];
+  let retainedBytes = 0;
+  let start = nextHistory.length;
+  while (start > 0 && nextHistory.length - start < MAX_HISTORY_ENTRIES) {
+    const cost = estimateTransactionBytes(nextHistory[start - 1]!);
+    // Keep the newest operation undoable even if it alone exceeds the budget.
+    if (
+      start < nextHistory.length &&
+      retainedBytes + cost > MAX_HISTORY_RETAINED_BYTES
+    )
+      break;
+    retainedBytes += cost;
+    start -= 1;
+  }
+  return start === 0 ? nextHistory : nextHistory.slice(start);
+}
 
-  return nextHistory.length > MAX_HISTORY_ENTRIES
-    ? nextHistory.slice(-MAX_HISTORY_ENTRIES)
-    : nextHistory;
+function estimateTransactionBytes(transaction: GraphTransaction) {
+  const cached = historyCostCache.get(transaction);
+  if (cached !== undefined) return cached;
+  const cost =
+    256 +
+    transaction.label.length * 2 +
+    estimatePatchBytes(transaction.forward) +
+    estimatePatchBytes(transaction.backward);
+  historyCostCache.set(transaction, cost);
+  return cost;
+}
+
+function estimatePatchBytes(patch: GraphPatch) {
+  let bytes = 256;
+  for (const section of [patch.nodes, patch.edges]) {
+    if (!section) continue;
+    for (const ids of [section.remove, section.order])
+      if (ids)
+        bytes += 64 + ids.reduce((sum, id) => sum + 8 + id.length * 2, 0);
+    for (const element of section.put ?? []) {
+      bytes += 256;
+      for (const value of Object.values(element)) {
+        if (typeof value === "string") bytes += value.length * 2;
+        else if (value && typeof value === "object") bytes += 128;
+      }
+    }
+  }
+  if (patch.settings) bytes += 256;
+  return bytes;
 }
