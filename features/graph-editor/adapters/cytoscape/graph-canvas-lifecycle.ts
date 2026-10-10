@@ -27,6 +27,7 @@ import { withSuppressedSelectionSync } from "./selection-sync-guard";
 import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
 import { refreshCytoscapeGeometry } from "./graph-canvas-geometry-refresh";
 import { afterCytoscapeRender } from "./graph-canvas-render-request";
+import { resizeCytoscapeCanvas } from "./graph-canvas-resize";
 import { startVisibleTimeout } from "../browser/visible-timeout";
 
 import type { CanvasFitRequest } from "../../canvas/GraphCanvasProvider";
@@ -166,7 +167,7 @@ export function useGraphCanvasLifecycle({
         return;
       }
 
-      cy.resize();
+      resizeCytoscapeCanvas(cy);
       updateRenderedHitboxesRef.current(cy);
       setZoomPercentRef.current(readZoomPercent(cy));
     });
@@ -319,7 +320,7 @@ export function useGraphCanvasLifecycle({
       return;
     }
 
-    cy.resize();
+    resizeCytoscapeCanvas(cy);
     flushRenderedHitboxesRef.current(cy);
     setZoomPercentRef.current(readZoomPercent(cy));
   }, [cyRef, chrome]);
