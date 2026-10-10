@@ -83,9 +83,13 @@ a document and cannot be imported back into the editor; use JSON for backups.
 
 ## Quick Start
 
+Select Node **24.15.0** and install Bun **1.4.2** using the
+[development setup](docs/development.md#local-setup). The launcher also supports
+a checkout-local Bun at `.local-bin/bun`.
+
 ```bash
-bun install
-bun run dev
+node scripts/toolchain.mjs install --frozen-lockfile
+node scripts/toolchain.mjs run dev
 ```
 
 Open the local URL printed by Next.js, usually `http://localhost:3000`.
@@ -104,8 +108,8 @@ Open the local URL printed by Next.js, usually `http://localhost:3000`.
 
 See the [documentation index](docs/README.md) for the
 [development guide](docs/development.md), validation commands, browser audits,
-and historical design records. Run `bun run check:all` before preparing a public
-build.
+and historical design records. Run `node scripts/toolchain.mjs run check:all`
+before preparing a public build.
 
 ## License
 

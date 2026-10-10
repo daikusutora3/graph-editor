@@ -49,9 +49,13 @@ local-first なブラウザアプリです。問題文の辺リストを貼り�
 
 ## クイックスタート
 
+Node **24.15.0** と Bun **1.4.2** を
+[開発環境の設定手順](docs/development.md#local-setup)に従って用意してください。
+ランチャーは、このチェックアウト専用の `.local-bin/bun` にも対応しています。
+
 ```bash
-bun install
-bun run dev
+node scripts/toolchain.mjs install --frozen-lockfile
+node scripts/toolchain.mjs run dev
 ```
 
 Next.js が表示するローカルURLを開きます。通常は `http://localhost:3000` です。
@@ -70,7 +74,7 @@ Next.js が表示するローカルURLを開きます。通常は `http://localh
 
 [ドキュメント一覧](docs/README.md)から、[開発ガイド](docs/development.md)、
 変更内容に応じた検証手順、ブラウザ監査、過去の設計記録を参照できます。
-公開ビルドの準備には `bun run check:all` を実行してください。
+公開ビルドの準備には `node scripts/toolchain.mjs run check:all` を実行してください。
 
 ## ライセンス
 

@@ -2,4 +2,4 @@
 set -eu
 
 repo_root=$(git rev-parse --show-toplevel)
-exec bun run "$repo_root/scripts/privacy-check.ts" --commit-message "$1"
+exec node "$repo_root/scripts/toolchain.mjs" run "$repo_root/scripts/privacy-check.ts" --commit-message "$1"

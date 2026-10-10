@@ -1,7 +1,7 @@
 "use client";
 
 import type { MutableRefObject } from "react";
-import { useCallback } from "react";
+import { useMemo } from "react";
 import type { Core } from "cytoscape";
 
 import type { GraphCanvasExportOptions } from "../../core/view/types";
@@ -19,81 +19,128 @@ type GraphImageExportOptions = {
   cyRef: MutableRefObject<Core | null>;
   selectionRef: MutableRefObject<SelectionState>;
   suppressSelectionSyncRef: MutableRefObject<boolean>;
+  edgeSourceNodeIdRef?: MutableRefObject<string | null>;
 };
 
 export function useGraphImageExport({
   cyRef,
   selectionRef,
   suppressSelectionSyncRef,
+  edgeSourceNodeIdRef,
 }: GraphImageExportOptions) {
-  return useCallback(
-    async (detail: GraphCanvasExportOptions) => {
-      const cy = cyRef.current;
+  return useMemo(
+    () =>
+      createGraphImageExporter({
+        cyRef,
+        selectionRef,
+        suppressSelectionSyncRef,
+        edgeSourceNodeIdRef,
+      }),
+    [cyRef, selectionRef, suppressSelectionSyncRef, edgeSourceNodeIdRef],
+  );
+}
 
-      if (!cy) {
-        throw new Error("Graph canvas is not ready");
+/** One owner for the renderer's temporary selection and draft-source state. */
+export function createGraphImageExporter({
+  cyRef,
+  selectionRef,
+  suppressSelectionSyncRef,
+  edgeSourceNodeIdRef,
+}: GraphImageExportOptions) {
+  let tail = Promise.resolve();
+  return (detail: GraphCanvasExportOptions): Promise<Blob> => {
+    // A queued request belongs to the canvas on which it was requested. Never
+    // silently export a replacement canvas after unmount/retry.
+    const cy = cyRef.current;
+    const result = tail.then(() => render(cy, detail));
+    tail = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
+  };
+
+  async function render(cy: Core | null, detail: GraphCanvasExportOptions) {
+    if (!cy || cyRef.current !== cy || cy.destroyed()) {
+      throw new Error("Graph canvas is not ready");
+    }
+
+    let shouldRestoreSelectionState = false;
+    let edgeSourceIds: string[] = [];
+    const previouslySuppressed = suppressSelectionSyncRef.current;
+
+    try {
+      if (cy.elements().length === 0) {
+        throw new Error(IMAGE_EXPORT_ERROR.emptyGraph);
       }
 
-      let shouldRestoreSelectionState = false;
-      let selectedIds: string[] = [];
-      let edgeSourceIds: string[] = [];
+      edgeSourceIds = cy.nodes(".edge-source").map((node) => node.id());
 
-      try {
-        if (cy.elements().length === 0) {
-          throw new Error(IMAGE_EXPORT_ERROR.emptyGraph);
-        }
+      suppressSelectionSyncRef.current = true;
 
-        selectedIds = cy.elements(":selected").map((element) => element.id());
-        edgeSourceIds = cy.nodes(".edge-source").map((node) => node.id());
+      if (!detail.includeSelection) {
+        shouldRestoreSelectionState = true;
+        cy.elements(":selected").unselect();
+        cy.nodes(".edge-source").removeClass("edge-source");
+      }
 
-        suppressSelectionSyncRef.current = true;
-
-        if (!detail.includeSelection) {
-          shouldRestoreSelectionState = true;
+      await document.fonts?.ready;
+      await nextAnimationFrame();
+      if (cyRef.current !== cy || cy.destroyed()) {
+        throw new Error("Graph canvas is not ready");
+      }
+      // Editing or a mode change may run while fonts/the frame are pending.
+      // Apply the requested selection policy immediately before rendering.
+      withCytoscapeBatch(cy, () => {
+        if (detail.includeSelection)
+          syncCytoscapeSelection(cy, selectionRef.current);
+        else {
           cy.elements(":selected").unselect();
           cy.nodes(".edge-source").removeClass("edge-source");
         }
+      });
 
-        await document.fonts?.ready;
-        await nextAnimationFrame();
-
-        return await cy.png({
-          output: "blob-promise",
-          full: detail.scope !== "viewport",
-          scale:
-            detail.scope === "natural" || detail.scope === "natural-fixed"
-              ? cy.zoom()
-              : undefined,
-          maxWidth: detail.maxWidth,
-          maxHeight: detail.maxHeight,
-          bg: readExportBackground(detail.background),
-        });
-      } catch (error) {
-        throw new Error(exportImageErrorCode(error), { cause: error });
-      } finally {
+      return await cy.png({
+        output: "blob-promise",
+        full: detail.scope !== "viewport",
+        scale:
+          detail.scope === "natural" || detail.scope === "natural-fixed"
+            ? cy.zoom()
+            : undefined,
+        maxWidth: detail.maxWidth,
+        maxHeight: detail.maxHeight,
+        bg: readExportBackground(detail.background),
+      });
+    } catch (error) {
+      throw new Error(exportImageErrorCode(error), { cause: error });
+    } finally {
+      try {
         if (
           shouldRestoreSelectionState &&
           cyRef.current === cy &&
           !cy.destroyed()
         ) {
           withCytoscapeBatch(cy, () => {
-            selectedIds.forEach((id) => cy.getElementById(id).select());
-            edgeSourceIds.forEach((id) =>
+            const currentSourceIds = edgeSourceNodeIdRef
+              ? edgeSourceNodeIdRef.current
+                ? [edgeSourceNodeIdRef.current]
+                : []
+              : edgeSourceIds;
+            cy.nodes(".edge-source").removeClass("edge-source");
+            currentSourceIds.forEach((id) =>
               cy.getElementById(id).addClass("edge-source"),
             );
           });
         }
 
         if (cyRef.current === cy && !cy.destroyed()) {
-          suppressSelectionSyncRef.current = false;
           withCytoscapeBatch(cy, () => {
             syncCytoscapeSelection(cy, selectionRef.current);
           });
-        } else {
-          suppressSelectionSyncRef.current = false;
         }
+      } finally {
+        suppressSelectionSyncRef.current = previouslySuppressed;
       }
-    },
-    [cyRef, selectionRef, suppressSelectionSyncRef],
-  );
+    }
+  }
 }

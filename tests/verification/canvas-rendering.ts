@@ -1,5 +1,6 @@
 import { createCalculationCanvas } from "../fixtures/calculation-canvas";
 import cytoscape from "cytoscape";
+import type { Core, EventObject } from "cytoscape";
 
 import { refreshCytoscapeGeometry } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-geometry-refresh";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
@@ -28,6 +29,8 @@ import { createRenderedHitboxReader } from "../../features/graph-editor/adapters
 const { expect, finish } = createVerification("Canvas rendering");
 
 verifyIncrementalHitboxes();
+verifyHitboxInvalidationDeduplication();
+verifyRepeatedHitboxGeometry();
 verifyEqualGeometryAfterPan();
 verifyCachedRouteBounds();
 verifyAffectedGeometry();
@@ -205,6 +208,171 @@ function verifyIncrementalHitboxes() {
         beforeDormant.edges === afterDormant.edges,
       "selection mode preserves unchanged dormant overlay arrays",
     );
+  } finally {
+    reader.dispose();
+    cy.destroy();
+  }
+}
+
+function verifyHitboxInvalidationDeduplication() {
+  let invalidate: ((event: EventObject) => void) | null = null;
+  let fullReads = 0;
+  let parallelExpansions = 0;
+  let connectedExpansions = 0;
+  let visitedEdges = 0;
+  const core = {
+    on: (_events: string, listener: (event: EventObject) => void) => {
+      invalidate = listener;
+    },
+    off: () => {
+      invalidate = null;
+    },
+    pan: () => ({ x: 0, y: 0 }),
+    zoom: () => 1,
+    nodes: () => {
+      fullReads++;
+      return [];
+    },
+    edges: () => [],
+  } as unknown as Core;
+  const edges: {
+    id(): string;
+    isNode(): boolean;
+    parallelEdges(): {
+      forEach(visit: (edge: { id(): string }) => void): void;
+    };
+  }[] = Array.from({ length: 1000 }, (_, index) => ({
+    id: () => `e${index}`,
+    isNode: () => false,
+    parallelEdges: () => {
+      parallelExpansions++;
+      return {
+        forEach: (visit: (edge: { id(): string }) => void) => {
+          for (const edge of edges) {
+            visitedEdges++;
+            visit(edge);
+          }
+        },
+      };
+    },
+  }));
+  const node = {
+    id: () => "a",
+    isNode: () => true,
+    connectedEdges: () => {
+      connectedExpansions++;
+      return edges;
+    },
+  };
+  const emit = (type: string, target: unknown) =>
+    invalidate!({ type, target } as EventObject);
+  const graph = createEmptyGraphModel();
+  const reader = createRenderedHitboxReader(core);
+  try {
+    for (const edge of edges) emit("style", edge);
+    expect(
+      parallelExpansions === 0 && visitedEdges === 0,
+      "pending full reads skip every redundant parallel-edge expansion",
+    );
+    reader.read(graph, true);
+    for (const edge of edges) emit("style", edge);
+    expect(
+      parallelExpansions === 1 && visitedEdges === edges.length,
+      "one thousand sibling style events expand their parallel group only once",
+    );
+    emit("style", core);
+    reader.read(graph, true);
+    for (let repeat = 0; repeat < 10; repeat++) emit("position", node);
+    for (const edge of edges) emit("style", edge);
+    expect(
+      connectedExpansions === 1 && parallelExpansions === 1,
+      "repeated node events and subsequent incident-edge events reuse dirty membership",
+    );
+    // Structural/Core events must still promote an already dirty snapshot to a
+    // full read. Otherwise a removed/re-added ID could retain stale ordering.
+    for (const boundary of ["add", "remove", "core"]) {
+      const previousReads = fullReads;
+      emit(
+        boundary === "core" ? "style" : boundary,
+        boundary === "core" ? core : edges[0],
+      );
+      for (const edge of edges) emit("style", edge);
+      reader.read(graph, true);
+      expect(
+        fullReads === previousReads + 1,
+        `${boundary} invalidation takes precedence over existing dirty elements`,
+      );
+      emit("style", edges[0]);
+    }
+  } finally {
+    reader.dispose();
+  }
+  expect(invalidate === null, "disposing a hitbox reader removes its listener");
+}
+
+function verifyRepeatedHitboxGeometry() {
+  const graph = {
+    ...fixture(),
+    edges: [
+      ...fixture().edges,
+      { id: "ba", source: "b", target: "a", label: "reverse" },
+      { id: "loop1", source: "a", target: "a", label: "first loop" },
+      { id: "loop2", source: "a", target: "a", label: "second loop" },
+    ],
+  };
+  const { cy } = createCalculationCanvas(graph);
+  const reader = createRenderedHitboxReader(cy);
+  const check = (message: string) => {
+    const snapshot = reader.read(graph, true);
+    expect(
+      JSON.stringify(snapshot.nodes) ===
+        JSON.stringify(readNodeHitboxes(cy, graph)) &&
+        JSON.stringify(snapshot.edges) ===
+          JSON.stringify(readEdgeLabelHitboxes(cy, graph)),
+      `${message}: deduplicated events preserve full-read geometry and order`,
+    );
+    return snapshot;
+  };
+  try {
+    const before = check("initial reverse edges and self-loops");
+    const node = cy.getElementById("a").unlock();
+    node.position({ x: 20, y: 30 });
+    node.position({ x: 40, y: 60 });
+    node.style({ width: 220, shape: "round-rectangle" });
+    cy.getElementById("ab").data({
+      bow: 32,
+      controlPointDistances: [32],
+    });
+    cy.getElementById("ab").data({
+      bow: 64,
+      controlPointDistances: [64],
+    });
+    cy.getElementById("ba").data({
+      bow: -96,
+      controlPointDistances: [-96],
+    });
+    cy.getElementById("loop1").data({
+      loopDirection: "-45deg",
+      loopStepSize: 90,
+    });
+    cy.getElementById("loop2").data({
+      loopDirection: "45deg",
+      loopStepSize: 130,
+    });
+    refreshCytoscapeGeometry(cy.collection(node));
+    const changed = check("multiple moves, sizes, reverse routes and loops");
+    expect(
+      changed.nodes.find((entry) => entry.id === "a")?.x === 40 &&
+        changed.nodes.find((entry) => entry.id === "a")?.y === 60 &&
+        changed.edges!.find((entry) => entry.id === "de") ===
+          before.edges!.find((entry) => entry.id === "de"),
+      "a dirty element reads its latest geometry while remote entries retain identity",
+    );
+    node.position({ x: 50, y: 70 });
+    const detached = cy.getElementById("loop1").remove();
+    cy.add(detached);
+    refreshCytoscapeGeometry(cy.collection(node));
+    check("dirty node followed by loop removal and re-addition");
   } finally {
     reader.dispose();
     cy.destroy();

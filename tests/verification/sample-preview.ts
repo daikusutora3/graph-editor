@@ -3,7 +3,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
-import type { GraphModel } from "../../features/graph-editor/core/graph/model";
+import type {
+  GraphColor,
+  GraphModel,
+} from "../../features/graph-editor/core/graph/model";
 import { computeEdgeRouting } from "../../features/graph-editor/core/layout/edge-routing";
 import {
   sampleEdgeCurve,
@@ -25,6 +28,7 @@ import {
 
 verifyPreviewPaintMatchesCanvas();
 verifyClippingFixtures();
+verifyPreviewSettings();
 
 const quadratic = previewCurveBounds([
   { x: 0, y: 0 },
@@ -375,6 +379,9 @@ function verifyRenderedFit(
       assert.match(marker, /orient="auto"/);
       const readMarker = (attribute: string) =>
         Number(marker.match(new RegExp(`\\b${attribute}="([^"]+)"`))![1]);
+      const arrowScale = variant === "editor" ? model.settings.arrowScale : 1;
+      near(readMarker("markerWidth"), 5.25 * arrowScale);
+      near(readMarker("markerHeight"), 4.5 * arrowScale);
       const triangle = markup
         .match(/<marker\b[^>]*><path\b[^>]*d="([^"]+)"/)![1]
         .match(/-?\d+(?:\.\d+)?/g)!
@@ -673,24 +680,24 @@ function verifyPreviewPaintMatchesCanvas() {
   const palette = {
     selectionBoxBorder: "#000",
     selectionBoxFill: "#000",
-    node: "#000",
-    nodeBorder: "#000",
-    nodeText: "#000",
-    nodeWhite: "#000",
-    nodeBlack: "#000",
-    nodeRed: "#000",
-    nodeYellow: "#000",
-    nodeBlue: "#000",
-    nodeGreen: "#000",
-    nodePink: "#000",
-    edge: "#000",
-    edgeWhite: "#000",
-    edgeBlack: "#000",
-    edgeRed: "#000",
-    edgeYellow: "#000",
-    edgeBlue: "#000",
-    edgeGreen: "#000",
-    edgePink: "#000",
+    node: "var(--canvas-node)",
+    nodeBorder: "var(--canvas-node-border)",
+    nodeText: "var(--canvas-node-text)",
+    nodeWhite: "var(--canvas-node-white)",
+    nodeBlack: "var(--canvas-node-black)",
+    nodeRed: "var(--canvas-node-red)",
+    nodeYellow: "var(--canvas-node-yellow)",
+    nodeBlue: "var(--canvas-node-blue)",
+    nodeGreen: "var(--canvas-node-green)",
+    nodePink: "var(--canvas-node-pink)",
+    edge: "var(--canvas-edge)",
+    edgeWhite: "var(--canvas-edge-white)",
+    edgeBlack: "var(--canvas-edge-black)",
+    edgeRed: "var(--canvas-edge-red)",
+    edgeYellow: "var(--canvas-edge-yellow)",
+    edgeBlue: "var(--canvas-edge-blue)",
+    edgeGreen: "var(--canvas-edge-green)",
+    edgePink: "var(--canvas-edge-pink)",
     labelBg: "#000",
     active: "#000",
     selectedNode: "#000",
@@ -768,4 +775,210 @@ function verifyPreviewPaintMatchesCanvas() {
     near(read(circle, "stroke-width"), Math.max(1, radius * 0.55));
     near(read(sampleEdge, "stroke-width"), Math.max(0.9, radius * 0.42));
   }
+  for (const color of [
+    undefined,
+    "paper",
+    "white",
+    "black",
+    "red",
+    "yellow",
+    "blue",
+    "green",
+    "pink",
+  ] as const) {
+    const model = createModel(true);
+    if (color) {
+      model.nodes[0].color = color;
+      model.edges[0].color = color;
+    }
+    const markup = renderToStaticMarkup(
+      createElement(SampleGraphPreview, { model, variant: "editor" }),
+    );
+    const nodePaint = {
+      ...nodeStyle,
+      ...stylesheet.find(({ selector }) => selector === `node.color-${color}`)
+        ?.style,
+    };
+    const edgePaint = {
+      ...edgeStyle,
+      ...stylesheet.find(({ selector }) => selector === `edge.color-${color}`)
+        ?.style,
+    };
+    const rect = markup.match(/<rect\b[^>]+/)![0];
+    const text = markup.match(/<text\b[^>]+/)![0];
+    const edge = markup.match(/<path\b[^>]*stroke="[^"]+"[^>]+/)![0];
+    const attribute = (tag: string, name: string) =>
+      tag.match(new RegExp(`\\b${name}="([^"]+)"`))?.[1];
+    assert.equal(
+      attribute(rect, "fill"),
+      nodePaint["background-color"],
+      `${color} node fill matches the canvas`,
+    );
+    assert.equal(
+      attribute(rect, "stroke"),
+      nodePaint["border-color"],
+      `${color} node border matches the canvas`,
+    );
+    assert.equal(
+      attribute(text, "fill"),
+      nodePaint.color,
+      `${color} label contrast matches the canvas`,
+    );
+    assert.equal(
+      attribute(edge, "stroke"),
+      edgePaint["line-color"],
+      `${color} edge paint matches the canvas`,
+    );
+    assert.equal(
+      Number(attribute(edge, "opacity")),
+      edgePaint["line-opacity"],
+      "editor edge opacity matches the canvas",
+    );
+    const markerId = attribute(edge, "marker-end")!.slice(5, -1);
+    const marker = [...markup.matchAll(/<marker\b[^>]*>[\s\S]*?<\/marker>/g)]
+      .map(([tag]) => tag)
+      .find((tag) => attribute(tag, "id") === markerId)!;
+    assert.equal(
+      attribute(marker, "fill"),
+      edgePaint["target-arrow-color"],
+      `${color} arrow uses the corresponding edge color`,
+    );
+  }
+}
+
+function verifyPreviewSettings() {
+  const render = (model: GraphModel, variant: "sample" | "editor" = "editor") =>
+    renderToStaticMarkup(createElement(SampleGraphPreview, { model, variant }));
+  const model = createModel(true, 160, 0, 180);
+  model.nodes[1].label = "long label 日本語";
+  const shown = render(model);
+  const hidden = render({
+    ...model,
+    settings: { ...model.settings, showNodeLabels: false },
+  });
+  assert.equal([...shown.matchAll(/<text\b/g)].length, 2);
+  assert.doesNotMatch(
+    hidden,
+    /<text\b/,
+    "hidden-label editor previews omit labels",
+  );
+  for (const [rect] of hidden.matchAll(/<rect\b[^>]+/g)) {
+    const read = (attribute: string) =>
+      Number(rect.match(new RegExp(`\\b${attribute}="([^"]+)"`))![1]);
+    near(read("width"), read("height"));
+  }
+  const dense = {
+    ...model,
+    nodes: Array.from({ length: 16 }, (_, order) => ({
+      id: `n${order}`,
+      order,
+      label: String(order),
+      x: order * 100,
+      y: 0,
+    })),
+    edges: [],
+  };
+  assert.equal(
+    [...render(dense).matchAll(/<text\b/g)].length,
+    16,
+    "editor previews honor visible labels even on larger graphs",
+  );
+
+  const colored: GraphModel = {
+    ...model,
+    nodes: model.nodes.map((node, index) => ({
+      ...node,
+      color: (index === 0 ? "red" : "black") as GraphColor,
+    })),
+    edges: [
+      { ...model.edges[0], color: "blue" },
+      { id: "reverse", source: "b", target: "a", color: "red" },
+    ],
+    settings: { ...model.settings, showNodeLabels: false, arrowScale: 2 },
+  };
+  const coloredMarkup = render(colored);
+  const references = [
+    ...coloredMarkup.matchAll(/marker-end="url\(#([^)]+)\)"/g),
+  ].map((match) => match[1]);
+  assert.equal(
+    new Set(references).size,
+    2,
+    "independently colored edges use distinct markers",
+  );
+  for (const reference of references)
+    assert(
+      coloredMarkup.includes(`id="${reference}"`),
+      "every colored edge references an emitted marker",
+    );
+  assert.equal(
+    render(colored, "sample"),
+    render(
+      {
+        ...colored,
+        nodes: model.nodes,
+        edges: colored.edges.map(({ color: _color, ...edge }) => edge),
+        settings: model.settings,
+      },
+      "sample",
+    ),
+    "gallery previews retain their intentional simplified palette, labels and arrow size",
+  );
+
+  for (const variant of ["editor", "sample"] as const)
+    for (const arrowScale of [0.6, 1, 2])
+      for (const showNodeLabels of [false, true])
+        for (const focus of [false, true])
+          for (const [width, height] of [
+            [80, 75],
+            [98, 76],
+            [160, 150],
+          ]) {
+            for (const [x, y, bow] of [
+              [0.1, 0, 180],
+              [20, 0, 0.5],
+              [160, 0, 180],
+              [0, 0, 0],
+            ]) {
+              const fixture = createModel(true, x, y, bow);
+              fixture.nodes[1].label = "long label 日本語";
+              fixture.nodes[0].color = "black";
+              fixture.edges[0].color = "red";
+              fixture.settings = {
+                ...fixture.settings,
+                arrowScale,
+                showNodeLabels,
+              };
+              verifyRenderedFit(fixture, variant, focus, width, height);
+            }
+            const loop: GraphModel = {
+              ...createEmptyGraphModel({
+                directed: true,
+                arrowScale,
+                showNodeLabels,
+              }),
+              nodes: [
+                {
+                  id: "a",
+                  label: "long label 日本語",
+                  order: 0,
+                  x: 0,
+                  y: 0,
+                  color: "white",
+                },
+              ],
+              edges: [
+                {
+                  id: "loop",
+                  source: "a",
+                  target: "a",
+                  color: "blue",
+                  routing: {
+                    loopDirectionDeg: 120,
+                    loopSweepDeg: 110,
+                  },
+                },
+              ],
+            };
+            verifyRenderedFit(loop, variant, focus, width, height);
+          }
 }

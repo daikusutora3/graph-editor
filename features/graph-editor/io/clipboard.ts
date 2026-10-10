@@ -37,14 +37,11 @@ export function createGraphClipboardPayload(
   const selectedEdgeIds = new Set(selection.edgeIds);
 
   const nodes = graph.nodes.filter((node) => selectedNodeIds.has(node.id));
-  const edges =
-    nodes.length > 0
-      ? graph.edges.filter(
-          (edge) =>
-            selectedNodeIds.has(edge.source) &&
-            selectedNodeIds.has(edge.target),
-        )
-      : graph.edges.filter((edge) => selectedEdgeIds.has(edge.id));
+  const edges = graph.edges.filter(
+    (edge) =>
+      selectedEdgeIds.has(edge.id) ||
+      (selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)),
+  );
 
   if (nodes.length === 0 && edges.length === 0) {
     return null;
@@ -65,10 +62,7 @@ export function createPasteGraphCommand(
   const offset = Math.max(1, pasteCount) * PASTE_OFFSET_PX;
   const nodeIdMap = new Map<NodeId, NodeId>();
   const createdNodes = createPastedNodes(graph, payload, offset, nodeIdMap);
-  const candidateEdges =
-    createdNodes.length > 0
-      ? createPastedEdgesFromNodes(payload.edges, nodeIdMap)
-      : createPastedEdgesFromExistingNodes(graph, payload.edges);
+  const candidateEdges = createPastedEdges(graph, payload.edges, nodeIdMap);
   const graphWithCreatedNodes = {
     ...graph,
     nodes: [...graph.nodes, ...createdNodes],
@@ -137,37 +131,21 @@ function createPastedNodeLabel(
   return node.label;
 }
 
-function createPastedEdgesFromNodes(
+function createPastedEdges(
+  graph: GraphModel,
   edges: GraphEdge[],
   nodeIdMap: Map<NodeId, NodeId>,
 ) {
-  return edges.flatMap((edge) => {
-    const source = nodeIdMap.get(edge.source);
-    const target = nodeIdMap.get(edge.target);
-
-    if (!source || !target) {
-      return [];
-    }
-
-    return [cloneEdge(edge, source, target)];
-  });
-}
-
-function createPastedEdgesFromExistingNodes(
-  graph: GraphModel,
-  edges: GraphEdge[],
-) {
   const existingNodeIds = new Set(graph.nodes.map((node) => node.id));
+  const resolveEndpoint = (id: NodeId) =>
+    nodeIdMap.get(id) ?? (existingNodeIds.has(id) ? id : undefined);
 
   return edges.flatMap((edge) => {
-    if (
-      !existingNodeIds.has(edge.source) ||
-      !existingNodeIds.has(edge.target)
-    ) {
-      return [];
-    }
-
-    return [cloneEdge(edge, edge.source, edge.target)];
+    // Mixed selections duplicate their selected nodes and retain references to
+    // unselected endpoints, including an independently selected edge.
+    const source = resolveEndpoint(edge.source);
+    const target = resolveEndpoint(edge.target);
+    return source && target ? [cloneEdge(edge, source, target)] : [];
   });
 }
 

@@ -35,8 +35,11 @@ export function createRenderedHitboxReader(cy: Core) {
       full = true;
       return;
     }
+    if (full) return;
     const element = event.target;
-    if (element.isNode()) {
+    const isNode = element.isNode();
+    if ((isNode ? dirtyNodes : dirtyEdges).has(element.id())) return;
+    if (isNode) {
       dirtyNodes.add(element.id());
       element
         .connectedEdges()

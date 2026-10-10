@@ -29,9 +29,12 @@ Graph Editor 是一个 local-first 的浏览器应用，用来把图论想法快
 
 ## 快速开始
 
+请按照[开发环境设置](docs/development.md#local-setup)准备 Node **24.15.0**
+和 Bun **1.4.2**。启动器也支持此项目目录专用的 `.local-bin/bun`。
+
 ```bash
-bun install
-bun run dev
+node scripts/toolchain.mjs install --frozen-lockfile
+node scripts/toolchain.mjs run dev
 ```
 
 打开 Next.js 输出的本地地址，通常是 `http://localhost:3000`。
@@ -50,7 +53,7 @@ bun run dev
 
 请参阅[文档索引](docs/README.md)和[开发指南](docs/development.md)，
 了解代码结构、按改动选择的验证命令、浏览器检查和历史设计记录。
-准备公开构建前请运行 `bun run check:all`。
+准备公开构建前请运行 `node scripts/toolchain.mjs run check:all`。
 
 ## 许可证
 
