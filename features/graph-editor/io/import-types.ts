@@ -31,6 +31,13 @@ export type ImportFormatKind =
 export type ImportWarning =
   | { code: "empty-input" }
   | {
+      code: "text-too-long";
+      field: "node-label" | "edge-weight";
+      line: number;
+      count: number;
+      limit: number;
+    }
+  | {
       code: "too-large";
       kind: "input" | "nodes" | "edges" | "adjacency-entries";
       count: number;

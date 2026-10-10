@@ -8,11 +8,19 @@ local measurements, browser observations and remote CI are recorded separately.
 
 During this audit, the user additionally requested stable coordinate tests and
 a fix for graph flicker on resize. Those follow-ups are recorded below; the
-other findings remain recommendations rather than implemented changes.
+other findings were recommendations at the time of the audit. All five
+remaining candidates are now implemented and their follow-up evidence is
+recorded in [Audit improvements](system-audit-improvements-2026-10-11.md).
 
 ## Findings
 
-### P1: Host-specific coordinate hashes stop remote verification (fixed locally)
+### P1: Host-specific coordinate hashes stop remote verification (published and CI verified)
+
+The coordinate-test and resize fixes were subsequently committed and pushed as
+`a2518db9c841952331e1e8a3f23ca0174e5e9c00`.
+[Verify run 38074178753](https://github.com/daikusutora3/graph-editor/actions/runs/38074178753)
+completed successfully for that exact commit. The evidence below describes the
+original investigation, not a new failure at that commit.
 
 [Actions run 38070934531](https://github.com/daikusutora3/graph-editor/actions/runs/38070934531)
 for `cb3acbe` failed in `verify:overlaps`. Five fixtures fail only the frozen
@@ -200,8 +208,8 @@ generator/synchronous agreement. Comparator mutation checks accept `1e-9px`
 rounding but reject `1e-4px` displacement, NaN, changed status, collision count,
 node order and even `1e-9px` displacement off an exact grid coordinate. Bun 1.4.2
 and Node 24.15.0 both pass locally; the Node run uses its TypeScript stripping
-and a temporary relative-import loader. The changed tests have not been pushed
-or rerun in remote Linux CI.
+and a temporary relative-import loader. These changed tests were subsequently
+pushed in `a2518db` and passed the remote Linux Verify run linked above.
 
 ### Resize flicker
 
@@ -241,7 +249,9 @@ Final local `check:all` passed: both TypeScript configurations, Oxlint, Prettier
 60 hook policy checks, all 44 verification suites, 18 native Rust tests,
 production build, current Wasm assertion and release assertions. The final
 test-only batch addition was rechecked separately after that full run. The
-changes remain uncommitted and have not been verified by remote CI.
+changes were subsequently committed and pushed in `a2518db`, whose remote
+Verify run passed. The additional improvements in the linked follow-up report
+were a separate, uncommitted change set when that verification was recorded.
 
 Browser evidence: `/tmp/graph-editor-ui-review/after-resize-320.png`,
 `/tmp/graph-editor-ui-review/after-resize-1280.png`,

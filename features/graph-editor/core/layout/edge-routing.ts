@@ -470,6 +470,9 @@ function* routingTask(
   if (resolvedOptions.avoidNodes) {
     for (const edges of routeGroups.values()) {
       yield;
+      // This task's labels and endpoints are immutable. Only colliding,
+      // non-retained routes need the group spacing, shared by all offsets.
+      let distinctBowSpacing: number | undefined;
       const pending = edges.some((edge) =>
         resolvedOptions.work.pending?.has(edge.id),
       );
@@ -522,14 +525,14 @@ function* routingTask(
                       ? representativeBow(candidate)
                       : -representativeBow(candidate)),
                 ) >=
-                  duplicateBowSpacing(
+                  (distinctBowSpacing ??= duplicateBowSpacing(
                     edges.length,
                     parallelLabelSpacing(
                       edges,
                       nodesById,
                       resolvedOptions.duplicateBowPx,
                     ),
-                  ),
+                  )),
             );
             if (distinct && collisions < finalCollisions) {
               finalCollisions = collisions;

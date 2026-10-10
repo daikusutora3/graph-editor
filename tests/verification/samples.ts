@@ -341,6 +341,7 @@ function hasRotationalSymmetry(
 function verifyPreviewEdgePaths() {
   const loopPath = createPreviewEdgePath({
     directed: true,
+    isLoop: true,
     radius: 8,
     routing: { bowPx: 0, loopDirectionDeg: -45, loopSweepDeg: 70 },
     scale: 1,
@@ -373,6 +374,7 @@ function verifyPreviewEdgePaths() {
   }
   const largerLoop = createPreviewEdgePath({
     directed: true,
+    isLoop: true,
     radius: 8,
     routing: {
       bowPx: 0,
@@ -395,6 +397,7 @@ function verifyPreviewEdgePaths() {
   }
   const fittedLoop = createPreviewEdgePath({
     directed: false,
+    isLoop: true,
     radius: 3,
     routing: {
       bowPx: 0,

@@ -5,6 +5,7 @@ import {
 } from "../core/graph/graph-factory";
 import {
   importLimitFailure,
+  importFailure,
   MAX_IMPORT_EDGES,
   MAX_IMPORT_NODES,
   readImportSettings,
@@ -13,6 +14,7 @@ import {
   type ImportOptions,
 } from "./import-utils";
 import type { ImportResult, ImportWarning } from "./import-types";
+import { importTextLimitWarning } from "./import-text-limits";
 
 type EdgeListImportOptions = ImportOptions;
 
@@ -72,8 +74,29 @@ export function importStructuredEdgeList(
     );
   }
 
+  const dataLines = lines.slice(1);
+  const dataRows = dataLines.map((line) => splitTokens(line.text));
+  // Check all supplied weight fields before accepting a partial import. An
+  // invalid endpoint, extra column or extra row must not hide a text limit.
+  if (settings.weighted) {
+    for (const [index, parts] of dataRows.entries()) {
+      if (parts[2] === undefined) continue;
+      const warning = importTextLimitWarning(
+        parts[2],
+        "edge-weight",
+        dataLines[index]!.number,
+      );
+      if (warning)
+        return importFailure(
+          warning,
+          options,
+          "Contest edge list",
+          "contest-edge-list",
+        );
+    }
+  }
   const inputIndexBase = inferStructuredEdgeListIndexBase(
-    lines.slice(1, edgeCount + 1),
+    dataRows.slice(0, edgeCount),
     nodeCount,
     settings.indexBase,
   );
@@ -93,7 +116,6 @@ export function importStructuredEdgeList(
     });
   });
 
-  const dataLines = lines.slice(1);
   if (dataLines.length < edgeCount) {
     warnings.push({
       code: "missing-edges",
@@ -117,7 +139,7 @@ export function importStructuredEdgeList(
 
     if (!line) continue;
 
-    const parts = line.text.split(/\s+/);
+    const parts = dataRows[index]!;
     const expectedColumns = settings.weighted ? 3 : 2;
 
     if (parts.length !== expectedColumns) {
@@ -176,12 +198,12 @@ export function importStructuredEdgeList(
 }
 
 function inferStructuredEdgeListIndexBase(
-  edgeLines: ReturnType<typeof readLines>,
+  edgeRows: string[][],
   nodeCount: number,
   fallback: 0 | 1,
 ) {
-  const endpoints = edgeLines
-    .flatMap((line) => splitTokens(line.text).slice(0, 2))
+  const endpoints = edgeRows
+    .flatMap((row) => row.slice(0, 2))
     .map((value) => Number(value))
     .filter((value) => Number.isInteger(value));
 

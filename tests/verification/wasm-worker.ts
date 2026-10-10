@@ -10,6 +10,7 @@ import {
   computeRoutingInWorker,
 } from "../../features/graph-editor/compute/worker-client";
 import type {
+  ComputeJob,
   ComputeRequest,
   ComputeResponse,
   ComputeValue,
@@ -285,6 +286,40 @@ async function verifyRealWorker(failFirst: boolean | "abi") {
   };
   try {
     await bounded(readyPromise, "real worker starts");
+    if (!failFirst) {
+      const invalidJobs: [number, ComputeJob][] = [
+        [
+          100,
+          {
+            kind: "overlap",
+            model: { ...model, nodes: [{ ...model.nodes[0], x: 1e308 }] },
+          },
+        ],
+        [
+          101,
+          {
+            kind: "routing",
+            model,
+            options: {},
+            interaction: {
+              previousNodes: [{ ...model.nodes[0], y: 1_000_000_001 }],
+              movedNodeIds: new Set(["a"]),
+            },
+          },
+        ],
+      ];
+      for (const [id, job] of invalidJobs) {
+        worker.postMessage({ id, job } satisfies ComputeRequest);
+        // eslint-disable-next-line no-await-in-loop -- Reject each input before the first valid initialization.
+        const invalid = await responseFor(id);
+        expect(
+          "error" in invalid &&
+            invalid.failure === "permanent" &&
+            invalid.error.includes("Unsupported graph coordinates"),
+          "the real Worker rejects unsupported graph and interaction coordinates before Wasm initialization",
+        );
+      }
+    }
     if (failFirst === "abi") {
       worker.postMessage({
         id: 1,
@@ -542,6 +577,7 @@ async function verifyClient(scenario: string) {
   });
   const workers: FakeWorker[] = [];
   class FakeWorker {
+    name: string | undefined;
     messages: ComputeRequest[] = [];
     onmessage: ((event: MessageEvent<ComputeResponse>) => void) | null = null;
     onerror: (() => void) | null = null;
@@ -557,6 +593,7 @@ async function verifyClient(scenario: string) {
         "client creates the bundled module Worker",
       );
       workers.push(this);
+      this.name = options.name;
     }
     postMessage(request: ComputeRequest) {
       if (scenario === "send-error")
@@ -710,7 +747,8 @@ async function verifyClient(scenario: string) {
     );
     now = 100_000;
     expect(
-      (await computeOverlapsInWorker(model)) === null && workers.length === 1,
+      (await computeOverlapsInWorker(model)) === null &&
+        workers.length === (invalid.kind === "routing" ? 2 : 1),
       `${scenario}: an incompatible protocol is not retried`,
     );
     return;
@@ -932,7 +970,7 @@ async function verifyClient(scenario: string) {
       expect(
         (await computeRoutingInWorker(model, {}, undefined, interaction)) ===
           null &&
-          workers.length === 1 &&
+          workers.length === (scenario === "routing-delta-error" ? 2 : 1) &&
           pagehideListeners.size === 0,
         "malformed delta responses disable their transport and release listeners",
       );
@@ -1250,11 +1288,12 @@ async function verifyClient(scenario: string) {
     "only actual kernel calls create Wasm marks, with their exact counts",
   );
   const jsOnly = computeLayoutInWorker(model, "line");
-  const jsOnlyRequest = active.messages.at(-1)! as Extract<
+  const interactive = workers.at(-1)!;
+  const jsOnlyRequest = interactive.messages.at(-1)! as Extract<
     ComputeRequest,
     { id: number }
   >;
-  active.emit({
+  interactive.emit({
     id: jsOnlyRequest.id,
     result: createManualLayoutCommand(model, "line"),
   });
@@ -1287,8 +1326,8 @@ async function verifyClient(scenario: string) {
   >;
   controller.abort();
   expect(
-    (await cancelled) === null && "cancel" in active.messages.at(-1)!,
-    "aborting submitted work resolves immediately and forwards cancellation",
+    (await cancelled) === null && active.terminated,
+    "aborting heavy work resolves immediately and releases its occupied Worker",
   );
   const routes = new Map([
     [
@@ -1313,7 +1352,7 @@ async function verifyClient(scenario: string) {
     undefined,
     { previousNodes: [model.nodes[0]!], movedNodeIds: new Set(["a"]) },
   );
-  const routedRequest = active.messages.at(-1)! as Extract<
+  const routedRequest = interactive.messages.at(-1)! as Extract<
     ComputeRequest,
     { id: number }
   >;
@@ -1321,7 +1360,7 @@ async function verifyClient(scenario: string) {
     id: cancelledRequest.id,
     result: createManualLayoutCommand(model, "force"),
   });
-  active.emit({ id: routedRequest.id, result: routes });
+  interactive.emit({ id: routedRequest.id, result: routes });
   const result = await routed;
   expect(
     result instanceof Map &&
@@ -1348,30 +1387,46 @@ async function verifyClient(scenario: string) {
     computeOverlapsInWorker(empty),
     computeRoutingInWorker(empty, {}),
   ];
-  const emptyRequests = active.messages.slice(-3) as Extract<
+  const emptyHeavy = workers.at(-1)!;
+  const emptyGridRequest = interactive.messages.at(-2)! as Extract<
     ComputeRequest,
     { id: number }
-  >[];
-  active.emit({
-    id: emptyRequests[0]!.id,
+  >;
+  const emptyOverlapRequest = emptyHeavy.messages.at(-1)! as Extract<
+    ComputeRequest,
+    { id: number }
+  >;
+  const emptyRoutingRequest = interactive.messages.at(-1)! as Extract<
+    ComputeRequest,
+    { id: number }
+  >;
+  interactive.emit({
+    id: emptyGridRequest.id,
     result: createManualLayoutCommand(empty, "grid"),
   });
-  active.emit({ id: emptyRequests[1]!.id, result: resolveNodeOverlaps(empty) });
-  active.emit({ id: emptyRequests[2]!.id, result: new Map() });
+  emptyHeavy.emit({
+    id: emptyOverlapRequest.id,
+    result: resolveNodeOverlaps(empty),
+  });
+  interactive.emit({ id: emptyRoutingRequest.id, result: new Map() });
   expect(
     (await Promise.all(emptyResults)).every(
       (emptyResult) => emptyResult !== null,
-    ) && !active.terminated,
+    ) &&
+      !interactive.terminated &&
+      !emptyHeavy.terminated,
     "result validation accepts empty position maps and routing Maps for an empty graph",
   );
 
-  await verifyEditor(active);
+  await verifyEditor(emptyHeavy);
   const hidden = computeLayoutInWorker(model, "force");
   events.dispatchEvent(new Event("pagehide"));
   expect(
-    (await hidden) === null && active.terminated,
-    "pagehide terminates the Worker and settles pending requests",
+    (await hidden) === null &&
+      workers.every((transport) => transport.terminated),
+    "pagehide terminates both lanes and settles pending requests",
   );
+  const beforeResume = workers.length;
   const resumed = computeOverlapsInWorker(model);
   const replacement = workers.at(-1)!;
   const replacementRequest = replacement.messages.at(-1)! as Extract<
@@ -1394,7 +1449,7 @@ async function verifyClient(scenario: string) {
   replacement.emit({ id: replacementRequest.id, result: expectedOverlap });
   expect(
     JSON.stringify(await resumed) === JSON.stringify(expectedOverlap) &&
-      workers.length === 2,
+      workers.length === beforeResume + 1,
     "returning to the page can recreate a usable Worker",
   );
   const afterStaleEvent = computeOverlapsInWorker(model);
@@ -1405,7 +1460,7 @@ async function verifyClient(scenario: string) {
   replacement.emit({ id: afterStaleRequest.id, result: expectedOverlap });
   expect(
     JSON.stringify(await afterStaleEvent) === JSON.stringify(expectedOverlap) &&
-      workers.length === 2,
+      workers.length === beforeResume + 1,
     "stale Worker errors do not disable future computation or trigger recreation",
   );
   expect(
@@ -1505,6 +1560,10 @@ async function verifyClient(scenario: string) {
     store.set(syncExternalGraphAtom, input);
     uninstallStorageFlushListeners();
     function latestJob() {
+      transport = workers.findLast(
+        (candidate) =>
+          !candidate.terminated && candidate.name === "graph-compute-heavy",
+      )!;
       return transport.messages.at(-1)! as Extract<
         ComputeRequest,
         { id: number }

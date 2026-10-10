@@ -25,6 +25,7 @@ function previewNodeWidth(model: GraphModel, node: GraphNode) {
 
 export function createPreviewEdgePath({
   directed,
+  isLoop = false,
   radius,
   routing,
   scale,
@@ -33,6 +34,8 @@ export function createPreviewEdgePath({
   targetWidth = radius * 2,
 }: {
   directed: boolean;
+  /** Endpoint identity decides loops; coincident distinct vertices do not. */
+  isLoop?: boolean;
   radius: number;
   routing?: {
     bowPx: number;
@@ -47,7 +50,7 @@ export function createPreviewEdgePath({
   target: { x: number; y: number };
   targetWidth?: number;
 }) {
-  if (source.x === target.x && source.y === target.y) {
+  if (isLoop) {
     return createLoopPath(source, radius, scale, routing);
   }
 
@@ -225,7 +228,7 @@ export function preparePreviewGeometry(
       routing,
       segments: [],
     };
-    if (source.x === target.x && source.y === target.y) {
+    if (edge.source === edge.target) {
       prepared.loop = createLoopGeometry(source, radius, 1, routing);
       if (work) work.loopBuilds++;
     } else {

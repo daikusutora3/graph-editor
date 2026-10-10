@@ -1,4 +1,5 @@
 import type { ComputeJob, ComputeValue } from "./worker-protocol";
+import { isGraphCoordinate } from "../core/graph/graph-coordinates";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object") return false;
@@ -6,26 +7,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
 function isPositionMap(value: unknown) {
   if (!isRecord(value)) return false;
   for (const point of Object.values(value))
     if (
       !isRecord(point) ||
-      !isFiniteNumber(point.x) ||
-      !isFiniteNumber(point.y)
+      !isGraphCoordinate(point.x) ||
+      !isGraphCoordinate(point.y)
     )
       return false;
   return true;
 }
 
-function isFiniteArray(value: unknown): value is number[] {
+function isCoordinateArray(value: unknown): value is number[] {
   if (!Array.isArray(value) || value.length === 0) return false;
   // Iteration also rejects holes; Array.every() would silently skip them.
-  for (const number of value) if (!isFiniteNumber(number)) return false;
+  for (const number of value) if (!isGraphCoordinate(number)) return false;
   return true;
 }
 
@@ -35,14 +32,15 @@ function isRoutingResult(value: unknown) {
     if (
       typeof id !== "string" ||
       !isRecord(route) ||
-      !isFiniteNumber(route.bowPx) ||
+      !isGraphCoordinate(route.bowPx) ||
       typeof route.duplicate !== "boolean" ||
-      !isFiniteNumber(route.loopDirectionDeg) ||
-      !isFiniteNumber(route.loopSweepDeg) ||
+      !isGraphCoordinate(route.loopDirectionDeg) ||
+      !isGraphCoordinate(route.loopSweepDeg) ||
       (route.loopStepSizePx !== undefined &&
-        !isFiniteNumber(route.loopStepSizePx)) ||
-      !isFiniteArray(route.controlPointDistancesPx) ||
-      !isFiniteArray(route.controlPointWeights) ||
+        !isGraphCoordinate(route.loopStepSizePx)) ||
+      !isCoordinateArray(route.controlPointDistancesPx) ||
+      !isCoordinateArray(route.controlPointWeights) ||
+      route.controlPointWeights.some((weight) => weight < 0 || weight > 1) ||
       route.controlPointDistancesPx.length !==
         route.controlPointWeights.length ||
       (route.status !== undefined &&

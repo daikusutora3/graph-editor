@@ -8,6 +8,7 @@ import {
   detectIndexBase,
   ensureNodeByLabel,
   importLimitFailure,
+  importFailure,
   MAX_IMPORT_ADJACENCY_ENTRIES,
   MAX_IMPORT_EDGES,
   MAX_IMPORT_NODES,
@@ -16,6 +17,7 @@ import {
   readImportSettings,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
+import { importTextLimitWarning } from "./import-text-limits";
 import type { ImportResult, ImportWarning } from "./import-types";
 import {
   createImportSource,
@@ -195,9 +197,33 @@ export function tryImportAdjacencyList(
     entryCount += targets.length;
     if (row.lastScan === rowScan) continue;
     row.lastScan = rowScan;
+    const sourceWarning = importTextLimitWarning(
+      row.sourceLabel,
+      "node-label",
+      line.number,
+    );
+    if (sourceWarning)
+      return importFailure(
+        sourceWarning,
+        options,
+        "Adjacency list",
+        "adjacency-list",
+      );
     uniqueLabels.add(row.sourceLabel);
     for (const token of targets) {
       const target = parseAdjacencyTarget(token);
+      const targetWarning =
+        importTextLimitWarning(target.label, "node-label", line.number) ??
+        (target.weight === undefined
+          ? undefined
+          : importTextLimitWarning(target.weight, "edge-weight", line.number));
+      if (targetWarning)
+        return importFailure(
+          targetWarning,
+          options,
+          "Adjacency list",
+          "adjacency-list",
+        );
       uniqueLabels.add(target.label);
       if (target.weight != null) hasWeightedTargets = true;
     }

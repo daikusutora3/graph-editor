@@ -49,6 +49,10 @@ function starter(inputText: string, options: ImportOptions = {}): StarterState {
 const valid = starter("4 4\n1 2\n2 3\n2 4\n3 4", { indexBase: 1 });
 const invalid = starter('{"version":2}');
 const limit = starter("{" + " ".repeat(GRAPH_MAX_JSON_CHARS));
+const textLimit = starter(`2 1\n0 1 ${"😀".repeat(257)}`, {
+  weighted: true,
+  weightKind: "string",
+});
 const ambiguous = starter("3\n1 2\n1 3", { indexBase: 1 });
 const warning = starter("4 2\n1 2", {
   format: "contest-edge-list",
@@ -68,6 +72,7 @@ const cases: [StarterState, StarterInputStatus][] = [
   [starter(" \n\t"), "empty"],
   [invalid, "review"],
   [limit, "review"],
+  [textLimit, "review"],
   [ambiguous, "review"],
   [checking, "checking"],
   [{ ...valid, analysis: null, preview: null }, "checking"],
@@ -80,6 +85,8 @@ const cases: [StarterState, StarterInputStatus][] = [
 ];
 assert.equal(invalid.analysis?.status, "invalid");
 assert.equal(limit.analysis?.status, "limit");
+assert.equal(textLimit.preview?.status, "failure");
+assert.equal(textLimit.preview?.warnings[0]?.code, "text-too-long");
 assert.equal(ambiguous.analysis?.status, "ambiguous");
 assert.equal(warning.preview?.model.edges.length, 1);
 assert.equal(noEdgeWarning.preview?.model.edges.length, 0);
@@ -127,6 +134,18 @@ for (const [value, status] of cases) {
       canApplyStarterInput(status),
       "pending or rejected input cannot display a stale accepted preview",
     );
+    if (value === textLimit) {
+      assert(body.includes("257") && body.includes("256"));
+      assert(
+        body.includes(
+          locale === "ja"
+            ? "辺の重み"
+            : locale === "en"
+              ? "Edge weight"
+              : "边权",
+        ),
+      );
+    }
     if (status === "reading") {
       assert.equal(
         [...body.matchAll(/role="status"/g)].length,

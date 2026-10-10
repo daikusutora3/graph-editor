@@ -8,6 +8,7 @@ export type GraphNode = {
   id: NodeId;
   label: string;
   order: number;
+  /** Stored graph px, bounded by the shared graph-coordinates contract. */
   x: number;
   y: number;
   color?: GraphColor;

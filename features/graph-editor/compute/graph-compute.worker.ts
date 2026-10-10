@@ -15,6 +15,7 @@ import type {
 } from "./worker-protocol";
 import { createRoutingDelta } from "./routing-result";
 import { restoreRoutingInteractionNodes } from "./routing-interaction";
+import { hasComputeJobCoordinates } from "./worker-input";
 
 // No DOM or browser measurement APIs enter this worker. Measured widths are
 // part of the immutable model supplied by the editor.
@@ -24,6 +25,7 @@ const scope = globalThis as unknown as {
 };
 const active = new Set<number>();
 const cancelled = new Set<number>();
+class UnsupportedComputeInputError extends Error {}
 
 scope.onmessage = (event) => {
   const request = event.data;
@@ -36,6 +38,8 @@ scope.onmessage = (event) => {
   void (async () => {
     let initialized = false;
     try {
+      if (!hasComputeJobCoordinates(job))
+        throw new UnsupportedComputeInputError("Unsupported graph coordinates");
       await initializeRustKernel();
       initialized = true;
       if (cancelled.has(id)) return;
@@ -99,7 +103,9 @@ scope.onmessage = (event) => {
           error:
             error instanceof Error ? error.message : "Graph computation failed",
           failure:
-            !initialized && !(error instanceof RustKernelCompatibilityError)
+            !initialized &&
+            !(error instanceof RustKernelCompatibilityError) &&
+            !(error instanceof UnsupportedComputeInputError)
               ? "transient"
               : "permanent",
         };

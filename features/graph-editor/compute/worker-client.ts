@@ -14,14 +14,24 @@ import type {
 import { restoreRoutingDelta } from "./routing-result";
 import type { RoutingDelta } from "./routing-result";
 import { isComputeResult } from "./worker-result";
+import { hasComputeJobCoordinates } from "./worker-input";
 
+type WorkerLane = "interactive" | "heavy";
 type Pending = {
   complete: (result: ComputeValue | null) => void;
   cleanup: () => void;
   kind: ComputeJob["kind"];
+  job: ComputeJob;
+  owner: Worker;
   restoreRouting?: (delta: RoutingDelta) => Map<string, EdgeRoutingMeta>;
 };
-let worker: Worker | null = null;
+// Heavy synchronous Rust calls cannot receive an abort message until they
+// finish. Isolate them so interactive routing retains a warm, responsive lane.
+// Keep at most two warm Workers; abort and pagehide release their ownership.
+const workers: Record<WorkerLane, Worker | null> = {
+  interactive: null,
+  heavy: null,
+};
 let unavailable = false;
 let consecutiveFailures = 0;
 let retryAfter = 0;
@@ -93,12 +103,21 @@ function permanentTransportError(error: unknown) {
 function stopWorker() {
   if (typeof window !== "undefined")
     window.removeEventListener("pagehide", stopWorker);
-  worker?.terminate();
-  worker = null;
+  for (const lane of ["interactive", "heavy"] as const) releaseWorker(lane);
   for (const [id, request] of pending) completeRequest(id, request, null);
 }
 
-function getWorker() {
+function releaseWorker(lane: WorkerLane) {
+  const active = workers[lane];
+  workers[lane] = null;
+  try {
+    active?.terminate();
+  } catch {
+    // Host disposal must not strand pending work or retain stale ownership.
+  }
+}
+
+function getWorker(lane: WorkerLane) {
   if (
     unavailable ||
     performance.now() < retryAfter ||
@@ -106,15 +125,18 @@ function getWorker() {
     typeof Worker === "undefined"
   )
     return null;
-  if (!worker) {
+  if (!workers[lane]) {
     try {
       const created = new Worker(
         new URL("./graph-compute.worker.ts", import.meta.url),
-        { type: "module", name: "graph-compute" },
+        {
+          type: "module",
+          name: lane === "heavy" ? "graph-compute-heavy" : "graph-compute",
+        },
       );
-      worker = created;
+      workers[lane] = created;
       created.onmessage = (event: MessageEvent<ComputeResponse>) => {
-        if (worker !== created) return;
+        if (workers[lane] !== created) return;
         try {
           const response = event.data;
           if (
@@ -124,7 +146,7 @@ function getWorker() {
           )
             throw new Error("Invalid Worker response");
           const request = pending.get(response.id);
-          if (!request) return;
+          if (!request || request.owner !== created) return;
           if ("error" in response) {
             completeRequest(response.id, request, null);
             failWorker(response.failure === "permanent");
@@ -165,11 +187,11 @@ function getWorker() {
         }
       };
       created.onerror = () => {
-        if (worker !== created) return;
+        if (workers[lane] !== created) return;
         failWorker();
       };
       created.onmessageerror = () => {
-        if (worker !== created) return;
+        if (workers[lane] !== created) return;
         failWorker();
       };
       window.addEventListener("pagehide", stopWorker);
@@ -178,16 +200,66 @@ function getWorker() {
       return null;
     }
   }
-  return worker;
+  return workers[lane];
+}
+
+function jobLane(job: ComputeJob): WorkerLane {
+  return job.kind === "overlap" ||
+    (job.kind === "layout" && job.layout === "force")
+    ? "heavy"
+    : "interactive";
+}
+
+function sendRequest(id: number, request: Pending, active: Worker) {
+  request.owner = active;
+  try {
+    // eslint-disable-next-line unicorn/require-post-message-target-origin
+    active.postMessage({ id, job: request.job });
+  } catch (error) {
+    failWorker(permanentTransportError(error));
+  }
+}
+
+function cancelHeavyWorker(active: Worker) {
+  if (workers.heavy !== active) return;
+  const retained = [...pending].filter(
+    ([, request]) => request.owner === active,
+  );
+  releaseWorker("heavy");
+  if (retained.length === 0) return;
+  const replacement = getWorker("heavy");
+  if (!replacement) {
+    for (const [id, request] of retained)
+      if (pending.get(id) === request) completeRequest(id, request, null);
+    return;
+  }
+  for (const [id, request] of retained) {
+    // A send failure can have settled the whole batch. Keep each request's
+    // original ID, timeout and abort listener when replaying concurrent work.
+    if (pending.get(id) === request) sendRequest(id, request, replacement);
+  }
 }
 
 function run(
   job: ComputeJob,
   signal?: AbortSignal,
 ): Promise<ComputeValue | null> {
-  if (signal?.aborted) return Promise.resolve(null);
-  const active = getWorker();
+  if (signal?.aborted || !hasComputeJobCoordinates(job))
+    return Promise.resolve(null);
+  const lane = jobLane(job);
+  const active = getWorker(lane);
   if (!active) return Promise.resolve(null);
+  // A cancelled heavy owner can replay concurrent jobs. Match the initial
+  // postMessage snapshot even if a caller later mutates the supplied model.
+  let snapshot = job;
+  if (lane === "heavy") {
+    try {
+      snapshot = structuredClone(job);
+    } catch (error) {
+      failWorker(permanentTransportError(error));
+      return Promise.resolve(null);
+    }
+  }
   // Each reply restores against its own immutable request snapshot. Cancellation
   // and Worker restart require no retained remote graph or routing state.
   const previous =
@@ -200,20 +272,26 @@ function run(
       const request = pending.get(id);
       if (!request) return;
       completeRequest(id, request, null);
+      if (lane === "heavy") {
+        cancelHeavyWorker(request.owner);
+        return;
+      }
       try {
         // Web Worker messages do not accept a window targetOrigin.
         // eslint-disable-next-line unicorn/require-post-message-target-origin
-        active.postMessage({ cancel: id });
+        request.owner.postMessage({ cancel: id });
       } catch (error) {
         failWorker(permanentTransportError(error));
       }
     };
     const timer = setTimeout(() => {
-      failWorker();
+      if (pending.has(id)) failWorker();
     }, 120_000);
     pending.set(id, {
       complete,
       kind: job.kind,
+      job: snapshot,
+      owner: active,
       restoreRouting: previous
         ? (delta) => restoreRoutingDelta(delta, previous)
         : undefined,
@@ -223,12 +301,8 @@ function run(
       },
     });
     signal?.addEventListener("abort", cancel, { once: true });
-    try {
-      // eslint-disable-next-line unicorn/require-post-message-target-origin
-      active.postMessage({ id, job });
-    } catch (error) {
-      failWorker(permanentTransportError(error));
-    }
+    if (signal?.aborted) cancel();
+    else sendRequest(id, pending.get(id)!, active);
   });
 }
 
