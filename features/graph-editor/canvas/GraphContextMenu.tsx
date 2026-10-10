@@ -149,7 +149,7 @@ export function GraphContextMenu({
     <div
       ref={menuRef}
       data-panel-state={panelState}
-      className="ge-panel ge-context-menu text-control pointer-events-auto absolute z-40 flex max-h-[calc(100%-1rem)] w-[min(14rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto rounded-xl p-1.5 text-[var(--text)] backdrop-blur-[12px]"
+      className="ge-panel ge-context-menu pointer-events-auto absolute z-40 flex max-h-[calc(100%-1rem)] w-[min(14rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto rounded-xl p-1.5 text-control text-[var(--text)] backdrop-blur-[12px]"
       style={{
         left: menuPosition.left,
         top: menuPosition.top,
@@ -288,7 +288,7 @@ function MenuButton({
         role="menuitem"
         onClick={onClick}
         className={cn(
-          "touch:min-h-11 flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none",
+          "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none touch:min-h-11",
           danger
             ? "text-[var(--danger)] hover:bg-[var(--danger-fill)]"
             : "text-[var(--text-2)] hover:bg-[var(--fill)]",

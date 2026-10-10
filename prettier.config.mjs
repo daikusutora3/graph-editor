@@ -1,3 +1,5 @@
 export default {
   plugins: ["prettier-plugin-tailwindcss"],
+  tailwindStylesheet: "./app/globals.css",
+  tailwindFunctions: ["cn", "clsx"],
 };

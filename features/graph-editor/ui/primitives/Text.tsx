@@ -19,7 +19,7 @@ export function Kbd({
     <kbd
       aria-hidden="true"
       className={cn(
-        "touch:hidden grid place-items-center rounded-md font-mono font-semibold",
+        "grid place-items-center rounded-md font-mono font-semibold touch:hidden",
         size === "sm"
           ? "h-[22px] min-w-6 px-1.5 text-xs"
           : "h-7 min-w-7 px-1.5 text-sm",

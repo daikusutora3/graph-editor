@@ -82,7 +82,7 @@ export function ExportPanelBody({
             aria-label={label}
             aria-pressed={detail === "PNG" ? undefined : active}
             active={active}
-            className="touch:h-auto touch:px-1 h-auto min-h-20 min-w-0 flex-col gap-1 px-1 py-2 text-center whitespace-normal"
+            className="h-auto min-h-20 min-w-0 flex-col gap-1 px-1 py-2 text-center whitespace-normal touch:h-auto touch:px-1"
             onClick={onClick}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />
@@ -127,7 +127,7 @@ export function ExportPanelBody({
       <div className="grid min-h-[200px] grid-cols-[28px_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
         <div
           aria-hidden="true"
-          className="text-control pr-2 text-right font-mono leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
+          className="pr-2 text-right font-mono text-control leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
         >
           <ExportText lines={lineNumbers} />
         </div>
@@ -137,7 +137,7 @@ export function ExportPanelBody({
           aria-label={messages.exportPanel.exportedAria(
             messages.exportPanel.formats[exportFormat],
           )}
-          className="text-control m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
+          className="m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono text-control leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
         >
           {lineLayout.pending ? (
             <span className="text-[var(--muted)]">

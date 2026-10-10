@@ -39,7 +39,7 @@ export function ZoomControls({
 
   return (
     <div
-      className="ge-panel touch:h-[52px] touch:gap-1 touch:rounded-[14px] pointer-events-auto relative z-40 flex h-12 items-center gap-0.5 rounded-xl px-1 backdrop-blur-[12px]"
+      className="ge-panel pointer-events-auto relative z-40 flex h-12 items-center gap-0.5 rounded-xl px-1 backdrop-blur-[12px] touch:h-[52px] touch:gap-1 touch:rounded-[14px]"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
@@ -60,7 +60,7 @@ export function ZoomControls({
         disabled={disabled}
         onClick={onResetZoom}
         className={[
-          "touch:h-11 touch:min-w-14 touch:rounded-lg text-control grid h-10 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
+          "grid h-10 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono text-control font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent touch:h-11 touch:min-w-14 touch:rounded-lg",
           focusRing,
         ].join(" ")}
       >

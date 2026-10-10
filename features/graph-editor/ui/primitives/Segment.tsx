@@ -50,7 +50,7 @@ export function Segment<T extends string>({
             aria-label={`${label}: ${option.label}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              "text-control flex min-w-0 items-center justify-center gap-1.5 px-2 py-1 transition-colors",
+              "flex min-w-0 items-center justify-center gap-1.5 px-2 py-1 text-control transition-colors",
               "focus-visible:relative focus-visible:z-10",
               focusRing,
               size === "md" ? "min-h-9" : "min-h-[30px]",

@@ -2,13 +2,51 @@
 
 ## Local setup
 
-Run commands from the repository root. Use the Bun version declared in
-[`package.json`](../package.json) and the checked-in lockfile:
+Run commands from the repository root. Node is pinned to **24.15.0** in
+[`.node-version`](../.node-version); Bun is pinned to **1.4.2** by
+`packageManager` in [`package.json`](../package.json). Use your Node version
+manager to select the pinned Node. The Node type definitions target the same
+24.x runtime family.
+
+Install the exact Bun version from the
+[official release](https://github.com/oven-sh/bun/releases/tag/bun-v1.4.2). Either
+use it on `PATH`, or place the executable at `.local-bin/bun` for this checkout.
+The latter is ignored by Git and does not change the global Bun installation.
+For macOS on Apple Silicon, a repository-local installation is:
 
 ```bash
-bun install --frozen-lockfile
-bun run dev
+bun_download_dir="$(mktemp -d)"
+curl -fL https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-darwin-aarch64.zip -o "$bun_download_dir/bun.zip"
+unzip -q "$bun_download_dir/bun.zip" -d "$bun_download_dir"
+mkdir -p .local-bin
+cp "$bun_download_dir/bun-darwin-aarch64/bun" .local-bin/bun
 ```
+
+Use the dependency-free Node launcher to select and verify Bun before installing
+dependencies or running commands:
+
+```bash
+node scripts/toolchain.mjs install --frozen-lockfile
+node scripts/toolchain.mjs run dev
+```
+
+The launcher prefers `.local-bin/bun`, requires the exact Node and Bun versions,
+and puts that Bun on the child process's `PATH`, so nested `bun` commands retain
+the same version. It fails before starting Bun when a selected runtime differs
+from the pin. It does not download runtimes automatically.
+
+For the `bun` commands below, select the local installation in the current
+terminal first, or use `node scripts/toolchain.mjs` in place of `bun`:
+
+```bash
+export PATH="$PWD/.local-bin:$PATH"
+bun run toolchain:check
+```
+
+The install, dev, build, and integrated-check lifecycle hooks also verify the
+actual calling Bun. A direct install with the wrong Bun reports an error, but
+Bun can resolve dependencies or write its lockfile before running `preinstall`;
+the Node launcher is the entry point that verifies before those operations.
 
 Open the URL printed by Next.js (normally `http://localhost:3000`). Installation
 runs `prepare`, which configures this checkout to use `.githooks`. The commit

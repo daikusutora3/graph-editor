@@ -509,7 +509,7 @@ function RailButton({
       tooltip={label}
       tooltipSide="bottom-end"
       className={cn(
-        "text-control h-10 gap-[7px]",
+        "h-10 gap-[7px] text-control",
         wide ? "pr-3 pl-2.5" : "w-10 px-0",
       )}
       onClick={onClick}
@@ -553,8 +553,8 @@ function MobileBarButton({
       data-graph-shortcut-target="true"
       disabled={disabled}
       className={cn(
-        "touch:h-[52px] h-[52px] flex-col gap-[3px] rounded-lg px-0",
-        joined && "touch:pr-0 rounded-r-none",
+        "h-[52px] flex-col gap-[3px] rounded-lg px-0 touch:h-[52px]",
+        joined && "rounded-r-none touch:pr-0",
         wide ? "min-w-11 flex-1" : "w-11 @max-[375px]/editor:w-full",
       )}
       onClick={onClick}

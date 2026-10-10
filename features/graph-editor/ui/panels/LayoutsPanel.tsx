@@ -89,7 +89,7 @@ export function LayoutsPanel({
                 }
               }}
               className={cn(
-                "touch:min-h-11 text-control min-h-10 min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-normal transition-colors",
+                "min-h-10 min-w-0 rounded-lg px-2 py-2 text-control font-semibold whitespace-normal transition-colors touch:min-h-11",
                 focusRing,
                 reason ? disabledControl : raisedControl,
               )}

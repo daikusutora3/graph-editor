@@ -107,7 +107,7 @@ export function SelectionActionBar({
       <div
         role="toolbar"
         aria-label={description}
-        className="ge-panel ge-pop touch:rounded-2xl touch:py-1.5 pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pr-1.5 pl-3 backdrop-blur-[12px]"
+        className="ge-panel ge-pop pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pr-1.5 pl-3 backdrop-blur-[12px] touch:rounded-2xl touch:py-1.5"
       >
         <span
           className="ge-selection-summary max-w-full min-w-0 truncate pr-2.5 text-xs font-semibold text-[var(--muted)]"

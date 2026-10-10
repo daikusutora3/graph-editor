@@ -104,7 +104,7 @@ export function SettingsPanel({
               }
             />
             <Button
-              className="text-control justify-start rounded-lg px-3"
+              className="justify-start rounded-lg px-3 text-control"
               disabled={!canReverseAll}
               onClick={onReverseAllEdges}
             >
@@ -148,7 +148,7 @@ export function SettingsPanel({
           type="button"
           onClick={onResetHints}
           className={cn(
-            "touch:min-h-11 text-control flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
+            "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-control font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] touch:min-h-11",
             focusRing,
           )}
         >
@@ -163,7 +163,7 @@ export function SettingsPanel({
           }
           onClick={onClear}
           className={cn(
-            "touch:min-h-11 text-control flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left font-semibold transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
+            "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-control font-semibold transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent touch:min-h-11",
             focusRing,
             clearArmed
               ? "bg-[var(--danger-fill)] text-[var(--danger)]"
