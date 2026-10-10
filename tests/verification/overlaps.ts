@@ -1,5 +1,4 @@
-import { createHash } from "node:crypto";
-
+import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   nodeGeometryWidth,
   NODE_SIZE_PX,
@@ -8,47 +7,66 @@ import {
   createOverlapTask,
   OVERLAP_GAP_PX,
   resolveNodeOverlaps,
+  type OverlapResult,
 } from "../../features/graph-editor/layouts/resolve-node-overlaps";
+import { additionalOverlapCoordinateCases } from "../fixtures/overlap-coordinate-cases";
+import {
+  originalOverlapCoordinateGoldens,
+  type OverlapCoordinateGolden,
+} from "../fixtures/overlap-coordinate-goldens";
 import { overlapVerificationFixtures } from "../fixtures/overlaps";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Overlap");
-// Captured from the original all-pairs implementation, before the Y sweep.
-// These protect exact coordinates, statuses and node ordering together.
-const originalSignatures = [
-  "261ed87882426da0b798fab1dbb4b1c7fa89a55746f96e49fa19aea941e517fc",
-  "3dea60c20275eb8cbd72e8cc0ecd111dfa002d47bc5e066b3f088c15aa442951",
-  "6c591a4b964526cc42b7e30d581a074335fc8ce149a23521c0cbd709f7b97fa8",
-  "774014f45b9de3d24b80cc1262db78933846e92b94feadf902cd2f8d1a6e6f04",
-  "88ef707992ff53b1f5877d846ebadf2ddfbf1b8a45151e79f14a723704fd9cad",
-  "6cb3334d93655742551754dea4b1c601ba6215cb1c369303a0b01895cc1de485",
-  "4cbcf0d9370cdef7629c79094abdafbeda6d2658d2badcfac473eebe724fdede",
-  "c2c026cce2efc3c14503cb3c8b362fe78fa621de5d678d268174d049213e77ba",
-  "bbc53355ec7d2ef7572c9796ca273ae6466a4e370cdd30e396ecbaf0cfa5b4f4",
-  "bbc53355ec7d2ef7572c9796ca273ae6466a4e370cdd30e396ecbaf0cfa5b4f4",
-  "0dec90854a2579c75a7903cf91a9c7ca6cbca4fb8cbc85fa2381ea346aa8a7e2",
-  "0dec90854a2579c75a7903cf91a9c7ca6cbca4fb8cbc85fa2381ea346aa8a7e2",
-  "4136d45147ef1a6f22b605b37128b24667054209ce77afbf4f17bec79d16a536",
-  "cb0f3792f6994947fcb58382f8f4a1ad51133639a76d59b8445395d00b8b19fa",
-  "27ea80b46c4f2726667155dc416d14a13866bff3e6d3f1669a399f20e1c49fae",
-  "421fb3420bf4dff60756da60619ee13e0d60eaed41f31cf2bec6be1ab48ae452",
-  "1248c923a5876690aaecd16ee26478060a7dc12b387d3bd7afbbd2c1ae223098",
-  "0d057d113dd60deefc73ba8a3f728e200b94a09bbdb1274418242d416309ea3f",
-];
+// Far below the 1e-5px collision threshold; grid coordinates remain exact.
+const COORDINATE_TOLERANCE_PX = 1e-7;
+
+function coordinateGoldenError(
+  actual: OverlapResult,
+  golden: OverlapCoordinateGolden,
+  snap: boolean,
+): string | undefined {
+  if (actual.status !== golden.status) return "status changed";
+  if (actual.remainingPairs !== golden.remainingPairs)
+    return "remaining collision count changed";
+  if (
+    JSON.stringify(Object.keys(actual.positions)) !==
+    JSON.stringify(golden.positions.map(([id]) => id))
+  )
+    return "node IDs or ordering changed";
+  for (const [id, x, y] of golden.positions) {
+    const point = actual.positions[id]!;
+    for (const [axis, expected] of [
+      ["x", x],
+      ["y", y],
+    ] as const) {
+      const difference = Math.abs(point[axis] - expected);
+      if (
+        !Number.isFinite(point[axis]) ||
+        difference > (snap ? 0 : COORDINATE_TOLERANCE_PX)
+      )
+        return `${id}.${axis}: expected ${expected}, got ${point[axis]} (difference ${difference}px)`;
+    }
+  }
+}
+
 expect(
-  originalSignatures.length === overlapVerificationFixtures.length,
-  "every equivalence fixture has an original signature",
+  Object.keys(originalOverlapCoordinateGoldens).length ===
+    overlapVerificationFixtures.length,
+  "every equivalence fixture has an original coordinate golden",
 );
 
-for (const [index, [name, graph]] of overlapVerificationFixtures.entries()) {
+function verifyCoordinates(name: string, graph: GraphModel) {
   const input = JSON.stringify(graph);
   const result = resolveNodeOverlaps(graph);
-  const signature = createHash("sha256")
-    .update(JSON.stringify(result))
-    .digest("hex");
   expect(
-    signature === originalSignatures[index],
-    `${name}: exact output matches the original resolver`,
+    JSON.stringify(Object.keys(result.positions)) ===
+      JSON.stringify(
+        graph.nodes
+          .toSorted((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+          .map((node) => node.id),
+      ),
+    `${name}: node IDs retain the stable order`,
   );
   expect(JSON.stringify(graph) === input, `${name}: input is not mutated`);
   expect(result.remainingPairs === 0, `${name}: every collision is resolved`);
@@ -57,6 +75,15 @@ for (const [index, [name, graph]] of overlapVerificationFixtures.entries()) {
   for (let first = 0; first < graph.nodes.length; first++) {
     const a = graph.nodes[first]!;
     const pointA = result.positions[a.id]!;
+    expect(
+      Number.isFinite(pointA.x) && Number.isFinite(pointA.y),
+      `${name}/${a.id}: finite input produces finite coordinates`,
+    );
+    if (result.status === "unchanged")
+      expect(
+        pointA.x === a.x && pointA.y === a.y,
+        `${name}/${a.id}: unchanged status preserves the original coordinates exactly`,
+      );
     const spanA = Math.max(
       0,
       (nodeGeometryWidth({
@@ -114,8 +141,151 @@ for (const [index, [name, graph]] of overlapVerificationFixtures.entries()) {
     JSON.stringify(step.value) === JSON.stringify(result),
     `${name}: resumable and synchronous calculations agree`,
   );
+  return result;
 }
 
+const nativeHypot = Math.hypot;
+function scaledHypot(...values: number[]) {
+  // Exercise a different valid rounding path without depending on the host's
+  // libm or replacing the production implementation. Avoid overflow/underflow.
+  if (values.some((value) => !Number.isFinite(value)))
+    return nativeHypot(...values);
+  const maximum = Math.max(0, ...values.map(Math.abs));
+  return maximum === 0
+    ? 0
+    : maximum *
+        Math.sqrt(
+          values.reduce((sum, value) => sum + (value / maximum) ** 2, 0),
+        );
+}
+
+try {
+  const nativeAdditionalResults = new Map<string, OverlapResult>();
+  for (const [mode, hypot] of [
+    ["native hypot", nativeHypot],
+    ["scaled hypot", scaledHypot],
+  ] as const) {
+    Math.hypot = hypot;
+    for (const [name, graph] of overlapVerificationFixtures) {
+      const result = verifyCoordinates(`${mode}/${name}`, graph);
+      const golden = originalOverlapCoordinateGoldens[name];
+      expect(Boolean(golden), `${name}: an original coordinate golden exists`);
+      if (!golden) continue;
+      const error = coordinateGoldenError(
+        result,
+        golden,
+        graph.settings.snapToGrid,
+      );
+      expect(
+        !error,
+        `${mode}/${name}: original coordinates preserved; ${error}`,
+      );
+    }
+
+    const results = new Map<string, OverlapResult>();
+    for (const [name, graph, status] of additionalOverlapCoordinateCases) {
+      const result = verifyCoordinates(`${mode}/${name}`, graph);
+      expect(result.status === status, `${mode}/${name}: status is ${status}`);
+      if (hypot === nativeHypot) nativeAdditionalResults.set(name, result);
+      else {
+        const native = nativeAdditionalResults.get(name)!;
+        const error = coordinateGoldenError(
+          result,
+          {
+            status: native.status,
+            remainingPairs: native.remainingPairs,
+            positions: Object.entries(native.positions).map(([id, point]) => [
+              id,
+              point.x,
+              point.y,
+            ]),
+          },
+          graph.settings.snapToGrid,
+        );
+        expect(
+          !error,
+          `${name}: alternative rounding remains stable; ${error}`,
+        );
+      }
+      results.set(name, result);
+      if (name.endsWith(" shuffled"))
+        expect(
+          JSON.stringify(result) ===
+            JSON.stringify(results.get(name.replace(/ shuffled$/, ""))),
+          `${mode}/${name}: input ordering does not change the result`,
+        );
+    }
+  }
+} finally {
+  Math.hypot = nativeHypot;
+}
+
+// Verify that allowing last-bit rounding does not hide observable regressions.
+const mutationFixture = overlapVerificationFixtures.find(
+  ([name]) => name === "wide labels",
+)!;
+const mutationGolden = originalOverlapCoordinateGoldens[mutationFixture[0]]!;
+const original = resolveNodeOverlaps(mutationFixture[1]);
+function displaceFirstNode(amount: number): OverlapResult {
+  const id = Object.keys(original.positions)[0]!;
+  const point = original.positions[id]!;
+  return {
+    ...original,
+    positions: {
+      ...original.positions,
+      [id]: { ...point, x: point.x + amount },
+    },
+  };
+}
+expect(
+  !coordinateGoldenError(displaceFirstNode(1e-9), mutationGolden, false),
+  "Coordinate comparison accepts host rounding far below the collision threshold",
+);
+for (const [name, mutation] of [
+  ["coordinate displacement", displaceFirstNode(1e-4)],
+  ["non-finite coordinate", displaceFirstNode(NaN)],
+  ["status", { ...original, status: "unchanged" }],
+  ["collision count", { ...original, remainingPairs: 1 }],
+  [
+    "node ordering",
+    {
+      ...original,
+      positions: Object.fromEntries(
+        Object.entries(original.positions).reverse(),
+      ),
+    },
+  ],
+] as const)
+  expect(
+    Boolean(coordinateGoldenError(mutation, mutationGolden, false)),
+    `Coordinate comparison detects a ${name} regression`,
+  );
+
+const gridFixture = overlapVerificationFixtures.find(
+  ([name]) => name === "coincident grid",
+)!;
+const gridOriginal = resolveNodeOverlaps(gridFixture[1]);
+const gridId = Object.keys(gridOriginal.positions)[0]!;
+expect(
+  Boolean(
+    coordinateGoldenError(
+      {
+        ...gridOriginal,
+        positions: {
+          ...gridOriginal.positions,
+          [gridId]: {
+            ...gridOriginal.positions[gridId]!,
+            x: gridOriginal.positions[gridId]!.x + 1e-9,
+          },
+        },
+      },
+      originalOverlapCoordinateGoldens[gridFixture[0]]!,
+      true,
+    ),
+  ),
+  "Grid coordinates remain exact even for displacements below the non-grid tolerance",
+);
+
 finish(
-  `Overlap verification passed (${overlapVerificationFixtures.length} fixtures)`,
+  `Overlap verification passed (${overlapVerificationFixtures.length} original + ${additionalOverlapCoordinateCases.length} stability fixtures, native/scaled hypot)`,
 );

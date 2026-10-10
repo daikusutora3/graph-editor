@@ -79,6 +79,7 @@ const suites = [
   { name: "screenshot", path: "tests/verification/screenshot.ts" },
   { name: "image-export", path: "tests/verification/image-export.ts" },
   { name: "canvas-lifecycle", path: "tests/verification/canvas-lifecycle.mjs" },
+  { name: "canvas-resize", path: "tests/verification/canvas-resize.mjs" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },
   { name: "i18n", path: "tests/verification/i18n-literals.ts" },
   { name: "canvas", path: "tests/verification/canvas-logic.ts" },
