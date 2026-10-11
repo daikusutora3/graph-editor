@@ -1,68 +1,80 @@
-import Image from "next/image";
 import type { ArticleContent } from "@/lib/article-content";
-import { guideExamples } from "@/lib/guide-examples";
 
-/** Shared examples use the same exported diagram as the guide. */
+type Example = ArticleContent["example"];
+
+/** Render the same vertex and edge data used by the isolated editor example. */
 export function ArticleDiagram({
   example,
   decorative = false,
 }: {
-  example: ArticleContent["example"];
+  example: Example;
   decorative?: boolean;
 }) {
-  if (example.guideExampleId) {
-    const guideExample = guideExamples.find(
-      (entry) => entry.id === example.guideExampleId,
-    );
-    return (
-      <div className="flex min-h-40 w-full items-center justify-center rounded-lg bg-white p-3 sm:min-h-48">
-        <Image
-          src={`/guide/${example.guideExampleId}.png`}
-          alt={decorative ? "" : example.result}
-          width={guideExample?.imageWidth ?? 1280}
-          height={1280}
-          unoptimized
-          loading="lazy"
-          className="h-auto max-h-40 w-auto max-w-full object-contain"
-        />
-      </div>
-    );
-  }
-
   return (
     <svg
       viewBox="0 0 300 190"
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : example.result}
       aria-hidden={decorative ? true : undefined}
-      className="h-auto max-h-48 w-full text-[var(--text-2)]"
+      className="h-auto max-h-64 w-full text-[var(--text-2)]"
     >
+      <ArticleGraphDrawing example={example} />
+    </svg>
+  );
+}
+
+/** Shared vector drawing: thumbnails and results keep identical connections. */
+export function ArticleGraphDrawing({ example }: { example: Example }) {
+  const nodes = new Map(example.nodes.map((node) => [String(node[0]), node]));
+  return (
+    <g strokeLinecap="round" strokeLinejoin="round">
+      {example.id === "bipartite-graph" ? (
+        <g fill="var(--fill)" stroke="var(--line)">
+          <rect x="35" y="5" width="60" height="180" rx="24" />
+          <rect x="205" y="5" width="60" height="180" rx="24" />
+        </g>
+      ) : null}
       {example.edges.map(([source, target, weight]) => {
-        const from = example.nodes.find(([id]) => id === source);
-        const to = example.nodes.find(([id]) => id === target);
+        const from = nodes.get(String(source));
+        const to = nodes.get(String(target));
         if (!from || !to) return null;
         const [, x1, y1] = from;
         const [, x2, y2] = to;
+        const length = Math.hypot(x2 - x1, y2 - y1);
+        // Place the weight beside the edge, rather than on its stroke.
+        const x = (x1 + x2) / 2 - ((y2 - y1) / length) * 15;
+        const y = (y1 + y2) / 2 + ((x2 - x1) / length) * 15;
         return (
-          <g key={`${source}-${target}-${weight ?? "unweighted"}`}>
+          <g key={`${source}-${target}`}>
             <line
               x1={x1}
               y1={y1}
               x2={x2}
               y2={y2}
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.8"
             />
             {weight !== undefined ? (
-              <text
-                x={(x1 + x2) / 2 + 8}
-                y={(y1 + y2) / 2 - 8}
-                textAnchor="middle"
-                fill="currentColor"
-                fontSize="14"
-              >
-                {weight}
-              </text>
+              <g>
+                <rect
+                  x={x - 11}
+                  y={y - 11}
+                  width="22"
+                  height="22"
+                  rx="7"
+                  fill="var(--panel-solid)"
+                />
+                <text
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="currentColor"
+                  fontSize="16"
+                >
+                  {weight}
+                </text>
+              </g>
             ) : null}
           </g>
         );
@@ -72,10 +84,10 @@ export function ArticleDiagram({
           <circle
             cx={x}
             cy={y}
-            r="17"
+            r="16"
             fill="var(--panel-solid)"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="1.8"
           />
           <text
             x={x}
@@ -83,12 +95,13 @@ export function ArticleDiagram({
             textAnchor="middle"
             dominantBaseline="central"
             fill="currentColor"
-            fontSize="14"
+            fontSize="16"
+            fontWeight="500"
           >
             {id}
           </text>
         </g>
       ))}
-    </svg>
+    </g>
   );
 }
