@@ -66,7 +66,7 @@ export function analyzeGraphInput(
     };
   }
 
-  if (looksLikeGraphJson(input)) {
+  if (options.format === "json" || looksLikeGraphJson(input)) {
     return analyzeGraphJsonModel(parseGraphModelJson(input));
   }
 

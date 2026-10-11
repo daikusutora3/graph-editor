@@ -78,14 +78,24 @@ export function* createForceLayoutTask(
   const components = connectedComponents(model);
 
   if (components.length > 1) {
+    const edgesByComponent = components.map(
+      () => [] as Array<readonly [NodeId, NodeId]>,
+    );
+    const componentByNode = new Map<NodeId, number>();
+    components.forEach((component, index) => {
+      for (const nodeId of component) componentByNode.set(nodeId, index);
+    });
+    // Classify once in original edge order; repeated per-component filters
+    // otherwise scan every parallel edge even for unrelated components.
+    for (const edge of validEdges) {
+      const index = componentByNode.get(edge[0]);
+      if (index !== undefined && index === componentByNode.get(edge[1]))
+        edgesByComponent[index]!.push(edge);
+    }
     const groups: Array<Record<NodeId, { x: number; y: number }>> = [];
-    for (const component of components) {
+    for (const [index, component] of components.entries()) {
       yield;
-      const componentSet = new Set(component);
-      const componentEdges = validEdges.filter(
-        ([source, target]) =>
-          componentSet.has(source) && componentSet.has(target),
-      );
+      const componentEdges = edgesByComponent[index]!;
 
       groups.push(
         componentEdges.length === 0

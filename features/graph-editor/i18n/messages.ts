@@ -99,6 +99,7 @@ type Messages = {
     paste: string;
     sample: string;
     loadingSamples: string;
+    samplesLoadFailed: string;
     readingFile: string;
     checkingInput: string;
     reviewInput: string;
@@ -673,6 +674,8 @@ const ja: Messages = {
     paste: "貼り付け",
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
+    samplesLoadFailed:
+      "サンプルを読み込めませんでした。再試行するか、貼り付けに戻って続けてください。現在のグラフは保持されています。",
     readingFile: "ファイルを読み込み中…",
     checkingInput: "入力を確認中…",
     reviewInput: "入力を確認してください",
@@ -1199,6 +1202,8 @@ const en: Messages = {
     paste: "Paste",
     sample: "Samples",
     loadingSamples: "Loading samples",
+    samplesLoadFailed:
+      "Samples could not be loaded. Retry or return to Paste to continue. Your current graph is retained.",
     readingFile: "Reading file…",
     checkingInput: "Checking input…",
     reviewInput: "Review the input",
@@ -1724,6 +1729,8 @@ const zhHans: Messages = {
     paste: "粘贴",
     sample: "示例",
     loadingSamples: "正在加载示例",
+    samplesLoadFailed:
+      "无法加载示例。请重试，或返回粘贴继续操作。当前图已保留。",
     readingFile: "正在读取文件…",
     checkingInput: "正在检查输入…",
     reviewInput: "请检查输入",

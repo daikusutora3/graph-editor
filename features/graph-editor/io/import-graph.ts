@@ -18,7 +18,6 @@ import {
   type ImportOptions,
   type ParsedLine,
   readLines,
-  splitTokens,
 } from "./import-utils";
 import {
   analyzeGraphInput,
@@ -79,9 +78,7 @@ function evaluateGraphInputInternal(
     const model = parseGraphModelJson(input);
     const result = importGraphJson(model, options);
     return {
-      analysis: looksLikeGraphJson(input)
-        ? analyzeGraphJsonModel(model)
-        : analyzeGraphInput(input, options),
+      analysis: analyzeGraphJsonModel(model),
       result,
     };
   }
@@ -168,9 +165,11 @@ function parseRequestedFormat(
   }
 
   if (requestedFormat === "contest-edge-list") {
+    const preparedSource = source ?? createImportSource(lines);
     return importStructuredEdgeList(
       input,
-      detectStructuredEdgeListOptions(lines, formatOptions),
+      detectStructuredEdgeListOptions(preparedSource, formatOptions),
+      preparedSource,
     );
   }
 
@@ -284,10 +283,10 @@ function evidenceForFormat(format: ImportFormatKind) {
 }
 
 function detectStructuredEdgeListOptions(
-  lines: ParsedLine[],
+  source: ImportSource,
   options: ImportOptions,
 ): ImportOptions {
-  const header = splitTokens(lines[0]?.text ?? "");
+  const header = source.firstRow;
   const nodeCount = Number(header[0]);
   const edgeCount = Number(header[1]);
 
@@ -301,9 +300,7 @@ function detectStructuredEdgeListOptions(
     return options;
   }
 
-  const edgeRows = lines
-    .slice(1, edgeCount + 1)
-    .map((line) => splitTokens(line.text));
+  const edgeRows = source.rows.slice(1, edgeCount + 1);
   const hasWeightedEdgeRow = edgeRows.some((row) => row.length === 3);
 
   return {
@@ -320,6 +317,8 @@ function importGraphJson(
     return importFailure(
       { code: "invalid-format", formatKind: "json" },
       { ...options, format: "json" },
+      "JSON",
+      "json",
     );
   }
 

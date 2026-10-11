@@ -34,6 +34,20 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 
 const { expect, finish } = createVerification("IO contract");
 
+for (const input of ["0 1\n1 0", "a: b"]) {
+  const evaluation = evaluateGraphInput(input, { format: "json" });
+  expect(
+    evaluation.result.status === "failure" &&
+      evaluation.result.formatKind === "json" &&
+      evaluation.analysis.status === "invalid" &&
+      evaluation.analysis.recommendedFormat === undefined &&
+      evaluation.analysis.candidates.length === 0 &&
+      JSON.stringify(evaluation.analysis) ===
+        JSON.stringify(analyzeGraphInput(input, { format: "json" })),
+    "explicit JSON rejection does not present another text format as detected",
+  );
+}
+
 for (const [input, expected] of [
   ["", []],
   ["\n\r\n \t\n# comment\n// comment\n", []],
