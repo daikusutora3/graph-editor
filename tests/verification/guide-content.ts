@@ -194,6 +194,30 @@ for (const locale of locales) {
       `${locale}: every structured FAQ is also available in the HTML`,
     );
   }
+  const faqMarkup = markup.match(
+    /<section\b[^>]*\bid="guide-faq"[^>]*>([\s\S]*?)<\/section>/,
+  )?.[1];
+  assert(faqMarkup, `${locale}: the FAQ section is present`);
+  const faqDisclosures = [...faqMarkup.matchAll(/<details\b[^>]*>/g)].map(
+    (match) => match[0],
+  );
+  assert.equal(
+    faqDisclosures.length,
+    copy.faq.length,
+    `${locale}: the accordion contains every FAQ`,
+  );
+  assert(
+    faqDisclosures.every((tag) => attribute(tag, "name") === "guide-faq"),
+    `${locale}: every FAQ belongs to the same exclusive accordion`,
+  );
+  assert.equal(
+    tags.filter(
+      (tag) =>
+        /^<details\b/.test(tag) && attribute(tag, "name") === "guide-faq",
+    ).length,
+    faqDisclosures.length,
+    `${locale}: standalone disclosures stay independent from the FAQ`,
+  );
 }
 
 console.log(

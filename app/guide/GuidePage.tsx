@@ -8,9 +8,9 @@ import {
 } from "./GuideNavigation";
 import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
+import { Accordion } from "@/components/ui/Accordion";
 import { Callout } from "@/components/ui/Callout";
 import { ContentSection } from "@/components/ui/ContentSection";
-import { Disclosure } from "@/components/ui/Disclosure";
 import { focusRing } from "@/components/ui/styles";
 import {
   GUIDE_LAST_MODIFIED,
@@ -165,13 +165,15 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
               description={copy.faqIntro}
               className="mt-10 sm:mt-14"
             >
-              <div className="mt-5 space-y-2.5">
-                {copy.faq.map((entry) => (
-                  <Disclosure key={entry.question} title={entry.question}>
-                    <p>{entry.answer}</p>
-                  </Disclosure>
-                ))}
-              </div>
+              <Accordion
+                name="guide-faq"
+                className="mt-5"
+                items={copy.faq.map((entry) => ({
+                  id: entry.question,
+                  title: entry.question,
+                  content: <p>{entry.answer}</p>,
+                }))}
+              />
             </ContentSection>
             <GuideFooter locale={locale} />
           </article>
