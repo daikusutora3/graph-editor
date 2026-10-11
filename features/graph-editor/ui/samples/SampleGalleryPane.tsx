@@ -43,7 +43,7 @@ import {
   Select,
   TextInput,
   focusRing,
-} from "../primitives";
+} from "@/components/ui/controls";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 import { SAMPLE_GALLERY_GRID_CLASS } from "./sample-gallery-layout";
 import { focusAfterContentSwitch } from "../primitives/focus-after-content-switch";

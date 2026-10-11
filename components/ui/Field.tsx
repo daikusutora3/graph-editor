@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import type { InputHTMLAttributes, SelectHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
+import { controlIcon } from "./control-styles";
 
 const fieldBase =
   "ge-focus h-8 w-full min-w-0 rounded-lg touch:h-11 border border-[var(--line)] bg-[var(--fill)] px-2.5 text-control font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]";
@@ -15,7 +16,9 @@ export function Select({
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { containerClassName?: string }) {
   return (
-    <span className={cn("relative block min-w-0", containerClassName)}>
+    <span
+      className={cn("relative block min-w-0", controlIcon, containerClassName)}
+    >
       <select
         {...props}
         className={cn(fieldBase, "appearance-none pr-8", className)}

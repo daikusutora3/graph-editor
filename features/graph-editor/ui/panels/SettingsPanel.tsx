@@ -1,8 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Lightbulb, Trash2 } from "lucide-react";
-
-import { cn } from "@/lib/utils";
+import { ArrowLeftRight, Trash2 } from "lucide-react";
 
 import type { GraphModel, GraphSettings } from "../../core/graph/model";
 import { useAtomValue } from "jotai";
@@ -11,20 +9,19 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { graphIsEmptyAtom } from "../../shell/state/graph-atoms";
 import type { Locale } from "../../i18n/locale";
 import {
-  Button,
+  ActionRow,
+  ControlGroup,
+  ControlRow,
   Hairline,
-  SectionLabel,
   Segment,
   OptionToggle,
-  focusRing,
-} from "../primitives";
+} from "@/components/ui/controls";
 
 export function SettingsPanel({
   clearArmed,
   graph,
   mobile,
   onClear,
-  onResetHints,
   onReverseAllEdges,
   onUpdateSettings,
 }: {
@@ -32,7 +29,6 @@ export function SettingsPanel({
   graph: GraphModel;
   mobile: boolean;
   onClear: () => void;
-  onResetHints: () => void;
   onReverseAllEdges: () => void;
   onUpdateSettings: (patch: Partial<GraphSettings>) => void;
 }) {
@@ -46,79 +42,84 @@ export function SettingsPanel({
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <SectionLabel>{messages.chrome.graphType}</SectionLabel>
-        <Segment
-          label={messages.settings.direction}
-          size={segmentSize}
-          value={settings.directed ? "directed" : "undirected"}
-          options={[
-            { label: messages.settings.undirected, value: "undirected" },
-            { label: messages.settings.directed, value: "directed" },
-          ]}
-          onChange={(value) =>
-            onUpdateSettings({ directed: value === "directed" })
-          }
-        />
-        <Segment
-          label={messages.settings.weight}
-          size={segmentSize}
-          value={settings.weighted ? "weighted" : "unweighted"}
-          options={[
-            { label: messages.settings.unweighted, value: "unweighted" },
-            { label: messages.settings.weighted, value: "weighted" },
-          ]}
-          onChange={(value) =>
-            onUpdateSettings({ weighted: value === "weighted" })
-          }
-        />
-        <Segment
-          label={messages.settings.indexBase}
-          size={segmentSize}
-          value={String(settings.indexBase)}
-          options={[
-            { label: "0-indexed", value: "0" },
-            { label: "1-indexed", value: "1" },
-          ]}
-          onChange={(value) =>
-            onUpdateSettings({
-              indexBase: Number(value) as GraphSettings["indexBase"],
-            })
-          }
-        />
+      <ControlGroup>
+        <ControlRow label={messages.settings.direction}>
+          <Segment
+            label={messages.settings.direction}
+            size={segmentSize}
+            value={settings.directed ? "directed" : "undirected"}
+            options={[
+              { label: messages.settings.undirected, value: "undirected" },
+              { label: messages.settings.directed, value: "directed" },
+            ]}
+            onChange={(value) =>
+              onUpdateSettings({ directed: value === "directed" })
+            }
+          />
+        </ControlRow>
+        <ControlRow label={messages.settings.weight}>
+          <Segment
+            label={messages.settings.weight}
+            size={segmentSize}
+            value={settings.weighted ? "weighted" : "unweighted"}
+            options={[
+              { label: messages.settings.unweighted, value: "unweighted" },
+              { label: messages.settings.weighted, value: "weighted" },
+            ]}
+            onChange={(value) =>
+              onUpdateSettings({ weighted: value === "weighted" })
+            }
+          />
+        </ControlRow>
+        <ControlRow label={messages.settings.indexBase}>
+          <Segment
+            label={messages.settings.indexBase}
+            size={segmentSize}
+            value={String(settings.indexBase)}
+            options={[
+              { label: "0-indexed", value: "0" },
+              { label: "1-indexed", value: "1" },
+            ]}
+            onChange={(value) =>
+              onUpdateSettings({
+                indexBase: Number(value) as GraphSettings["indexBase"],
+              })
+            }
+          />
+        </ControlRow>
         {settings.directed ? (
           <>
-            <Segment
-              label={messages.settings.arrowSize}
-              size={segmentSize}
-              value={arrowScaleToSettingValue(settings.arrowScale)}
-              options={[
-                { label: messages.settings.arrowSmall, value: "small" },
-                { label: messages.settings.arrowNormal, value: "normal" },
-                { label: messages.settings.arrowLarge, value: "large" },
-              ]}
-              onChange={(value) =>
-                onUpdateSettings({
-                  arrowScale: arrowScaleFromSettingValue(value),
-                })
+            <ControlRow label={messages.settings.arrows}>
+              <Segment
+                label={messages.settings.arrowSize}
+                size={segmentSize}
+                value={arrowScaleToSettingValue(settings.arrowScale)}
+                options={[
+                  { label: messages.settings.arrowSmall, value: "small" },
+                  { label: messages.settings.arrowNormal, value: "normal" },
+                  { label: messages.settings.arrowLarge, value: "large" },
+                ]}
+                onChange={(value) =>
+                  onUpdateSettings({
+                    arrowScale: arrowScaleFromSettingValue(value),
+                  })
+                }
+              />
+            </ControlRow>
+            <ActionRow
+              icon={
+                <ArrowLeftRight className="size-icon-sm" aria-hidden="true" />
               }
-            />
-            <Button
-              className="justify-start rounded-lg px-3 text-control"
               disabled={!canReverseAll}
               onClick={onReverseAllEdges}
             >
-              <ArrowLeftRight className="size-icon-sm" aria-hidden="true" />
               {messages.settings.reverseAllEdges}
-            </Button>
+            </ActionRow>
           </>
         ) : null}
-      </div>
+      </ControlGroup>
 
-      <div className="flex flex-col gap-0.5">
-        <SectionLabel className="pb-1.5">
-          {messages.chrome.display}
-        </SectionLabel>
+      <ControlGroup label={messages.chrome.display} spacing="tight">
         <OptionToggle
           checked={settings.snapToGrid}
           label={messages.settings.snapToGrid}
@@ -129,10 +130,9 @@ export function SettingsPanel({
           label={messages.settings.showNodeLabels}
           onChange={(checked) => onUpdateSettings({ showNodeLabels: checked })}
         />
-      </div>
+      </ControlGroup>
 
-      <div className="flex flex-col gap-2">
-        <SectionLabel>{messages.settings.language}</SectionLabel>
+      <ControlGroup label={messages.settings.language}>
         <Segment
           label={messages.settings.language}
           size={segmentSize}
@@ -140,46 +140,27 @@ export function SettingsPanel({
           options={localeOptions}
           onChange={(value) => setLocale(value as Locale)}
         />
-      </div>
+      </ControlGroup>
 
-      <div className="pt-1.5">
+      <div>
         <Hairline className="mb-1.5" />
-        <button
-          type="button"
-          onClick={onResetHints}
-          className={cn(
-            "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-control font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] touch:min-h-11",
-            focusRing,
-          )}
-        >
-          <Lightbulb className="size-icon-sm" aria-hidden="true" />
-          <span className="flex-1">{messages.chrome.resetHints}</span>
-        </button>
-        <button
-          type="button"
+        <ActionRow
+          active={clearArmed}
           disabled={isGraphEmpty}
+          icon={<Trash2 className="size-icon-sm" aria-hidden="true" />}
+          tone="danger"
           aria-label={
             clearArmed ? messages.chrome.clearArmed : messages.chrome.clear
           }
           onClick={onClear}
-          className={cn(
-            "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-control font-semibold transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent touch:min-h-11",
-            focusRing,
+          trailing={
             clearArmed
-              ? "bg-[var(--danger-fill)] text-[var(--danger)]"
-              : "text-[var(--muted)] hover:bg-[var(--danger-fill)] hover:text-[var(--danger)]",
-          )}
-        >
-          <Trash2 className="size-icon-sm" aria-hidden="true" />
-          <span className="flex-1">
-            {clearArmed ? messages.chrome.clearArmed : messages.chrome.clear}
-          </span>
-          <span className="text-meta font-medium text-[var(--muted)]">
-            {clearArmed
               ? messages.chrome.clearArmedHint
-              : messages.chrome.clearHint}
-          </span>
-        </button>
+              : messages.chrome.clearHint
+          }
+        >
+          {clearArmed ? messages.chrome.clearArmed : messages.chrome.clear}
+        </ActionRow>
       </div>
     </>
   );

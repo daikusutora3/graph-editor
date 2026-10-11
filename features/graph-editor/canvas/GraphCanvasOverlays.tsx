@@ -5,7 +5,7 @@ import type { CSSProperties, MutableRefObject, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
-import { IconButton, focusRing } from "../ui/primitives";
+import { IconButton, focusRing } from "@/components/ui/controls";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { InlineEditTarget, RenderedPoint } from "./graph-canvas-types";
 import { clampInlineEditCenterX } from "./graph-canvas-inline-edit";

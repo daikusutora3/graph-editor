@@ -21,3 +21,9 @@ export const raisedControl =
  * disabled states are not confused with secondary buttons or inputs. */
 export const disabledControl =
   "cursor-default border border-transparent bg-transparent text-[var(--faint)] shadow-none";
+
+/** One optical weight for UI icons; brand artwork keeps its own geometry. */
+export const controlIcon =
+  "[&_.lucide]:shrink-0 [&_.lucide]:[stroke-width:1.75]";
+export const rowControl =
+  "flex min-h-10 w-full items-center gap-2.5 rounded-lg text-left text-control font-medium transition-colors touch:min-h-11 [&_.lucide]:shrink-0 [&_.lucide]:[stroke-width:1.75]";

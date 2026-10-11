@@ -1,5 +1,4 @@
 "use client";
-import { integrityCopy } from "../../i18n/integrity-copy";
 
 import {
   Camera,
@@ -8,8 +7,18 @@ import {
   FileJson,
   FileText,
 } from "lucide-react";
-import { memo, useMemo } from "react";
+import { memo, useId, useMemo } from "react";
 
+import {
+  Button,
+  ChoiceButton,
+  ControlRow,
+  Notice,
+  PanelActions,
+  Select,
+} from "@/components/ui/controls";
+
+import { integrityCopy } from "../../i18n/integrity-copy";
 import {
   GRAPH_EXPORT_FORMATS,
   type GraphExportFormat,
@@ -17,7 +26,6 @@ import {
 import { useI18n } from "../../i18n/I18nProvider";
 import type { CopyState } from "../io/graph-io-types";
 import { useExportLineLayout } from "../io/use-export-line-layout";
-import { Button, Notice, Select } from "../primitives";
 
 export function ExportPanelBody({
   exportFormat,
@@ -37,6 +45,7 @@ export function ExportPanelBody({
   onOpenImage: () => void;
 }) {
   const { messages, locale } = useI18n();
+  const formatId = useId();
   const lineLayout = useExportLineLayout(exportText);
   const lines = useMemo(
     () => (exportText ? exportText.split("\n") : []),
@@ -77,12 +86,12 @@ export function ExportPanelBody({
             onClick: onOpenImage,
           },
         ].map(({ label, detail, icon: Icon, active, onClick }) => (
-          <Button
+          <ChoiceButton
             key={label}
             aria-label={label}
             aria-pressed={detail === "PNG" ? undefined : active}
             active={active}
-            className="h-auto min-h-20 min-w-0 flex-col gap-1 px-1 py-2 text-center whitespace-normal touch:h-auto touch:px-1"
+            layout="tile"
             onClick={onClick}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />
@@ -90,12 +99,16 @@ export function ExportPanelBody({
               {label}
             </span>
             <span className="text-[10px] font-normal">{detail}</span>
-          </Button>
+          </ChoiceButton>
         ))}
       </div>
-      <label className="grid shrink-0 gap-1.5 text-xs text-[var(--muted)]">
-        {messages.exportPanel.formatAria}
+      <ControlRow
+        htmlFor={formatId}
+        label={messages.exportPanel.formatAria}
+        layout="stacked"
+      >
         <Select
+          id={formatId}
           aria-label={messages.exportPanel.formatAria}
           className={mobile ? "h-11" : undefined}
           value={exportFormat}
@@ -109,7 +122,7 @@ export function ExportPanelBody({
             </option>
           ))}
         </Select>
-      </label>
+      </ControlRow>
       {exportWarning ? <Notice>{exportWarning}</Notice> : null}
       {exportFormat === "tikz" ? (
         <p className="shrink-0 text-xs leading-[1.5] text-[var(--muted)]">
@@ -226,11 +239,11 @@ export function ExportPanelFooter({
   const { messages } = useI18n();
 
   return (
-    <div className="grid w-full grid-cols-2 gap-2">
+    <PanelActions>
       <Button
-        className="h-auto min-h-11 min-w-0 px-2 py-2 whitespace-normal"
         disabled={disabled}
         size="lg"
+        wrap
         variant={disabled ? "disabled" : "secondary"}
         onClick={onSaveTxt}
       >
@@ -240,6 +253,7 @@ export function ExportPanelFooter({
       <Button
         disabled={disabled}
         size="lg"
+        wrap
         variant={
           disabled
             ? "disabled"
@@ -249,7 +263,6 @@ export function ExportPanelFooter({
                 ? "warning"
                 : "primary"
         }
-        className="h-auto min-h-11 min-w-0 px-2 py-2 whitespace-normal"
         onClick={onCopy}
       >
         <ClipboardCopy className="size-icon-sm shrink-0" aria-hidden="true" />
@@ -259,6 +272,6 @@ export function ExportPanelFooter({
             ? messages.chrome.copyFailed
             : messages.chrome.copy}
       </Button>
-    </div>
+    </PanelActions>
   );
 }

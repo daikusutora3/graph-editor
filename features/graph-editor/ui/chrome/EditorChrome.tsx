@@ -53,7 +53,6 @@ import { StorageNotice } from "./StorageNotice";
 import { EmptyState } from "./EmptyState";
 import { useTimedState } from "../hooks/use-timed-state";
 import { STORAGE_SKIPPED_EVENT } from "../../adapters/browser/stored-graph";
-import { resetLearnedHints } from "./hint-storage";
 import { AppMenuPanel } from "../panels/AppMenuPanel";
 import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
 import type { CopyState } from "../io/graph-io-types";
@@ -349,7 +348,6 @@ export function EditorChrome() {
               graph={graph}
               mobile={mobile}
               onClear={handleClear}
-              onResetHints={resetLearnedHints}
               onReverseAllEdges={() => reverseAllDirectedEdges()}
               onUpdateSettings={updateGraphSettings}
             />
@@ -371,7 +369,6 @@ export function EditorChrome() {
               graph={graph}
               mobile={mobile}
               onClear={handleClear}
-              onResetHints={resetLearnedHints}
               onReverseAllEdges={() => reverseAllDirectedEdges()}
               onUpdateSettings={updateGraphSettings}
             />

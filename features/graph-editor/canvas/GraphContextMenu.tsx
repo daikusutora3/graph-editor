@@ -12,7 +12,7 @@ import type {
   GraphContextMenuTarget,
   RenderedPoint,
 } from "./graph-canvas-types";
-import { Kbd } from "../ui/primitives";
+import { Kbd } from "@/components/ui/controls";
 import { resolveSelectionActions } from "./selection-actions";
 
 export type { GraphContextMenuTarget } from "./graph-canvas-types";

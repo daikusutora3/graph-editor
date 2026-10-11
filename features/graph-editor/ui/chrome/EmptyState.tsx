@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
-import { focusRing } from "../primitives";
+import { focusRing } from "@/components/ui/controls";
 import { BrandLogo } from "../brand/BrandLogo";
 import {
   EmptyStateIllustration,

@@ -84,6 +84,7 @@ type Messages = {
     weighted: string;
     indexBase: string;
     arrowSize: string;
+    arrows: string;
     arrowSmall: string;
     arrowNormal: string;
     arrowLarge: string;
@@ -250,7 +251,6 @@ type Messages = {
     graphType: string;
     display: string;
     clear: string;
-    resetHints: string;
     storageSkippedToast: string;
     clearArmed: string;
     clearHint: string;
@@ -657,6 +657,7 @@ const ja: Messages = {
     weighted: "重みあり",
     indexBase: "番号",
     arrowSize: "矢印の大きさ",
+    arrows: "矢印",
     arrowSmall: "小",
     arrowNormal: "標準",
     arrowLarge: "大",
@@ -924,7 +925,6 @@ const ja: Messages = {
     layoutPending: "配置を計算しています…",
     graphType: "グラフの種類",
     display: "表示",
-    resetHints: "ヒントをもう一度表示",
     storageSkippedToast:
       "このサイズのグラフは自動保存できません。JSON で書き出して保存してください。",
     clear: "グラフをクリア",
@@ -1183,6 +1183,7 @@ const en: Messages = {
     weighted: "Weighted",
     indexBase: "Index",
     arrowSize: "Arrow size",
+    arrows: "Arrows",
     arrowSmall: "Small",
     arrowNormal: "Normal",
     arrowLarge: "Large",
@@ -1450,7 +1451,6 @@ const en: Messages = {
     layoutPending: "Calculating layout…",
     graphType: "Graph type",
     display: "Display",
-    resetHints: "Show hints again",
     storageSkippedToast:
       "This graph is too large to autosave. Export it as JSON to keep it.",
     clear: "Clear graph",
@@ -1708,6 +1708,7 @@ const zhHans: Messages = {
     weighted: "有权",
     indexBase: "编号",
     arrowSize: "箭头大小",
+    arrows: "箭头",
     arrowSmall: "小",
     arrowNormal: "标准",
     arrowLarge: "大",
@@ -1965,7 +1966,6 @@ const zhHans: Messages = {
     layoutPending: "正在计算布局…",
     graphType: "图类型",
     display: "显示",
-    resetHints: "重新显示提示",
     storageSkippedToast: "此图过大，无法自动保存。请导出为 JSON 以保留。",
     clear: "清空图",
     clearArmed: "确认清空",

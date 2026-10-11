@@ -57,16 +57,21 @@ even when Bun is absent from the shell's `PATH`.
 
 ## Code boundaries
 
+Shared controls and content components live in `components/ui/`. See
+[UI components](ui-components.md) for panel layouts, interaction contracts,
+and the shared design rules.
+
 | Location                                        | Responsibility                                         |
 | ----------------------------------------------- | ------------------------------------------------------ |
 | `app/`                                          | Next.js routes and app entry points                    |
+| `components/ui/`                                | Shared controls, panel rows, and content components    |
 | `features/graph-editor/core/`                   | Graph model, reducers, validation, and layouts         |
 | `features/graph-editor/adapters/`               | Browser persistence and Cytoscape integration          |
 | `features/graph-editor/canvas/`                 | Rendering and interactive canvas behavior              |
 | `features/graph-editor/shell/` and `workflows/` | Editor state and coordinated editing operations        |
 | `features/graph-editor/io/`                     | Import, export, clipboard, and file actions            |
 | `features/graph-editor/samples/`                | Sample graph catalog                                   |
-| `features/graph-editor/ui/` and `i18n/`         | Controls, panels, and localized messages               |
+| `features/graph-editor/ui/` and `i18n/`         | Editor chrome, panels, and localized messages          |
 | `tests/verification/`                           | Model, IO, layout, state, and release checks           |
 | `tests/browser/` and `tests/benchmarks/`        | Browser regressions and local performance measurements |
 | `public/brand/`                                 | Icons and logo assets                                  |

@@ -11,7 +11,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
-import { IconButton } from "../primitives";
+import { IconButton } from "@/components/ui/controls";
 import { tabbableElements } from "../primitives/focus-navigation";
 import type {
   EditorLayout,

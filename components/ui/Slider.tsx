@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { focusRing } from "./styles";
+import { focusRing } from "./control-styles";
 import { SectionLabel } from "./Text";
 
 /**

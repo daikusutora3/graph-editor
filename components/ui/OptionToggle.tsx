@@ -5,12 +5,10 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { focusRing } from "./styles";
+import { controlIcon, focusRing } from "./control-styles";
 
 /**
- * Boolean option rendered as a check button, using the same selected look as
- * the segmented control (accent fill + check mark). Replaces toggle switches
- * so every "press to change state" control in a panel reads the same way.
+ * Boolean option with a full-row click target and a consistent trailing checkbox.
  */
 export function OptionToggle({
   checked,
@@ -36,23 +34,21 @@ export function OptionToggle({
       onClick={() => onChange(!checked)}
       className={cn(
         disabled && "cursor-default opacity-50",
-        "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-control font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.06)] transition-colors touch:min-h-12",
+        "flex min-h-11 w-full items-center gap-3 rounded-lg px-1 text-left text-control font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--fill)]",
         focusRing,
-        checked
-          ? "border-[var(--accent)] bg-[var(--accent-fill-soft)] text-[var(--accent-text)]"
-          : "border-[var(--line)] bg-[var(--panel-solid)] text-[var(--text-2)] hover:border-[var(--faint)] hover:text-[var(--text)]",
+        controlIcon,
       )}
     >
       <span
         aria-hidden="true"
         className={cn(
-          "grid size-icon-lg shrink-0 place-items-center rounded-md border transition-colors",
+          "order-last ml-auto grid size-icon-lg shrink-0 place-items-center rounded-md border transition-colors",
           checked
             ? "border-[var(--accent)] bg-[var(--accent)] text-white"
             : "border-[var(--faint)] bg-[var(--panel-solid)]",
         )}
       >
-        {checked ? <Check className="size-3" strokeWidth={3} /> : null}
+        {checked ? <Check className="size-3" strokeWidth={1.75} /> : null}
       </span>
       {icon ? (
         <span className="grid size-icon-sm shrink-0 place-items-center text-current opacity-80">
@@ -60,7 +56,7 @@ export function OptionToggle({
         </span>
       ) : null}
       <span className="flex min-w-0 flex-col">
-        <span className="truncate">{label}</span>
+        <span className="whitespace-normal">{label}</span>
         {description ? (
           <span className="text-xs font-medium text-[var(--muted)]">
             {description}
