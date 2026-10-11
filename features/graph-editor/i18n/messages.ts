@@ -280,8 +280,6 @@ type Messages = {
     starterBackToPaste: string;
     starterApply: string;
     starterSamplesTitle: string;
-    emptyHeading: string;
-    emptyTagline: string;
     emptyCards: Record<
       "paste" | "sample" | "draw",
       { title: string; body: string }
@@ -959,8 +957,6 @@ const ja: Messages = {
     starterBackToPaste: "貼り付けに戻る",
     starterApply: "グラフに反映",
     starterSamplesTitle: "サンプル",
-    emptyHeading: "最初のグラフを作る",
-    emptyTagline: "データを貼る、サンプルを選ぶ、直接描く。",
     emptyCards: {
       paste: {
         title: "データから作る",
@@ -1487,8 +1483,6 @@ const en: Messages = {
     starterBackToPaste: "Back to paste",
     starterApply: "Apply to graph",
     starterSamplesTitle: "Samples",
-    emptyHeading: "Create your first graph",
-    emptyTagline: "Paste data, try an example, or draw directly.",
     emptyCards: {
       paste: {
         title: "Start from data",
@@ -2003,8 +1997,6 @@ const zhHans: Messages = {
     starterBackToPaste: "返回粘贴",
     starterApply: "应用到图",
     starterSamplesTitle: "示例",
-    emptyHeading: "创建你的第一张图",
-    emptyTagline: "粘贴数据、尝试示例，或直接绘制。",
     emptyCards: {
       paste: { title: "从数据创建", body: "边列表、矩阵、JSON" },
       sample: { title: "选择示例", body: "环、树、网格等" },
