@@ -1,13 +1,8 @@
-import { FileText } from "lucide-react";
 import { ArticleCard } from "./ArticleCard";
 import { ArticleFooter } from "./ArticleFooter";
-import { ContextGuideLink } from "@/components/content/ContextGuideLink";
-import {
-  ContentHeader,
-  ContentLanguageSwitcher,
-} from "@/components/content/ContentNavigation";
+import { ContentHeader } from "@/components/content/ContentNavigation";
 import { ReadingPositionRestore } from "@/components/content/ReadingReturnLink";
-import { focusRing } from "@/components/ui/styles";
+import { bodyText, readingMeasure, focusRing } from "@/components/ui/styles";
 import { articleCopy, articlePath, getArticles } from "@/lib/article-content";
 import { getAppPathUrl, type AppLocale } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
@@ -52,29 +47,12 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
       <ReadingPositionRestore locale={locale} />
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
         <header>
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-            <p className="inline-flex items-center gap-2.5 text-[13px] font-semibold text-[var(--text-2)]">
-              <FileText
-                className="size-4 shrink-0 text-[var(--muted)]"
-                aria-hidden="true"
-              />
-              {copy.articlesLink}
-            </p>
-            <ContentLanguageSwitcher locale={locale} section="articles" />
-          </div>
-          <h1 className="mt-4 max-w-3xl text-[28px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
+          <h1 className="max-w-3xl text-[28px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
             {copy.heading}
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--text-2)]">
+          <p className={cn("mt-4", bodyText, readingMeasure)}>
             {copy.indexIntro}
           </p>
-          <div className="mt-3">
-            <ContextGuideLink
-              locale={locale}
-              target="guide-start"
-              label={copy.guideLink}
-            />
-          </div>
         </header>
         <div
           id="articles-content"

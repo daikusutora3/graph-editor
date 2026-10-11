@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { bodyText, panelSurface } from "./styles";
+import { bodyText, panelSurface, readingMeasure } from "./styles";
 import { cn } from "@/lib/utils";
 
 const sectionVariants = {
@@ -64,7 +64,7 @@ export function ContentSection({
         {title}
       </Heading>
       {description ? (
-        <p className={cn("mt-3", bodyText)}>{description}</p>
+        <p className={cn("mt-3", bodyText, readingMeasure)}>{description}</p>
       ) : null}
       {children}
     </section>

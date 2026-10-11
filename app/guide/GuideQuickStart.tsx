@@ -1,3 +1,5 @@
+import { Disclosure } from "@/components/ui/Disclosure";
+import { guideVisualCopy } from "@/lib/guide-visual-content";
 import { ArrowRight } from "lucide-react";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Card } from "@/components/ui/Card";
@@ -16,11 +18,11 @@ export function GuideQuickStart({ locale }: { locale: AppLocale }) {
       variant="plain"
       className="@container/guide-start"
     >
-      <div className="mt-5 grid gap-3 @[54rem]/guide-start:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
         {copy.quickStartCards.map((card) => (
           <Card key={card.id} className="flex flex-col">
-            <div className="mb-3 flex items-center gap-3 @[54rem]/guide-start:flex-col @[54rem]/guide-start:items-start">
-              <div className="h-14 w-16 shrink-0 text-[var(--text-2)] sm:h-16 sm:w-28 @[54rem]/guide-start:h-20 @[54rem]/guide-start:w-full">
+            <div className="mb-3 flex flex-col items-start gap-3">
+              <div className="h-36 w-full text-[var(--text-2)]">
                 <EmptyStateIllustration
                   method={card.id === "data" ? "paste" : card.id}
                   tone="neutral"
@@ -30,16 +32,9 @@ export function GuideQuickStart({ locale }: { locale: AppLocale }) {
                 {card.title}
               </h3>
             </div>
-            <p className="text-base leading-8 text-[var(--text-2)]">
+            <p className="flex-1 text-sm leading-7 text-[var(--text-2)]">
               {card.description}
             </p>
-            <ol className="mt-3 flex-1 list-decimal space-y-1 pl-4 text-base leading-8 text-[var(--text-2)] marker:text-[var(--muted)]">
-              {card.steps.map((step) => (
-                <li key={step} className="pl-1">
-                  {step}
-                </li>
-              ))}
-            </ol>
             <ActionLink
               href={`#guide-${card.targetId}`}
               variant="soft"
@@ -51,6 +46,28 @@ export function GuideQuickStart({ locale }: { locale: AppLocale }) {
           </Card>
         ))}
       </div>
+      <Disclosure
+        variant="compact"
+        title={guideVisualCopy[locale].details}
+        className="mt-3"
+      >
+        <div className="grid gap-6">
+          {copy.quickStartCards.map((card) => (
+            <div key={card.id} className="min-w-0">
+              <h3 className="mb-2 font-medium text-[var(--text)]">
+                {card.title}
+              </h3>
+              <ol className="list-decimal space-y-2 pl-4">
+                {card.steps.map((step) => (
+                  <li key={step} className="pl-1">
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </Disclosure>
     </ContentSection>
   );
 }

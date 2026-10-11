@@ -6,13 +6,15 @@ import { ArticleCard } from "./ArticleCard";
 import { ArticleDiagram } from "./ArticleDiagram";
 import { ArticleFooter } from "./ArticleFooter";
 import { ContextGuideLink } from "@/components/content/ContextGuideLink";
-import {
-  ContentHeader,
-  ContentLanguageSwitcher,
-} from "@/components/content/ContentNavigation";
+import { ContentHeader } from "@/components/content/ContentNavigation";
 import { ReadingPositionRestore } from "@/components/content/ReadingReturnLink";
 import { ContentSection } from "@/components/ui/ContentSection";
-import { actionStyles, focusRing } from "@/components/ui/styles";
+import {
+  actionStyles,
+  bodyText,
+  readingMeasure,
+  focusRing,
+} from "@/components/ui/styles";
 import {
   articleCopy,
   articleEditorPath,
@@ -145,16 +147,11 @@ export function ArticlePage({
             <p className="text-[13px] font-medium text-[var(--text-2)]">
               {article.category}
             </p>
-            <ContentLanguageSwitcher
-              locale={locale}
-              section="articles"
-              slug={article.slug}
-            />
           </div>
           <h1 className="mt-4 max-w-4xl text-[26px] leading-snug font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
             {article.title}
           </h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-[var(--text-2)]">
+          <p className={cn("mt-4", bodyText, readingMeasure)}>
             {article.introduction}
           </p>
           <aside className="mt-6 flex min-w-0 items-start gap-3 rounded-xl border border-[var(--line)] bg-[var(--fill)] p-4 sm:p-5">
@@ -179,7 +176,10 @@ export function ArticlePage({
           <article
             id="article-content"
             tabIndex={-1}
-            className="max-w-3xl min-w-0 scroll-mt-36 sm:scroll-mt-28"
+            className={cn(
+              readingMeasure,
+              "min-w-0 scroll-mt-36 sm:scroll-mt-28",
+            )}
           >
             <div className="space-y-10 sm:space-y-12">
               {article.sections.map((section, index) => (
@@ -190,7 +190,7 @@ export function ArticlePage({
                   variant={index === 0 ? "plain" : "divided"}
                   className="scroll-mt-36 sm:scroll-mt-28 [&>h2]:scroll-mt-36 sm:[&>h2]:scroll-mt-28"
                 >
-                  <div className="mt-4 space-y-4 text-base leading-8 text-[var(--text-2)]">
+                  <div className={cn("mt-4 space-y-5", bodyText)}>
                     {section.paragraphs.map((paragraph) => (
                       <p key={paragraph}>{paragraph}</p>
                     ))}

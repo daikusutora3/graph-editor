@@ -1,21 +1,16 @@
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { GuideExamples } from "./GuideExamples";
 import { GuideFooter } from "./GuideFooter";
-import {
-  GuideContents,
-  GuideHeader,
-  GuideLanguageSwitcher,
-} from "./GuideNavigation";
+import { GuideContents, GuideHeader } from "./GuideNavigation";
 import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
 import { GuideStickyHeader } from "./GuideStickyHeader";
 import styles from "./GuideLayout.module.css";
-import { ReadingReturnLink } from "@/components/content/ReadingReturnLink";
+import { RelatedLinks } from "@/components/content/RelatedLinks";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Accordion } from "@/components/ui/Accordion";
-import { Callout } from "@/components/ui/Callout";
 import { ContentSection } from "@/components/ui/ContentSection";
-import { focusRing } from "@/components/ui/styles";
+import { bodyText, readingMeasure, focusRing } from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
 import {
   articleCopy,
@@ -28,6 +23,7 @@ import {
   GUIDE_PUBLISHED_DATE,
   toIsoDate,
 } from "@/lib/content-dates";
+import { guideVisualCopy } from "@/lib/guide-visual-content";
 import { guideCopy, guideExampleCopy } from "@/lib/guide-content";
 import {
   appAuthorStructuredData,
@@ -125,25 +121,14 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       </a>
       <GuideStickyHeader>
         <GuideHeader locale={locale} />
-        <ReadingReturnLink locale={locale} />
       </GuideStickyHeader>
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
         <header className="mb-8 sm:mb-10">
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-            <p className="inline-flex items-center gap-2.5 text-[13px] font-semibold text-[var(--text-2)]">
-              <BookOpen
-                className="size-4 shrink-0 text-[var(--muted)]"
-                aria-hidden="true"
-              />
-              {copy.guideLink}
-            </p>
-            <GuideLanguageSwitcher locale={locale} />
-          </div>
-          <h1 className="mt-4 max-w-3xl text-[26px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
+          <h1 className="max-w-3xl text-[26px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
             {copy.heading}
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--text-2)]">
-            {copy.intro}
+          <p className={cn("mt-4", bodyText, readingMeasure)}>
+            {guideVisualCopy[locale].intro}
           </p>
         </header>
         <div className="min-w-0 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
@@ -162,51 +147,32 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                   id={`guide-${section.id}`}
                   anchorId={legacySectionIds[section.id]}
                   title={section.title}
+                  variant="plain"
                 >
-                  <GuideSectionContent section={section} />
+                  <GuideSectionContent section={section} locale={locale} />
                   {section.id === "shortcuts" ? (
                     <p className="mt-4 text-xs leading-6 text-[var(--muted)]">
                       {copy.shortcutsNote}
                     </p>
                   ) : null}
-                  {section.note ? (
-                    <Callout title={section.note.title} className="mt-5">
-                      <p>{section.note.text}</p>
-                    </Callout>
-                  ) : null}
-                  {getArticlesForGuideSection(locale, section.id).length > 0 ? (
-                    <nav
-                      aria-label={`${section.navTitle}: ${articleCopy[locale].relatedTitle}`}
-                      className="mt-5 border-t border-[var(--hair)] pt-3"
-                    >
-                      <p className="mb-1 text-sm font-medium text-[var(--muted)]">
-                        {articleCopy[locale].relatedTitle}
-                      </p>
-                      <div className="flex flex-col items-start gap-1">
-                        {getArticlesForGuideSection(locale, section.id).map(
-                          (article) => (
-                            <ActionLink
-                              key={article.slug}
-                              href={articlePath(locale, article.slug)}
-                              className="text-sm"
-                            >
-                              {article.title}
-                              <ArrowRight
-                                className="size-4 shrink-0"
-                                aria-hidden="true"
-                              />
-                            </ActionLink>
-                          ),
-                        )}
-                      </div>
-                    </nav>
-                  ) : null}
+                  <RelatedLinks
+                    title={articleCopy[locale].relatedTitle}
+                    label={`${section.navTitle}: ${articleCopy[locale].relatedTitle}`}
+                    className="mt-5"
+                    links={getArticlesForGuideSection(locale, section.id).map(
+                      (article) => ({
+                        href: articlePath(locale, article.slug),
+                        title: article.title,
+                      }),
+                    )}
+                  />
                 </ContentSection>
               ))}
             </div>
             <ContentSection
               id="guide-faq"
               title={copy.faqTitle}
+              variant="plain"
               description={copy.faqIntro}
               className="mt-10 sm:mt-14"
             >

@@ -1,3 +1,13 @@
+.disclosure[open] > .summary {
+  background: var(--fill);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.disclosure[open] > .summary > .chevron {
+  transform: rotate(180deg);
+}
+
 @supports (interpolate-size: allow-keywords) and selector(::details-content) and
   (transition-behavior: allow-discrete) {
   .disclosure {
