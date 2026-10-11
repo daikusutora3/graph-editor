@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mock } from "bun:test";
 import {
@@ -46,6 +45,95 @@ function equivalent(first, second, message) {
   assert.deepEqual([...first], [...second], message);
 }
 
+// These fixtures fill the supported [-180, 180] lanes in input order. Keep
+// the integer lane decisions exact, including the exceptions made to avoid
+// the fixed manual sibling and labels. Platform libm differences can choose
+// either a fractional lane or its rounded candidate during label scoring;
+// both must stay within half a pixel of the same representative bow.
+function assertFixtureRoutes(
+  routes,
+  graph,
+  { manual = false, mode, bows = {}, readyRange },
+) {
+  assert.deepEqual(
+    [...routes.keys()],
+    graph.edges.map((edge) => edge.id),
+    "routing preserves every edge and its input order",
+  );
+  for (const [index, edge] of graph.edges.entries()) {
+    const meta = routes.get(edge.id);
+    const lane = Math.round(
+      (index % 2 ? -1 : 1) *
+        (index - (graph.edges.length - 1) / 2) *
+        (360 / (graph.edges.length - 1)),
+    );
+    const bow = manual && index === 0 ? 0 : (bows[index] ?? lane);
+    const { controlPointDistancesPx, controlPointWeights, ...decisions } = meta;
+    const status = manual
+      ? index === 0 && mode !== "quality"
+        ? undefined
+        : "unresolved"
+      : index >= readyRange[0] && index <= readyRange[1]
+        ? "ready"
+        : "unresolved";
+    assert.deepEqual(
+      decisions,
+      {
+        bowPx: bow,
+        duplicate: true,
+        loopDirectionDeg: -45,
+        loopSweepDeg: 70,
+        ...(status === undefined ? {} : { status }),
+      },
+      `${edge.id}: lane direction, tie decision and status stay exact`,
+    );
+    assert.equal(controlPointDistancesPx.length, 1);
+    const distance = controlPointDistancesPx[0];
+    assert(
+      Number.isFinite(distance) &&
+        Math.abs(distance) <= 180 &&
+        Math.abs(distance - bow) <= 0.5 + 1e-9,
+      `${edge.id}: control point stays within half a pixel of its expected lane`,
+    );
+    assert.equal(
+      Math.round(distance),
+      bow,
+      `${edge.id}: geometry matches its bow`,
+    );
+    assert.equal(controlPointWeights.length, 1);
+    assert(
+      Math.abs(controlPointWeights[0] - (manual && index === 0 ? 0.3 : 0.5)) <=
+        1e-12,
+      `${edge.id}: control point weight is preserved`,
+    );
+    if (manual && index === 0) {
+      assert.deepEqual(
+        controlPointDistancesPx,
+        [0],
+        "fixed manual bow stays exact",
+      );
+      assert.deepEqual(
+        controlPointWeights,
+        [0.3],
+        "fixed manual weight stays exact",
+      );
+    }
+  }
+}
+
+const automaticCases = [
+  [100, 4_000, 902, [67, 83]],
+  [200, 8_000, 1758, [133, 167]],
+];
+const manualCases = [
+  ["simple", 100, 5_500, 3172, { 1: 180 }],
+  ["simple", 200, 11_000, 6372, { 1: 180, 10: -178, 19: 162 }],
+  ["parallel", 100, 5_500, 3172, { 1: 180 }],
+  ["parallel", 200, 11_000, 6372, { 1: 180, 10: -178, 19: 162 }],
+  ["quality", 100, 7_000, 4064, { 33: 180 }],
+  ["quality", 200, 14_000, 8120, { 14: -59, 67: 180 }],
+];
+
 try {
   const graph = parallelRoutingFixture(100);
   const saved = JSON.stringify(graph);
@@ -66,26 +154,14 @@ try {
   // mock. The old sibling loop repeats this calculation for every comparison.
   const nativeRound = Math.round;
   try {
-    for (const [count, maxRounds, steps, hash] of [
-      [
-        100,
-        4_000,
-        902,
-        "aacd07a682f661269b64528f1f288aec9a69403d57b55273544e3510ae6014de",
-      ],
-      [
-        200,
-        8_000,
-        1758,
-        "fae90d46cdc8f4a1a402633d43fc11d6c135f4de8d1b637a9bce3e211996ae27",
-      ],
-    ]) {
+    for (const [count, maxRounds, steps, readyRange] of automaticCases) {
       let rounds = 0;
       Math.round = (value) => {
         rounds++;
         return nativeRound(value);
       };
-      const result = route(parallelRoutingFixture(count));
+      const fixture = parallelRoutingFixture(count);
+      const result = route(fixture);
       assert(
         rounds < maxRounds,
         "one candidate bow is reused across its sibling comparisons",
@@ -95,13 +171,7 @@ try {
         steps,
         "bow reuse keeps scheduling boundaries",
       );
-      assert.equal(
-        createHash("sha256")
-          .update(JSON.stringify([...result.routes]))
-          .digest("hex"),
-        hash,
-        "bow reuse preserves every pre-change route value and order",
-      );
+      assertFixtureRoutes(result.routes, fixture, { readyRange });
     }
   } finally {
     Math.round = nativeRound;
@@ -111,50 +181,7 @@ try {
   // siblings run the reconciliation stage even in simple/parallel mode.
   // Preserve its geometry, orientation, tie decisions and scheduling while
   // ensuring each candidate's bow is evaluated once, not once per sibling.
-  for (const [mode, count, maxRounds, steps, hash] of [
-    [
-      "simple",
-      100,
-      5_500,
-      3172,
-      "67dc22f5978ec7e6c7b4ae5481d5fbef796b33b74d9b2b955d02341595d2ef41",
-    ],
-    [
-      "simple",
-      200,
-      11_000,
-      6372,
-      "50f5336289c8d45acfb82e9143e5a381de77a388880caa49dcc231c3d36437e8",
-    ],
-    [
-      "parallel",
-      100,
-      5_500,
-      3172,
-      "67dc22f5978ec7e6c7b4ae5481d5fbef796b33b74d9b2b955d02341595d2ef41",
-    ],
-    [
-      "parallel",
-      200,
-      11_000,
-      6372,
-      "50f5336289c8d45acfb82e9143e5a381de77a388880caa49dcc231c3d36437e8",
-    ],
-    [
-      "quality",
-      100,
-      7_000,
-      4064,
-      "ec1264fd03036649105c65064a04504181dfce671f2d0c2f545fe9d1e68e2adf",
-    ],
-    [
-      "quality",
-      200,
-      14_000,
-      8120,
-      "901feb5e6446aa0347a480f452376f91839caaa5449a4a0e187651becb1a2b00",
-    ],
-  ]) {
+  for (const [mode, count, maxRounds, steps, bows] of manualCases) {
     const manualGraph = manualParallelRoutingFixture(count);
     const savedManual = JSON.stringify(manualGraph);
     let rounds = 0;
@@ -173,32 +200,44 @@ try {
       "manual reconciliation reuses one bow per candidate in every routing mode",
     );
     assert.equal(result.steps, steps, "manual reconciliation keeps yields");
-    assert.equal(
-      createHash("sha256")
-        .update(JSON.stringify([...result.routes]))
-        .digest("hex"),
-      hash,
-      "manual reconciliation preserves pre-change route values, ties and order",
-    );
+    assertFixtureRoutes(result.routes, manualGraph, {
+      manual: true,
+      mode,
+      bows,
+    });
     assert.equal(
       JSON.stringify(manualGraph),
       savedManual,
       "manual routing leaves fixed geometry and the model untouched",
     );
-    const fixed = result.routes.get("e0");
-    assert.equal(fixed.bowPx, 0);
-    assert.deepEqual(fixed.controlPointDistancesPx, [0]);
-    assert.deepEqual(fixed.controlPointWeights, [0.3]);
-    for (const edge of manualGraph.edges) {
-      const meta = result.routes.get(edge.id);
-      assert(meta, "all reversed/forward siblings retain their route");
-      assert(
-        meta.controlPointDistancesPx.every(
-          (distance) => Number.isFinite(distance) && Math.abs(distance) <= 180,
-        ),
-        "reconciled manual siblings remain within supported curve bounds",
-      );
+  }
+
+  // Exercise the portable geometry contract under tiny libm-like changes,
+  // while still requiring the same discrete decisions and generator yields.
+  const nativeHypot = Math.hypot;
+  try {
+    for (const direction of [-1, 1]) {
+      Math.hypot = (...values) =>
+        nativeHypot(...values) * (1 + direction * Number.EPSILON);
+      for (const [count, , steps, readyRange] of automaticCases) {
+        const fixture = parallelRoutingFixture(count);
+        const result = route(fixture);
+        assert.equal(result.steps, steps);
+        assertFixtureRoutes(result.routes, fixture, { readyRange });
+      }
+      for (const [mode, count, , steps, bows] of manualCases) {
+        const fixture = manualParallelRoutingFixture(count);
+        const result = route(fixture, { mode });
+        assert.equal(result.steps, steps);
+        assertFixtureRoutes(result.routes, fixture, {
+          manual: true,
+          mode,
+          bows,
+        });
+      }
     }
+  } finally {
+    Math.hypot = nativeHypot;
   }
 
   const retained = route(graph, {
