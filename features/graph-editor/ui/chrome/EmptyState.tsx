@@ -48,15 +48,6 @@ export function EmptyState({
             </span>
           </div>
 
-          <div className="w-full shrink-0 text-center [@media(max-height:480px)]:sr-only">
-            <h2 className="text-xl leading-tight font-semibold tracking-tight text-[var(--text)] sm:text-2xl">
-              {messages.chrome.emptyHeading}
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)] sm:text-[13px]">
-              {messages.chrome.emptyTagline}
-            </p>
-          </div>
-
           <div className="grid w-full shrink-0 gap-3 sm:grid-cols-3">
             <EmptyCard
               body={cards.paste.body}
