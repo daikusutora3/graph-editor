@@ -103,6 +103,7 @@ const suites = [
     path: "tests/verification/storage-notifications.ts",
   },
   { name: "io", path: "tests/verification/io-contracts.ts" },
+  { name: "guide", path: "tests/verification/guide-content.ts" },
   {
     name: "import-text-contracts",
     path: "tests/verification/import-text-contracts.ts",

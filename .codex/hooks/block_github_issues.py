@@ -80,10 +80,19 @@ GSC_SITEMAP_READ = re.compile(
 )
 
 
+_LOCAL_GRAPH_URL = (
+    r"http://127\.0\.0\.1:332[34]"
+    r"(?:/|/en|/zh-hans|/guide|/en/guide|/zh-hans/guide)?"
+    r"(?:#(?:guide-[a-z0-9-]+|edge-list|adjacency-matrix|weighted-tree))?"
+)
+
 LOCAL_GRAPH_OPEN = re.compile(
     r"\s*let\s+localGraphTab\s*=\s*await\s+cua\.createBrowserTab\(\s*['\"]iab['\"]\s*,\s*"
-    r"['\"]http://127\.0\.0\.1:332[34](?:/|/en|/zh-hans)?['\"]\s*,\s*"
+    rf"['\"]{_LOCAL_GRAPH_URL}['\"]\s*,\s*"
     r"\{\s*visible:\s*true\s*\}\s*\);?\s*"
+)
+LOCAL_GRAPH_NAVIGATE = re.compile(
+    rf"\s*await\s+localGraphTab\.goto\(\s*['\"]{_LOCAL_GRAPH_URL}['\"]\s*\);?\s*"
 )
 LOCAL_GRAPH_READ = re.compile(
     r"\s*await\s+localGraphTab\.(?:getAXState|getScreenshot|getAXStateAndScreenshot)\(\s*\);?\s*"
@@ -116,6 +125,13 @@ LOCAL_GRAPH_REVIEW_SCREENSHOT = re.compile(
     r"\s*await \(await import\('node:fs/promises'\)\)\.writeFile\("
     r"'/tmp/graph-editor-ui-review/(?:before|after)-[a-z0-9-]+\.(?:png|jpg)', "
     r"await localGraphTab\.getScreenshot\(\{ emit: false \}\)\);\s*"
+)
+
+
+# Verify only the known guide edge-list example without revealing clipboard data.
+LOCAL_GRAPH_GUIDE_COPY_CHECK = re.compile(
+    r'\s*nodeRepl\.write\(\(await localGraphTab\.clipboard\.readText\(\)\) === '
+    r'"4 4\\n1 2\\n2 3\\n2 4\\n3 4"\);\s*'
 )
 
 
@@ -161,6 +177,7 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
         code = tool_input.get("code", "") if isinstance(tool_input, dict) else ""
         return not (
             LOCAL_GRAPH_OPEN.fullmatch(code)
+            or LOCAL_GRAPH_NAVIGATE.fullmatch(code)
             or LOCAL_GRAPH_READ.fullmatch(code)
             or LOCAL_GRAPH_ACTION.fullmatch(code)
             or LOCAL_GRAPH_RELOAD.fullmatch(code)
@@ -168,6 +185,7 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
             or LOCAL_GRAPH_REVIEW_DOCS.fullmatch(code)
             or LOCAL_GRAPH_REVIEW_SCREENSHOT.fullmatch(code)
             or LOCAL_GRAPH_REVIEW_VIEWPORT.fullmatch(code)
+            or LOCAL_GRAPH_GUIDE_COPY_CHECK.fullmatch(code)
             or ISSUE_BROWSER_OPEN.fullmatch(code)
             or ISSUE_BROWSER_BIND.fullmatch(code)
             or ISSUE_BROWSER_READ.fullmatch(code)
@@ -277,7 +295,6 @@ def self_test() -> None:
     ])
     blocked.extend([
         ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.createBrowserTab('iab', 'https://example.com', { visible: true });"}),
-        ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.createBrowserTab('iab', 'http://127.0.0.1:3324/guide', { visible: true });"}),
         ("mcp__cua_repl__js", {"code": "await localGraphTab.evaluate('location.href=123');"}),
     ])
     allowed.extend([
@@ -312,6 +329,34 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).set({ width: arbitraryWidth, height: 900 });"}),
         ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).reset(); await issueTab.click(1);"}),
         ("mcp__cua_repl__js", {"code": "await (await localGraphBrowser.capabilities.get('viewport')).set({ width: 320, height: 900, url: 'https://example.com' });"}),
+    ])
+    allowed.append(("mcp__cua_repl__js", {"code": r'nodeRepl.write((await localGraphTab.clipboard.readText()) === "4 4\n1 2\n2 3\n2 4\n3 4");'}))
+    blocked.extend([
+        ("mcp__cua_repl__js", {"code": "nodeRepl.write(await localGraphTab.clipboard.readText());"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.clipboard.writeText('arbitrary text');"}),
+        ("mcp__cua_repl__js", {"code": "nodeRepl.write((await issueTab.clipboard.readText()) === 'text');"}),
+    ])
+    # Guide verification stays on the approved origins and exact route paths.
+    for route in ("/guide", "/en/guide", "/zh-hans/guide"):
+        for port in (3323, 3324):
+            url = f"http://127.0.0.1:{port}{route}"
+            allowed.extend([
+                ("mcp__cua_repl__js", {"code": f"let localGraphTab = await cua.createBrowserTab('iab', '{url}', {{ visible: true }});"}),
+                ("mcp__cua_repl__js", {"code": f"await localGraphTab.goto('{url}#guide-examples');"}),
+            ])
+    for url in (
+        "https://127.0.0.1:3324/en/guide",
+        "http://127.0.0.1:3325/en/guide",
+        "http://127.0.0.1:3324/en/guide/other",
+        "http://127.0.0.1:3324/en/guide?next=https://example.com",
+        "http://127.0.0.1:3324/en/guide#arbitrary",
+        "http://127.0.0.1:3324/settings",
+        "https://example.com/en/guide",
+    ):
+        blocked.append(("mcp__cua_repl__js", {"code": f"await localGraphTab.goto('{url}');"}))
+    blocked.extend([
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.goto(arbitraryUrl);"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.goto('http://127.0.0.1:3324/en/guide'); await issueTab.click(1);"}),
     ])
     for tool_name, tool_input in blocked:
         assert should_block(tool_name, tool_input), (tool_name, tool_input)

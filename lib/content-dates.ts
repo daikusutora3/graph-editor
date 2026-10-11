@@ -23,8 +23,7 @@ const HOME_CONTENT_PATHS = [
 const GUIDE_CONTENT_PATHS = [
   "lib/guide-content.ts",
   "lib/guide-examples.ts",
-  "app/guide/GuidePage.tsx",
-  "app/guide/GuideExamples.tsx",
+  "app/guide",
   "public/guide",
 ];
 
