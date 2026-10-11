@@ -326,8 +326,10 @@ export function EditorPanelShell({
               // Children keep their natural height; long content scrolls instead of
               // squeezing controls above it.
               scrollOwner === "body"
-                ? "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 pb-4 [&>*]:shrink-0"
+                ? "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 [&>*]:shrink-0"
                 : "flex min-h-0 flex-1 flex-col overflow-hidden",
+              scrollOwner === "body" &&
+                (panel === "settings" || panel === "menu" ? "pb-2" : "pb-4"),
               bodyClassName,
             )}
           >
