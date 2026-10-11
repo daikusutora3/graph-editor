@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -41,6 +42,20 @@ import {
 } from "../../lib/site-metadata";
 
 const locales: readonly AppLocale[] = ["ja", "en", "zh-Hans"];
+for (const slug of articleSlugs) {
+  const screenshot = readFileSync(
+    new URL(
+      `../../public/articles/screenshots/${slug}-mobile.jpg`,
+      import.meta.url,
+    ),
+  );
+  assert.equal(screenshot.readUInt16BE(0), 0xffd8, `${slug}: valid JPEG start`);
+  assert.equal(
+    screenshot.readUInt16BE(screenshot.length - 2),
+    0xffd9,
+    `${slug}: complete JPEG image`,
+  );
+}
 const sitemapEntries = sitemap();
 assert.equal(sitemapEntries.length, 24);
 assert.equal(new Set(sitemapEntries.map((entry) => entry.url)).size, 24);
@@ -239,6 +254,17 @@ for (const locale of locales) {
           (attribute(tag, "src") ?? "").includes(`${article.slug}.png`),
       ),
       `${context}: an actual application screenshot accompanies the article`,
+    );
+    assert(
+      view.tags.some(
+        (tag) =>
+          /^<img\b/.test(tag) &&
+          attribute(tag, "src") ===
+            `/articles/screenshots/${article.slug}-mobile.jpg` &&
+          attribute(tag, "loading") === "lazy" &&
+          Boolean(attribute(tag, "alt")),
+      ),
+      `${context}: the mobile application screenshot is described and lazy loaded`,
     );
     for (const language of locales) {
       assert(

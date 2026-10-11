@@ -21,8 +21,8 @@ export function GuideQuickStart({ locale }: { locale: AppLocale }) {
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         {copy.quickStartCards.map((card) => (
           <Card key={card.id} className="flex flex-col">
-            <div className="mb-3 flex flex-col items-start gap-3">
-              <div className="h-36 w-full text-[var(--text-2)]">
+            <div className="mb-3 flex items-center gap-3 sm:flex-col sm:items-start">
+              <div className="h-20 w-24 shrink-0 text-[var(--text-2)] sm:h-36 sm:w-full">
                 <EmptyStateIllustration
                   method={card.id === "data" ? "paste" : card.id}
                   tone="neutral"

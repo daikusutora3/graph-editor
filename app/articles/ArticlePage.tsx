@@ -179,7 +179,7 @@ export function ArticlePage({
             tabIndex={-1}
             className={cn(
               readingMeasure,
-              "min-w-0 scroll-mt-36 sm:scroll-mt-28",
+              "min-w-0 scroll-mt-36 md:scroll-mt-28",
             )}
           >
             <div className="space-y-10 sm:space-y-12">
@@ -189,7 +189,7 @@ export function ArticlePage({
                   id={section.id}
                   title={section.title}
                   variant={index === 0 ? "plain" : "divided"}
-                  className="scroll-mt-36 sm:scroll-mt-28 [&>h2]:scroll-mt-36 sm:[&>h2]:scroll-mt-28"
+                  className="scroll-mt-36 md:scroll-mt-28 [&>h2]:scroll-mt-36 md:[&>h2]:scroll-mt-28"
                 >
                   {section.id === articleScreenshotSections[article.slug] ? (
                     <ArticleScreenshot slug={article.slug} locale={locale} />
@@ -211,7 +211,7 @@ export function ArticlePage({
               <ContentSection
                 id="article-example"
                 title={copy.exampleTitle}
-                className="scroll-mt-36 sm:scroll-mt-28 [&>h2]:scroll-mt-36 sm:[&>h2]:scroll-mt-28"
+                className="scroll-mt-36 md:scroll-mt-28 [&>h2]:scroll-mt-36 md:[&>h2]:scroll-mt-28"
               >
                 <div className="mt-5 grid min-w-0 overflow-hidden rounded-xl border border-[var(--line)] sm:grid-cols-2">
                   <div className="min-w-0 bg-[var(--fill)] px-4 pb-5 sm:px-5">
@@ -261,7 +261,7 @@ export function ArticlePage({
               <ContentSection
                 id="article-related"
                 title={copy.relatedTitle}
-                className="scroll-mt-36 sm:scroll-mt-28 [&>h2]:scroll-mt-36 sm:[&>h2]:scroll-mt-28"
+                className="scroll-mt-36 md:scroll-mt-28 [&>h2]:scroll-mt-36 md:[&>h2]:scroll-mt-28"
               >
                 <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2">
                   {related.map((relatedArticle) => (
