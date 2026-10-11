@@ -39,7 +39,6 @@ import {
 } from "../../lib/content-dates";
 import {
   articleCopy,
-  articleEditorPath,
   articleIndexPath,
   articlePath,
   getArticles,
@@ -375,10 +374,8 @@ for (const locale of locales) {
       `${page} should prerender the content, usable example and exact guide destination`,
     );
     expect(
-      html.includes(
-        `href="${articleEditorPath(locale, article.slug)}" target="_blank" rel="noopener noreferrer"`,
-      ),
-      `${page} should open its example separately from the current editor`,
+      html.includes(`href="${appLocalePaths[locale]}"`),
+      `${page} should link to the ordinary editor`,
     );
     const structured = [
       ...html.matchAll(

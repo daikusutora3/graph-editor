@@ -1,13 +1,16 @@
-import { ArrowRight, ArrowUpRight, BookOpen, ChevronRight } from "lucide-react";
+import { ArrowRight, BookOpen, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { GuideCopyButton } from "@/app/guide/GuideCopyButton";
 import { GuideContents } from "@/app/guide/GuideNavigation";
 import { ArticleCard } from "./ArticleCard";
 import { ArticleDiagram } from "./ArticleDiagram";
+import {
+  ArticleScreenshot,
+  articleScreenshotSections,
+} from "./ArticleScreenshot";
 import { ArticleFooter } from "./ArticleFooter";
 import { ContextGuideLink } from "@/components/content/ContextGuideLink";
 import { ContentHeader } from "@/components/content/ContentNavigation";
-import { ReadingPositionRestore } from "@/components/content/ReadingReturnLink";
 import { ContentSection } from "@/components/ui/ContentSection";
 import {
   actionStyles,
@@ -17,7 +20,6 @@ import {
 } from "@/components/ui/styles";
 import {
   articleCopy,
-  articleEditorPath,
   articleIndexPath,
   getArticle,
   type ArticleContent,
@@ -126,7 +128,6 @@ export function ArticlePage({
         {copy.skipToContent}
       </a>
       <ContentHeader locale={locale} section="articles" slug={article.slug} />
-      <ReadingPositionRestore locale={locale} />
       <div className="mx-auto max-w-6xl px-4 pt-5 pb-12 sm:px-8 sm:pt-8 sm:pb-16">
         <nav
           aria-label={copy.articlesLink}
@@ -190,6 +191,9 @@ export function ArticlePage({
                   variant={index === 0 ? "plain" : "divided"}
                   className="scroll-mt-36 sm:scroll-mt-28 [&>h2]:scroll-mt-36 sm:[&>h2]:scroll-mt-28"
                 >
+                  {section.id === articleScreenshotSections[article.slug] ? (
+                    <ArticleScreenshot slug={article.slug} locale={locale} />
+                  ) : null}
                   <div className={cn("mt-4 space-y-5", bodyText)}>
                     {section.paragraphs.map((paragraph) => (
                       <p key={paragraph}>{paragraph}</p>
@@ -253,27 +257,6 @@ export function ArticlePage({
                     />
                   </div>
                 ) : null}
-                <div className="mt-5 flex flex-col items-start gap-3">
-                  <a
-                    href={articleEditorPath(locale, article.slug)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      actionStyles("primary"),
-                      "max-w-full text-base active:opacity-75",
-                    )}
-                  >
-                    {copy.tryExample}
-                    <ArrowUpRight
-                      className="size-4 shrink-0"
-                      aria-hidden="true"
-                    />
-                    <span className="sr-only">({copy.newTabNote})</span>
-                  </a>
-                  <p className="text-sm leading-7 text-[var(--muted)]">
-                    {copy.newTabNote}
-                  </p>
-                </div>
               </ContentSection>
               <ContentSection
                 id="article-related"

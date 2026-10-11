@@ -1,7 +1,6 @@
 import { ArticleCard } from "./ArticleCard";
 import { ArticleFooter } from "./ArticleFooter";
 import { ContentHeader } from "@/components/content/ContentNavigation";
-import { ReadingPositionRestore } from "@/components/content/ReadingReturnLink";
 import { bodyText, readingMeasure, focusRing } from "@/components/ui/styles";
 import { articleCopy, articlePath, getArticles } from "@/lib/article-content";
 import { getAppPathUrl, type AppLocale } from "@/lib/site-metadata";
@@ -44,7 +43,6 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
         {copy.skipToContent}
       </a>
       <ContentHeader locale={locale} section="articles" />
-      <ReadingPositionRestore locale={locale} />
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
         <header>
           <h1 className="max-w-3xl text-[28px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">

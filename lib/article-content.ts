@@ -61,8 +61,6 @@ export type ArticleCopy = {
   copySuccess: string;
   copyFailure: string;
   exampleTitle: string;
-  tryExample: string;
-  newTabNote: string;
   operationGuideLabel: string;
   sameExampleGuideLabel: string;
   relatedTitle: string;
@@ -90,8 +88,6 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     copySuccess: guideExampleCopy.ja.copySuccess,
     copyFailure: guideExampleCopy.ja.copyFailure,
     exampleTitle: "入力例と図を見比べる",
-    tryExample: "この例をエディタで試す",
-    newTabNote: "別タブで入力例を開きます。元の編集内容はそのまま残ります。",
     operationGuideLabel: "操作を確認する",
     sameExampleGuideLabel: "ガイドで同じ入力例を見る",
     relatedTitle: "あわせて読む",
@@ -117,9 +113,6 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     copySuccess: guideExampleCopy.en.copySuccess,
     copyFailure: guideExampleCopy.en.copyFailure,
     exampleTitle: "Compare the input and diagram",
-    tryExample: "Try this example in the editor",
-    newTabNote:
-      "The input opens in a new tab. Your original work stays in place.",
     operationGuideLabel: "Check the editor steps",
     sameExampleGuideLabel: "See the same input in the guide",
     relatedTitle: "Related articles",
@@ -145,8 +138,6 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     copySuccess: guideExampleCopy["zh-Hans"].copySuccess,
     copyFailure: guideExampleCopy["zh-Hans"].copyFailure,
     exampleTitle: "对照输入与图形",
-    tryExample: "在编辑器中试用此示例",
-    newTabNote: "输入示例将在新标签页中打开，原来的编辑内容会保留。",
     operationGuideLabel: "查看操作步骤",
     sameExampleGuideLabel: "在指南中查看相同输入",
     relatedTitle: "相关文章",
@@ -815,13 +806,6 @@ export function articleGuidePath(
   const anchor =
     target === "example" && exampleId ? exampleId : articleGuideAnchors[slug];
   return `${appGuidePaths[locale]}#${anchor}`;
-}
-
-export function articleEditorPath(
-  locale: AppLocale,
-  slug: ArticleSlug,
-): string {
-  return `${appLocalePaths[locale]}?example=${slug}`;
 }
 
 export function getArticlesForGuideSection(
