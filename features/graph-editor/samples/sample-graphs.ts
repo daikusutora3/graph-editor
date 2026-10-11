@@ -102,36 +102,40 @@ function doubleCirclePositions(
   outerRadius = 210,
   innerRadius = 105,
 ): Record<NodeId, Point> {
-  const positions: Record<NodeId, Point> = {};
+  const positions = new Map<NodeId, Point>();
 
   outerIds.forEach((nodeId, index) => {
     const angle = (Math.PI * 2 * index) / outerIds.length - Math.PI / 2;
-    positions[nodeId] = {
+    positions.set(nodeId, {
       x: Math.round(Math.cos(angle) * outerRadius),
       y: Math.round(Math.sin(angle) * outerRadius),
-    };
+    });
   });
 
   innerIds.forEach((nodeId, index) => {
     const angle = (Math.PI * 2 * index) / innerIds.length - Math.PI / 2;
-    positions[nodeId] = {
+    positions.set(nodeId, {
       x: Math.round(Math.cos(angle) * innerRadius),
       y: Math.round(Math.sin(angle) * innerRadius),
-    };
+    });
   });
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 
 function starPositions(nodeIds: NodeId[], radius = 170): Record<NodeId, Point> {
   const [center, ...leaves] = nodeIds;
-  const positions: Record<NodeId, Point> = {};
+  const positions = new Map<NodeId, Point>();
 
-  if (!center) return positions;
-  positions[center] = { x: 0, y: 0 };
+  if (!center) return Object.fromEntries(positions);
+  positions.set(center, { x: 0, y: 0 });
 
-  Object.assign(positions, circlePositions(leaves, radius));
-  return positions;
+  for (const [id, position] of Object.entries(
+    circlePositions(leaves, radius),
+  )) {
+    positions.set(id, position);
+  }
+  return Object.fromEntries(positions);
 }
 
 function bipartitePositions(
@@ -179,7 +183,7 @@ function multipartitePositions(
     ]);
   }
 
-  const positions: Record<NodeId, Point> = {};
+  const positions = new Map<NodeId, Point>();
   const columnGap = 150;
   const rowGap = 96;
   let cursor = 0;
@@ -190,16 +194,16 @@ function multipartitePositions(
     for (let rowIndex = 0; rowIndex < partSize; rowIndex += 1) {
       const nodeId = nodeIds[cursor + rowIndex];
       if (!nodeId) continue;
-      positions[nodeId] = {
+      positions.set(nodeId, {
         x,
         y: (rowIndex - (partSize - 1) / 2) * rowGap,
-      };
+      });
     }
 
     cursor += partSize;
   });
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 
 function splitPositions(
@@ -221,7 +225,7 @@ function splitPositions(
 }
 
 function layeredPositions(columns: NodeId[][]): Record<NodeId, Point> {
-  const positions: Record<NodeId, Point> = {};
+  const positions = new Map<NodeId, Point>();
   const columnGap = 150;
   const rowGap = 92;
 
@@ -229,14 +233,14 @@ function layeredPositions(columns: NodeId[][]): Record<NodeId, Point> {
     const x = (columnIndex - (columns.length - 1) / 2) * columnGap;
 
     column.forEach((nodeId, rowIndex) => {
-      positions[nodeId] = {
+      positions.set(nodeId, {
         x,
         y: (rowIndex - (column.length - 1) / 2) * rowGap,
-      };
+      });
     });
   });
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 
 function prismPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
@@ -316,8 +320,8 @@ function friendshipPositions(
   nodeIds: NodeId[],
   triangleCount: number,
 ): Record<NodeId, Point> {
-  const positions: Record<NodeId, Point> = {};
-  positions[nodeIds[0]] = { x: 0, y: 0 };
+  const positions = new Map<NodeId, Point>();
+  positions.set(nodeIds[0], { x: 0, y: 0 });
 
   for (let index = 0; index < triangleCount; index += 1) {
     const angle = (Math.PI * 2 * index) / triangleCount - Math.PI / 2;
@@ -331,20 +335,20 @@ function friendshipPositions(
     const second = nodeIds[index * 2 + 2];
 
     if (first) {
-      positions[first] = {
+      positions.set(first, {
         x: center.x + Math.round(Math.cos(tangent) * 44),
         y: center.y + Math.round(Math.sin(tangent) * 44),
-      };
+      });
     }
     if (second) {
-      positions[second] = {
+      positions.set(second, {
         x: center.x - Math.round(Math.cos(tangent) * 44),
         y: center.y - Math.round(Math.sin(tangent) * 44),
-      };
+      });
     }
   }
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 
 function hypercubePositions(
@@ -397,27 +401,27 @@ function caterpillarPositions(
   nodeIds: NodeId[],
   spineCount: number,
 ): Record<NodeId, Point> {
-  const positions: Record<NodeId, Point> = {};
+  const positions = new Map<NodeId, Point>();
   const spineGap = 112;
 
   nodeIds.slice(0, spineCount).forEach((nodeId, index) => {
-    positions[nodeId] = {
+    positions.set(nodeId, {
       x: (index - (spineCount - 1) / 2) * spineGap,
       y: 0,
-    };
+    });
   });
 
   for (let index = spineCount; index < nodeIds.length; index += 1) {
     const leafIndex = index - spineCount;
     const spineIndex = Math.floor(leafIndex / 2);
     const side = leafIndex % 2 === 0 ? -1 : 1;
-    positions[nodeIds[index]] = {
+    positions.set(nodeIds[index], {
       x: (spineIndex - (spineCount - 1) / 2) * spineGap,
       y: side * 100,
-    };
+    });
   }
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 
 function unitDiskPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
@@ -734,19 +738,12 @@ function partialKTreePositions(nodeIds: NodeId[]): Record<NodeId, Point> {
 function subsetPairPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
   const outerIndexes = [0, 4, 7, 9, 3];
   const innerIndexes = [1, 5, 8, 6, 2];
-  const positions: Record<NodeId, Point> = {};
-
-  Object.assign(
-    positions,
-    doubleCirclePositions(
-      outerIndexes.map((index) => nodeIds[index]).filter(Boolean),
-      innerIndexes.map((index) => nodeIds[index]).filter(Boolean),
-      220,
-      105,
-    ),
+  return doubleCirclePositions(
+    outerIndexes.map((index) => nodeIds[index]).filter(Boolean),
+    innerIndexes.map((index) => nodeIds[index]).filter(Boolean),
+    220,
+    105,
   );
-
-  return positions;
 }
 
 function applyPreferredSampleLayout(
@@ -3165,16 +3162,16 @@ function treeLayerPositions(model: GraphModel): Record<NodeId, Point> {
       (neighbors.get(id) ?? []).filter((neighbor) => !seen.has(neighbor)),
     );
   }
-  const positions: Record<NodeId, Point> = {};
+  const positions = new Map<NodeId, Point>();
   layers.forEach((layer, depth) => {
     layer.forEach((id, index) => {
-      positions[id] = {
+      positions.set(id, {
         x: (index - (layer.length - 1) / 2) * 100,
         y: (depth - (layers.length - 1) / 2) * 112,
-      };
+      });
     });
   });
-  return positions;
+  return Object.fromEntries(positions);
 }
 
 function createRandomTreeGraph(

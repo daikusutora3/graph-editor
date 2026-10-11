@@ -1,6 +1,8 @@
 import type { Core, EventObject } from "cytoscape";
 import type { GraphModel } from "../../core/graph/model";
+import { decodeCytoscapeId, getCytoscapeElement } from "./cytoscape-ids";
 import {
+  edgeHitboxLabel,
   readEdgeLabelHitboxes,
   readNodeHitboxes,
   type EdgeLabelHitbox,
@@ -26,6 +28,21 @@ export function createRenderedHitboxReader(cy: Core) {
   const dirtyNodes = new Set<string>();
   const dirtyEdges = new Set<string>();
 
+  const dirtyNode = (id: string, element = getCytoscapeElement(cy, id)) => {
+    if (dirtyNodes.has(id)) return;
+    dirtyNodes.add(id);
+    element.connectedEdges().forEach((edge) => {
+      dirtyEdges.add(decodeCytoscapeId(edge.id()));
+    });
+  };
+  const dirtyEdge = (id: string, element = getCytoscapeElement(cy, id)) => {
+    if (dirtyEdges.has(id)) return;
+    dirtyEdges.add(id);
+    element.parallelEdges().forEach((edge) => {
+      dirtyEdges.add(decodeCytoscapeId(edge.id()));
+    });
+  };
+
   const invalidate = (event: EventObject) => {
     if (
       event.type === "add" ||
@@ -37,18 +54,8 @@ export function createRenderedHitboxReader(cy: Core) {
     }
     if (full) return;
     const element = event.target;
-    const isNode = element.isNode();
-    if ((isNode ? dirtyNodes : dirtyEdges).has(element.id())) return;
-    if (isNode) {
-      dirtyNodes.add(element.id());
-      element
-        .connectedEdges()
-        .forEach((edge: { id(): string }) => dirtyEdges.add(edge.id()));
-    } else {
-      element
-        .parallelEdges()
-        .forEach((edge: { id(): string }) => dirtyEdges.add(edge.id()));
-    }
+    if (element.isNode()) dirtyNode(decodeCytoscapeId(element.id()), element);
+    else dirtyEdge(decodeCytoscapeId(element.id()), element);
   };
   const events = "position data style add remove";
   cy.on(events, invalidate);
@@ -57,16 +64,41 @@ export function createRenderedHitboxReader(cy: Core) {
     read(graph: GraphModel, includeEdges: boolean) {
       const currentPan = cy.pan();
       const currentZoom = cy.zoom();
+      if (model !== graph) {
+        const nextLabels = new Map(
+          graph.nodes.map((node) => [node.id, node.label]),
+        );
+        const nextEdges = new Map(graph.edges.map((edge) => [edge.id, edge]));
+        // An immutable command changes the model root even when only one label
+        // changes. Reset geometry only for structural changes; ordinary edits
+        // keep the geometry invalidations supplied by Cytoscape's own events.
+        full ||=
+          nextLabels.size !== labels.size ||
+          nextEdges.size !== modelEdges.size ||
+          graph.nodes.some((node) => !labels.has(node.id)) ||
+          graph.edges.some((edge) => !modelEdges.has(edge.id));
+        if (!full) {
+          for (const node of graph.nodes)
+            if (labels.get(node.id) !== node.label) dirtyNode(node.id);
+          for (const edge of graph.edges) {
+            const previous = modelEdges.get(edge.id)!;
+            if (
+              previous.source !== edge.source ||
+              previous.target !== edge.target ||
+              edgeHitboxLabel(previous, model!.settings.weighted) !==
+                edgeHitboxLabel(edge, graph.settings.weighted)
+            )
+              dirtyEdge(edge.id);
+          }
+        }
+        labels = nextLabels;
+        modelEdges = nextEdges;
+      }
       const reset =
         full ||
-        model !== graph ||
         zoom !== currentZoom ||
         pan.x !== currentPan.x ||
         pan.y !== currentPan.y;
-      if (model !== graph) {
-        labels = new Map(graph.nodes.map((node) => [node.id, node.label]));
-        modelEdges = new Map(graph.edges.map((edge) => [edge.id, edge]));
-      }
       if (reset) {
         nodes = nodeSnapshot.reset(readNodeHitboxes(cy, graph));
         edges = includeEdges

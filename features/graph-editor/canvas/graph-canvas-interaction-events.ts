@@ -1,6 +1,7 @@
 "use client";
 
 import type { Core, EventObject, Position } from "cytoscape";
+import { decodeCytoscapeId } from "../adapters/cytoscape/cytoscape-ids";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef } from "react";
 
@@ -159,9 +160,9 @@ export function useCytoscapeInteractionEvents({
   ]);
 }
 
-function readCytoscapeSelection(cy: Core): SelectionState {
+export function readCytoscapeSelection(cy: Core): SelectionState {
   return {
-    nodeIds: cy.nodes(":selected").map((node) => node.id()),
-    edgeIds: cy.edges(":selected").map((edge) => edge.id()),
+    nodeIds: cy.nodes(":selected").map((node) => decodeCytoscapeId(node.id())),
+    edgeIds: cy.edges(":selected").map((edge) => decodeCytoscapeId(edge.id())),
   };
 }

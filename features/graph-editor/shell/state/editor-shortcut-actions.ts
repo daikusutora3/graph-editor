@@ -3,8 +3,7 @@ import { atom } from "jotai";
 import { nextEdgeColor, nextNodeColor } from "../../core/graph/colors";
 import {
   createMoveNodesCommand,
-  setEdgesColorCommand,
-  setNodesColorCommand,
+  setSelectionColorsCommand,
 } from "../../core/graph/graph-intents";
 import {
   createGraphClipboardPayload,
@@ -96,25 +95,21 @@ export const cycleSelectionColorAtom = atom(null, (get, set) => {
     return false;
   }
 
-  if (selection.nodeIds.length > 0) {
-    const firstNode = graph.nodes.find(
-      (node) => node.id === selection.nodeIds[0],
-    );
-    set(
-      executeCommandAtom,
-      setNodesColorCommand(selection.nodeIds, nextNodeColor(firstNode?.color)),
-    );
-  }
-
-  if (selection.edgeIds.length > 0) {
-    const firstEdge = graph.edges.find(
-      (edge) => edge.id === selection.edgeIds[0],
-    );
-    set(
-      executeCommandAtom,
-      setEdgesColorCommand(selection.edgeIds, nextEdgeColor(firstEdge?.color)),
-    );
-  }
+  const firstNode = graph.nodes.find(
+    (node) => node.id === selection.nodeIds[0],
+  );
+  const firstEdge = graph.edges.find(
+    (edge) => edge.id === selection.edgeIds[0],
+  );
+  set(
+    executeCommandAtom,
+    setSelectionColorsCommand({
+      nodeIds: selection.nodeIds,
+      nodeColor: nextNodeColor(firstNode?.color),
+      edgeIds: selection.edgeIds,
+      edgeColor: nextEdgeColor(firstEdge?.color),
+    }),
+  );
 
   return true;
 });

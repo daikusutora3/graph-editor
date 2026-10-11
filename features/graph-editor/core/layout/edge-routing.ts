@@ -516,15 +516,13 @@ function* routingTask(
               model.nodes,
               resolvedOptions.work,
             );
+            const candidateBow =
+              (edge.source <= edge.target ? 1 : -1) *
+              representativeBow(candidate);
             const distinct = edges.every(
               (other) =>
                 other.id === edge.id ||
-                Math.abs(
-                  canonicalPreviousBow(other, meta) -
-                    (edge.source <= edge.target
-                      ? representativeBow(candidate)
-                      : -representativeBow(candidate)),
-                ) >=
+                Math.abs(canonicalPreviousBow(other, meta) - candidateBow) >=
                   (distinctBowSpacing ??= duplicateBowSpacing(
                     edges.length,
                     parallelLabelSpacing(

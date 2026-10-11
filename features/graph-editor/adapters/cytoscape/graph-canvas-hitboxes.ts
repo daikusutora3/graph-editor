@@ -5,6 +5,7 @@ import type { EdgeId, GraphModel, NodeId } from "../../core/graph/model";
 import type { RenderedPoint } from "../../core/view/types";
 import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
 import type { InlineEditTarget } from "../../canvas/graph-canvas-types";
+import { decodeCytoscapeId, getCytoscapeElement } from "./cytoscape-ids";
 
 export type NodeHitbox = {
   id: NodeId;
@@ -17,6 +18,8 @@ export type NodeHitbox = {
 
 export type EdgeLabelHitbox = {
   id: EdgeId;
+  /** Endpoint identity, independent of rendered coordinate coincidence. */
+  isLoop: boolean;
   label: string;
   sourceX: number;
   sourceY: number;
@@ -56,16 +59,17 @@ export function readNodeHitboxes(
     new Map(graph.nodes.map((node) => [node.id, node.label]));
   const nodes = options
     ? [...options.ids]
-        .map((id) => cy.getElementById(id))
+        .map((id) => getCytoscapeElement(cy, id))
         .filter((node) => node.isNode() && !node.removed())
     : cy.nodes();
 
   return nodes.map((node) => {
+    const id = decodeCytoscapeId(node.id());
     const position = node.renderedPosition();
 
     return {
-      id: node.id(),
-      label: labels.get(node.id()) ?? node.id(),
+      id,
+      label: labels.get(id) ?? id,
       x: position.x,
       y: position.y,
       width: Math.max(
@@ -88,7 +92,7 @@ export function readEdgeLabelHitboxes(
     options?.edges ?? new Map(graph.edges.map((edge) => [edge.id, edge]));
   const collection = options
     ? [...options.ids]
-        .map((id) => cy.getElementById(id))
+        .map((id) => getCytoscapeElement(cy, id))
         .filter((edge) => edge.isEdge() && !edge.removed())
     : cy.edges();
   const hitboxes: EdgeLabelHitbox[] = [];
@@ -116,16 +120,15 @@ export function readEdgeLabelHitboxes(
   };
 
   collection.forEach((edge) => {
-    const graphEdge = edges.get(edge.id());
+    const id = decodeCytoscapeId(edge.id());
+    const graphEdge = edges.get(id);
 
     if (!graphEdge) {
       return;
     }
 
     const position = readEdgeRenderedLabelPosition(edge);
-    const label =
-      graphEdge.label ??
-      (graph.settings.weighted ? (graphEdge.weight ?? "1") : "");
+    const label = edgeHitboxLabel(graphEdge, graph.settings.weighted);
     const labelBounds = label
       ? edge.renderedBoundingBox({
           includeNodes: false,
@@ -141,7 +144,8 @@ export function readEdgeLabelHitboxes(
     const target = geometryFor(edge.target());
 
     hitboxes.push({
-      id: edge.id(),
+      id,
+      isLoop: graphEdge.source === graphEdge.target,
       label,
       sourceX: source.position.x,
       sourceY: source.position.y,
@@ -266,7 +270,7 @@ export function readRenderedNodePosition(cy: Core | null, nodeId: NodeId) {
     return null;
   }
 
-  const node = cy.getElementById(nodeId);
+  const node = getCytoscapeElement(cy, nodeId);
 
   if (node.empty() || !node.isNode()) {
     return null;
@@ -282,7 +286,7 @@ export function readRenderedEdgeLabelPosition(cy: Core | null, edgeId: EdgeId) {
     return null;
   }
 
-  const edge = cy.getElementById(edgeId);
+  const edge = getCytoscapeElement(cy, edgeId);
 
   if (edge.empty() || !edge.isEdge()) {
     return null;
@@ -308,7 +312,7 @@ function readEdgeRenderedLabelPosition(edge: EdgeSingular): RenderedPoint {
   const source = edge.source().renderedPosition();
   const target = edge.target().renderedPosition();
 
-  if (source.x === target.x && source.y === target.y) {
+  if (edge.isLoop()) {
     return { x: source.x + 36, y: source.y - 36 };
   }
 
@@ -317,6 +321,14 @@ function readEdgeRenderedLabelPosition(edge: EdgeSingular): RenderedPoint {
 
 export function edgeLabelHitboxWidth(label: string) {
   return Math.max(label.length * 9 + 28, 44);
+}
+
+/** Display text is also compared when an immutable model replaces its parent. */
+export function edgeHitboxLabel(
+  edge: GraphModel["edges"][number],
+  weighted: boolean,
+) {
+  return edge.label ?? (weighted ? (edge.weight ?? "1") : "");
 }
 
 function midpoint(a: RenderedPoint, b: RenderedPoint): RenderedPoint {

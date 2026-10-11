@@ -34,6 +34,7 @@ function overlay(nodeCount: number, edgeCount: number) {
       const target = nodes[(index + 1) % nodeCount]!;
       return {
         id: `e${index}`,
+        isLoop: false,
         label: "1",
         sourceX: source.x,
         sourceY: source.y,

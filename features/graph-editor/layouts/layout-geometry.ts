@@ -144,7 +144,7 @@ export function packPositionGroups(
 
   const columnOffsets = cumulativeOffsets(columnWidths, LAYOUT_COMPONENT_GAP);
   const rowOffsets = cumulativeOffsets(rowHeights, LAYOUT_COMPONENT_GAP);
-  const packed: Record<NodeId, { x: number; y: number }> = {};
+  const packed = new Map<NodeId, { x: number; y: number }>();
 
   groups.forEach((group, index) => {
     const column = index % columns;
@@ -155,14 +155,14 @@ export function packPositionGroups(
     const offsetY = rowOffsets[row] + (rowHeights[row] - bound.height) / 2;
 
     for (const [nodeId, point] of Object.entries(group)) {
-      packed[nodeId] = {
+      packed.set(nodeId, {
         x: Math.round(point.x - bound.minX + offsetX),
         y: Math.round(point.y - bound.minY + offsetY),
-      };
+      });
     }
   });
 
-  return normalizePositions(packed);
+  return normalizePositions(Object.fromEntries(packed));
 }
 
 export function packPositionColumns(
@@ -190,7 +190,7 @@ export function packPositionColumns(
     ),
   );
   const columnOffsets = cumulativeOffsets(columnWidths, columnGap);
-  const packed: Record<NodeId, { x: number; y: number }> = {};
+  const packed = new Map<NodeId, { x: number; y: number }>();
 
   visibleColumns.forEach((column, columnIndex) => {
     const bounds = columnBounds[columnIndex];
@@ -204,17 +204,17 @@ export function packPositionColumns(
       const offsetY = nextY;
 
       for (const [nodeId, point] of Object.entries(group)) {
-        packed[nodeId] = {
+        packed.set(nodeId, {
           x: Math.round(point.x - bound.minX + offsetX),
           y: Math.round(point.y - bound.minY + offsetY),
-        };
+        });
       }
 
       nextY += bound.height + rowGap;
     });
   });
 
-  return normalizePositions(packed);
+  return normalizePositions(Object.fromEntries(packed));
 }
 
 function scalePositions(

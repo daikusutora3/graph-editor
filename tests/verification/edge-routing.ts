@@ -1098,6 +1098,7 @@ const renderedMidpoint = edgeBendHandlePosition(
   {
     id: "manual",
     label: "",
+    isLoop: false,
     sourceX: 0,
     sourceY: 0,
     targetX: 200,

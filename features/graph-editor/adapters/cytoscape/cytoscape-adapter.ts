@@ -3,6 +3,11 @@ import {
   withMeasuredNodeGeometry,
 } from "../browser/node-geometry";
 import { refreshCytoscapeGeometry } from "./graph-canvas-geometry-refresh";
+import {
+  decodeCytoscapeId,
+  encodeCytoscapeId,
+  getCytoscapeElement,
+} from "./cytoscape-ids";
 import type {
   Core,
   Css,
@@ -203,7 +208,7 @@ export function applyCytoscapeRoutingMeta(
 ) {
   const changed = cy.collection();
   cy.edges().forEach((edge) => {
-    const meta = edgeRoutingMeta.get(edge.id());
+    const meta = edgeRoutingMeta.get(decodeCytoscapeId(edge.id()));
 
     if (!meta || !edgeRoutingDataChanged(edge.data(), meta)) {
       return;
@@ -230,7 +235,7 @@ function graphModelWithCytoscapeNodePositions(
   return {
     ...model,
     nodes: model.nodes.map((node) => {
-      const cyNode = cy.getElementById(node.id);
+      const cyNode = getCytoscapeElement(cy, node.id);
 
       if (cyNode.empty() || !cyNode.isNode()) {
         return node;
@@ -273,7 +278,7 @@ function nodeToCytoscapeElement(
     group: "nodes",
     classes: [nodeColorClass(node.color)].filter(Boolean).join(" "),
     data: {
-      id: node.id,
+      id: encodeCytoscapeId(node.id),
       label: node.label,
       displayLabel: showNodeLabels ? node.label : "",
       order: node.order,
@@ -302,9 +307,9 @@ function edgeToCytoscapeElement(
       .filter(Boolean)
       .join(" "),
     data: {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
+      id: encodeCytoscapeId(edge.id),
+      source: encodeCytoscapeId(edge.source),
+      target: encodeCytoscapeId(edge.target),
       label: edge.label ?? (weighted ? (edge.weight ?? "1") : ""),
       weight: edge.weight,
       color: edge.color ?? "paper",

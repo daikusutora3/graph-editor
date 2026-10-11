@@ -6,7 +6,10 @@ import {
   replaceModelCommand,
   updateSettingsCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
-import type { GraphModel } from "../../features/graph-editor/core/graph/model";
+import type {
+  GraphColor,
+  GraphModel,
+} from "../../features/graph-editor/core/graph/model";
 import {
   resolveEdgeSelection,
   resolveNodeSelection,
@@ -689,6 +692,7 @@ function verifyShortcutActions() {
 
   shortcutStore.set(selectionAtom, { nodeIds: ["a"], edgeIds: ["ab"] });
   const historyBeforeColor = shortcutStore.get(historyAtom).length;
+  const graphBeforeColor = JSON.stringify(shortcutStore.get(graphAtom));
   expect(
     shortcutStore.set(cycleSelectionColorAtom) === true,
     "color cycle should return true with a selection",
@@ -704,8 +708,36 @@ function verifyShortcutActions() {
     "color cycle should update selected edge color",
   );
   expect(
-    shortcutStore.get(historyAtom).length === historyBeforeColor + 2,
-    "color cycle should preserve the current two-command node-and-edge behavior",
+    shortcutStore.get(historyAtom).length === historyBeforeColor + 1,
+    "one color shortcut should create one atomic node-and-edge history operation",
+  );
+  const graphAfterColor = JSON.stringify(shortcutStore.get(graphAtom));
+  shortcutStore.set(undoAtom);
+  expect(
+    JSON.stringify(shortcutStore.get(graphAtom)) === graphBeforeColor,
+    "one Undo restores both colors and leaves unselected elements unchanged",
+  );
+  shortcutStore.set(redoAtom);
+  expect(
+    JSON.stringify(shortcutStore.get(graphAtom)) === graphAfterColor,
+    "one Redo restores the complete mixed-selection color operation",
+  );
+  const graphBeforeRejectedColor = shortcutStore.get(graphAtom);
+  const historyBeforeRejectedColor = shortcutStore.get(historyAtom);
+  const futureBeforeRejectedColor = shortcutStore.get(futureAtom);
+  const rejectedColor = shortcutStore.set(executeCommandAtom, {
+    type: "set-selection-colors",
+    nodeIds: ["a"],
+    nodeColor: "red",
+    edgeIds: ["ab"],
+    edgeColor: "unsupported" as GraphColor,
+  });
+  expect(
+    rejectedColor.status === "rejected" &&
+      shortcutStore.get(graphAtom) === graphBeforeRejectedColor &&
+      shortcutStore.get(historyAtom) === historyBeforeRejectedColor &&
+      shortcutStore.get(futureAtom) === futureBeforeRejectedColor,
+    "a rejected mixed-color operation leaves both element kinds and history unchanged",
   );
 
   shortcutStore.set(selectionAtom, { nodeIds: ["a"], edgeIds: [] });

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Core, Position } from "cytoscape";
+import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
 import type {
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
@@ -195,7 +196,7 @@ export function useHtmlNodeDrag({
           const positioned = {
             ...graph,
             nodes: graph.nodes.map((node) => {
-              const position = cy.getElementById(node.id).position();
+              const position = getCytoscapeElement(cy, node.id).position();
               return { ...node, x: position.x, y: position.y };
             }),
           };
@@ -374,7 +375,7 @@ export function useHtmlNodeDrag({
     const before = Object.fromEntries(
       selectedNodeIds
         .map((id) => {
-          const node = cy.getElementById(id);
+          const node = getCytoscapeElement(cy, id);
 
           if (node.empty() || !node.isNode()) {
             return null;
@@ -439,7 +440,7 @@ export function useHtmlNodeDrag({
           return;
         }
 
-        const node = cy.getElementById(id);
+        const node = getCytoscapeElement(cy, id);
 
         if (node.empty() || !node.isNode()) {
           return;
@@ -500,7 +501,7 @@ export function useHtmlNodeDrag({
       const after = Object.fromEntries(
         state.nodeIds
           .map((id) => {
-            const node = cy.getElementById(id);
+            const node = getCytoscapeElement(cy, id);
 
             if (node.empty() || !node.isNode()) {
               return null;
@@ -623,7 +624,7 @@ function releasePointerCapture(state: HtmlNodeDragState) {
 function restoreDragSnapshot(cy: Core, state: HtmlNodeDragState) {
   state.nodeIds.forEach((id) => {
     const startPosition = state.before[id];
-    const node = cy.getElementById(id);
+    const node = getCytoscapeElement(cy, id);
 
     if (!startPosition || node.empty() || !node.isNode()) {
       return;

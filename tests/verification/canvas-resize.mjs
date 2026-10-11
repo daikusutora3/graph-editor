@@ -40,8 +40,21 @@ const canvasWindow = {
   removeEventListener: (type, listener) => {
     if (listeners.get(type) === listener) listeners.delete(type);
   },
-  matchMedia: () => {
-    const query = { addEventListener() {}, removeEventListener() {} };
+  matchMedia: (text) => {
+    const callbacks = new Set();
+    const query = {
+      text,
+      callbacks,
+      addEventListener(type, callback) {
+        if (type === "change") callbacks.add(callback);
+      },
+      removeEventListener(type, callback) {
+        if (type === "change") callbacks.delete(callback);
+      },
+      notify() {
+        [...callbacks].forEach((callback) => callback());
+      },
+    };
     mediaQueries.push(query);
     return query;
   },
@@ -414,6 +427,62 @@ function lifecycleFixture(canvas) {
     selection: main.cy.$(":selected").map((element) => element.id()),
   };
   const observer = resizeObservers.find((entry) => !entry.disconnected);
+  const densityPaints = main.paints;
+  const densityHitboxes = test.hitboxRefreshes;
+  // CSS dimensions stay constant: only the resolution media query fires.
+  for (const density of [2, 1, 3, 1]) {
+    canvasWindow.devicePixelRatio = density;
+    const previousQuery = mediaQueries.at(-1);
+    previousQuery.notify();
+    assert.equal(
+      previousQuery.callbacks.size,
+      0,
+      "previous density listener is replaced",
+    );
+    assert.equal(main.renderer.canvasWidth, main.size.width * density);
+    assert.equal(main.renderer.canvasHeight, main.size.height * density);
+    assert.equal(
+      main.painted,
+      true,
+      "DPR-only changes repaint before the media event returns",
+    );
+    assert.equal(
+      main.cy.zoom(),
+      before.zoom,
+      "DPR-only changes preserve user zoom",
+    );
+    assert.deepEqual(
+      main.cy.pan(),
+      before.pan,
+      "DPR-only changes preserve user pan",
+    );
+    assert.equal(test.hook.value.displayReady, true);
+    assert.equal(test.hook.value.renderReady, true);
+    assert.equal(test.options.cyRef.current, main.cy);
+    assert.equal(JSON.parse(test.exportScaleSignatures.at(-1))[1], density);
+    assert.equal(mediaQueries.at(-1).text, `(resolution: ${density}dppx)`);
+    assert.equal(
+      mediaQueries.filter((query) => query.callbacks.size).length,
+      1,
+      "exactly one current density listener remains active",
+    );
+  }
+  assert.equal(
+    main.paints - densityPaints,
+    4,
+    "one paint per changed DPR without any ResizeObserver delivery",
+  );
+  assert.ok(
+    test.hitboxRefreshes - densityHitboxes >= 4,
+    "DPR events retain pointer overlay refreshes",
+  );
+  const sameDensityPaints = main.paints;
+  mediaQueries.at(-1).notify();
+  assert.equal(
+    main.paints,
+    sameDensityPaints,
+    "duplicate same-DPR events do not clear or repaint pixels",
+  );
   const initialPaints = main.paints;
   for (const width of [800, 468, 320, 468, 1280]) {
     main.size.width = width;
@@ -493,8 +562,29 @@ function lifecycleFixture(canvas) {
     "explicit fit still waits for and acknowledges its paint",
   );
   assert.equal(test.hook.value.displayReady, true);
+  const destroyedDensityCallback = [...mediaQueries.at(-1).callbacks][0];
   test.hook.unmount();
   assert.equal(observer.disconnected, true);
+  assert.equal(
+    mediaQueries.filter((query) => query.callbacks.size).length,
+    0,
+    "unmount releases every resolution listener",
+  );
+  const destroyedPaints = main.paints;
+  const destroyedQueries = mediaQueries.length;
+  canvasWindow.devicePixelRatio = 2;
+  destroyedDensityCallback();
+  assert.equal(
+    main.paints,
+    destroyedPaints,
+    "late density delivery cannot repaint a destroyed core",
+  );
+  assert.equal(
+    mediaQueries.length,
+    destroyedQueries,
+    "late density delivery cannot resubscribe after unmount",
+  );
+  canvasWindow.devicePixelRatio = 1;
 }
 {
   const test = lifecycleFixture(strictFirst);
@@ -522,6 +612,11 @@ assert.ok(
   resizeObservers.every((entry) => entry.disconnected),
   "all resize observers disconnect",
 );
+assert.equal(
+  mediaQueries.filter((query) => query.callbacks.size).length,
+  0,
+  "StrictMode replay also releases all density listeners",
+);
 console.log(
-  "Canvas resize verification passed (old blank backing stores reproduced; resize keeps pan, zoom, selection, readiness and core identity)",
+  "Canvas resize verification passed (CSS-size and DPR-only changes repaint and keep pan, zoom, selection, readiness and core identity)",
 );

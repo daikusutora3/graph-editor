@@ -2,6 +2,7 @@
 import { integrityCopy } from "../i18n/integrity-copy";
 
 import type { Core } from "cytoscape";
+import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { cn } from "@/lib/utils";
 
@@ -415,7 +416,9 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     mode === "select" && rangeSelectionKeyActive && !inlineEdit;
   const previewEdgeBow = useCallback(
     (edgeId: string, bend: EdgeBend) => {
-      const edge = cyRef.current?.getElementById(edgeId);
+      const edge = cyRef.current
+        ? getCytoscapeElement(cyRef.current, edgeId)
+        : null;
 
       if (!edge || edge.empty() || !edge.isEdge()) {
         return null;
@@ -438,7 +441,9 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const restoreEdgeRouting = useCallback(
     (edgeId: string) => {
       const meta = edgeRoutingMeta.get(edgeId);
-      const edge = cyRef.current?.getElementById(edgeId);
+      const edge = cyRef.current
+        ? getCytoscapeElement(cyRef.current, edgeId)
+        : null;
 
       if (!meta || !edge || edge.empty() || !edge.isEdge()) {
         return;
@@ -470,7 +475,9 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     (edgeId: string, direction: -1 | 1) => {
       const edge = graph.edges.find((candidate) => candidate.id === edgeId);
       if (!edge) return;
-      const rendered = cyRef.current?.getElementById(edgeId);
+      const rendered = cyRef.current
+        ? getCytoscapeElement(cyRef.current, edgeId)
+        : null;
       const routing = nudgeEdgeBend(
         edge.routing,
         rendered && !rendered.empty()
@@ -545,11 +552,10 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
         >
           {displayError ? (
             <button onClick={retryDisplay}>
-              {integrityCopy[locale === "ja" ? "ja" : "en"].renderFailed}{" "}
-              {integrityCopy[locale === "ja" ? "ja" : "en"].retry}
+              {integrityCopy[locale].renderFailed} {integrityCopy[locale].retry}
             </button>
           ) : (
-            integrityCopy[locale === "ja" ? "ja" : "en"].loading
+            integrityCopy[locale].loading
           )}
         </div>
       ) : null}

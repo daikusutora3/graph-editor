@@ -40,6 +40,14 @@ const suites = [
     name: "geometry-contracts",
     path: "tests/verification/geometry-contracts.ts",
   },
+  {
+    name: "node-id-contracts",
+    path: "tests/verification/node-id-contracts.ts",
+  },
+  {
+    name: "integrity-feedback",
+    path: "tests/verification/integrity-feedback.tsx",
+  },
   { name: "samples", path: "tests/verification/samples.ts" },
   { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
   { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
@@ -54,6 +62,7 @@ const suites = [
   { name: "layouts", path: "tests/verification/layouts.ts" },
   { name: "layout-topology", path: "tests/verification/layout-topology.ts" },
   { name: "overlaps", path: "tests/verification/overlaps.ts" },
+  { name: "overlap-boundary", path: "tests/verification/overlap-boundary.ts" },
   { name: "edge-routing", path: "tests/verification/edge-routing.ts" },
   {
     name: "routing-collision-reuse",
@@ -64,6 +73,7 @@ const suites = [
     path: "tests/verification/routing-parallel-spacing.mjs",
   },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
+  { name: "cytoscape-ids", path: "tests/verification/cytoscape-ids.ts" },
   { name: "canvas-rendering", path: "tests/verification/canvas-rendering.ts" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
   {

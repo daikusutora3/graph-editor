@@ -225,6 +225,7 @@ function verifyHitboxReconciliation() {
   );
   const edge: EdgeLabelHitbox = {
     id: "ab",
+    isLoop: false,
     label: "",
     sourceX: 0,
     sourceY: 0,
@@ -258,6 +259,7 @@ function verifyHitboxReconciliation() {
     "equal numeric geometry arrays should retain existing hitbox references",
   );
   for (const update of [
+    { isLoop: true },
     { label: "new" },
     { sourceX: 1 },
     { sourceY: 1 },
@@ -781,6 +783,7 @@ function verifySelectionAndArrowStyles() {
 function verifyEdgeHitboxPaths() {
   const curvedPath = createEdgeHitboxPath({
     id: "curved",
+    isLoop: false,
     label: "",
     sourceX: 0,
     sourceY: 0,
@@ -805,6 +808,7 @@ function verifyEdgeHitboxPaths() {
 
   const loopPath = createEdgeHitboxPath({
     id: "loop",
+    isLoop: true,
     label: "",
     sourceX: 20,
     sourceY: 20,

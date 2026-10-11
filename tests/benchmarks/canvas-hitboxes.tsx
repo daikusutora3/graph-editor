@@ -45,6 +45,7 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
     { length: edgeCount },
     (_, index) => ({
       id: `e${index}`,
+      isLoop: false,
       label: "",
       sourceX: (index % 32) * 90,
       sourceY: Math.floor((index % nodeCount) / 32) * 90,

@@ -1,4 +1,8 @@
 import type { GraphModel, NodePositionMap } from "../core/graph/model";
+import {
+  GRAPH_MAX_ABS_COORDINATE,
+  isGraphCoordinate,
+} from "../core/graph/graph-coordinates";
 import { NODE_SIZE_PX, nodeGeometryWidth } from "../core/graph/node-size";
 import { tryRustOverlaps } from "../compute/wasm-layouts";
 
@@ -23,7 +27,7 @@ export function* createOverlapTask(
   const nodes = model.nodes.toSorted(
     (a, b) => a.order - b.order || a.id.localeCompare(b.id),
   );
-  const positions = Object.fromEntries(
+  let positions = Object.fromEntries(
     nodes.map((node) => [node.id, { x: node.x, y: node.y }]),
   );
   const spans = nodes.map((node) =>
@@ -38,6 +42,7 @@ export function* createOverlapTask(
     ),
   );
   const required = NODE_SIZE_PX + OVERLAP_GAP_PX;
+  let changed = false;
   yield;
   const rustResult = tryRustOverlaps(nodes, spans, model.settings.snapToGrid);
   if (rustResult) {
@@ -47,17 +52,8 @@ export function* createOverlapTask(
         y: rustResult.coordinates[index * 2 + 1]!,
       };
     }
-    return {
-      positions,
-      remainingPairs: rustResult.remainingPairs,
-      status: rustResult.remainingPairs
-        ? "unresolved"
-        : rustResult.changed
-          ? "resolved"
-          : "unchanged",
-    };
+    return yield* finish(rustResult.remainingPairs, rustResult.changed);
   }
-  let changed = false;
   function* scan(move: boolean, limit = Infinity): Generator<void, number> {
     let remaining = 0;
     if (!move) {
@@ -125,6 +121,28 @@ export function* createOverlapTask(
       }
     return remaining;
   }
+  function* finish(
+    remainingPairs: number,
+    moved: boolean,
+  ): Generator<void, OverlapResult> {
+    if (!translateIntoCoordinateRange(positions, model.settings.snapToGrid)) {
+      // A drawing spanning the full range cannot always be shifted as a whole.
+      // Preserve the supported input rather than clamp and recreate collisions.
+      positions = Object.fromEntries(
+        nodes.map((node) => [node.id, { x: node.x, y: node.y }]),
+      );
+      return {
+        positions,
+        remainingPairs: yield* scan(false),
+        status: "unresolved",
+      };
+    }
+    return {
+      positions,
+      remainingPairs,
+      status: remainingPairs ? "unresolved" : moved ? "resolved" : "unchanged",
+    };
+  }
   // Separated graphs need no relaxation. Keep the moving scan in stable node
   // order so resolving an actual collision produces identical coordinates.
   if ((yield* scan(false, 1)) === 0) {
@@ -154,9 +172,45 @@ export function* createOverlapTask(
     }
   }
   const remainingPairs = yield* scan(false);
-  return {
-    positions,
-    remainingPairs,
-    status: remainingPairs ? "unresolved" : changed ? "resolved" : "unchanged",
+  return yield* finish(remainingPairs, changed);
+}
+
+/** A uniform translation preserves capsule clearance. Grid translations use
+ * whole grid steps; neither path clips individual nodes at the boundary. */
+function translateIntoCoordinateRange(
+  positions: NodePositionMap,
+  snap: boolean,
+) {
+  const points = Object.values(positions);
+  if (
+    points.every(
+      (point) => isGraphCoordinate(point.x) && isGraphCoordinate(point.y),
+    )
+  )
+    return true;
+  const offset = (axis: "x" | "y") => {
+    const values = points.map((point) => point[axis]);
+    if (!values.every(Number.isFinite)) return null;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const step = snap ? 24 : 1;
+    const lower = snap
+      ? Math.ceil((-GRAPH_MAX_ABS_COORDINATE - min) / step) * step
+      : -GRAPH_MAX_ABS_COORDINATE - min;
+    const upper = snap
+      ? Math.floor((GRAPH_MAX_ABS_COORDINATE - max) / step) * step
+      : GRAPH_MAX_ABS_COORDINATE - max;
+    if (lower > upper) return null;
+    return lower > 0 ? lower : upper < 0 ? upper : 0;
   };
+  const dx = offset("x"),
+    dy = offset("y");
+  if (dx === null || dy === null) return false;
+  for (const point of points) {
+    point.x += dx;
+    point.y += dy;
+  }
+  return points.every(
+    (point) => isGraphCoordinate(point.x) && isGraphCoordinate(point.y),
+  );
 }

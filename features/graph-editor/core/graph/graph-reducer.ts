@@ -102,6 +102,31 @@ export function reduceGraphIntent(
         ),
       };
     }
+    case "set-selection-colors": {
+      const nodeIds = new Set(intent.nodeIds);
+      const edgeIds = new Set(intent.edgeIds);
+      const nodeColor =
+        intent.nodeColor === "paper" ? undefined : intent.nodeColor;
+      const edgeColor =
+        intent.edgeColor === "paper" ? undefined : intent.edgeColor;
+      return {
+        ...model,
+        nodes: nodeIds.size
+          ? model.nodes.map((node) =>
+              nodeIds.has(node.id)
+                ? stripUndefinedProperties({ ...node, color: nodeColor })
+                : node,
+            )
+          : model.nodes,
+        edges: edgeIds.size
+          ? model.edges.map((edge) =>
+              edgeIds.has(edge.id)
+                ? stripUndefinedProperties({ ...edge, color: edgeColor })
+                : edge,
+            )
+          : model.edges,
+      };
+    }
     case "reverse-edges": {
       const idSet = new Set(intent.edgeIds);
       const untouchedEdges = model.edges.filter((edge) => !idSet.has(edge.id));
@@ -147,7 +172,9 @@ export function reduceGraphIntent(
       return {
         ...model,
         nodes: model.nodes.map((node) => {
-          const position = intent.after[node.id];
+          const position = Object.hasOwn(intent.after, node.id)
+            ? intent.after[node.id]
+            : undefined;
           return position ? { ...node, x: position.x, y: position.y } : node;
         }),
       };

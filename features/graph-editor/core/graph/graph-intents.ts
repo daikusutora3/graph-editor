@@ -23,6 +23,7 @@ const FIXED_GRAPH_INTENT_LABELS: Record<FixedLabelIntentType, string> = {
   "reverse-edges": "Reverse edges",
   "set-edges-color": "Set edge color",
   "set-nodes-color": "Set node color",
+  "set-selection-colors": "Set selection colors",
   "update-edge": "Update edge",
   "update-node": "Update node",
   "update-settings": "Update settings",
@@ -96,6 +97,12 @@ export function setEdgesColorCommand(
 
 export function reverseEdgesCommand(edgeIds: EdgeId[]): GraphIntent {
   return { type: "reverse-edges", edgeIds };
+}
+
+export function setSelectionColorsCommand(
+  colors: Omit<Extract<GraphIntent, { type: "set-selection-colors" }>, "type">,
+): GraphIntent {
+  return { type: "set-selection-colors", ...colors };
 }
 
 export function updateSettingsCommand(

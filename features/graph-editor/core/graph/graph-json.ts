@@ -46,6 +46,15 @@ export function migrateGraphDocument(value: unknown): unknown | null {
 
 const fallbackGraph = createEmptyGraphModel();
 
+export type GraphContractReason = "coordinate-range" | "invalid-graph";
+
+export class GraphContractError extends Error {
+  constructor(readonly reason: GraphContractReason) {
+    super("Graph exceeds the JSON contract");
+    this.name = "GraphContractError";
+  }
+}
+
 export function serializeGraphModel(model: GraphModel) {
   const raw = JSON.stringify(model);
   const normalized = normalizeGraphModel(model);
@@ -54,7 +63,15 @@ export function serializeGraphModel(model: GraphModel) {
     !normalized ||
     !sameDocument(model, normalized)
   ) {
-    throw new Error("Graph exceeds the JSON contract");
+    const invalidCoordinate =
+      Array.isArray(model.nodes) &&
+      model.nodes.some(
+        (node) =>
+          node && (!isGraphCoordinate(node.x) || !isGraphCoordinate(node.y)),
+      );
+    throw new GraphContractError(
+      invalidCoordinate ? "coordinate-range" : "invalid-graph",
+    );
   }
   return raw;
 }

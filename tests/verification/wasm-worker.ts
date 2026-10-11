@@ -314,7 +314,7 @@ async function verifyRealWorker(failFirst: boolean | "abi") {
         const invalid = await responseFor(id);
         expect(
           "error" in invalid &&
-            invalid.failure === "permanent" &&
+            invalid.failure === "input" &&
             invalid.error.includes("Unsupported graph coordinates"),
           "the real Worker rejects unsupported graph and interaction coordinates before Wasm initialization",
         );

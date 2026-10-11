@@ -58,7 +58,9 @@ export function withNodePositions(
   return {
     ...model,
     nodes: model.nodes.map((node) => {
-      const position = positions[node.id];
+      const position = Object.hasOwn(positions, node.id)
+        ? positions[node.id]
+        : undefined;
 
       return position ? { ...node, ...position } : node;
     }),
@@ -117,7 +119,7 @@ export function circlePositions(
 }
 
 export function binaryTreePositions(nodeIds: NodeId[]): Record<NodeId, Point> {
-  const positions: Record<NodeId, Point> = {};
+  const positions = new Map<NodeId, Point>();
   const levelGap = 112;
   const leafGap = 112;
 
@@ -127,16 +129,16 @@ export function binaryTreePositions(nodeIds: NodeId[]): Record<NodeId, Point> {
     const positionInLevel = index - firstIndex;
     const levelSize = Math.min(2 ** level, nodeIds.length - firstIndex);
 
-    positions[nodeId] = {
+    positions.set(nodeId, {
       x:
         (positionInLevel - (levelSize - 1) / 2) *
         leafGap *
         2 ** Math.max(0, 2 - level),
       y: (level - 1) * levelGap,
-    };
+    });
   });
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 
 export function addNodes(model: GraphModel, count: number): NodeId[] {

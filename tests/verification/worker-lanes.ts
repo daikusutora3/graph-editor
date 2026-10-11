@@ -283,6 +283,57 @@ try {
     "completed heavy Workers stay warm for subsequent operations",
   );
 
+  const inputAbort = trackedAbort();
+  const badInput = computeOverlapsInWorker(model, inputAbort.controller.signal);
+  const badId = replacement.request().id;
+  const concurrentLayout = computeLayoutInWorker(model, "force");
+  const concurrentId = replacement.request().id;
+  const concurrentRouting = computeRoutingInWorker(model, {});
+  const concurrentRoutingId = light.request().id;
+  replacement.onmessage?.({
+    data: {
+      id: badId,
+      error: "Unsupported result coordinates",
+      failure: "input",
+    },
+  } as MessageEvent<ComputeResponse>);
+  expect(
+    (await badInput) === null &&
+      inputAbort.attached.size === 0 &&
+      timers.size === 2 &&
+      !replacement.terminated &&
+      !light.terminated,
+    "input-dependent failure completes only its job and cleans its timer/listener without stopping healthy lanes",
+  );
+  replacement.reply(concurrentId, layout);
+  light.reply(concurrentRoutingId, new Map());
+  expect(
+    (await concurrentLayout) !== null &&
+      (await concurrentRouting) instanceof Map &&
+      timers.size === 0,
+    "concurrent jobs still complete after another job's input-dependent failure",
+  );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const unsupported = computeOverlapsInWorker(model);
+    replacement.onmessage?.({
+      data: {
+        id: replacement.request().id,
+        error: "Unsupported graph coordinates",
+        failure: "input",
+      },
+    } as MessageEvent<ComputeResponse>);
+    expect(
+      (await unsupported) === null && workers.length === beforeWarm,
+      "repeated unsupported input does not consume the retry budget or allocate replacement Workers",
+    );
+  }
+  const afterInputFailure = computeOverlapsInWorker(model);
+  replacement.reply(replacement.request().id, overlap);
+  expect(
+    (await afterInputFailure) !== null && workers.length === beforeWarm,
+    "normal work immediately reuses the warm owner after input failure",
+  );
+
   const c = trackedAbort();
   const d = trackedAbort();
   const third = computeLayoutInWorker(
