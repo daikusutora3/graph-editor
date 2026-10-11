@@ -26,6 +26,8 @@ export type GuideCopy = {
   languageName: string;
   skipToContent: string;
   backToTop: string;
+  footerTitle: string;
+  footerDescription: string;
   githubLink: string;
   examplesLink: string;
   quickStartNavTitle: string;
@@ -104,6 +106,8 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
     languageName: "日本語",
     skipToContent: "ガイド本文へ移動",
     backToTop: "ページの先頭へ",
+    footerTitle: "エディタで試してみる",
+    footerDescription: "入力例やサンプルから、最初のグラフを作ってみましょう。",
     githubLink: "GitHub でソースコードを見る",
     examplesLink: "入力例を試す",
     quickStartNavTitle: "はじめ方",
@@ -370,6 +374,9 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
     languageName: "English",
     skipToContent: "Skip to guide content",
     backToTop: "Back to top",
+    footerTitle: "Try it in the editor",
+    footerDescription:
+      "Create your first graph from an input example or a sample.",
     githubLink: "View source on GitHub",
     examplesLink: "Try an example",
     quickStartNavTitle: "Getting started",
@@ -650,6 +657,8 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
     languageName: "简体中文",
     skipToContent: "跳转到指南正文",
     backToTop: "返回顶部",
+    footerTitle: "在编辑器中试一试",
+    footerDescription: "使用输入示例或预设示例，创建你的第一张图。",
     githubLink: "在 GitHub 查看源代码",
     examplesLink: "试用输入示例",
     quickStartNavTitle: "开始使用",

@@ -35,13 +35,10 @@ export function GuideCopyButton({
         disabled={status === "busy"}
         aria-busy={status === "busy"}
         aria-label={`${buttonLabel}: ${title}`}
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-xs font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--fill-2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:opacity-60"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-xs font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--fill-2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--text-2)] disabled:opacity-60"
       >
         {status === "copied" ? (
-          <Check
-            className="size-3.5 text-[var(--accent-text)]"
-            aria-hidden="true"
-          />
+          <Check className="size-3.5 text-[var(--text)]" aria-hidden="true" />
         ) : (
           <Copy className="size-3.5" aria-hidden="true" />
         )}
