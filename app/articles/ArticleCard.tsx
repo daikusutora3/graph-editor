@@ -1,12 +1,7 @@
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ArticleThumbnail } from "./ArticleThumbnail";
 import { focusRing } from "@/components/ui/styles";
-import {
-  articleCopy,
-  articlePath,
-  type ArticleContent,
-} from "@/lib/article-content";
+import { articlePath, type ArticleContent } from "@/lib/article-content";
 import type { AppLocale } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
 
@@ -43,13 +38,6 @@ export function ArticleCard({
         <p className="mt-3 text-sm leading-7 text-[var(--text-2)]">
           {article.description}
         </p>
-        <span className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-medium">
-          {articleCopy[locale].readArticle}
-          <ArrowRight
-            className="size-4 shrink-0 text-[var(--muted)] transition-colors duration-150 group-hover:text-[var(--text)] motion-reduce:transition-none"
-            aria-hidden="true"
-          />
-        </span>
       </div>
     </Link>
   );

@@ -8,7 +8,7 @@ type DisclosureProps = Omit<ComponentPropsWithoutRef<"details">, "title"> & {
   /** Keep the summary free of nested links or buttons. */
   title: ReactNode;
   children: ReactNode;
-  variant?: "panel" | "row";
+  variant?: "panel" | "row" | "compact";
 };
 
 /** Native disclosure: works with the keyboard and without client JavaScript. */
@@ -23,30 +23,38 @@ export function Disclosure({
     <details
       {...props}
       className={cn(
-        "group/disclosure",
         styles.disclosure,
-        variant === "panel" ? panelSurface : "min-w-0",
+        variant === "row" ? "min-w-0" : panelSurface,
         className,
       )}
     >
       <summary
         className={cn(
-          "flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-sm leading-6 font-medium transition-colors duration-150 group-open/disclosure:bg-[var(--fill)] hover:bg-[var(--fill)] motion-reduce:transition-none sm:px-5 [&::-webkit-details-marker]:hidden",
-          variant === "panel" &&
-            "rounded-xl group-open/disclosure:rounded-b-none",
+          styles.summary,
+          "flex cursor-pointer list-none items-center justify-between text-sm leading-6 font-medium transition-colors duration-150 hover:bg-[var(--fill)] motion-reduce:transition-none [&::-webkit-details-marker]:hidden",
+          variant !== "row" && "rounded-xl",
+          variant === "compact"
+            ? "min-h-12 gap-3 px-4 py-2.5 text-[var(--text-2)]"
+            : "min-h-14 gap-4 px-4 py-3 sm:px-5",
           insetFocusRing,
         )}
       >
         <span className="min-w-0">{title}</span>
         <ChevronDown
-          className="size-4 shrink-0 text-[var(--muted)] transition-transform duration-200 ease-out group-open/disclosure:rotate-180 motion-reduce:transition-none"
+          className={cn(
+            styles.chevron,
+            "size-4 shrink-0 text-[var(--muted)] transition-transform duration-200 ease-out motion-reduce:transition-none",
+          )}
           aria-hidden="true"
         />
       </summary>
       <div
         className={cn(
-          "border-t border-[var(--line)] px-4 py-4 sm:px-5",
-          variant === "panel" && "rounded-b-xl",
+          "border-t py-4 [&>*]:max-w-[42rem] [&>:first-child]:mt-0",
+          variant !== "row" && "rounded-b-xl",
+          variant === "compact"
+            ? "border-[var(--hair)] px-4"
+            : "border-[var(--line)] px-4 sm:px-5",
           bodyText,
         )}
       >

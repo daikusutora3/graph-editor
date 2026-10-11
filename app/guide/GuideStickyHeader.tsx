@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-/** Measure the complete sticky area, including an optional article-return bar. */
+/** Measure the header so anchor targets stay visible at every viewport width. */
 export function GuideStickyHeader({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -14,8 +14,8 @@ export function GuideStickyHeader({ children }: { children: ReactNode }) {
         "--guide-header-height",
         `${Math.ceil(header.getBoundingClientRect().height)}px`,
       );
-      // A return bar may mount after anchor navigation. Reveal a covered
-      // destination, without jumping back to an anchor already read past.
+      // Reveal a destination covered by a resized header without moving
+      // back to an anchor already read past.
       const target = document.getElementById(window.location.hash.slice(1));
       if (!target || !page.contains(target)) return;
       const top = target.getBoundingClientRect().top;

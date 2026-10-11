@@ -76,9 +76,9 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     title: "グラフの読み方と図の作り方の記事 | Graph Editor",
     description:
       "辺リスト、隣接行列、木、二部グラフの読み方と、TikZ で図を使う手順を具体例で説明します。使い方ガイドと同じ入力例を Graph Editor で試せます。",
-    heading: "グラフを理解して、描く",
+    heading: "グラフの読み方と描き方",
     indexIntro:
-      "入力の意味や、図を見やすくする考え方を具体例で説明します。操作に迷ったら、各記事から使い方ガイドの該当箇所を確認できます。",
+      "辺リストや隣接行列の読み方、木の配置、TikZ の書き出しを図と入力例で解説します。操作に迷ったら、各記事から使い方ガイドの手順を確認できます。",
     articlesLink: "記事",
     guideLink: guideCopy.ja.guideLink,
     onThisPage: "この記事の内容",

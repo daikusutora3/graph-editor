@@ -15,17 +15,19 @@ export function Callout({
   return (
     <aside
       className={cn(
-        "flex min-w-0 gap-3 rounded-xl border border-[var(--line)] bg-[var(--fill)] p-4",
+        "grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-xl border border-[var(--line)] bg-[var(--fill)] p-4",
         className,
       )}
     >
-      <Info
-        className="mt-0.5 size-4 shrink-0 text-[var(--muted)]"
-        aria-hidden="true"
-      />
-      <div className="min-w-0">
-        <p className="text-sm leading-7 font-medium">{title}</p>
-        <div className={cn("mt-1", bodyText)}>{children}</div>
+      <Info className="mt-1.5 size-4 text-[var(--muted)]" aria-hidden="true" />
+      <p className="min-w-0 text-sm leading-7 font-medium">{title}</p>
+      <div
+        className={cn(
+          "col-span-2 min-w-0 sm:col-span-1 sm:col-start-2",
+          bodyText,
+        )}
+      >
+        {children}
       </div>
     </aside>
   );
