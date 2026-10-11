@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ExternalLink,
   Info,
+  Languages,
 } from "lucide-react";
 import Link from "next/link";
 import { GuideExamples } from "./GuideExamples";
@@ -117,15 +118,17 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       >
         {copy.skipToContent}
       </a>
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg)]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--panel-solid)]">
+        <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-8">
           <Link
             href={appLocalePaths[locale]}
             prefetch={false}
             aria-label={APP_NAME}
-            className={`inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg text-sm font-semibold ${focusStyle}`}
+            className={`inline-flex min-h-11 shrink-0 items-center gap-3 rounded-lg text-[15px] font-semibold tracking-tight ${focusStyle}`}
           >
-            <BrandLogo size={24} />
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[var(--line)] bg-[var(--bg)]">
+              <BrandLogo size={26} />
+            </span>
             <span className="hidden min-[360px]:inline" translate="no">
               {APP_NAME}
             </span>
@@ -136,11 +139,21 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
         <header className="mb-8 sm:mb-10">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--fill)] px-3 py-1.5 text-xs font-medium text-[var(--text-2)]">
-              <BookOpen className="size-3.5 shrink-0" aria-hidden="true" />
+            <p className="inline-flex items-center gap-2.5 text-[13px] font-semibold text-[var(--text-2)]">
+              <BookOpen
+                className="size-4 shrink-0 text-[var(--muted)]"
+                aria-hidden="true"
+              />
               {copy.guideLink}
             </p>
-            <nav aria-label={copy.languages} className="flex flex-wrap gap-1">
+            <nav
+              aria-label={copy.languages}
+              className="inline-flex max-w-full shrink-0 items-center gap-0.5 rounded-full border border-[var(--line)] bg-[var(--fill)] p-1"
+            >
+              <Languages
+                className="mx-2 size-4 shrink-0 text-[var(--muted)]"
+                aria-hidden="true"
+              />
               {guideLanguages.map((language) => (
                 <Link
                   key={language}
@@ -149,7 +162,7 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                   hrefLang={language}
                   lang={language}
                   aria-current={locale === language ? "page" : undefined}
-                  className={`inline-flex min-h-11 items-center rounded-lg px-3 text-xs transition-colors hover:bg-[var(--fill)] ${focusStyle} ${locale === language ? "bg-[var(--fill)] font-semibold text-[var(--text)]" : "text-[var(--muted)]"}`}
+                  className={`inline-flex min-h-11 items-center justify-center rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors ${insetFocusStyle} ${locale === language ? "border-[var(--line)] bg-[var(--panel-solid)] font-semibold text-[var(--text)] shadow-sm" : "border-transparent text-[var(--text-2)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]"}`}
                 >
                   {guideCopy[language].languageName}
                 </Link>
