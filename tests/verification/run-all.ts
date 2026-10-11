@@ -60,6 +60,10 @@ const suites = [
   { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
   { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
   {
+    name: "ui-control-contracts",
+    path: "tests/verification/ui-control-contracts.tsx",
+  },
+  {
     name: "sample-parameters",
     path: "tests/verification/sample-parameters.ts",
   },

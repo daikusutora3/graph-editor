@@ -4,15 +4,14 @@ import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { focusRing } from "./styles";
+import { focusRing } from "./control-styles";
 import { rovingFocusKeyDown } from "./use-roving-focus";
 
 export type SegmentOption<T extends string> = { label: string; value: T };
 
 /**
- * Segmented choice: one raised group of joined buttons. The selected option
- * is tinted with the accent fill and carries a check mark so the state reads
- * without relying on color alone.
+ * Mutually exclusive choices share a quiet surface and one keyboard tab stop.
+ * Long translated options can wrap without changing the radio interaction.
  */
 export function Segment<T extends string>({
   disabled = false,
@@ -21,6 +20,7 @@ export function Segment<T extends string>({
   options,
   size = "sm",
   value,
+  wrap = false,
 }: {
   disabled?: boolean;
   label: string;
@@ -28,15 +28,16 @@ export function Segment<T extends string>({
   options: readonly SegmentOption<T>[];
   size?: "sm" | "md";
   value: T;
+  wrap?: boolean;
 }) {
   return (
     <div
       role="radiogroup"
       aria-label={label}
       onKeyDown={rovingFocusKeyDown}
-      className="grid min-w-0 shrink-0 auto-cols-[minmax(0,1fr)] grid-flow-col overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] shadow-[0_1px_2px_rgb(0_0_0/0.06)]"
+      className="grid min-w-0 shrink-0 auto-cols-[minmax(0,1fr)] grid-flow-col gap-0.5 rounded-xl bg-[var(--fill)] p-0.5"
     >
-      {options.map((option, index) => {
+      {options.map((option) => {
         const selected = option.value === value;
 
         return (
@@ -50,21 +51,31 @@ export function Segment<T extends string>({
             aria-label={`${label}: ${option.label}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex min-w-0 items-center justify-center gap-1.5 px-2 py-1 text-control transition-colors",
+              "flex min-w-0 items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-control transition-colors disabled:cursor-default disabled:opacity-50",
               "focus-visible:relative focus-visible:z-10",
               focusRing,
               size === "md" ? "min-h-9" : "min-h-[30px]",
               "touch:min-h-11",
-              index > 0 && "border-l border-[var(--line)]",
               selected
-                ? "bg-[var(--accent-fill-soft)] font-bold text-[var(--accent-text)]"
-                : "font-semibold text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
+                ? "bg-[var(--panel-solid)] font-semibold text-[var(--text)] shadow-[0_1px_3px_rgb(0_0_0/0.08)]"
+                : "font-medium text-[var(--muted)] hover:text-[var(--text)]",
             )}
           >
             {selected ? (
-              <Check className="size-3.5 shrink-0" aria-hidden="true" />
+              <Check
+                className="size-3 shrink-0 text-[var(--accent-text)]"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
             ) : null}
-            <span className="min-w-0 text-center leading-snug [overflow-wrap:anywhere] whitespace-normal">
+            <span
+              className={cn(
+                "min-w-0 text-center leading-snug",
+                wrap
+                  ? "[overflow-wrap:anywhere] whitespace-normal"
+                  : "whitespace-nowrap",
+              )}
+            >
               {option.label}
             </span>
           </button>

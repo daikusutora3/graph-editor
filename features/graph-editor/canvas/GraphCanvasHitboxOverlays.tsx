@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { EdgeId, NodeId } from "../core/graph/model";
 import { pillExtentTowards } from "../core/graph/node-size";
 import { useI18n } from "../i18n/I18nProvider";
-import { focusRing } from "../ui/primitives/styles";
+import { focusRing } from "@/components/ui/control-styles";
 import type { Messages } from "../i18n/messages";
 
 import {

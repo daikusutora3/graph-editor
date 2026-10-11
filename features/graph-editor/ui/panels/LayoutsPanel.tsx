@@ -3,18 +3,15 @@
 import { GitCompareArrows } from "lucide-react";
 import { useMemo } from "react";
 
-import { cn } from "@/lib/utils";
+import {
+  ChoiceButton,
+  OptionToggle,
+  ControlGroup,
+} from "@/components/ui/controls";
 
 import type { GraphModel } from "../../core/graph/model";
 import { useI18n } from "../../i18n/I18nProvider";
 import { manualLayoutDisabledReasonCode, type LayoutKind } from "../../layouts";
-import {
-  SectionLabel,
-  OptionToggle,
-  disabledControl,
-  focusRing,
-  raisedControl,
-} from "../primitives";
 
 /** Order matches the design: primary strategies first, then geometric ones. */
 export const layoutPanelOrder: readonly LayoutKind[] = [
@@ -58,21 +55,18 @@ export function LayoutsPanel({
     [graph],
   );
   return (
-    <div className="flex flex-col gap-2.5">
-      {showTitle ? (
-        <SectionLabel>{messages.chrome.layouts}</SectionLabel>
-      ) : null}
+    <ControlGroup label={showTitle ? messages.chrome.layouts : undefined}>
       <div className="grid grid-cols-3 gap-1.5">
         {layoutPanelOrder.map((kind, index) => {
           const reason = disabledReasons.get(kind) ?? null;
           const layout = messages.layouts[kind];
 
           return (
-            <button
+            <ChoiceButton
               key={kind}
-              type="button"
               aria-label={`${layout.label}: ${layout.subtitle}`}
               aria-disabled={reason ? true : undefined}
+              variant={reason ? "disabled" : "choice"}
               data-tooltip={
                 reason ? messages.layouts.disabled[reason] : layout.tooltip
               }
@@ -88,14 +82,9 @@ export function LayoutsPanel({
                   onApplyLayout(kind);
                 }
               }}
-              className={cn(
-                "min-h-10 min-w-0 rounded-lg px-2 py-2 text-control font-semibold whitespace-normal transition-colors touch:min-h-11",
-                focusRing,
-                reason ? disabledControl : raisedControl,
-              )}
             >
               {layout.label}
-            </button>
+            </ChoiceButton>
           );
         })}
       </div>
@@ -114,6 +103,6 @@ export function LayoutsPanel({
         label={messages.chrome.offsetEdges}
         onChange={() => onToggleOffsetEdges()}
       />
-    </div>
+    </ControlGroup>
   );
 }

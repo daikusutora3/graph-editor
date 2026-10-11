@@ -11,7 +11,7 @@ import {
   rangeSelectionFilterAtom,
 } from "../../shell/state/editor-atoms";
 import { useShortcutPlatform } from "../hooks/shortcut-platform";
-import { IconButton, focusRing } from "../primitives";
+import { IconButton, focusRing } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 
 export function RangeSelectionMenu({

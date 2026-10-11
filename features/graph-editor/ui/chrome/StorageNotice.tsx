@@ -22,7 +22,7 @@ import {
 import { useI18n } from "../../i18n/I18nProvider";
 import { integrityCopy } from "../../i18n/integrity-copy";
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
-import { Button } from "../primitives";
+import { Button } from "@/components/ui/controls";
 
 const serverSnapshot = { status: "saved" as const, raw: null };
 function subscribe(callback: () => void) {

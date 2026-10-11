@@ -1,7 +1,19 @@
 "use client";
 
 import { ClipboardCopy, Download } from "lucide-react";
+import { useId } from "react";
 
+import {
+  Button,
+  ControlGroup,
+  ControlRow,
+  Notice,
+  PanelActions,
+  SectionLabel,
+  Segment,
+  Slider,
+  TextInput,
+} from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 
 import { EXPORT_BACKGROUND_COLORS } from "../../adapters/cytoscape/graph-canvas-viewport";
@@ -18,14 +30,6 @@ import {
   type ScreenshotDownloadState,
   type ScreenshotPreview,
 } from "../io/graph-io-types";
-import {
-  Button,
-  Notice,
-  SectionLabel,
-  Segment,
-  Slider,
-  TextInput,
-} from "../primitives";
 import type { ThemeMode } from "../theme/theme";
 
 const LONG_EDGE_STEP = 20;
@@ -71,6 +75,7 @@ export function PngPanelBody({
   onScopeChange,
 }: PngPanelBodyProps) {
   const { messages } = useI18n();
+  const dimensionsId = useId();
   const segmentSize = mobile ? "md" : "sm";
   const transparent = background === "transparent";
   const ready = preview.state === "ready" && preview.width && preview.height;
@@ -81,9 +86,8 @@ export function PngPanelBody({
 
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-2.5">
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <SectionLabel>{messages.screenshot.scope}</SectionLabel>
+      <ControlGroup>
+        <ControlRow label={messages.screenshot.scope} layout="stacked">
           <Segment
             label={messages.screenshot.scope}
             size={segmentSize}
@@ -94,9 +98,8 @@ export function PngPanelBody({
             ]}
             onChange={onScopeChange}
           />
-        </div>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <SectionLabel>{messages.screenshot.background}</SectionLabel>
+        </ControlRow>
+        <ControlRow label={messages.screenshot.background} layout="stacked">
           <Segment
             label={messages.screenshot.background}
             size={segmentSize}
@@ -116,15 +119,15 @@ export function PngPanelBody({
             ]}
             onChange={onBackgroundChange}
           />
-        </div>
-      </div>
+        </ControlRow>
+      </ControlGroup>
 
       {scope !== "viewport" ? (
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel>{messages.screenshot.imageSize}</SectionLabel>
+        <ControlGroup label={messages.screenshot.imageSize}>
           <Segment
             label={messages.screenshot.imageSize}
             size={segmentSize}
+            wrap
             value={scope}
             options={[
               { label: messages.screenshot.fixedLongEdge, value: "full" },
@@ -136,7 +139,7 @@ export function PngPanelBody({
             ]}
             onChange={onScopeChange}
           />
-        </div>
+        </ControlGroup>
       ) : null}
 
       {scope === "full" ? (
@@ -157,20 +160,27 @@ export function PngPanelBody({
           {(
             [
               [
+                "width",
                 messages.screenshot.canvasWidth,
                 canvasWidthPx,
                 onCanvasWidthChange,
               ],
               [
+                "height",
                 messages.screenshot.canvasHeight,
                 canvasHeightPx,
                 onCanvasHeightChange,
               ],
             ] as const
-          ).map(([label, value, onChange]) => (
-            <label key={label} className="flex flex-col gap-1.5">
-              <SectionLabel>{label}</SectionLabel>
+          ).map(([dimension, label, value, onChange]) => (
+            <ControlRow
+              key={dimension}
+              htmlFor={`${dimensionsId}-${dimension}`}
+              label={label}
+              layout="stacked"
+            >
               <TextInput
+                id={`${dimensionsId}-${dimension}`}
                 type="number"
                 min={1}
                 max={MAX_LONG_EDGE_PX}
@@ -183,7 +193,7 @@ export function PngPanelBody({
                   }
                 }}
               />
-            </label>
+            </ControlRow>
           ))}
         </div>
       ) : null}
@@ -277,11 +287,12 @@ export function PngPanelFooter({
             : messages.chrome.pngCopy;
 
   return (
-    <div className="flex w-full justify-end gap-2">
+    <PanelActions>
       <Button
         aria-busy={downloadState === "saving"}
         disabled={isGraphEmpty || downloadState === "saving"}
         size="lg"
+        wrap
         variant={isGraphEmpty ? "disabled" : "secondary"}
         onClick={onDownload}
       >
@@ -294,13 +305,13 @@ export function PngPanelFooter({
         aria-busy={copyState === "copying"}
         disabled={isGraphEmpty || copyState === "copying"}
         size="lg"
+        wrap
         variant={copyVariant}
-        className="px-4"
         onClick={onCopy}
       >
         <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
         {copyLabel}
       </Button>
-    </div>
+    </PanelActions>
   );
 }

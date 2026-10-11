@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import { Button, ChoiceButton, Select } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
@@ -40,7 +41,6 @@ import {
   canApplyStarterInput,
   getStarterInputStatus,
 } from "../../workflows/starter/starter-input-status";
-import { Button, Select, focusRing, raisedControl } from "../primitives";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/sample-gallery-layout";
 import { SampleGraphPreview } from "../samples/SampleGraphPreview";
 
@@ -252,12 +252,7 @@ export function StarterPasteFooter({
 
   return (
     <div className="grid w-full min-w-0 grid-cols-2 items-center gap-2 @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap">
-      <Button
-        size="lg"
-        variant="secondary"
-        className="h-auto min-h-10 min-w-0 py-2 whitespace-normal touch:min-h-11"
-        onClick={onUseSample}
-      >
+      <Button size="lg" variant="secondary" wrap onClick={onUseSample}>
         <span className="min-w-0 whitespace-normal">
           {messages.chrome.starterUseSample}
         </span>
@@ -265,7 +260,7 @@ export function StarterPasteFooter({
       <Button
         size="lg"
         variant="secondary"
-        className="h-auto min-h-10 min-w-0 py-2 whitespace-normal touch:min-h-11 [&>svg]:shrink-0"
+        wrap
         onClick={() => fileInputRef.current?.click()}
       >
         <FolderOpen className="size-icon-sm" aria-hidden="true" />
@@ -289,7 +284,8 @@ export function StarterPasteFooter({
         disabled={!canApply}
         size="lg"
         variant={canApply ? "primary" : "disabled"}
-        className="col-span-2 h-auto min-h-10 max-w-full min-w-0 px-4 py-2 whitespace-normal @min-[640px]/editor:ml-auto touch:min-h-11 [&>svg]:shrink-0"
+        wrap
+        className="col-span-2 max-w-full @min-[640px]/editor:ml-auto"
         onClick={() => starter.applyText()}
       >
         <FileInput className="size-icon-sm" aria-hidden="true" />
@@ -375,7 +371,7 @@ export function StarterSampleFooter({
 
   return (
     <div className="flex w-full items-center gap-2">
-      <Button size="lg" variant="secondary" onClick={onBackToPaste}>
+      <Button size="lg" variant="secondary" wrap onClick={onBackToPaste}>
         {messages.chrome.starterBackToPaste}
       </Button>
     </div>
@@ -425,14 +421,9 @@ function AmbiguousFormatChoice({
   const { messages } = useI18n();
 
   return (
-    <button
-      type="button"
+    <ChoiceButton
       onClick={() => onSelect(candidate.formatKind)}
-      className={cn(
-        "flex min-h-10 min-w-0 flex-col items-start gap-1 rounded-lg px-3 py-2 text-left text-xs touch:min-h-11",
-        raisedControl,
-        focusRing,
-      )}
+      className="flex-col items-start gap-1 text-left"
     >
       <span className="font-semibold text-[var(--text)]">
         {messages.starter.formats[candidate.formatKind]}
@@ -445,7 +436,7 @@ function AmbiguousFormatChoice({
           )}
         </span>
       ) : null}
-    </button>
+    </ChoiceButton>
   );
 }
 

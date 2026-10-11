@@ -12,7 +12,7 @@ import {
 
 import { useI18n } from "../i18n/I18nProvider";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
-import { rovingFocusKeyDown } from "../ui/primitives/use-roving-focus";
+import { rovingFocusKeyDown } from "@/components/ui/use-roving-focus";
 import {
   SELECTABLE_EDGE_COLORS,
   SELECTABLE_NODE_COLORS,
@@ -24,7 +24,7 @@ import type {
   NodeId,
 } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
-import { Button, IconButton, Kbd, focusRing } from "../ui/primitives";
+import { Button, IconButton, Kbd, focusRing } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 
 import {

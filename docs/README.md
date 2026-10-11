@@ -6,6 +6,7 @@ Use the page that matches the task; there is no required reading sequence.
 | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | Use the app, import a graph, or export a diagram               | [English](../README.md), [日本語](../README.ja.md), [简体中文](../README.zh-CN.md) |
 | Set up development, locate code, or choose checks              | [Development](development.md)                                                      |
+| Build consistent controls and panels                           | [UI components](ui-components.md)                                                  |
 | Change canvas recovery, history, storage conflicts, or routing | [Editor consistency](verification/editor-consistency.md)                           |
 | Check responsive UI or static-export headers in a browser      | [Browser audits](../scripts/audit/README.md)                                       |
 | Check repository automation boundaries                         | [Repository policy](../AGENTS.md)                                                  |

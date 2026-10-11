@@ -21,7 +21,7 @@ import { useI18n } from "../../i18n/I18nProvider";
 import type { EditorPanel } from "../../shell/state/editor-layout";
 import type { EditorMode } from "../../shell/state/editor-state";
 import { BrandLogo } from "../brand/BrandLogo";
-import { Button, IconButton, Kbd, focusRing } from "../primitives";
+import { Button, IconButton, Kbd, focusRing } from "@/components/ui/controls";
 import type { ThemeMode } from "../theme/theme";
 import { editorModes } from "./editor-chrome-state";
 import { RangeSelectionMenu } from "./RangeSelectionMenu";

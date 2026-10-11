@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { GitHubLogo, XLogo } from "../brand/social-logos";
-import { focusRing } from "../primitives";
+import { focusRing } from "@/components/ui/controls";
 
 // Preserve the original author's profile destinations.
 const AUTHOR_LINKS = [

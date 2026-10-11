@@ -8,14 +8,21 @@ import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { GitHubLogo, XLogo } from "../brand/social-logos";
-import { Kbd, focusRing } from "../primitives";
+import {
+  ActionRow,
+  Hairline,
+  Kbd,
+  focusRing,
+  rowControl,
+} from "@/components/ui/controls";
 import { menuFocusKeyDown } from "../primitives/focus-navigation";
 
 const APP_REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
 const APP_ISSUES_URL = `${APP_REPOSITORY_URL}/issues/new`;
 
 const rowClass = cn(
-  "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-control font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] touch:min-h-11",
+  rowControl,
+  "px-3 text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
   focusRing,
 );
 
@@ -49,19 +56,18 @@ export function AppMenuPanel({
       <MenuLink href={shareUrl} label={messages.appMenu.shareOnX}>
         <XLogo className="size-4" aria-hidden="true" />
       </MenuLink>
-      <div className="my-1 h-px bg-[var(--hair)]" aria-hidden="true" />
-      <button
-        type="button"
+      <Hairline className="my-1" />
+      <ActionRow
         role="menuitem"
-        className={rowClass}
+        className="px-3"
+        icon={
+          <Keyboard className="size-4 text-[var(--muted)]" aria-hidden="true" />
+        }
+        trailing={<Kbd>?</Kbd>}
         onClick={onOpenShortcuts}
       >
-        <span className="grid size-4 place-items-center text-[var(--muted)]">
-          <Keyboard className="size-4" aria-hidden="true" />
-        </span>
-        <span className="flex-1">{messages.chrome.shortcuts}</span>
-        <Kbd>?</Kbd>
-      </button>
+        {messages.chrome.shortcuts}
+      </ActionRow>
     </div>
   );
 }
