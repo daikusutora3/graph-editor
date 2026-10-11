@@ -63,6 +63,7 @@ const suites = [
     name: "ui-control-contracts",
     path: "tests/verification/ui-control-contracts.tsx",
   },
+  { name: "panel-dismissal", path: "tests/verification/panel-dismissal.mjs" },
   {
     name: "sample-parameters",
     path: "tests/verification/sample-parameters.ts",

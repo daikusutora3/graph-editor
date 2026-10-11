@@ -32,7 +32,6 @@ type EditorPanelShellProps = {
   width?: number;
 };
 
-const CHROME_CONTROL_SELECTOR = "[data-editor-chrome-control='true']";
 function firstFocusable(root: HTMLElement | null) {
   const elements = tabbableElements(root);
   // Prefer the first control after the close button so keyboard users land
@@ -187,22 +186,21 @@ export function EditorPanelShell({
       if (
         sectionRef.current?.contains(event.target) ||
         (event.target instanceof Element &&
-          event.target.closest(CHROME_CONTROL_SELECTOR))
+          event.target.closest(`[data-editor-panel-trigger="${panel}"]`))
       ) {
-        return;
-      }
-
-      if (panel === "layouts" && !mobile) {
         return;
       }
 
       onClose();
     };
 
-    document.addEventListener("pointerdown", onPointerDown);
+    // Capture canvas interactions even when their handlers stop propagation.
+    // Leave the current trigger's open/close behavior to its own handler.
+    document.addEventListener("pointerdown", onPointerDown, true);
 
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [mobile, onClose, panel, state]);
+    return () =>
+      document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [onClose, panel, state]);
 
   const positionStyle: CSSProperties | undefined = (() => {
     if (mobileSheet) {
