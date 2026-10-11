@@ -4,12 +4,14 @@ import {
   ArrowUpRight,
   BookOpen,
   ChevronDown,
+  Newspaper,
   Play,
   UserRound,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-import { appGuidePaths } from "@/lib/site-metadata";
+import { appArticlePaths, appGuidePaths } from "@/lib/site-metadata";
+import { contentNavigationCopy } from "@/lib/content-navigation";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
@@ -62,15 +64,20 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
   }, []);
 
   return (
-    <div className="relative inline-flex w-fit max-w-full shrink-0 items-center gap-0.5 rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1">
+    <div
+      className={cn(
+        "relative inline-flex w-fit max-w-full shrink-0 items-center gap-0.5 rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1",
+        mobile && "flex-col",
+      )}
+    >
       <details ref={authorRef} className="group/author min-w-0 text-xs">
         <summary
           className={cn(
-            "inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-xl px-1.5 text-[var(--muted)] transition-colors group-open/author:bg-[var(--accent-fill-soft)] hover:bg-[var(--fill)] [&::-webkit-details-marker]:hidden",
+            "inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-xl px-1.5 text-[var(--text-2)] transition-colors group-open/author:bg-[var(--fill-2)] hover:bg-[var(--fill)] [&::-webkit-details-marker]:hidden",
             focusRing,
           )}
         >
-          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--fill)] text-[var(--text-2)] group-open/author:bg-[var(--accent-fill)] group-open/author:text-[var(--accent-text)]">
+          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--fill)] text-[var(--text-2)] group-open/author:bg-[var(--fill-2)]">
             <UserRound
               aria-hidden="true"
               className="size-3.5"
@@ -93,7 +100,7 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
             "absolute inset-x-0 bottom-full z-10 mb-2 flex flex-col gap-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1 shadow-[var(--shadow)]",
             // Leave the toolbar, 54px footer and the popup's 8px gap uncovered.
             mobile
-              ? "max-h-[max(48px,calc(var(--ge-viewport-height,100dvh)-var(--ge-mobile-controls-bottom,92px)-142px))]"
+              ? "max-h-[max(48px,calc(var(--ge-viewport-height,100dvh)-var(--ge-mobile-controls-bottom,92px)-190px))]"
               : "max-h-[max(48px,calc(var(--ge-viewport-height,100dvh)-270px))]",
           )}
         >
@@ -120,20 +127,47 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
           ))}
         </div>
       </details>
-      <span
-        aria-hidden="true"
-        className="mx-0.5 h-5 w-px shrink-0 bg-[var(--line)]"
-      />
-      <a
-        href={appGuidePaths[locale]}
-        className={cn(
-          "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-1.5 text-xs whitespace-nowrap text-[var(--muted)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
-          focusRing,
-        )}
+      {!mobile ? (
+        <span
+          aria-hidden="true"
+          className="mx-0.5 h-5 w-px shrink-0 bg-[var(--line)]"
+        />
+      ) : null}
+      <nav
+        aria-label={contentNavigationCopy[locale].navigation}
+        className="flex max-w-full flex-wrap items-center justify-center gap-0.5"
       >
-        <BookOpen aria-hidden="true" className="size-3.5" />
-        {messages.appMenu.guide}
-      </a>
+        <a
+          href={appGuidePaths[locale]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-xs text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] active:bg-[var(--fill-2)]",
+            focusRing,
+          )}
+        >
+          <BookOpen aria-hidden="true" className="size-3.5" />
+          {messages.appMenu.guide}
+          <span className="sr-only">
+            ({contentNavigationCopy[locale].newTab})
+          </span>
+        </a>
+        <a
+          href={appArticlePaths[locale]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-xs text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] active:bg-[var(--fill-2)]",
+            focusRing,
+          )}
+        >
+          <Newspaper aria-hidden="true" className="size-3.5" />
+          {contentNavigationCopy[locale].articles}
+          <span className="sr-only">
+            ({contentNavigationCopy[locale].newTab})
+          </span>
+        </a>
+      </nav>
     </div>
   );
 }

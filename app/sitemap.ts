@@ -1,6 +1,11 @@
 import type { MetadataRoute } from "next";
 
-import { GUIDE_LAST_MODIFIED, HOME_LAST_MODIFIED } from "@/lib/content-dates";
+import {
+  ARTICLES_LAST_MODIFIED,
+  GUIDE_LAST_MODIFIED,
+  HOME_LAST_MODIFIED,
+} from "@/lib/content-dates";
+import { articleSlugs } from "@/lib/article-examples";
 import {
   appGuideLanguageAlternates,
   appLanguageAlternates,
@@ -8,6 +13,8 @@ import {
   appLocalePaths,
   getAppLocaleUrl,
   getAppPathUrl,
+  getAppArticleUrl,
+  getAppArticleLanguageAlternates,
   type AppLocale,
 } from "@/lib/site-metadata";
 
@@ -38,5 +45,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
       alternates: { languages: toAbsolute(appGuideLanguageAlternates) },
     })),
+    ...locales.flatMap((locale) => [
+      {
+        url: getAppArticleUrl(locale),
+        lastModified: ARTICLES_LAST_MODIFIED,
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+        alternates: {
+          languages: toAbsolute(getAppArticleLanguageAlternates()),
+        },
+      },
+      ...articleSlugs.map((slug) => ({
+        url: getAppArticleUrl(locale, slug),
+        lastModified: ARTICLES_LAST_MODIFIED,
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+        alternates: {
+          languages: toAbsolute(getAppArticleLanguageAlternates(slug)),
+        },
+      })),
+    ]),
   ];
 }

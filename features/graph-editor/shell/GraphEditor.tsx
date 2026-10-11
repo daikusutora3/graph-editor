@@ -21,6 +21,7 @@ import {
 import { useVisualViewport } from "../ui/hooks/use-visual-viewport";
 import { useEditorLayoutObserver } from "../ui/chrome/editor-chrome-state";
 import { EditorChrome } from "../ui/chrome/EditorChrome";
+import { ExampleSessionBanner } from "../ui/chrome/ExampleSessionBanner";
 import { I18nProvider, useI18n } from "../i18n/I18nProvider";
 import { APP_NAME, appGuidePaths } from "@/lib/site-metadata";
 import type { Locale } from "../i18n/locale";
@@ -54,10 +55,13 @@ function GraphEditorContent() {
     >
       <a
         href={appGuidePaths[locale]}
+        target="_blank"
+        rel="noopener noreferrer"
         className="absolute -top-20 left-3 z-[100] inline-flex min-h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow)] focus:top-3 focus:outline-2 focus:outline-offset-2"
       >
         {messages.appMenu.guide}
       </a>
+      {graphStorageReady ? <ExampleSessionBanner /> : null}
       <div
         ref={rootRef}
         data-layout={layout}

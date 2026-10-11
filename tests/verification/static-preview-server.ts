@@ -9,13 +9,15 @@ import {
 } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   createStaticPreviewHandler,
   parseStaticRedirects,
   startStaticPreviewServer,
 } from "../../scripts/audit/static-preview-server";
 import { createVerification } from "./harness";
+import { articleSlugs } from "../../lib/article-examples";
+import { appArticlePaths } from "../../lib/site-metadata";
 
 const { expect, finish } = createVerification("Static preview server");
 const fixture = mkdtempSync(join(tmpdir(), "graph-editor-static-preview-"));
@@ -29,6 +31,15 @@ writeFileSync(join(out, "en/guide.html"), "<h1>Guide</h1>");
 mkdirSync(join(out, "zh-hans"));
 for (const route of ["zh-hans", "guide", "zh-hans/guide"])
   writeFileSync(join(out, `${route}.html`), `<h1>${route}</h1>`);
+const articleRoutes = Object.values(appArticlePaths).flatMap((path) => [
+  path,
+  ...articleSlugs.map((slug) => `${path}/${slug}`),
+]);
+for (const route of articleRoutes) {
+  const page = join(out, `${route.slice(1)}.html`);
+  mkdirSync(dirname(page), { recursive: true });
+  writeFileSync(page, `<h1>${route}</h1>`);
+}
 writeFileSync(join(out, "404.html"), "<h1>Missing</h1>");
 writeFileSync(join(out, "wasm/kernel.wasm"), "test-wasm-asset");
 writeFileSync(
@@ -48,6 +59,7 @@ writeFileSync(
   Content-Security-Policy: default-src 'self'
 /zh-hans/guide
   Content-Security-Policy: default-src 'self'
+${articleRoutes.map((route) => `${route}\n  Content-Security-Policy: default-src 'self'\n`).join("")}
 /wasm/*
   Content-Type: application/wasm
   Cache-Control: public, max-age=31536000, immutable
@@ -196,6 +208,24 @@ try {
   expect(
     guide.status === 200 && guide.body.includes("Guide"),
     "Nested localized routes should serve their exported HTML.",
+  );
+  await Promise.all(
+    articleRoutes.flatMap((route) =>
+      ["GET", "HEAD"].map(async (method) => {
+        const result = await get(`${route}?example=test`, method);
+        expect(
+          result.status === 200 &&
+            result.headers["content-security-policy"] ===
+              "default-src 'self'" &&
+            result.headers["x-frame-options"] === "DENY" &&
+            Number(result.headers["content-length"]) > 0 &&
+            (method === "HEAD"
+              ? result.body === ""
+              : result.body === `<h1>${route}</h1>`),
+          `Article routes should retain clean URLs, query handling and their page CSP: ${method} ${route}`,
+        );
+      }),
+    ),
   );
   const wasm = await get("/wasm/kernel.wasm");
   expect(

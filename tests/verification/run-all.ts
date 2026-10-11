@@ -35,6 +35,7 @@ const suites = [
   { name: "wasm-import", path: "tests/verification/wasm-import.ts" },
   { name: "integrity", path: "tests/verification/integrity.ts" },
   { name: "autosave", path: "tests/verification/autosave.ts" },
+  { name: "example-sessions", path: "tests/verification/example-sessions.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
   {
     name: "geometry-contracts",
@@ -111,6 +112,9 @@ const suites = [
   },
   { name: "io", path: "tests/verification/io-contracts.ts" },
   { name: "guide", path: "tests/verification/guide-content.ts" },
+  { name: "article-content", path: "tests/verification/article-content.ts" },
+  { name: "article-pages", path: "tests/verification/article-pages.tsx" },
+  { name: "reading-position", path: "tests/verification/reading-position.ts" },
   {
     name: "import-text-contracts",
     path: "tests/verification/import-text-contracts.ts",

@@ -1,8 +1,11 @@
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
+import { ActionLink } from "@/components/ui/ActionLink";
 import { ContentSection } from "@/components/ui/ContentSection";
 import { GuideCopyButton } from "./GuideCopyButton";
 import { guideExamples } from "@/lib/guide-examples";
 import { guideExampleCopy } from "@/lib/guide-content";
+import { articlePath, getArticleForGuideExample } from "@/lib/article-content";
 import type { AppLocale } from "@/lib/site-metadata";
 
 export function GuideExamples({ locale }: { locale: AppLocale }) {
@@ -16,6 +19,7 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
     >
       {guideExamples.map((example, index) => {
         const text = copy.examples[index]!;
+        const article = getArticleForGuideExample(locale, example.id);
         return (
           <ContentSection
             key={example.id}
@@ -24,12 +28,12 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
             title={text.title}
             description={text.description}
             variant="card"
-            className="mt-6 sm:mt-8"
+            className="mt-6 scroll-mt-36 sm:mt-8 sm:scroll-mt-28"
           >
             <div className="mt-4 grid overflow-hidden rounded-lg border border-[var(--line)] sm:grid-cols-2">
               <div className="min-w-0 bg-[var(--fill)] px-4 pb-4">
                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 py-2">
-                  <p className="text-xs font-medium text-[var(--muted)]">
+                  <p className="text-sm font-medium text-[var(--muted)]">
                     {copy.input}
                   </p>
                   <GuideCopyButton
@@ -50,7 +54,7 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
                 </pre>
               </div>
               <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 sm:border-t-0 sm:border-l">
-                <p className="text-xs font-medium text-[var(--muted)]">
+                <p className="text-sm font-medium text-[var(--muted)]">
                   {copy.result}
                 </p>
                 <div className="mt-3 flex items-center justify-center rounded-lg bg-white p-3">
@@ -64,11 +68,20 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
                     className="h-auto max-h-44 w-auto max-w-full"
                   />
                 </div>
-                <figcaption className="mt-3 text-xs leading-6 text-[var(--text-2)]">
+                <figcaption className="mt-3 text-sm leading-7 text-[var(--text-2)]">
                   {text.result}
                 </figcaption>
               </figure>
             </div>
+            {article ? (
+              <ActionLink
+                href={articlePath(locale, article.slug)}
+                className="mt-3 text-sm"
+              >
+                {article.title}
+                <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+              </ActionLink>
+            ) : null}
           </ContentSection>
         );
       })}

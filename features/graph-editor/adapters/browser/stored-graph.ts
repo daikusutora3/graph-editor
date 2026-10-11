@@ -8,8 +8,13 @@ import {
   GRAPH_MAX_EDGES,
 } from "../../core/graph/graph-limits";
 import type { GraphModel } from "../../core/graph/model";
+import { createArticleExampleGraph } from "@/lib/article-examples";
+import {
+  getGraphStorageContext,
+  type GraphStorageContext,
+} from "./graph-storage-context";
 
-export const GRAPH_STORAGE_KEY = "graph-editor-graph";
+export { GRAPH_STORAGE_KEY } from "./graph-storage-context";
 export const MAX_STORED_GRAPH_CHARS = GRAPH_MAX_JSON_CHARS;
 export const MAX_STORED_GRAPH_NODES = GRAPH_MAX_NODES;
 export const MAX_STORED_GRAPH_EDGES = GRAPH_MAX_EDGES;
@@ -25,6 +30,20 @@ let pendingRaw: string | null = null;
 let generation = 0;
 let timer: number | null = null;
 let installed = false;
+let activeContext: GraphStorageContext | null = null;
+
+function contextIsCurrent(context: GraphStorageContext) {
+  return (
+    activeContext?.key === context.key &&
+    getGraphStorageContext().key === context.key
+  );
+}
+
+function contextStorage(context: GraphStorageContext) {
+  return context.kind === "example"
+    ? window.sessionStorage
+    : window.localStorage;
+}
 
 function notify(status: SaveStatus, raw = snapshot.raw) {
   if (snapshot.status === status && snapshot.raw === raw) return;
@@ -42,22 +61,31 @@ export function getStorageSnapshot() {
 export function readStoredGraph() {
   if (typeof window === "undefined") return null;
   cancelScheduledStoredGraphWrite();
+  const context = getGraphStorageContext();
+  activeContext = context;
   initialized = true;
   try {
-    baseline = window.localStorage.getItem(GRAPH_STORAGE_KEY);
+    baseline = contextStorage(context).getItem(context.key);
     const graph = parseStoredGraph(baseline);
     notify(
       baseline !== null && !graph
         ? "invalid"
-        : typeof navigator === "undefined" || !navigator.locks
+        : context.kind === "original" &&
+            (typeof navigator === "undefined" || !navigator.locks)
           ? "unavailable"
           : "saved",
       baseline,
     );
-    return graph;
+    if (graph) return graph;
+    return baseline === null && context.kind === "example"
+      ? createArticleExampleGraph(context.slug)
+      : null;
   } catch {
+    baseline = null;
     notify("unavailable", null);
-    return null;
+    return context.kind === "example"
+      ? createArticleExampleGraph(context.slug)
+      : null;
   }
 }
 
@@ -67,6 +95,12 @@ export function scheduleStoredGraphWrite(
 ) {
   if (typeof window === "undefined") return;
   if (!initialized) readStoredGraph();
+  // A model from a mounted old editor is not a model for the new URL.
+  // The new editor must read its own context before it can schedule writes.
+  if (activeContext?.key !== getGraphStorageContext().key) {
+    cancelScheduledStoredGraphWrite();
+    return;
+  }
   installStorageFlushListeners();
   pendingRaw = serialized ?? serializeStoredGraphForWrite(graph);
   generation += 1;
@@ -94,32 +128,49 @@ export function cancelScheduledStoredGraphWrite() {
 
 export async function flushStoredGraphWrite() {
   if (typeof window === "undefined" || pendingRaw === null) return;
+  const context = activeContext;
+  // A navigation must never redirect an old edit to another document's store.
+  if (!context || !contextIsCurrent(context)) {
+    cancelScheduledStoredGraphWrite();
+    return;
+  }
   if (["invalid", "conflict", "unavailable"].includes(snapshot.status)) return;
   if (timer !== null) window.clearTimeout(timer);
   timer = null;
-  if (typeof navigator === "undefined" || !navigator.locks) {
+  if (
+    context.kind === "original" &&
+    (typeof navigator === "undefined" || !navigator.locks)
+  ) {
     notify("unavailable");
     return;
   }
   const request = generation;
   const raw = pendingRaw;
   try {
-    await navigator.locks.request(GRAPH_STORAGE_KEY, () => {
+    const write = () => {
       // A visibility flush and an explicit retry can queue the same edit.
       // The first successful callback consumes it; later owners must not write.
-      if (request !== generation || pendingRaw !== raw) return;
-      const current = window.localStorage.getItem(GRAPH_STORAGE_KEY);
+      if (
+        request !== generation ||
+        pendingRaw !== raw ||
+        !contextIsCurrent(context)
+      )
+        return;
+      const storage = contextStorage(context);
+      const current = storage.getItem(context.key);
       if (current !== baseline) {
         notify("conflict", current);
         return;
       }
-      window.localStorage.setItem(GRAPH_STORAGE_KEY, raw);
+      storage.setItem(context.key, raw);
       baseline = raw;
       if (request === generation) {
         pendingRaw = null;
         notify("saved", raw);
       }
-    });
+    };
+    if (context.kind === "example") write();
+    else await navigator.locks.request(context.key, write);
   } catch {
     if (request === generation && pendingRaw === raw) notify("failed");
   }
@@ -127,6 +178,8 @@ export async function flushStoredGraphWrite() {
 
 /** Notifications never replace the current graph or its undo history. */
 export function observeExternalStorage(raw: string | null) {
+  // Example tabs do not subscribe to the original graph's shared storage.
+  if (getGraphStorageContext().kind === "example") return;
   if (raw !== baseline) {
     generation += 1;
     notify("conflict", raw);
@@ -136,6 +189,7 @@ export function observeExternalStorage(raw: string | null) {
 /** Accept only the exact document the user reviewed; a later write is a new conflict. */
 export function acceptStorageBaseline(raw: string | null) {
   cancelScheduledStoredGraphWrite();
+  activeContext = getGraphStorageContext();
   baseline = raw;
   initialized = true;
   notify("saved", raw);
@@ -173,7 +227,8 @@ export function uninstallStorageFlushListeners() {
 }
 
 function warnUnsavedChanges(event: BeforeUnloadEvent) {
-  if (pendingRaw === null) return;
+  if (pendingRaw === null || !activeContext || !contextIsCurrent(activeContext))
+    return;
   event.preventDefault();
   event.returnValue = "";
 }

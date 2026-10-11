@@ -12,6 +12,7 @@ const BUILD_DATE = new Date();
 
 /** First public release of the localized guide pages. */
 export const GUIDE_PUBLISHED_DATE = "2026-09-04";
+export const ARTICLES_PUBLISHED_DATE = "2026-10-11";
 
 const HOME_CONTENT_PATHS = [
   "lib/site-metadata.ts",
@@ -44,6 +45,12 @@ function lastCommitDate(paths: string[]): Date {
 
 export const HOME_LAST_MODIFIED = lastCommitDate(HOME_CONTENT_PATHS);
 export const GUIDE_LAST_MODIFIED = lastCommitDate(GUIDE_CONTENT_PATHS);
+export const ARTICLES_LAST_MODIFIED = lastCommitDate([
+  "lib/article-content.ts",
+  "lib/article-examples.ts",
+  "app/articles",
+  "components/content",
+]);
 
 /** YYYY-MM-DD, the form schema.org and sitemaps both accept. */
 export function toIsoDate(date: Date) {

@@ -5,14 +5,14 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
   return (
     <>
       {section.description ? (
-        <p className="mt-3 text-sm leading-7 text-[var(--text-2)]">
+        <p className="mt-3 text-base leading-8 text-[var(--text-2)]">
           {section.description}
         </p>
       ) : null}
       {section.paragraphs?.map((paragraph) => (
         <p
           key={paragraph}
-          className="mt-4 text-sm leading-7 text-[var(--text-2)]"
+          className="mt-4 text-base leading-8 text-[var(--text-2)]"
         >
           {paragraph}
         </p>
@@ -27,7 +27,7 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
               >
                 {index + 1}
               </span>
-              <div className="min-w-0 text-sm leading-7">
+              <div className="min-w-0 text-base leading-8">
                 <h3 className="font-medium">{step.title}</h3>
                 <p className="text-[var(--text-2)]">{step.description}</p>
               </div>
@@ -36,7 +36,7 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
         </ol>
       ) : null}
       {section.items ? (
-        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-7 text-[var(--text-2)] marker:text-[var(--muted)]">
+        <ul className="mt-4 list-disc space-y-2 pl-5 text-base leading-8 text-[var(--text-2)] marker:text-[var(--muted)]">
           {section.items.map((item) => (
             <li key={item} className="pl-1">
               {item}
@@ -52,7 +52,7 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
                 key={name}
                 className="grid min-w-0 gap-2 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-6"
               >
-                <dt className="text-sm leading-6 font-medium">{name}</dt>
+                <dt className="text-base leading-7 font-medium">{name}</dt>
                 <dd className="min-w-0">
                   <pre
                     className="overflow-x-auto rounded-lg bg-[var(--fill)] p-3 font-mono text-xs leading-6"
@@ -73,7 +73,7 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
               key={shortcut.action}
               className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-center sm:gap-6"
             >
-              <dt className="text-sm leading-6">{shortcut.action}</dt>
+              <dt className="text-base leading-7">{shortcut.action}</dt>
               <dd className="flex flex-wrap gap-1.5">
                 {shortcut.keys.map((key) => (
                   <kbd

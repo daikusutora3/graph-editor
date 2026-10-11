@@ -1105,6 +1105,152 @@ def run_rust_compute_review(session):
     return results
 
 
+def run_promo_recording(session):
+    """Record a fixed local app introduction; frame holds are editorial timing."""
+    output = OUTPUT / f"promo-attempt-{time.time_ns()}"
+    output.mkdir()
+    published = OUTPUT / "promo"
+    frames = []
+    fallbacks = []
+    started = time.monotonic()
+
+    def capture(scene, seconds, settle=0.25):
+        time.sleep(settle)
+        name = f"{len(frames):03d}-{scene}.png"
+        path = output / name
+        pixels = base64.b64decode(session.command("GET", "/screenshot"))
+        dimensions = {"width": int.from_bytes(pixels[16:20], "big"), "height": int.from_bytes(pixels[20:24], "big")}
+        assert dimensions == {"width": viewport["width"], "height": viewport["height"]}, (scene, dimensions, viewport)
+        path.write_bytes(pixels)
+        frames.append({"file": str(published / name), "scene": scene, "durationSeconds": seconds,
+                       "capturedAtSeconds": time.monotonic() - started})
+
+    def saved():
+        return session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
+
+    def operate(label, effect, selector=None):
+        element = session.element(selector) if selector else session.button(label)
+        session.click(element)
+        try:
+            return session.wait(effect, timeout=1)
+        except AssertionError:
+            # SafariDriver occasionally swallows a click in its unfocused
+            # window. Invoke only the same real local control and validate it.
+            session.js("arguments[0].click()", {ELEMENT: element})
+            fallbacks.append({"control": label, "method": "local DOM button.click after swallowed native click"})
+            return session.wait(effect, timeout=30)
+
+    session.command("POST", "/window/rect", {"width": 1280, "height": 770}, check=False)
+    session.navigate("/")
+    # SafariDriver owns an isolated automation window. Do not touch the user's
+    # normal browsing data, clipboard, downloads or other applications.
+    session.js("localStorage.clear();localStorage.setItem('graph-editor-theme','dark');")
+    session.command("POST", "/refresh", {})
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
+    # Select only this driver's own automation window before native gestures.
+    handle = session.command("GET", "/window")
+    session.command("POST", "/window", {"handle": handle})
+    viewport = session.js("return {width:innerWidth,height:innerHeight,devicePixelRatio}")
+    capture("empty", 2.0)
+
+    operate("グラフを読み込む", "return !!document.querySelector('[data-editor-panel=starter]')")
+    capture("load-panel", 1.5)
+    # A small binary tree stays readable at the video's final display size.
+    text = "15 14\n" + "\n".join(f"{child // 2} {child}" for child in range(2, 16))
+    textarea = session.element("textarea")
+    session.command("POST", f"/element/{textarea}/value", {"text": text})
+    session.wait("return [...document.querySelectorAll('[data-editor-panel=starter] button')].some(e=>e.textContent.trim()==='グラフに反映'&&!e.disabled)")
+    capture("pasted-tree", 2.5)
+    operate("グラフに反映", "const g=JSON.parse(localStorage.getItem('graph-editor-graph')||'null');return g?.nodes.length===15&&g?.edges.length===14&&!document.querySelector('[data-editor-panel=starter]')")
+    session.wait("return document.querySelectorAll('.ge-select-node-hitbox').length===15")
+    imported = saved()
+    capture("imported-tree", 3.0)
+
+    operate("配置", "return !!document.querySelector('[data-editor-panel=layouts]')")
+    capture("layout-panel", 1.5)
+    operate("自動配置: 力学モデル", "return performance.getEntriesByName('graph-compute:layout:wasm:force_layout').at(-1)?.detail?.calls>0")
+    session.wait("return !document.querySelector('[data-editor-panel=layouts] [role=status]')")
+    session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return JSON.stringify(g.nodes.map(n=>[n.x,n.y]))!==" + json.dumps(json.dumps([[n["x"], n["y"]] for n in imported["nodes"]], separators=(",", ":"))))
+    rust_mark = session.js("const mark=performance.getEntriesByName('graph-compute:layout:wasm:force_layout').at(-1);return {name:mark.name,startTime:mark.startTime,detail:mark.detail};")
+    capture("rust-layout-result", 1.5)
+    operate("配置", "return !document.querySelector('[data-editor-panel=layouts]')")
+    capture("laid-out-tree", 3.0)
+
+    operate("頂点 1を選択", "return !!document.querySelector('[role=radio][aria-label=\"頂点の色: 緑\"]')", ".ge-select-node-hitbox")
+    capture("selected-node", 1.5)
+    operate("頂点の色: 緑", "return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].color==='green'", '[role=radio][aria-label="頂点の色: 緑"]')
+    capture("green-node", 1.5)
+    before_drag = saved()["nodes"][0]
+    drag_start = session.js("const r=document.querySelector('.ge-select-node-hitbox').getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};")
+    zoom = session.js(RANGE_CY + "return cy.zoom();")
+    capture("drag-start", 1.5, settle=0.04)
+    drag_actions = [
+        {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": drag_start["x"], "y": drag_start["y"]},
+        {"type": "pointerDown", "button": 0}]
+    for step in range(18):
+        drag_actions.append({"type": "pointerMove", "duration": 50, "origin": "viewport",
+                             "x": drag_start["x"] + 4 * (step + 1), "y": drag_start["y"] + 2 * (step + 1)})
+    drag_actions.append({"type": "pointerUp", "button": 0})
+    session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "promo-drag", "parameters": {"pointerType": "mouse"}, "actions": drag_actions}]})
+    session.command("DELETE", "/actions")
+    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].x!==" + str(before_drag["x"]))
+    edited = saved()
+    assert edited["nodes"][0]["color"] == "green"
+    assert abs(edited["nodes"][0]["x"] - before_drag["x"] - 72 / zoom) < 0.0001
+    assert abs(edited["nodes"][0]["y"] - before_drag["y"] - 36 / zoom) < 0.0001
+    assert len(edited["nodes"]) == 15 and len(edited["edges"]) == 14
+    rendered_node = session.js("const r=document.querySelector('.ge-select-node-hitbox').getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom};")
+    assert rendered_node["left"] >= 0 and rendered_node["right"] <= viewport["width"]
+    assert rendered_node["top"] >= 0 and rendered_node["bottom"] <= viewport["height"]
+    capture("dragged-node", 2.5)
+
+    # Escape dismisses the selection so the export scene is uncluttered.
+    range_key(session, "\ue00c")
+    operate("書き出し", "return !!document.querySelector('[data-editor-panel=export]')")
+    exported_text = operate("再編集用に保存", "const e=document.querySelector('[data-editor-panel=export] pre');return e&&e.textContent.trim().startsWith('{')&&e.textContent;")
+    exported = json.loads(exported_text)
+    assert exported["nodes"] == edited["nodes"] and exported["edges"] == edited["edges"]
+    (output / "edited-graph.json").write_text(exported_text)
+    capture("json-export", 2.0)
+    preview = operate("画像にする", "const img=document.querySelector('[data-editor-panel=png] img');return img&&img.complete&&img.naturalWidth>0&&{width:img.naturalWidth,height:img.naturalHeight,alt:img.alt};")
+    # A native WebDriver click scrolls the image into the panel's visible body.
+    session.click(session.element('[data-editor-panel=png] img'))
+    session.js("document.querySelector('[data-editor-panel=png] img').scrollIntoView({block:'nearest'});")
+    fallbacks.append({"control": "PNG preview", "method": "local DOM scrollIntoView to display the generated preview"})
+    # Copy the already-rendered local PNG pixels without a blob network request.
+    png_data = session.js("""
+        const img=document.querySelector('[data-editor-panel=png] img');
+        if(!img.src.startsWith('blob:http://127.0.0.1:3323/')) throw new Error('Unexpected preview URL');
+        const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+        canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');
+    """)
+    assert png_data.startswith("data:image/png;base64,")
+    (output / "exported-graph.png").write_bytes(base64.b64decode(png_data.split(",", 1)[1]))
+    capture("png-preview", 3.5)
+    operate("PNG を閉じる", "return !document.querySelector('[data-editor-panel=png]')", '[data-editor-panel=png] button[aria-label="閉じる"]')
+    capture("final-tree", 3.5)
+
+    manifest = {"scenario": "app-introduction", "status": "passed", "origin": ORIGIN,
+                "locale": "ja", "theme": "dark", "viewport": viewport,
+                "timing": "Editorial frame holds, not a performance benchmark",
+                "captureMethod": "Actual local Safari viewport screenshots; native WebDriver actions with validated local-control fallbacks",
+                "automationFallbacks": fallbacks,
+                "durationSeconds": sum(frame["durationSeconds"] for frame in frames),
+                "captureElapsedSeconds": time.monotonic() - started, "frames": frames,
+                "evidence": {"nodeCount": 15, "edgeCount": 14, "rustForceMark": rust_mark,
+                             "nodeBeforeDrag": before_drag, "nodeAfterDrag": edited["nodes"][0],
+                             "renderedNodeAfterDrag": rendered_node, "dragMethod": "Native WebDriver absolute viewport actions in one batch; before/after frames",
+                             "jsonExportMatchesSavedGraph": True, "pngPreview": preview},
+                "limits": ["Expert demonstration, no first-time human participant",
+                           "Frame hold durations were chosen for presentation",
+                           "Native file download not tested"]}
+    (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
+    if published.exists():
+        published.rename(OUTPUT / f"promo-previous-{time.time_ns()}")
+    output.rename(published)
+    print(f"App introduction: {len(frames)} real Safari frames, Rust force, native color/drag, JSON and PNG passed", flush=True)
+
+
 def main():
     assert sys.argv[1:] in ([], ["--self-loops"], ["--text-weights"]), "This runner accepts only a fixed local scenario, no URL or command overrides"
     policy_checks()
@@ -1122,6 +1268,13 @@ def main():
                 time.sleep(0.1)
         session = Session()
         (OUTPUT / "capabilities.json").write_text(json.dumps(session.capabilities, indent=2))
+        promo_request = OUTPUT / "promo-request.json"
+        if promo_request.exists():
+            assert not sys.argv[1:], "The fixed promo scenario requires the no-argument runner"
+            assert json.loads(promo_request.read_text()) == {"scenario": "app-introduction"}, "Only the fixed app-introduction scenario is allowed"
+            promo_request.unlink()
+            run_promo_recording(session)
+            return
         if sys.argv[1:] == ["--text-weights"]:
             run_text_weight_review(session)
             return

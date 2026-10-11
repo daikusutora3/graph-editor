@@ -6,14 +6,14 @@ export const insetFocusRing =
   "focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--muted)]";
 export const panelSurface =
   "min-w-0 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]";
-export const bodyText = "text-sm leading-7 text-[var(--text-2)]";
+export const bodyText = "text-base leading-8 text-[var(--text-2)]";
 
 const actionVariants = {
   quiet:
-    "font-medium text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
-  soft: "bg-[var(--fill)] font-medium text-[var(--text)] hover:bg-[var(--fill-2)]",
+    "font-medium text-[var(--text-2)] hover:text-[var(--text)] active:opacity-80",
+  soft: "bg-[var(--fill)] font-medium text-[var(--text)] hover:opacity-90 active:opacity-80",
   primary:
-    "bg-[var(--primary)] font-semibold text-[var(--primary-text)] hover:opacity-90",
+    "bg-[var(--primary)] font-semibold text-[var(--primary-text)] hover:opacity-90 active:opacity-80",
 };
 
 export function actionStyles(variant: keyof typeof actionVariants = "quiet") {

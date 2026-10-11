@@ -1,9 +1,20 @@
 "use client";
 
-import { ArrowUpRight, BookOpen, CircleDot, Keyboard } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  CircleDot,
+  Keyboard,
+  Newspaper,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
-import { appGuidePaths, getAppLocaleUrl } from "@/lib/site-metadata";
+import {
+  appArticlePaths,
+  appGuidePaths,
+  getAppLocaleUrl,
+} from "@/lib/site-metadata";
+import { contentNavigationCopy } from "@/lib/content-navigation";
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
@@ -53,6 +64,12 @@ export function AppMenuPanel({
       <MenuLink href={appGuidePaths[locale]} label={messages.appMenu.guide}>
         <BookOpen className="size-4" aria-hidden="true" />
       </MenuLink>
+      <MenuLink
+        href={appArticlePaths[locale]}
+        label={contentNavigationCopy[locale].articles}
+      >
+        <Newspaper className="size-4" aria-hidden="true" />
+      </MenuLink>
       <MenuLink href={shareUrl} label={messages.appMenu.shareOnX}>
         <XLogo className="size-4" aria-hidden="true" />
       </MenuLink>
@@ -85,7 +102,7 @@ function MenuLink({
     <a
       href={href}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       role="menuitem"
       className={rowClass}
     >

@@ -29,6 +29,7 @@ import {
   GRAPH_STORAGE_KEY,
   observeExternalStorage,
 } from "../../adapters/browser/stored-graph";
+import { getGraphStorageContext } from "../../adapters/browser/graph-storage-context";
 import {
   deleteSelectionAtom,
   redoAtom,
@@ -146,7 +147,9 @@ export function useGraphEditorShortcuts() {
 
 export function useGraphExternalStorageSync() {
   useEffect(() => {
+    if (getGraphStorageContext().kind === "example") return;
     const onStorage = (event: StorageEvent) => {
+      if (getGraphStorageContext().kind === "example") return;
       if (event.storageArea !== window.localStorage) return;
       if (event.key === GRAPH_STORAGE_KEY || event.key === null) {
         observeExternalStorage(event.newValue);
