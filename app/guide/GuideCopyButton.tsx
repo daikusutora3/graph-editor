@@ -2,6 +2,8 @@
 
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import { actionStyles } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
 
 export function GuideCopyButton({
   text,
@@ -35,7 +37,7 @@ export function GuideCopyButton({
         disabled={status === "busy"}
         aria-busy={status === "busy"}
         aria-label={`${buttonLabel}: ${title}`}
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-xs font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--fill-2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--text-2)] disabled:opacity-60"
+        className={cn(actionStyles(), "text-xs disabled:opacity-60")}
       >
         {status === "copied" ? (
           <Check className="size-3.5 text-[var(--text)]" aria-hidden="true" />
