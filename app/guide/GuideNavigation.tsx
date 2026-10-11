@@ -28,16 +28,12 @@ export function GuideHeader({ locale }: { locale: AppLocale }) {
           prefetch={false}
           aria-label={APP_NAME}
           className={cn(
-            "inline-flex min-h-11 shrink-0 items-center gap-3 rounded-lg text-[15px] font-semibold tracking-tight",
+            "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md text-sm font-semibold tracking-tight whitespace-nowrap text-[var(--text)] transition-opacity hover:opacity-75 sm:gap-2.5 sm:text-base",
             focusRing,
           )}
         >
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[var(--line)] bg-[var(--bg)]">
-            <BrandLogo size={26} />
-          </span>
-          <span className="hidden min-[360px]:inline" translate="no">
-            {APP_NAME}
-          </span>
+          <BrandLogo size={28} />
+          <span translate="no">{APP_NAME}</span>
         </Link>
         <GuideEditorLink locale={locale} />
       </div>
