@@ -494,7 +494,10 @@ export function EditorChrome() {
   return (
     <>
       <StorageNotice />
-      {graph && graphIsEmpty && !visiblePanel && mode === "select" ? (
+      {graph &&
+      graphIsEmpty &&
+      (visiblePanel === null || visiblePanel === "app") &&
+      mode === "select" ? (
         <EmptyState
           mobile={mobile}
           onDraw={() => handleModeChange("node")}
