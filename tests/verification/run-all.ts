@@ -112,6 +112,10 @@ const suites = [
   },
   { name: "io", path: "tests/verification/io-contracts.ts" },
   { name: "guide", path: "tests/verification/guide-content.ts" },
+  {
+    name: "content-header-resize",
+    path: "tests/verification/content-header-resize.mjs",
+  },
   { name: "article-content", path: "tests/verification/article-content.ts" },
   { name: "article-pages", path: "tests/verification/article-pages.tsx" },
   {

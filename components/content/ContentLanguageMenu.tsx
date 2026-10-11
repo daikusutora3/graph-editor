@@ -59,7 +59,7 @@ export function ContentLanguageMenu({
         <summary
           className={cn(
             actionStyles(),
-            "cursor-pointer list-none gap-1.5 text-xs [&::-webkit-details-marker]:hidden",
+            "min-w-11 cursor-pointer list-none justify-center gap-1.5 text-xs [&::-webkit-details-marker]:hidden",
           )}
           aria-label={`${label}: ${options.find((option) => option.locale === current)?.name}`}
         >
@@ -68,7 +68,7 @@ export function ContentLanguageMenu({
             {options.find((option) => option.locale === current)?.name}
           </span>
           <ChevronDown
-            className="size-3 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+            className="size-3 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none max-[319px]:hidden"
             aria-hidden="true"
           />
         </summary>

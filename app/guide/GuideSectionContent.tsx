@@ -23,7 +23,7 @@ export function GuideSectionContent({
       ) : null}
       <GuideOperationVisual id={section.id} locale={locale} />
       {section.shortcuts ? (
-        <dl className="mt-5 grid gap-x-8 rounded-xl bg-[var(--panel-solid)] px-4 sm:grid-cols-2">
+        <dl className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-x-8 rounded-xl bg-[var(--panel-solid)] px-4">
           {section.shortcuts.map((shortcut) => (
             <div
               key={shortcut.action}

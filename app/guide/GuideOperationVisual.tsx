@@ -53,13 +53,15 @@ export function GuideOperationVisual({
     <div
       className={cn(
         "mt-5 grid gap-4 sm:gap-5",
-        captions.length === 4 ? "sm:grid-cols-2" : "sm:grid-cols-3",
+        captions.length === 4
+          ? "@min-[40rem]/reading:grid-cols-2"
+          : "@min-[40rem]/reading:grid-cols-3",
       )}
     >
       {captions.map((caption, index) => (
         <figure
           key={caption}
-          className="grid min-w-0 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3 sm:block"
+          className="grid min-w-0 grid-cols-[min(12rem,40%)_minmax(0,1fr)] items-center gap-3 @min-[40rem]/reading:block"
         >
           <svg
             viewBox="0 0 240 156"
@@ -83,7 +85,7 @@ export function GuideOperationVisual({
             />
             <Operation id={id} step={index} />
           </svg>
-          <figcaption className="flex min-h-11 items-start gap-2 text-sm leading-6 font-medium sm:items-center sm:px-1 sm:pt-2">
+          <figcaption className="flex min-h-11 items-start gap-2 text-sm leading-6 font-medium @min-[40rem]/reading:items-center @min-[40rem]/reading:px-1 @min-[40rem]/reading:pt-2">
             {id === "export" || id === "appearance" ? null : (
               <span
                 className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--fill)] text-[11px] text-[var(--muted)]"

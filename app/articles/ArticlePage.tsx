@@ -1,3 +1,4 @@
+import readingStyles from "@/components/content/ReadingLayout.module.css";
 import { ArrowRight, BookOpen, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { GuideCopyButton } from "@/app/guide/GuideCopyButton";
@@ -110,7 +111,10 @@ export function ArticlePage({
     <main
       id="articles-top"
       data-reading
-      className="min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]"
+      className={cn(
+        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
+        readingStyles.page,
+      )}
     >
       <script
         type="application/ld+json"
@@ -128,7 +132,7 @@ export function ArticlePage({
         {copy.skipToContent}
       </a>
       <ContentHeader locale={locale} section="articles" slug={article.slug} />
-      <div className="mx-auto max-w-6xl px-4 pt-5 pb-12 sm:px-8 sm:pt-8 sm:pb-16">
+      <div className="mx-auto max-w-6xl px-[var(--reading-gutter)] pt-5 pb-12 sm:pt-8 sm:pb-16">
         <nav
           aria-label={copy.articlesLink}
           className="mb-5 flex min-w-0 flex-wrap items-center gap-x-1 text-sm text-[var(--muted)]"
@@ -149,7 +153,7 @@ export function ArticlePage({
               {article.category}
             </p>
           </div>
-          <h1 className="mt-4 max-w-4xl text-[26px] leading-snug font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
+          <h1 className="mt-4 max-w-4xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
             {article.title}
           </h1>
           <p className={cn("mt-4", bodyText, readingMeasure)}>
@@ -177,10 +181,7 @@ export function ArticlePage({
           <article
             id="article-content"
             tabIndex={-1}
-            className={cn(
-              readingMeasure,
-              "min-w-0 scroll-mt-36 md:scroll-mt-28",
-            )}
+            className={cn(readingMeasure, "@container/reading min-w-0")}
           >
             <div className="space-y-10 sm:space-y-12">
               {article.sections.map((section, index) => (
@@ -189,7 +190,6 @@ export function ArticlePage({
                   id={section.id}
                   title={section.title}
                   variant={index === 0 ? "plain" : "divided"}
-                  className="scroll-mt-36 md:scroll-mt-28 [&>h2]:scroll-mt-36 md:[&>h2]:scroll-mt-28"
                 >
                   {section.id === articleScreenshotSections[article.slug] ? (
                     <ArticleScreenshot slug={article.slug} locale={locale} />
@@ -208,12 +208,8 @@ export function ArticlePage({
                   </div>
                 </ContentSection>
               ))}
-              <ContentSection
-                id="article-example"
-                title={copy.exampleTitle}
-                className="scroll-mt-36 md:scroll-mt-28 [&>h2]:scroll-mt-36 md:[&>h2]:scroll-mt-28"
-              >
-                <div className="mt-5 grid min-w-0 overflow-hidden rounded-xl border border-[var(--line)] sm:grid-cols-2">
+              <ContentSection id="article-example" title={copy.exampleTitle}>
+                <div className="mt-5 grid min-w-0 overflow-hidden rounded-xl border border-[var(--line)] @min-[32rem]/reading:grid-cols-2">
                   <div className="min-w-0 bg-[var(--fill)] px-4 pb-5 sm:px-5">
                     <div className="flex flex-wrap items-center justify-between gap-2 py-2">
                       <p className="text-sm font-medium text-[var(--text-2)]">
@@ -236,7 +232,7 @@ export function ArticlePage({
                       <code>{article.example.input}</code>
                     </pre>
                   </div>
-                  <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 sm:border-t-0 sm:border-l sm:p-5">
+                  <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 sm:p-5 @min-[32rem]/reading:border-t-0 @min-[32rem]/reading:border-l">
                     <p className="text-sm font-medium text-[var(--text-2)]">
                       {copy.result}
                     </p>
@@ -258,12 +254,8 @@ export function ArticlePage({
                   </div>
                 ) : null}
               </ContentSection>
-              <ContentSection
-                id="article-related"
-                title={copy.relatedTitle}
-                className="scroll-mt-36 md:scroll-mt-28 [&>h2]:scroll-mt-36 md:[&>h2]:scroll-mt-28"
-              >
-                <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2">
+              <ContentSection id="article-related" title={copy.relatedTitle}>
+                <div className="mt-5 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
                   {related.map((relatedArticle) => (
                     <ArticleCard
                       key={relatedArticle.slug}

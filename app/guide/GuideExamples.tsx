@@ -35,7 +35,7 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
             variant="plain"
             className="mt-6 scroll-mt-36 sm:mt-8 sm:scroll-mt-28"
           >
-            <div className="mt-4 grid overflow-hidden rounded-lg border border-[var(--line)] sm:grid-cols-2">
+            <div className="mt-4 grid overflow-hidden rounded-lg border border-[var(--line)] @min-[32rem]/reading:grid-cols-2">
               <div className="min-w-0 bg-[var(--fill)] px-4 pb-4">
                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 py-2">
                   <p className="text-sm font-medium text-[var(--muted)]">
@@ -58,7 +58,7 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
                   <code>{example.input}</code>
                 </pre>
               </div>
-              <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 sm:border-t-0 sm:border-l">
+              <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 @min-[32rem]/reading:border-t-0 @min-[32rem]/reading:border-l">
                 <p className="text-sm font-medium text-[var(--muted)]">
                   {copy.result}
                 </p>

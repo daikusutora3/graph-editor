@@ -1,0 +1,14 @@
+.page {
+  --reading-gutter: clamp(1rem, 3vw, 2rem);
+  --reading-header-height: 108px;
+}
+
+.page [id] {
+  scroll-margin-top: calc(var(--reading-header-height) + 24px);
+}
+
+@media (min-width: 768px) {
+  .page {
+    --reading-header-height: 60px;
+  }
+}

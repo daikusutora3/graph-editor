@@ -23,14 +23,14 @@ export function ArticleScreenshot({
 }) {
   const caption = articleScreenshotCaptions[locale][slug];
   return (
-    <figure className="mt-5 space-y-3">
+    <figure className="@container/article-shot mt-5 space-y-3">
       <Image
         unoptimized
         src={`/articles/screenshots/${slug}-mobile.jpg`}
         alt={caption}
         width={375}
         height={812}
-        className="h-auto w-full rounded-xl border border-[var(--line)] sm:hidden"
+        className="mx-auto h-auto w-full max-w-[375px] rounded-xl border border-[var(--line)] @min-[40rem]/article-shot:hidden"
       />
       <Image
         unoptimized
@@ -38,7 +38,7 @@ export function ArticleScreenshot({
         alt={caption}
         width={853}
         height={954}
-        className="hidden h-auto w-full rounded-xl border border-[var(--line)] sm:block"
+        className="hidden h-auto w-full rounded-xl border border-[var(--line)] @min-[40rem]/article-shot:block"
       />
       <figcaption className="text-[15px] leading-7 text-[var(--text-2)]">
         {caption}
