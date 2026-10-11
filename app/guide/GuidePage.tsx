@@ -1,18 +1,17 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  BookOpen,
-  ChevronDown,
-  ExternalLink,
-  Info,
-  Languages,
-} from "lucide-react";
-import Link from "next/link";
+import { BookOpen } from "lucide-react";
 import { GuideExamples } from "./GuideExamples";
+import { GuideFooter } from "./GuideFooter";
+import {
+  GuideContents,
+  GuideHeader,
+  GuideLanguageSwitcher,
+} from "./GuideNavigation";
+import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
-import { BrandLogo } from "@/features/graph-editor/ui/brand/BrandLogo";
-import { EmptyStateIllustration } from "@/features/graph-editor/ui/chrome/EmptyStateIllustration";
+import { Callout } from "@/components/ui/Callout";
+import { ContentSection } from "@/components/ui/ContentSection";
+import { Disclosure } from "@/components/ui/Disclosure";
+import { focusRing } from "@/components/ui/styles";
 import {
   GUIDE_LAST_MODIFIED,
   GUIDE_PUBLISHED_DATE,
@@ -20,19 +19,14 @@ import {
 } from "@/lib/content-dates";
 import { guideCopy, guideExampleCopy } from "@/lib/guide-content";
 import {
-  APP_NAME,
   appAuthorStructuredData,
-  appGuidePaths,
   appLocaleMetadata,
-  appLocalePaths,
   getAppGuideUrl,
   getAppLocaleUrl,
-  REPOSITORY_URL,
   SITE_URL,
   type AppLocale,
 } from "@/lib/site-metadata";
 
-const guideLanguages = ["ja", "en", "zh-Hans"] as const;
 const legacySectionIds: Readonly<Record<string, string>> = {
   import: "guide-section-0",
   draw: "guide-section-1",
@@ -40,10 +34,6 @@ const legacySectionIds: Readonly<Record<string, string>> = {
   export: "guide-section-3",
   shortcuts: "guide-section-4",
 };
-const focusStyle =
-  "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--text-2)]";
-const insetFocusStyle =
-  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--text-2)]";
 
 /** The guide and diagrams render on the server; only copying needs client code. */
 export function GuidePage({ locale }: { locale: AppLocale }) {
@@ -114,28 +104,11 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       />
       <a
         href="#guide-content"
-        className={`sr-only fixed top-3 left-3 z-50 rounded-lg bg-[var(--panel-solid)] px-4 py-3 text-sm focus:not-sr-only ${focusStyle}`}
+        className={`sr-only fixed top-3 left-3 z-50 rounded-lg bg-[var(--panel-solid)] px-4 py-3 text-sm focus:not-sr-only ${focusRing}`}
       >
         {copy.skipToContent}
       </a>
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--panel-solid)]">
-        <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-8">
-          <Link
-            href={appLocalePaths[locale]}
-            prefetch={false}
-            aria-label={APP_NAME}
-            className={`inline-flex min-h-11 shrink-0 items-center gap-3 rounded-lg text-[15px] font-semibold tracking-tight ${focusStyle}`}
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[var(--line)] bg-[var(--bg)]">
-              <BrandLogo size={26} />
-            </span>
-            <span className="hidden min-[360px]:inline" translate="no">
-              {APP_NAME}
-            </span>
-          </Link>
-          <GuideEditorLink locale={locale} label={copy.openApp} />
-        </div>
-      </header>
+      <GuideHeader locale={locale} />
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
         <header className="mb-8 sm:mb-10">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -146,28 +119,7 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
               />
               {copy.guideLink}
             </p>
-            <nav
-              aria-label={copy.languages}
-              className="inline-flex max-w-full shrink-0 items-center gap-0.5 rounded-full border border-[var(--line)] bg-[var(--fill)] p-1"
-            >
-              <Languages
-                className="mx-2 size-4 shrink-0 text-[var(--muted)]"
-                aria-hidden="true"
-              />
-              {guideLanguages.map((language) => (
-                <Link
-                  key={language}
-                  href={appGuidePaths[language]}
-                  prefetch={false}
-                  hrefLang={language}
-                  lang={language}
-                  aria-current={locale === language ? "page" : undefined}
-                  className={`inline-flex min-h-11 items-center justify-center rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors ${insetFocusStyle} ${locale === language ? "border-[var(--line)] bg-[var(--panel-solid)] font-semibold text-[var(--text)] shadow-sm" : "border-transparent text-[var(--text-2)] hover:bg-[var(--fill-2)] hover:text-[var(--text)]"}`}
-                >
-                  {guideCopy[language].languageName}
-                </Link>
-              ))}
-            </nav>
+            <GuideLanguageSwitcher locale={locale} />
           </div>
           <h1 className="mt-4 max-w-3xl text-[26px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
             {copy.heading}
@@ -177,124 +129,22 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
           </p>
         </header>
         <div className="grid min-w-0 gap-8 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
-          <aside className="min-w-0">
-            <nav aria-label={copy.onThisPage} className="lg:sticky lg:top-24">
-              <details className="group rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] lg:hidden">
-                <summary
-                  className={`flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 text-sm font-medium [&::-webkit-details-marker]:hidden ${focusStyle}`}
-                >
-                  {copy.onThisPage}
-                  <ChevronDown
-                    className="size-4 shrink-0 text-[var(--muted)] group-open:rotate-180"
-                    aria-hidden="true"
-                  />
-                </summary>
-                <GuideContents
-                  entries={entries}
-                  className="border-t border-[var(--hair)] px-2 py-2"
-                />
-              </details>
-              <div className="hidden lg:block">
-                <p className="mb-3 px-3 text-xs font-semibold text-[var(--muted)]">
-                  {copy.onThisPage}
-                </p>
-                <GuideContents
-                  entries={entries}
-                  className="border-l border-[var(--line)] pl-2"
-                />
-                <p
-                  translate="no"
-                  className="mt-6 px-3 text-xs text-[var(--muted)]"
-                >
-                  by daikusutora3
-                </p>
-              </div>
-            </nav>
-          </aside>
+          <GuideContents title={copy.onThisPage} entries={entries} />
           <article
             id="guide-content"
             tabIndex={-1}
             className="min-w-0 scroll-mt-24"
           >
-            <section
-              id="guide-start"
-              aria-labelledby="guide-start-title"
-              className="scroll-mt-24"
-            >
-              <h2
-                id="guide-start-title"
-                className="text-xl font-semibold tracking-tight sm:text-2xl"
-              >
-                {copy.quickStartTitle}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--text-2)]">
-                {copy.quickStartIntro}
-              </p>
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                {copy.quickStartCards.map((card) => (
-                  <div
-                    key={card.id}
-                    className="flex min-w-0 flex-col rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-4"
-                  >
-                    <div className="mb-3 flex items-center gap-3 md:flex-col md:items-start">
-                      <div className="h-14 w-16 shrink-0 text-[var(--text-2)] sm:h-16 sm:w-28 md:h-20 md:w-full">
-                        <EmptyStateIllustration
-                          method={card.id === "data" ? "paste" : card.id}
-                          tone="neutral"
-                        />
-                      </div>
-                      <h3 className="text-sm leading-6 font-semibold">
-                        {card.title}
-                      </h3>
-                    </div>
-                    <p className="text-[13px] leading-6 text-[var(--text-2)]">
-                      {card.description}
-                    </p>
-                    <ol className="mt-3 flex-1 list-decimal space-y-1 pl-4 text-[13px] leading-6 text-[var(--text-2)] marker:text-[var(--muted)]">
-                      {card.steps.map((step) => (
-                        <li key={step} className="pl-1">
-                          {step}
-                        </li>
-                      ))}
-                    </ol>
-                    <a
-                      href={`#guide-${card.targetId}`}
-                      className={`mt-4 inline-flex min-h-11 items-center justify-between gap-2 rounded-lg bg-[var(--fill)] px-3 text-xs font-medium text-[var(--text)] transition-colors hover:bg-[var(--fill-2)] ${focusStyle}`}
-                    >
-                      {card.id === "data"
-                        ? copy.examplesLink
-                        : copy.quickStartAction}
-                      <ArrowRight
-                        className="size-3.5 shrink-0"
-                        aria-hidden="true"
-                      />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <GuideQuickStart locale={locale} />
             <GuideExamples locale={locale} />
             <div className="mt-10 space-y-10 sm:mt-14 sm:space-y-14">
               {copy.sections.map((section) => (
-                <section
-                  id={`guide-${section.id}`}
+                <ContentSection
                   key={section.id}
-                  aria-labelledby={`guide-${section.id}-title`}
-                  className="scroll-mt-24 border-t border-[var(--line)] pt-8"
+                  id={`guide-${section.id}`}
+                  anchorId={legacySectionIds[section.id]}
+                  title={section.title}
                 >
-                  {legacySectionIds[section.id] ? (
-                    <span
-                      id={legacySectionIds[section.id]}
-                      className="block scroll-mt-24"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                  <h2
-                    id={`guide-${section.id}-title`}
-                    className="text-xl leading-snug font-semibold tracking-tight sm:text-2xl"
-                  >
-                    {section.title}
-                  </h2>
                   <GuideSectionContent section={section} />
                   {section.id === "shortcuts" ? (
                     <p className="mt-4 text-xs leading-6 text-[var(--muted)]">
@@ -302,157 +152,31 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                     </p>
                   ) : null}
                   {section.note ? (
-                    <aside className="mt-5 flex gap-3 rounded-xl border border-[var(--line)] bg-[var(--fill)] p-4">
-                      <Info
-                        className="mt-0.5 size-4 shrink-0 text-[var(--muted)]"
-                        aria-hidden="true"
-                      />
-                      <div className="min-w-0 text-sm leading-7">
-                        <p className="font-medium">{section.note.title}</p>
-                        <p className="mt-1 text-[var(--text-2)]">
-                          {section.note.text}
-                        </p>
-                      </div>
-                    </aside>
+                    <Callout title={section.note.title} className="mt-5">
+                      <p>{section.note.text}</p>
+                    </Callout>
                   ) : null}
-                </section>
+                </ContentSection>
               ))}
             </div>
-            <section
+            <ContentSection
               id="guide-faq"
-              aria-labelledby="guide-faq-title"
-              className="mt-10 scroll-mt-24 border-t border-[var(--line)] pt-8 sm:mt-14"
+              title={copy.faqTitle}
+              description={copy.faqIntro}
+              className="mt-10 sm:mt-14"
             >
-              <h2
-                id="guide-faq-title"
-                className="text-xl font-semibold tracking-tight sm:text-2xl"
-              >
-                {copy.faqTitle}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--text-2)]">
-                {copy.faqIntro}
-              </p>
-              <div className="mt-5 divide-y divide-[var(--line)] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]">
+              <div className="mt-5 space-y-2.5">
                 {copy.faq.map((entry) => (
-                  <details key={entry.question} className="group">
-                    <summary
-                      className={`flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-lg px-4 py-3 text-sm leading-6 font-medium sm:px-5 [&::-webkit-details-marker]:hidden ${insetFocusStyle}`}
-                    >
-                      {entry.question}
-                      <ChevronDown
-                        className="size-4 shrink-0 text-[var(--muted)] group-open:rotate-180"
-                        aria-hidden="true"
-                      />
-                    </summary>
-                    <p className="px-4 pb-4 text-sm leading-7 text-[var(--text-2)] sm:px-5">
-                      {entry.answer}
-                    </p>
-                  </details>
+                  <Disclosure key={entry.question} title={entry.question}>
+                    <p>{entry.answer}</p>
+                  </Disclosure>
                 ))}
               </div>
-            </section>
-            <footer className="mt-10 sm:mt-14">
-              <div className="flex flex-col gap-5 rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
-                <div className="flex min-w-0 items-start gap-3.5">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--fill)]">
-                    <BrandLogo size={28} />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-base leading-6 font-semibold tracking-tight sm:text-lg">
-                      {copy.footerTitle}
-                    </h2>
-                    <p className="mt-1.5 max-w-sm text-[13px] leading-6 text-[var(--text-2)]">
-                      {copy.footerDescription}
-                    </p>
-                  </div>
-                </div>
-                <GuideEditorLink locale={locale} label={copy.openApp} primary />
-              </div>
-              <div className="mt-4 flex flex-col gap-3 text-xs text-[var(--muted)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-2">
-                <p
-                  className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-1"
-                  translate="no"
-                >
-                  <span className="font-medium text-[var(--text-2)]">
-                    Graph Editor
-                  </span>
-                  <span>by daikusutora3</span>
-                </p>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <a
-                    href="#guide-top"
-                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] ${focusStyle}`}
-                  >
-                    {copy.backToTop}
-                    <ArrowUp className="size-3.5 shrink-0" aria-hidden="true" />
-                  </a>
-                  <a
-                    href={REPOSITORY_URL}
-                    rel="noreferrer"
-                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] ${focusStyle}`}
-                  >
-                    <ExternalLink
-                      className="size-3.5 shrink-0"
-                      aria-hidden="true"
-                    />
-                    {copy.githubLink}
-                  </a>
-                </div>
-              </div>
-            </footer>
+            </ContentSection>
+            <GuideFooter locale={locale} />
           </article>
         </div>
       </div>
     </main>
-  );
-}
-
-function GuideEditorLink({
-  locale,
-  label,
-  primary = false,
-}: {
-  locale: AppLocale;
-  label: string;
-  primary?: boolean;
-}) {
-  return (
-    <Link
-      href={appLocalePaths[locale]}
-      prefetch={false}
-      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 text-[13px] whitespace-nowrap transition-colors sm:text-sm ${focusStyle} ${primary ? "rounded-xl border border-transparent bg-[var(--primary)] px-3 py-1.5 font-semibold text-[var(--primary-text)] hover:opacity-90 sm:px-4" : "rounded-lg px-2 font-medium text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)] sm:px-3"}`}
-    >
-      {primary ? (
-        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[color-mix(in_oklab,var(--primary-text)_12%,transparent)]">
-          <ArrowLeft className="size-3.5" aria-hidden="true" />
-        </span>
-      ) : (
-        <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-      )}
-      {label}
-    </Link>
-  );
-}
-
-function GuideContents({
-  entries,
-  className,
-}: {
-  entries: readonly { href: string; title: string }[];
-  className: string;
-}) {
-  return (
-    <ol className={className}>
-      {entries.map((entry) => (
-        <li key={entry.href}>
-          <a
-            href={entry.href}
-            className={`flex min-h-11 items-center rounded-lg px-3 py-2 text-[13px] leading-5 text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] ${focusStyle}`}
-          >
-            {entry.title}
-          </a>
-        </li>
-      ))}
-    </ol>
   );
 }

@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { Disclosure } from "@/components/ui/Disclosure";
 import type { GuideSection } from "@/lib/guide-content";
 
 export function GuideSectionContent({ section }: { section: GuideSection }) {
@@ -45,15 +45,8 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
         </ul>
       ) : null}
       {section.table ? (
-        <details className="group mt-5 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--text-2)] [&::-webkit-details-marker]:hidden">
-            {section.table.title}
-            <ChevronDown
-              className="size-4 shrink-0 text-[var(--muted)] group-open:rotate-180"
-              aria-hidden="true"
-            />
-          </summary>
-          <dl className="divide-y divide-[var(--hair)] border-t border-[var(--line)] px-4">
+        <Disclosure title={section.table.title} className="mt-5">
+          <dl className="divide-y divide-[var(--hair)]">
             {section.table.rows.map(([name, example]) => (
               <div
                 key={name}
@@ -71,7 +64,7 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
               </div>
             ))}
           </dl>
-        </details>
+        </Disclosure>
       ) : null}
       {section.shortcuts ? (
         <dl className="mt-5 divide-y divide-[var(--hair)] rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] px-4">
