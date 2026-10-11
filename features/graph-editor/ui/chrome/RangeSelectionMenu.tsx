@@ -92,7 +92,7 @@ export function RangeSelectionMenu({
           // This menu is hidden on touch devices; a narrow window should keep
           // its pointer target compact instead of squeezing the Select button.
           "w-6 rounded-l-none touch:w-6 touch:rounded-l-none",
-          above ? "h-[52px] touch:h-[52px]" : "h-10",
+          above ? "h-11 rounded-r-xl touch:h-11 touch:rounded-r-xl" : "h-10",
         )}
         onClick={() => {
           onOpen();
@@ -109,7 +109,11 @@ export function RangeSelectionMenu({
           }
         }}
       >
-        <ChevronDown className="size-3.5" aria-hidden="true" />
+        <ChevronDown
+          className="size-3.5"
+          strokeWidth={above ? 1.75 : 2}
+          aria-hidden="true"
+        />
       </IconButton>
       {open ? (
         <div
