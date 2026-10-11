@@ -14,7 +14,16 @@ const CYCLE_POINTS = [
 ] as const;
 
 /** Decorative diagrams stay independent of graph layout and routing work. */
-export function EmptyStateIllustration({ method }: { method: StartMethod }) {
+export function EmptyStateIllustration({
+  method,
+  tone = "accent",
+}: {
+  method: StartMethod;
+  tone?: "accent" | "neutral";
+}) {
+  const activeStroke = tone === "neutral" ? "currentColor" : "var(--accent)";
+  const activeFill =
+    tone === "neutral" ? "var(--fill-2)" : "var(--accent-fill)";
   if (method === "paste") {
     return (
       <span
@@ -76,7 +85,7 @@ export function EmptyStateIllustration({ method }: { method: StartMethod }) {
             d="M50 24 84 64"
             fill="none"
             strokeDasharray="4 5"
-            stroke="var(--accent)"
+            stroke={activeStroke}
           />
           <circle cx={16} cy={70} r={7} />
           <circle cx={50} cy={24} r={7} />
@@ -84,8 +93,8 @@ export function EmptyStateIllustration({ method }: { method: StartMethod }) {
             cx={84}
             cy={64}
             r={7}
-            fill="var(--accent-fill)"
-            stroke="var(--accent)"
+            fill={activeFill}
+            stroke={activeStroke}
           />
           <MousePointer2
             x={76}
@@ -93,7 +102,7 @@ export function EmptyStateIllustration({ method }: { method: StartMethod }) {
             width={23}
             height={23}
             fill="var(--panel-solid)"
-            stroke="var(--accent)"
+            stroke={activeStroke}
           />
         </>
       )}

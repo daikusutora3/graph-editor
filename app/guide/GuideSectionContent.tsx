@@ -46,7 +46,7 @@ export function GuideSectionContent({ section }: { section: GuideSection }) {
       ) : null}
       {section.table ? (
         <details className="group mt-5 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)] [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--text-2)] [&::-webkit-details-marker]:hidden">
             {section.table.title}
             <ChevronDown
               className="size-4 shrink-0 text-[var(--muted)] group-open:rotate-180"

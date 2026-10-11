@@ -40,9 +40,9 @@ const legacySectionIds: Readonly<Record<string, string>> = {
   shortcuts: "guide-section-4",
 };
 const focusStyle =
-  "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]";
+  "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--text-2)]";
 const insetFocusStyle =
-  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)]";
+  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--text-2)]";
 
 /** The guide and diagrams render on the server; only copying needs client code. */
 export function GuidePage({ locale }: { locale: AppLocale }) {
@@ -130,21 +130,14 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
               {APP_NAME}
             </span>
           </Link>
-          <Link
-            href={appLocalePaths[locale]}
-            prefetch={false}
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-[13px] font-medium transition-colors hover:bg-[var(--fill)] sm:px-4 sm:text-sm ${focusStyle}`}
-          >
-            <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-            {copy.openApp}
-          </Link>
+          <GuideEditorLink locale={locale} label={copy.openApp} />
         </div>
       </header>
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
         <header className="mb-8 sm:mb-10">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-            <p className="inline-flex items-center gap-2 text-xs font-medium text-[var(--accent-text)] sm:text-sm">
-              <BookOpen className="size-4" aria-hidden="true" />
+            <p className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--fill)] px-3 py-1.5 text-xs font-medium text-[var(--text-2)]">
+              <BookOpen className="size-3.5 shrink-0" aria-hidden="true" />
               {copy.guideLink}
             </p>
             <nav aria-label={copy.languages} className="flex flex-wrap gap-1">
@@ -234,6 +227,7 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                       <div className="h-14 w-16 shrink-0 text-[var(--text-2)] sm:h-16 sm:w-28 md:h-20 md:w-full">
                         <EmptyStateIllustration
                           method={card.id === "data" ? "paste" : card.id}
+                          tone="neutral"
                         />
                       </div>
                       <h3 className="text-sm leading-6 font-semibold">
@@ -252,7 +246,7 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                     </ol>
                     <a
                       href={`#guide-${card.targetId}`}
-                      className={`mt-3 inline-flex min-h-11 items-center justify-between gap-2 rounded text-xs font-medium text-[var(--accent-text)] ${focusStyle}`}
+                      className={`mt-4 inline-flex min-h-11 items-center justify-between gap-2 rounded-lg bg-[var(--fill)] px-3 text-xs font-medium text-[var(--text)] transition-colors hover:bg-[var(--fill-2)] ${focusStyle}`}
                     >
                       {card.id === "data"
                         ? copy.examplesLink
@@ -295,9 +289,9 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                     </p>
                   ) : null}
                   {section.note ? (
-                    <aside className="mt-5 flex gap-3 rounded-xl border border-[var(--line)] bg-[var(--accent-fill-soft)] p-4">
+                    <aside className="mt-5 flex gap-3 rounded-xl border border-[var(--line)] bg-[var(--fill)] p-4">
                       <Info
-                        className="mt-0.5 size-4 shrink-0 text-[var(--accent-text)]"
+                        className="mt-0.5 size-4 shrink-0 text-[var(--muted)]"
                         aria-hidden="true"
                       />
                       <div className="min-w-0 text-sm leading-7">
@@ -344,40 +338,86 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                 ))}
               </div>
             </section>
-            <footer className="mt-10 border-t border-[var(--line)] pt-5 sm:mt-14">
-              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-                <Link
-                  href={appLocalePaths[locale]}
-                  prefetch={false}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded text-sm font-medium text-[var(--accent-text)] ${focusStyle}`}
-                >
-                  <ArrowLeft className="size-4" aria-hidden="true" />
-                  {copy.openApp}
-                </Link>
-                <a
-                  href="#guide-top"
-                  className={`inline-flex min-h-11 items-center gap-2 rounded text-xs text-[var(--muted)] ${focusStyle}`}
-                >
-                  {copy.backToTop}
-                  <ArrowUp className="size-3.5" aria-hidden="true" />
-                </a>
+            <footer className="mt-10 sm:mt-14">
+              <div className="flex flex-col gap-5 rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+                <div className="flex min-w-0 items-start gap-3.5">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--fill)]">
+                    <BrandLogo size={28} />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-base leading-6 font-semibold tracking-tight sm:text-lg">
+                      {copy.footerTitle}
+                    </h2>
+                    <p className="mt-1.5 max-w-sm text-[13px] leading-6 text-[var(--text-2)]">
+                      {copy.footerDescription}
+                    </p>
+                  </div>
+                </div>
+                <GuideEditorLink locale={locale} label={copy.openApp} primary />
               </div>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--muted)]">
-                <span translate="no">Graph Editor · by daikusutora3</span>
-                <a
-                  href={REPOSITORY_URL}
-                  rel="noreferrer"
-                  className={`inline-flex min-h-11 items-center gap-2 rounded underline-offset-4 hover:underline ${focusStyle}`}
+              <div className="mt-4 flex flex-col gap-3 text-xs text-[var(--muted)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-2">
+                <p
+                  className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-1"
+                  translate="no"
                 >
-                  <ExternalLink className="size-3.5" aria-hidden="true" />
-                  {copy.githubLink}
-                </a>
+                  <span className="font-medium text-[var(--text-2)]">
+                    Graph Editor
+                  </span>
+                  <span>by daikusutora3</span>
+                </p>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <a
+                    href="#guide-top"
+                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] ${focusStyle}`}
+                  >
+                    {copy.backToTop}
+                    <ArrowUp className="size-3.5 shrink-0" aria-hidden="true" />
+                  </a>
+                  <a
+                    href={REPOSITORY_URL}
+                    rel="noreferrer"
+                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] ${focusStyle}`}
+                  >
+                    <ExternalLink
+                      className="size-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    {copy.githubLink}
+                  </a>
+                </div>
               </div>
             </footer>
           </article>
         </div>
       </div>
     </main>
+  );
+}
+
+function GuideEditorLink({
+  locale,
+  label,
+  primary = false,
+}: {
+  locale: AppLocale;
+  label: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={appLocalePaths[locale]}
+      prefetch={false}
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 text-[13px] whitespace-nowrap transition-colors sm:text-sm ${focusStyle} ${primary ? "rounded-xl border border-transparent bg-[var(--primary)] px-3 py-1.5 font-semibold text-[var(--primary-text)] hover:opacity-90 sm:px-4" : "rounded-lg px-2 font-medium text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)] sm:px-3"}`}
+    >
+      {primary ? (
+        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[color-mix(in_oklab,var(--primary-text)_12%,transparent)]">
+          <ArrowLeft className="size-3.5" aria-hidden="true" />
+        </span>
+      ) : (
+        <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+      )}
+      {label}
+    </Link>
   );
 }
 
