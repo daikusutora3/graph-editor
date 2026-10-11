@@ -1,11 +1,10 @@
+import readingStyles from "@/components/content/ReadingLayout.module.css";
 import { ArrowRight } from "lucide-react";
 import { GuideExamples } from "./GuideExamples";
 import { GuideFooter } from "./GuideFooter";
 import { GuideContents, GuideHeader } from "./GuideNavigation";
 import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
-import { GuideStickyHeader } from "./GuideStickyHeader";
-import styles from "./GuideLayout.module.css";
 import { RelatedLinks } from "@/components/content/RelatedLinks";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Accordion } from "@/components/ui/Accordion";
@@ -106,7 +105,7 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       data-reading
       className={cn(
         "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
-        styles.page,
+        readingStyles.page,
       )}
     >
       <script
@@ -119,12 +118,10 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       >
         {copy.skipToContent}
       </a>
-      <GuideStickyHeader>
-        <GuideHeader locale={locale} />
-      </GuideStickyHeader>
-      <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
+      <GuideHeader locale={locale} />
+      <div className="mx-auto max-w-6xl px-[var(--reading-gutter)] pt-8 pb-12 sm:pt-12 sm:pb-16">
         <header className="mb-8 sm:mb-10">
-          <h1 className="max-w-3xl text-[26px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
+          <h1 className="max-w-3xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
             {copy.heading}
           </h1>
           <p className={cn("mt-4", bodyText, readingMeasure)}>
@@ -136,7 +133,7 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
           <article
             id="guide-content"
             tabIndex={-1}
-            className="min-w-0 scroll-mt-36 sm:scroll-mt-28"
+            className="@container/reading min-w-0"
           >
             <GuideQuickStart locale={locale} />
             <GuideExamples locale={locale} />

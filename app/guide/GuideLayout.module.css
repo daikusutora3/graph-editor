@@ -1,26 +1,22 @@
-.page {
-  --guide-header-height: 108px;
+.contents {
+  container-type: inline-size;
 }
 
-.page [id] {
-  scroll-margin-top: calc(var(--guide-header-height) + 24px);
-}
-
-@media (min-width: 768px) {
-  .page {
-    --guide-header-height: 60px;
+@container (min-width: 32rem) {
+  .contentsList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1024px) {
   .contents {
     position: sticky;
-    top: calc(var(--guide-header-height) + 24px);
+    top: calc(var(--reading-header-height) + 24px);
     align-self: start;
   }
 
   .contentsList {
-    max-height: calc(100dvh - var(--guide-header-height) - 48px);
+    max-height: calc(100dvh - var(--reading-header-height) - 48px);
     overflow-y: auto;
     overscroll-behavior: contain;
   }

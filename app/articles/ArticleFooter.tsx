@@ -10,7 +10,7 @@ export function ArticleFooter({ locale }: { locale: AppLocale }) {
   const copy = articleCopy[locale];
   return (
     <footer className="border-t border-[var(--line)]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-[var(--reading-gutter)] py-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <p
           className="text-[13px] font-medium text-[var(--muted)]"
           translate="no"

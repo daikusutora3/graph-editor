@@ -1,3 +1,4 @@
+import readingStyles from "@/components/content/ReadingLayout.module.css";
 import { ArticleCard } from "./ArticleCard";
 import { ArticleFooter } from "./ArticleFooter";
 import { ContentHeader } from "@/components/content/ContentNavigation";
@@ -25,7 +26,10 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
     <main
       id="articles-top"
       data-reading
-      className="min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]"
+      className={cn(
+        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
+        readingStyles.page,
+      )}
     >
       <script
         type="application/ld+json"
@@ -43,9 +47,9 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
         {copy.skipToContent}
       </a>
       <ContentHeader locale={locale} section="articles" />
-      <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
+      <div className="mx-auto max-w-6xl px-[var(--reading-gutter)] pt-8 pb-12 sm:pt-12 sm:pb-16">
         <header>
-          <h1 className="max-w-3xl text-[28px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
+          <h1 className="max-w-3xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
             {copy.heading}
           </h1>
           <p className={cn("mt-4", bodyText, readingMeasure)}>
@@ -55,7 +59,7 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
         <div
           id="articles-content"
           tabIndex={-1}
-          className="mt-8 grid min-w-0 scroll-mt-36 gap-5 sm:grid-cols-2 md:scroll-mt-28 lg:grid-cols-3"
+          className="mt-8 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5"
         >
           {articles.map((article) => (
             <ArticleCard key={article.slug} article={article} locale={locale} />
