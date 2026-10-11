@@ -6,6 +6,7 @@ import {
   acceptStorageBaseline,
   cancelScheduledStoredGraphWrite,
   flushStoredGraphWrite,
+  getStorageSnapshot,
   GRAPH_STORAGE_KEY,
   observeExternalStorage,
   readStoredGraph,
@@ -19,11 +20,16 @@ import {
   I18nProvider,
   useI18n,
 } from "../../features/graph-editor/i18n/I18nProvider";
+import { integrityCopy } from "../../features/graph-editor/i18n/integrity-copy";
 import {
   graphAtom,
   syncExternalGraphAtom,
 } from "../../features/graph-editor/shell/state/graph-atoms";
-import { commandErrorAtom } from "../../features/graph-editor/shell/state/history-atoms";
+import {
+  commandErrorAtom,
+  historyAtom,
+  undoAtom,
+} from "../../features/graph-editor/shell/state/history-atoms";
 import { StorageNotice } from "../../features/graph-editor/ui/chrome/StorageNotice";
 import { useGraphStarterState } from "../../features/graph-editor/workflows/starter/graph-starter-state";
 
@@ -57,6 +63,7 @@ export async function verifyDormantWork() {
   };
   const validInput = serializeGraphModel(validModel);
   const invalidInput = validInput.slice(0, -1);
+  const copy = integrityCopy.en;
   let starter: ReturnType<typeof useGraphStarterState> | undefined;
   let changeLocale: ReturnType<typeof useI18n>["setLocale"] | undefined;
   let closed = 0;
@@ -243,10 +250,7 @@ export async function verifyDormantWork() {
     });
     await act(async () => observeExternalStorage(conflictingInput));
     assert(calls.stored === 1, "new conflict validates its exact raw snapshot");
-    assert(
-      hasButton("Load the other tab's document"),
-      "valid conflict can load",
-    );
+    assert(hasButton(copy.load), "valid conflict can load");
     await act(async () =>
       store.set(commandErrorAtom, {
         message: "another error",
@@ -259,42 +263,89 @@ export async function verifyDormantWork() {
     await act(async () => observeExternalStorage(invalidInput));
     assert(calls.stored === 2, "changed conflicting raw is validated again");
     assert(
-      !hasButton("Load the other tab's document") &&
-        hasButton("Back up original saved data") &&
-        hasButton("Start a new document"),
+      !hasButton(copy.load) && hasButton(copy.raw) && hasButton(copy.fresh),
       "invalid conflict retains raw-backup and fresh-document actions",
     );
     await act(async () => observeExternalStorage(null));
     assert(
-      calls.stored === 3 && !hasButton("Back up original saved data"),
+      calls.stored === 3 && !hasButton(copy.raw),
       "deleted conflicting raw is checked and has no original backup",
     );
     await act(async () => acceptStorageBaseline(validInput));
     resetCalls();
+    const graphBeforeConflict = serializeGraphModel(store.get(graphAtom));
+    const historyBeforeConflict = store.get(historyAtom);
     await act(async () => observeExternalStorage(conflictingInput));
     assert(
       calls.stored === 1,
       "returning to conflict validates the new snapshot",
     );
+    assert(
+      serializeGraphModel(store.get(graphAtom)) === graphBeforeConflict &&
+        store.get(historyAtom) === historyBeforeConflict,
+      "conflict keeps the current graph and undo history intact",
+    );
+    const createObjectURL = URL.createObjectURL;
+    const clickAnchor = HTMLAnchorElement.prototype.click;
+    let downloaded: Blob | undefined;
+    let downloads = 0;
+    try {
+      URL.createObjectURL = (blob) => {
+        if (blob instanceof Blob) downloaded = blob;
+        return createObjectURL.call(URL, blob);
+      };
+      HTMLAnchorElement.prototype.click = function () {
+        if (this.download === "graph-backup.json") {
+          downloads++;
+          return;
+        }
+        clickAnchor.call(this);
+      };
+      await act(async () => {
+        host.querySelectorAll("button").forEach((button) => {
+          if (button.textContent === copy.backup) button.click();
+        });
+      });
+      assert(
+        downloads === 1 &&
+          downloaded?.type === "application/json" &&
+          (await downloaded.text()) === graphBeforeConflict,
+        "download backs up this tab's graph as JSON",
+      );
+      assert(
+        getStorageSnapshot().status === "conflict" &&
+          serializeGraphModel(store.get(graphAtom)) === graphBeforeConflict &&
+          store.get(historyAtom) === historyBeforeConflict,
+        "download leaves the conflict, current graph and undo history intact",
+      );
+    } finally {
+      URL.createObjectURL = createObjectURL;
+      HTMLAnchorElement.prototype.click = clickAnchor;
+    }
     await act(async () => {
       host.querySelectorAll("button").forEach((button) => {
-        if (button.textContent === "Load the other tab's document")
-          button.click();
+        if (button.textContent === copy.load) button.click();
       });
     });
     assert(
       store.get(graphAtom).settings.directed,
       "Load applies the same validated conflict snapshot",
     );
+    assert(
+      getStorageSnapshot().status === "saved",
+      "switching explicitly resolves the conflict",
+    );
+    await act(async () => store.set(undoAtom));
+    assert(
+      serializeGraphModel(store.get(graphAtom)) === graphBeforeConflict,
+      "Undo restores the graph from before switching tabs",
+    );
 
     localStorage.setItem(GRAPH_STORAGE_KEY, invalidInput);
     resetCalls();
     await act(async () => readStoredGraph());
     assert(calls.stored === 1, "invalid notice does not reparse startup raw");
-    assert(
-      hasButton("Back up original saved data"),
-      "invalid raw can be backed up",
-    );
+    assert(hasButton(copy.raw), "invalid raw can be backed up");
     localStorage.setItem(GRAPH_STORAGE_KEY, validInput);
     Object.defineProperty(navigator, "locks", {
       configurable: true,
@@ -306,10 +357,7 @@ export async function verifyDormantWork() {
       calls.stored === 1,
       "unavailable notice avoids second startup parse",
     );
-    assert(
-      hasButton("Save current work as JSON"),
-      "unavailable backup is retained",
-    );
+    assert(hasButton(copy.backup), "unavailable backup is retained");
     Object.defineProperty(navigator, "locks", {
       configurable: true,
       value: {
@@ -325,7 +373,7 @@ export async function verifyDormantWork() {
       await flushStoredGraphWrite();
     });
     assert(
-      calls.stored === 0 && hasButton("Retry"),
+      calls.stored === 0 && hasButton(copy.retry),
       "failed-save retry skips parsing",
     );
     Object.defineProperty(navigator, "locks", {
@@ -334,11 +382,11 @@ export async function verifyDormantWork() {
     });
     await act(async () => {
       host.querySelectorAll("button").forEach((button) => {
-        if (button.textContent === "Retry") button.click();
+        if (button.textContent === copy.retry) button.click();
       });
     });
     assert(
-      !hasButton("Retry") &&
+      !hasButton(copy.retry) &&
         localStorage.getItem(GRAPH_STORAGE_KEY) === validInput,
       "Retry saves the pending snapshot after storage recovers",
     );
