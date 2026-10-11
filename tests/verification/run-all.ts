@@ -114,7 +114,6 @@ const suites = [
   { name: "guide", path: "tests/verification/guide-content.ts" },
   { name: "article-content", path: "tests/verification/article-content.ts" },
   { name: "article-pages", path: "tests/verification/article-pages.tsx" },
-  { name: "reading-position", path: "tests/verification/reading-position.ts" },
   {
     name: "import-text-contracts",
     path: "tests/verification/import-text-contracts.ts",

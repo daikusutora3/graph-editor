@@ -23,7 +23,6 @@ import { GuidePage } from "../../app/guide/GuidePage";
 import sitemap from "../../app/sitemap";
 import {
   articleCopy,
-  articleEditorPath,
   articleIndexPath,
   articlePath,
   articleSlugs,
@@ -31,6 +30,7 @@ import {
 } from "../../lib/article-content";
 import {
   appGuidePaths,
+  appLocalePaths,
   appRouteLocaleParams,
   createArticleIndexMetadata,
   createArticlePageMetadata,
@@ -39,10 +39,6 @@ import {
   getAppPathUrl,
   type AppLocale,
 } from "../../lib/site-metadata";
-import {
-  isArticleReadingPath,
-  parseReadingPosition,
-} from "../../lib/reading-position";
 
 const locales: readonly AppLocale[] = ["ja", "en", "zh-Hans"];
 const sitemapEntries = sitemap();
@@ -145,8 +141,6 @@ for (const locale of locales) {
       getAppPathUrl(articleIndexPath(language)),
     );
   }
-  assert(isArticleReadingPath(articleIndexPath(locale), locale));
-  assert.equal(parseReadingPosition(null, locale), null);
   const index = markupContract(
     renderToStaticMarkup(<ArticleIndexPage locale={locale} />),
     `${locale} index`,
@@ -172,16 +166,6 @@ for (const locale of locales) {
   );
   for (const article of articles) {
     const context = `${locale} ${article.slug}`;
-    const savedPosition = {
-      path: articlePath(locale, article.slug),
-      section: "article-example",
-      scrollY: 725.5,
-    };
-    assert.deepEqual(
-      parseReadingPosition(JSON.stringify(savedPosition), locale),
-      savedPosition,
-      `${context}: the reading return preserves the clicked section and scroll`,
-    );
     const sitemapArticle = sitemapEntries.find(
       (entry) => entry.url === getAppArticleUrl(locale, article.slug),
     );
@@ -241,12 +225,21 @@ for (const locale of locales) {
       );
     }
     const exampleLink = view.tags.find(
-      (tag) =>
-        attribute(tag, "href") === articleEditorPath(locale, article.slug),
+      (tag) => attribute(tag, "href") === appLocalePaths[locale],
     );
     assert(exampleLink, `${context}: the example can be opened in the editor`);
-    assert.equal(attribute(exampleLink, "target"), "_blank");
-    assert.equal(attribute(exampleLink, "rel"), "noopener noreferrer");
+    assert(
+      !view.markup.includes("?example="),
+      `${context}: articles use the ordinary editor`,
+    );
+    assert(
+      view.tags.some(
+        (tag) =>
+          /^<img\b/.test(tag) &&
+          (attribute(tag, "src") ?? "").includes(`${article.slug}.png`),
+      ),
+      `${context}: an actual application screenshot accompanies the article`,
+    );
     for (const language of locales) {
       assert(
         view.markup.includes(`href="${articlePath(language, article.slug)}"`),
@@ -293,19 +286,6 @@ for (const locale of locales) {
       articlePath("ja", article.slug),
     );
   }
-  for (const invalid of [
-    { path: "https://example.com/", scrollY: 1 },
-    { path: `${articleIndexPath(locale)}/unknown`, scrollY: 1 },
-    { path: articleIndexPath(locale), section: "<script>", scrollY: 1 },
-    { path: articleIndexPath(locale), scrollY: -1 },
-    { path: articleIndexPath(locale), scrollY: "725" },
-  ]) {
-    assert.equal(
-      parseReadingPosition(JSON.stringify(invalid), locale),
-      null,
-      `${locale}: invalid or external reading return data is rejected`,
-    );
-  }
 }
 
 // Exercise the route components too: locale route parameters must map to the
@@ -323,11 +303,7 @@ await Promise.all(
       JapaneseArticle(props),
     ]);
     assert.equal(metadata.alternates?.canonical, articlePath("ja", slug));
-    assert(
-      renderToStaticMarkup(page).includes(
-        `href="${articleEditorPath("ja", slug)}"`,
-      ),
-    );
+    assert(renderToStaticMarkup(page).includes(`href="${appLocalePaths.ja}"`));
   }),
 );
 await Promise.all(
@@ -357,7 +333,7 @@ await Promise.all(
         );
         assert(
           renderToStaticMarkup(articlePage).includes(
-            `href="${articleEditorPath(locale, slug)}"`,
+            `href="${appLocalePaths[locale]}"`,
           ),
         );
       }),

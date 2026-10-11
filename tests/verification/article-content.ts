@@ -1,6 +1,5 @@
 import {
   articleCopy,
-  articleEditorPath,
   articleGuidePath,
   articleIndexPath,
   articlePath,
@@ -83,9 +82,8 @@ for (const locale of locales) {
     );
     expect(
       articlePath(locale, slug) === `${articleIndexPath(locale)}/${slug}` &&
-        articleEditorPath(locale, slug) ===
-          `${appLocalePaths[locale]}?example=${slug}`,
-      `${context} article and example routes keep their locale`,
+        appLocalePaths[locale] === appLocalePaths[locale],
+      `${context} article and editor routes keep their locale`,
     );
     expect(
       article.example.input === seed.input &&

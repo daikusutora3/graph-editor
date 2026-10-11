@@ -1,9 +1,6 @@
-"use client";
-
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { isArticleReadingPath, readingReturnKey } from "@/lib/reading-position";
 import { appGuidePaths, type AppLocale } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
 import { focusRing } from "@/components/ui/styles";
@@ -35,33 +32,6 @@ export function ContextGuideLink({
         focusRing,
         className,
       )}
-      onClick={(event) => {
-        if (
-          event.metaKey ||
-          event.ctrlKey ||
-          event.shiftKey ||
-          event.altKey ||
-          event.button !== 0 ||
-          !isArticleReadingPath(window.location.pathname, locale)
-        )
-          return;
-        const section =
-          event.currentTarget.closest("section[id]")?.id ||
-          window.location.hash.slice(1) ||
-          undefined;
-        try {
-          window.sessionStorage.setItem(
-            readingReturnKey(locale),
-            JSON.stringify({
-              path: window.location.pathname,
-              section,
-              scrollY: window.scrollY,
-            }),
-          );
-        } catch {
-          /* Navigation remains available when storage is unavailable. */
-        }
-      }}
     >
       {children}
       {label}
