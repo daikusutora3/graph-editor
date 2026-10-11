@@ -393,29 +393,23 @@ export function MobileBottomBar({
       data-editor-chrome-control="true"
       className={cn(
         floating,
-        "absolute right-3 bottom-4 left-3 z-[70] h-[var(--ge-mobile-toolbar-height,64px)] gap-0.5 rounded-2xl px-1.5 backdrop-blur-[24px] @max-[375px]/editor:grid @max-[375px]/editor:grid-cols-3 @max-[375px]/editor:grid-rows-2 @max-[375px]/editor:py-1.5",
+        "absolute bottom-4 left-1/2 z-[70] h-[var(--ge-mobile-toolbar-height,54px)] w-max max-w-[calc(100%-1rem)] -translate-x-1/2 gap-0 rounded-2xl p-1 backdrop-blur-[24px]",
       )}
     >
       {editorModes.map(({ mode: itemMode, icon: Icon }) => (
-        <div
-          key={itemMode}
-          className={cn(
-            "flex min-w-11 flex-1 items-center rounded-lg",
-            itemMode === "select" && showRangeMenu && "min-w-[68px]",
-          )}
-        >
+        <div key={itemMode} className="flex shrink-0 items-center rounded-xl">
           <MobileBarButton
             active={mode === itemMode}
             label={messages.toolbar.modes[itemMode].label}
             pressed={mode === itemMode}
             joined={itemMode === "select" && showRangeMenu}
-            wide
             onClick={() => onModeChange(itemMode)}
           >
-            <Icon className="size-icon-lg" aria-hidden="true" />
-            <span className="text-meta leading-none">
-              {messages.toolbar.modes[itemMode].label}
-            </span>
+            <Icon
+              className="size-icon-lg"
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
           </MobileBarButton>
           {itemMode === "select" ? (
             <RangeSelectionMenu above onOpen={() => onModeChange("select")} />
@@ -428,16 +422,15 @@ export function MobileBottomBar({
         label={messages.toolbar.undo.label}
         onClick={onUndo}
       >
-        <Undo2 className="size-icon-lg" aria-hidden="true" />
+        <Undo2 className="size-icon-lg" strokeWidth={1.75} aria-hidden="true" />
       </MobileBarButton>
       <MobileBarButton
         disabled={!canRedo}
         label={messages.toolbar.redo.label}
         onClick={onRedo}
       >
-        <Redo2 className="size-icon-lg" aria-hidden="true" />
+        <Redo2 className="size-icon-lg" strokeWidth={1.75} aria-hidden="true" />
       </MobileBarButton>
-      <Divider tall />
       <MobileBarButton
         active={panel === "menu"}
         expanded={panel === "menu"}
@@ -445,7 +438,11 @@ export function MobileBottomBar({
         panelTrigger="menu"
         onClick={() => onTogglePanel("menu")}
       >
-        <SlidersHorizontal className="size-icon-lg" aria-hidden="true" />
+        <SlidersHorizontal
+          className="size-icon-lg"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        />
       </MobileBarButton>
     </div>
   );
@@ -529,7 +526,6 @@ function MobileBarButton({
   pressed,
   panelTrigger,
   joined = false,
-  wide = false,
   onClick,
 }: {
   active?: boolean;
@@ -540,7 +536,6 @@ function MobileBarButton({
   pressed?: boolean;
   panelTrigger?: EditorPanel;
   joined?: boolean;
-  wide?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -548,14 +543,15 @@ function MobileBarButton({
       active={active}
       aria-expanded={expanded}
       aria-label={label}
+      tooltip={label}
+      tooltipSide="top"
       data-editor-panel-trigger={panelTrigger}
       aria-pressed={pressed}
       data-graph-shortcut-target="true"
       disabled={disabled}
       className={cn(
-        "h-[52px] flex-col gap-[3px] rounded-lg px-0 touch:h-[52px]",
-        joined && "rounded-r-none touch:pr-0",
-        wide ? "min-w-11 flex-1" : "w-11 @max-[375px]/editor:w-full",
+        "size-11 rounded-xl p-0 touch:p-0",
+        joined && "rounded-r-none",
       )}
       onClick={onClick}
     >
@@ -579,7 +575,7 @@ function Divider({ tall = false }: { tall?: boolean }) {
       aria-hidden="true"
       className={cn(
         "shrink-0 bg-[var(--line)]",
-        tall ? "mx-0.5 h-7 w-px @max-[375px]/editor:hidden" : "mx-1.5 h-6 w-px",
+        tall ? "mx-0.5 h-6 w-px" : "mx-1.5 h-6 w-px",
       )}
     />
   );
