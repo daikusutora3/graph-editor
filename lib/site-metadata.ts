@@ -122,6 +122,22 @@ export const appGuidePaths: Record<AppLocale, string> = {
   "zh-Hans": "/zh-hans/guide",
 };
 
+export const appArticlePaths: Record<AppLocale, string> = {
+  ja: "/articles",
+  en: "/en/articles",
+  "zh-Hans": "/zh-hans/articles",
+};
+
+export function getAppArticleLanguageAlternates(slug?: string) {
+  const suffix = slug ? `/${slug}` : "";
+  return {
+    ja: `${appArticlePaths.ja}${suffix}`,
+    en: `${appArticlePaths.en}${suffix}`,
+    "zh-Hans": `${appArticlePaths["zh-Hans"]}${suffix}`,
+    "x-default": `${appArticlePaths[DEFAULT_APP_LOCALE]}${suffix}`,
+  };
+}
+
 export const appGuideLanguageAlternates: Record<string, string> = {
   ja: appGuidePaths.ja,
   en: appGuidePaths.en,
@@ -298,6 +314,78 @@ export function createAppPageMetadata(locale: AppLocale): Metadata {
 
 export function getAppGuideUrl(locale: AppLocale) {
   return getAppPathUrl(appGuidePaths[locale]);
+}
+
+export function getAppArticleUrl(locale: AppLocale, slug?: string) {
+  return getAppPathUrl(`${appArticlePaths[locale]}${slug ? `/${slug}` : ""}`);
+}
+
+function createReadingMetadata(
+  locale: AppLocale,
+  copy: { title: string; description: string },
+  path: string,
+  languages: Record<string, string>,
+  type: "website" | "article",
+): Metadata {
+  return {
+    title: {
+      absolute: copy.title.endsWith(` | ${APP_NAME}`)
+        ? copy.title
+        : `${copy.title} | ${APP_NAME}`,
+    },
+    description: copy.description,
+    alternates: { canonical: path, languages },
+    openGraph: {
+      type,
+      locale: appOpenGraphLocales[locale],
+      alternateLocale: Object.values(appOpenGraphLocales).filter(
+        (value) => value !== appOpenGraphLocales[locale],
+      ),
+      url: path,
+      siteName: APP_NAME,
+      title: copy.title,
+      description: copy.description,
+      images: [
+        {
+          url: appLocaleMetadata[locale].ogImage,
+          ...OG_IMAGE_SIZE,
+          alt: copy.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: copy.title,
+      description: copy.description,
+      images: [appLocaleMetadata[locale].ogImage],
+    },
+  };
+}
+
+export function createArticleIndexMetadata(
+  locale: AppLocale,
+  copy: { title: string; description: string },
+): Metadata {
+  return createReadingMetadata(
+    locale,
+    copy,
+    appArticlePaths[locale],
+    getAppArticleLanguageAlternates(),
+    "website",
+  );
+}
+
+export function createArticlePageMetadata(
+  locale: AppLocale,
+  copy: { slug: string; title: string; description: string },
+): Metadata {
+  return createReadingMetadata(
+    locale,
+    copy,
+    `${appArticlePaths[locale]}/${copy.slug}`,
+    getAppArticleLanguageAlternates(copy.slug),
+    "article",
+  );
 }
 
 export function createGuidePageMetadata(

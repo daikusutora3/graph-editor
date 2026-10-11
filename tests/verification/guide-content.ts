@@ -67,6 +67,14 @@ for (const locale of locales) {
         idSet.has(href.slice(1)),
         `${locale}: internal link ${href} reaches existing content`,
       );
+      const destination = tags.find(
+        (target) => attribute(target, "id") === href.slice(1),
+      );
+      assert(
+        href === "#guide-top" ||
+          (destination && attribute(destination, "tabindex") === "-1"),
+        `${locale}: internal link ${href} moves keyboard focus to its content`,
+      );
     }
     for (const id of (attribute(tag, "aria-labelledby") ?? "")
       .split(/\s+/)

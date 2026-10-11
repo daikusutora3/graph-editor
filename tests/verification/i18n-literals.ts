@@ -2,9 +2,9 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 /**
- * User-facing text must live in i18n/messages.ts. This scans application
- * code for CJK characters so a hard-coded Japanese string cannot ship to the
- * English or Chinese UI unnoticed.
+ * User-facing text belongs in the message and localized content dictionaries.
+ * This scans application code for CJK characters so a hard-coded Japanese
+ * string cannot ship to the English or Chinese UI unnoticed.
  */
 const roots = ["features", "app", "lib"];
 const allowed = [
@@ -12,6 +12,8 @@ const allowed = [
   "features/graph-editor/samples/",
   "lib/site-metadata.ts",
   "lib/guide-content.ts",
+  "lib/article-content.ts",
+  "lib/content-navigation.ts",
 ];
 const cjk = /[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]/;
 const findings: string[] = [];

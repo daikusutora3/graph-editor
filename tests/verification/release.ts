@@ -7,6 +7,8 @@ import {
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
+import { createElement, Fragment } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import { RUST_KERNEL_URL } from "../../features/graph-editor/compute/kernel-asset";
 
@@ -19,20 +21,40 @@ import {
   appLanguageAlternates,
   appLocaleMetadata,
   appLocalePaths,
+  appGuidePaths,
   createAppStructuredData,
   getAppGuideUrl,
   getAppLocaleUrl,
   getAppPathUrl,
+  getAppArticleUrl,
+  getAppArticleLanguageAlternates,
   type AppLocale,
 } from "../../lib/site-metadata";
 import {
   GUIDE_LAST_MODIFIED,
   HOME_LAST_MODIFIED,
+  ARTICLES_LAST_MODIFIED,
+  ARTICLES_PUBLISHED_DATE,
+  toIsoDate,
 } from "../../lib/content-dates";
+import {
+  articleCopy,
+  articleEditorPath,
+  articleIndexPath,
+  articlePath,
+  getArticles,
+} from "../../lib/article-content";
 import { createVerification } from "./harness";
 
 const root = process.cwd();
 const { expect, finish } = createVerification("Release");
+const locales = Object.keys(appLocalePaths) as AppLocale[];
+const articleRoutes = locales.flatMap((locale) => [
+  articleIndexPath(locale),
+  ...getArticles(locale).map((article) => articlePath(locale, article.slug)),
+]);
+const escaped = (text: string) =>
+  renderToStaticMarkup(createElement(Fragment, null, text));
 
 function readText(path: string) {
   return readFileSync(join(root, path), "utf8");
@@ -50,6 +72,7 @@ for (const path of [
   "out/guide.html",
   "out/en/guide.html",
   "out/zh-hans/guide.html",
+  ...articleRoutes.map((route) => `out${route}.html`),
   "out/_redirects",
   // Search Console ownership; deleting it revokes the property.
   "out/googleca089be2699caf14.html",
@@ -263,6 +286,15 @@ expect(
 );
 
 const sitemap = readText("out/sitemap.xml");
+const sitemapUrls = [...sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(
+  ([, entry]) => entry ?? "",
+);
+expect(
+  sitemapUrls.length === 24 &&
+    new Set(sitemapUrls.map((entry) => entry.match(/<loc>(.*?)<\/loc>/)?.[1]))
+      .size === 24,
+  "sitemap.xml should contain 24 distinct editor, guide and article URLs",
+);
 expect(sitemap.includes(SITE_URL), "sitemap.xml should include SITE_URL");
 for (const locale of Object.keys(appLocalePaths) as AppLocale[]) {
   expect(
@@ -277,6 +309,138 @@ for (const [language, path] of Object.entries(appLanguageAlternates)) {
     `sitemap.xml should include the ${language} alternate URL`,
   );
 }
+
+const articleLastModified = new Set<string>();
+for (const locale of locales) {
+  const indexPath = `out${articleIndexPath(locale)}.html`;
+  const index = readText(indexPath);
+  const copy = articleCopy[locale];
+  expect(
+    index.includes(`<title>${escaped(copy.title)}</title>`) &&
+      index.includes(
+        `name="description" content="${escaped(copy.description)}"`,
+      ) &&
+      index.includes(`rel="canonical" href="${getAppArticleUrl(locale)}"`) &&
+      index.includes(
+        `property="og:locale" content="${localeOpenGraphLocales[locale]}"`,
+      ) &&
+      index.includes(`property="og:type" content="website"`) &&
+      index.includes(`<html lang="${locale}" data-locale="${locale}"`),
+    `${indexPath} should have localized article index metadata and language`,
+  );
+  expect(
+    index.includes(escaped(copy.heading)) &&
+      index.includes(escaped(copy.indexIntro)) &&
+      index.includes('"@type":"ItemList"'),
+    `${indexPath} should prerender the index introduction and article list`,
+  );
+  for (const article of getArticles(locale)) {
+    const page = `out${articlePath(locale, article.slug)}.html`;
+    const html = readText(page);
+    expect(
+      index.includes(`href="${articlePath(locale, article.slug)}"`) &&
+        index.includes(escaped(article.title)),
+      `${indexPath} should link to the localized ${article.slug} article`,
+    );
+    expect(
+      html.includes(
+        `<title>${escaped(`${article.title} | ${APP_NAME}`)}</title>`,
+      ) &&
+        html.includes(
+          `name="description" content="${escaped(article.description)}"`,
+        ) &&
+        html.includes(
+          `rel="canonical" href="${getAppArticleUrl(locale, article.slug)}"`,
+        ) &&
+        html.includes(
+          `property="og:locale" content="${localeOpenGraphLocales[locale]}"`,
+        ) &&
+        html.includes(`property="og:type" content="article"`) &&
+        html.includes(`<html lang="${locale}" data-locale="${locale}"`),
+      `${page} should include localized article metadata, canonical URL and language`,
+    );
+    expect(
+      html.includes(escaped(article.introduction)) &&
+        article.sections.every(
+          (section) =>
+            html.includes(`id="${section.id}"`) &&
+            section.paragraphs.every((paragraph) =>
+              html.includes(escaped(paragraph)),
+            ),
+        ) &&
+        html.includes(`<code>${escaped(article.example.input)}</code>`) &&
+        html.includes(
+          `href="${appGuidePaths[locale]}#${article.guide.sectionId}"`,
+        ),
+      `${page} should prerender the content, usable example and exact guide destination`,
+    );
+    expect(
+      html.includes(
+        `href="${articleEditorPath(locale, article.slug)}" target="_blank" rel="noopener noreferrer"`,
+      ),
+      `${page} should open its example separately from the current editor`,
+    );
+    const structured = [
+      ...html.matchAll(
+        /<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
+      ),
+    ].flatMap(([, body]) => {
+      const value = JSON.parse(body ?? "null") as
+        Record<string, unknown> | Record<string, unknown>[];
+      return Array.isArray(value) ? value : [value];
+    });
+    const structuredArticle = structured.find(
+      (entry) => entry?.["@type"] === "TechArticle",
+    );
+    expect(
+      structuredArticle?.url === getAppArticleUrl(locale, article.slug) &&
+        structuredArticle?.headline === article.title &&
+        structuredArticle?.inLanguage === locale &&
+        structuredArticle?.datePublished === ARTICLES_PUBLISHED_DATE &&
+        structuredArticle?.dateModified === toIsoDate(ARTICLES_LAST_MODIFIED),
+      `${page} should carry dated TechArticle data aligned with its visible content`,
+    );
+  }
+
+  for (const slug of [
+    undefined,
+    ...getArticles(locale).map((article) => article.slug),
+  ]) {
+    const route = `${articleIndexPath(locale)}${slug ? `/${slug}` : ""}`;
+    const page = `out${route}.html`;
+    const html = readText(page);
+    const url = getAppArticleUrl(locale, slug);
+    const entry = sitemapUrls.find((value) =>
+      value.includes(`<loc>${url}</loc>`),
+    );
+    expect(Boolean(entry), `sitemap.xml should list ${url}`);
+    const modified = entry?.match(/<lastmod>(.*?)<\/lastmod>/)?.[1];
+    if (modified) articleLastModified.add(modified);
+    expect(
+      Boolean(modified) &&
+        !Number.isNaN(new Date(modified!).getTime()) &&
+        toIsoDate(new Date(modified!)) === toIsoDate(ARTICLES_LAST_MODIFIED),
+      `sitemap.xml should carry the content modification date for ${url}`,
+    );
+    for (const [language, alternatePath] of Object.entries(
+      getAppArticleLanguageAlternates(slug),
+    )) {
+      const alternateUrl = getAppPathUrl(alternatePath);
+      expect(
+        html.includes(
+          `rel="alternate" hrefLang="${language}" href="${alternateUrl}"`,
+        ) &&
+          entry?.includes(`hreflang="${language}" href="${alternateUrl}"`) ===
+            true,
+        `${page} and sitemap.xml should agree on the ${language} alternate`,
+      );
+    }
+  }
+}
+expect(
+  articleLastModified.size === 1,
+  "All article sitemap entries should use the same content modification date",
+);
 
 for (const [locale, page] of [
   ["ja", "out/index.html"],
@@ -351,6 +515,13 @@ for (const page of ["out/guide.html", "out/en/guide.html"]) {
       `_redirects should permanently redirect ${path}/ to ${path}`,
     );
   }
+  for (const route of articleRoutes) {
+    expect(
+      redirects.includes(`${route}.html ${route} 301`) &&
+        redirects.includes(`${route}/ ${route} 301`),
+      `_redirects should consolidate HTML and trailing-slash variants for ${route}`,
+    );
+  }
 }
 
 const headers = readText("out/_headers");
@@ -363,6 +534,10 @@ expect(
   const cspOf = (path: string) =>
     resolveHeaders(rules, path).get("content-security-policy") ?? "";
   const pages = collectPageScriptHashes();
+  expect(
+    articleRoutes.every((route) => pages.some((page) => page.route === route)),
+    "Generated page CSP rules should cover all 18 article routes",
+  );
   const kernelHeaders = resolveHeaders(rules, RUST_KERNEL_URL);
   expect(
     kernelHeaders.get("content-type") === "application/wasm",

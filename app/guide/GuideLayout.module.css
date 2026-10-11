@@ -1,0 +1,48 @@
+.page {
+  --guide-header-height: 108px;
+}
+
+.page [id] {
+  scroll-margin-top: calc(var(--guide-header-height) + 88px);
+}
+
+.contents {
+  position: sticky;
+  top: var(--guide-header-height);
+  padding-block: 8px;
+  background: var(--bg);
+  align-self: start;
+  z-index: 10;
+}
+
+.contentsList {
+  max-height: calc(100dvh - var(--guide-header-height) - 112px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Collapse before native anchor navigation calculates its destination. */
+.contents .contentsDisclosure::details-content {
+  transition: none;
+}
+
+@media (min-width: 640px) {
+  .page {
+    --guide-header-height: 60px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page [id] {
+    scroll-margin-top: calc(var(--guide-header-height) + 24px);
+  }
+
+  .contents {
+    top: calc(var(--guide-header-height) + 24px);
+    padding-block: 0;
+  }
+
+  .contentsList {
+    max-height: calc(100dvh - var(--guide-header-height) - 48px);
+  }
+}

@@ -36,20 +36,26 @@ export function ContentSection({
   return (
     <section
       id={id}
+      tabIndex={id ? -1 : undefined}
       aria-labelledby={headingId}
       className={cn(
-        "min-w-0 scroll-mt-24",
+        "min-w-0 scroll-mt-36 outline-none sm:scroll-mt-28",
         sectionVariants[variant],
         className,
       )}
     >
       {anchorId ? (
-        <span id={anchorId} className="block scroll-mt-24" aria-hidden="true" />
+        <span
+          id={anchorId}
+          className="block scroll-mt-36 sm:scroll-mt-28"
+          aria-hidden="true"
+        />
       ) : null}
       <Heading
         id={headingId}
+        tabIndex={headingId ? -1 : undefined}
         className={cn(
-          "scroll-mt-24 font-semibold",
+          "scroll-mt-36 font-semibold outline-none sm:scroll-mt-28",
           headingLevel === 3
             ? "text-sm leading-6 sm:text-base"
             : "text-xl leading-snug tracking-tight sm:text-2xl",

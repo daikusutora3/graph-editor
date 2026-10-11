@@ -1,5 +1,11 @@
 "use client";
-import { CircleAlert, FileInput, FolderOpen } from "lucide-react";
+import {
+  BookOpen,
+  CircleAlert,
+  FileInput,
+  FolderOpen,
+  ArrowUpRight,
+} from "lucide-react";
 import {
   Component,
   lazy,
@@ -13,6 +19,9 @@ import {
 
 import { Button, ChoiceButton, Select } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
+import { contentNavigationCopy } from "@/lib/content-navigation";
+import { appGuidePaths } from "@/lib/site-metadata";
+import { focusRing } from "@/components/ui/styles";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { integrityCopy } from "../../i18n/integrity-copy";
@@ -138,6 +147,22 @@ export function StarterPasteBody({
           </span>
         </div>
       </div>
+      <a
+        href={`${appGuidePaths[locale]}#${importFormat === "adjacency-matrix" ? "adjacency-matrix" : ["auto", "contest-edge-list", "edge-pairs"].includes(importFormat) ? "edge-list" : "guide-import"}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          "inline-flex min-h-11 w-fit max-w-full items-center gap-2 rounded-lg px-2 text-xs text-[var(--text-2)] transition-colors hover:text-[var(--text)] active:opacity-80",
+          focusRing,
+        )}
+      >
+        <BookOpen className="size-3.5 shrink-0" aria-hidden="true" />
+        {contentNavigationCopy[locale].inputHelp}
+        <ArrowUpRight className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="sr-only">
+          ({contentNavigationCopy[locale].newTab})
+        </span>
+      </a>
       {starter.fileReadState.status === "failed" ? (
         <p role="alert" className="text-xs text-[var(--danger)]">
           {starter.fileReadState.reason === "too-large"

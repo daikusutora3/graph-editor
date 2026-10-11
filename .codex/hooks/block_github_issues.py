@@ -80,10 +80,40 @@ GSC_SITEMAP_READ = re.compile(
 )
 
 
-_LOCAL_GRAPH_URL = (
-    r"http://127\.0\.0\.1:332[34]"
+_LOCAL_GRAPH_ORIGIN = r"http://127\.0\.0\.1:332[34]"
+_LOCAL_ARTICLE_SLUGS = r"edge-list|adjacency-matrix|tree-layout|tikz-export|bipartite-graph"
+_LOCAL_ARTICLE_SECTION_IDS = {
+    "edge-list": r"header|connections|import-check",
+    "adjacency-matrix": r"rows-columns|symmetry|matrix-check",
+    "tree-layout": r"tree-structure|tree-root|tree-spacing",
+    "tikz-export": r"tikz-prepare|tikz-document|tikz-check",
+    "bipartite-graph": r"bipartite-groups|bipartite-meaning|bipartite-layout",
+}
+_LOCAL_ARTICLE_COMMON_ANCHORS = (
+    r"articles-top|article-content|article-example(?:-title)?|article-related(?:-title)?"
+)
+_LOCAL_ARTICLE_DETAIL_ROUTES = "|".join(
+    rf"{slug}(?:#(?:{_LOCAL_ARTICLE_COMMON_ANCHORS}|article-(?:{sections})(?:-title)?))?"
+    for slug, sections in _LOCAL_ARTICLE_SECTION_IDS.items()
+)
+_LOCAL_ARTICLE_PATH = (
+    r"(?:/en|/zh-hans)?/articles"
+    rf"(?:/(?:{_LOCAL_ARTICLE_DETAIL_ROUTES})|(?:#(?:articles-top|articles-content))?)"
+)
+_LOCAL_EXAMPLE_EDITOR_PATH = (
+    rf"(?:/|/en|/zh-hans)\?example=(?:{_LOCAL_ARTICLE_SLUGS})"
+)
+_LOCAL_GRAPH_LEGACY_PATH = (
     r"(?:/|/en|/zh-hans|/guide|/en/guide|/zh-hans/guide)?"
     r"(?:#(?:guide-[a-z0-9-]+|edge-list|adjacency-matrix|weighted-tree))?"
+)
+_LOCAL_GRAPH_URL = (
+    rf"{_LOCAL_GRAPH_ORIGIN}"
+    rf"(?:{_LOCAL_GRAPH_LEGACY_PATH}|{_LOCAL_ARTICLE_PATH}|{_LOCAL_EXAMPLE_EDITOR_PATH})"
+)
+_LOCAL_GRAPH_BIND_URL = (
+    rf"{_LOCAL_GRAPH_ORIGIN}"
+    rf"(?:(?:/|/en|/zh-hans)|{_LOCAL_ARTICLE_PATH}|{_LOCAL_EXAMPLE_EDITOR_PATH})"
 )
 
 LOCAL_GRAPH_OPEN = re.compile(
@@ -94,11 +124,18 @@ LOCAL_GRAPH_OPEN = re.compile(
 LOCAL_GRAPH_NAVIGATE = re.compile(
     rf"\s*await\s+localGraphTab\.goto\(\s*['\"]{_LOCAL_GRAPH_URL}['\"]\s*\);?\s*"
 )
+LOCAL_GRAPH_BIND = re.compile(
+    r"\s*(?:let\s+)?localGraphTab\s*=\s*await\s+cua\.getTab\(\s*"
+    rf"\{{\s*url:\s*['\"]{_LOCAL_GRAPH_BIND_URL}['\"]\s*\}}"
+    r"\s*,\s*\{\s*browser:\s*['\"]iab['\"]\s*\}\s*\);?\s*"
+)
 LOCAL_GRAPH_READ = re.compile(
     r"\s*await\s+localGraphTab\.(?:getAXState|getScreenshot|getAXStateAndScreenshot)\(\s*\);?\s*"
+    r"|\s*await\s+localGraphTab\.(?:getAXState|getAXStateAndScreenshot)\(\s*"
+    r"\{\s*disableDiffing:\s*true\s*\}\s*\);?\s*"
 )
 
-# Only literal UI arguments; no arbitrary expressions, tab rebinding or scripts.
+# Only literal UI arguments; no arbitrary expressions or scripts.
 _LOCAL_STRING = r"(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')"
 _LOCAL_LITERAL = rf"(?:{_LOCAL_STRING}|null|true|false|\d+|\[\s*\d+\s*,\s*\d+\s*\])"
 _LOCAL_OPTIONS = rf"\{{\s*(?:clickCount|mouseButton|key):\s*{_LOCAL_LITERAL}\s*\}}"
@@ -177,6 +214,7 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
         code = tool_input.get("code", "") if isinstance(tool_input, dict) else ""
         return not (
             LOCAL_GRAPH_OPEN.fullmatch(code)
+            or LOCAL_GRAPH_BIND.fullmatch(code)
             or LOCAL_GRAPH_NAVIGATE.fullmatch(code)
             or LOCAL_GRAPH_READ.fullmatch(code)
             or LOCAL_GRAPH_ACTION.fullmatch(code)
@@ -292,10 +330,13 @@ def self_test() -> None:
     allowed.extend([
         ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.createBrowserTab('iab', 'http://127.0.0.1:3324/en', { visible: true });"}),
         ("mcp__cua_repl__js", {"code": "await localGraphTab.getAXState();"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.getAXState({ disableDiffing: true });"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.getAXStateAndScreenshot({ disableDiffing: true });"}),
     ])
     blocked.extend([
         ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.createBrowserTab('iab', 'https://example.com', { visible: true });"}),
         ("mcp__cua_repl__js", {"code": "await localGraphTab.evaluate('location.href=123');"}),
+        ("mcp__cua_repl__js", {"code": "await localGraphTab.getAXState(arbitraryOptions);"}),
     ])
     allowed.extend([
         ("mcp__cua_repl__js", {"code": "await localGraphTab.click(16, { clickCount: 2 }); await localGraphTab.getAXState();"}),
@@ -358,6 +399,63 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "await localGraphTab.goto(arbitraryUrl);"}),
         ("mcp__cua_repl__js", {"code": "await localGraphTab.goto('http://127.0.0.1:3324/en/guide'); await issueTab.click(1);"}),
     ])
+    for route in ("/", "/en", "/zh-hans"):
+        for port in (3323, 3324):
+            allowed.append(("mcp__cua_repl__js", {"code": f"localGraphTab = await cua.getTab({{ url: 'http://127.0.0.1:{port}{route}' }}, {{ browser: 'iab' }});"}))
+            allowed.append(("mcp__cua_repl__js", {"code": f"let localGraphTab = await cua.getTab({{ url: 'http://127.0.0.1:{port}{route}' }}, {{ browser: 'iab' }});"}))
+    blocked.extend([
+        ("mcp__cua_repl__js", {"code": "let localGraphTab = await cua.getTab({ url: 'https://example.com/' }, { browser: 'iab' });"}),
+        ("mcp__cua_repl__js", {"code": "localGraphTab = await cua.getTab({ url: 'https://example.com/' }, { browser: 'iab' });"}),
+        ("mcp__cua_repl__js", {"code": "localGraphTab = await cua.getTab({ url: 'http://127.0.0.1:3324/guide' }, { browser: 'iab' });"}),
+        ("mcp__cua_repl__js", {"code": "localGraphTab = await cua.getTab({ url: 'http://127.0.0.1:3324/' }, { browser: 'chrome' });"}),
+        ("mcp__cua_repl__js", {"code": "localGraphTab = await cua.getTab(arbitraryTab);"}),
+        ("mcp__cua_repl__js", {"code": "localGraphTab = await cua.getTab({ url: 'http://127.0.0.1:3324/' }, { browser: 'iab' }); await issueTab.click(1);"}),
+    ])
+
+    # User-authorized article pages and isolated example editors remain exact:
+    # no arbitrary article slug, fragment, query parameter or extra navigation.
+    def article_browser_calls(url: str) -> list[tuple[str, dict[str, str]]]:
+        return [
+            ("mcp__cua_repl__js", {"code": f"let localGraphTab = await cua.createBrowserTab('iab', '{url}', {{ visible: true }});"}),
+            ("mcp__cua_repl__js", {"code": f"await localGraphTab.goto('{url}');"}),
+            ("mcp__cua_repl__js", {"code": f"localGraphTab = await cua.getTab({{ url: '{url}' }}, {{ browser: 'iab' }});"}),
+        ]
+
+    for port in (3323, 3324):
+        for prefix in ("", "/en", "/zh-hans"):
+            origin = f"http://127.0.0.1:{port}"
+            index_url = f"{origin}{prefix}/articles"
+            editor_path = prefix or "/"
+            for suffix in ("", "#articles-top", "#articles-content"):
+                allowed.extend(article_browser_calls(f"{index_url}{suffix}"))
+            for slug, section_ids in _LOCAL_ARTICLE_SECTION_IDS.items():
+                detail_url = f"{index_url}/{slug}"
+                allowed.extend(article_browser_calls(detail_url))
+                allowed.extend(article_browser_calls(f"{origin}{editor_path}?example={slug}"))
+                for anchor in ("articles-top", "article-content", "article-example", "article-example-title", "article-related", "article-related-title"):
+                    allowed.extend(article_browser_calls(f"{detail_url}#{anchor}"))
+                for section_id in section_ids.split("|"):
+                    allowed.extend(article_browser_calls(f"{detail_url}#article-{section_id}"))
+                    allowed.extend(article_browser_calls(f"{detail_url}#article-{section_id}-title"))
+            for suffix in ("/unknown", "/edge-list/extra", "?example=edge-list", "#article-example", "#arbitrary"):
+                blocked.extend(article_browser_calls(f"{index_url}{suffix}"))
+            for suffix in ("?example=unknown", "?example=edge-list&next=external", "?example=edge-list&example=tree-layout", "?example=edge-list#arbitrary", "?other=1"):
+                blocked.extend(article_browser_calls(f"{origin}{editor_path}{suffix}"))
+
+    for url in (
+        "https://127.0.0.1:3324/articles/edge-list",
+        "http://127.0.0.1:3325/articles/edge-list",
+        "http://localhost:3324/articles/edge-list",
+        "https://example.com/articles/edge-list",
+        "http://127.0.0.1:3324/articles/edge-list?next=external",
+        "http://127.0.0.1:3324/articles/edge-list#arbitrary",
+        "http://127.0.0.1:3324/articles/edge-list#article-tikz-document",
+        "http://127.0.0.1:3324/articles/edge-list#guide-import",
+        "http://127.0.0.1:3324/articles/%65dge-list",
+        "http://127.0.0.1:3324/en/?example=edge-list",
+    ):
+        blocked.extend(article_browser_calls(url))
+    blocked.append(("mcp__cua_repl__js", {"code": "await localGraphTab.goto('http://127.0.0.1:3324/articles/edge-list'); await issueTab.click(1);"}))
     for tool_name, tool_input in blocked:
         assert should_block(tool_name, tool_input), (tool_name, tool_input)
     for tool_name, tool_input in allowed:

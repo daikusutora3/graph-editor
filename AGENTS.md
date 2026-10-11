@@ -49,6 +49,23 @@ binding. No other origins, paths, tabs, application controls, or arbitrary
 page scripts are authorized. GitHub Issue restrictions remain unchanged.
 Keep the hook enabled and test its permitted and rejected calls.
 
+On 2026-10-11, the user additionally authorized local verification of the
+implemented article pages on those same two origins: `/articles`,
+`/en/articles`, `/zh-hans/articles`, and their detail pages for the exact slugs
+`edge-list`, `adjacency-matrix`, `tree-layout`, `tikz-export`, and
+`bipartite-graph`. Agents may open or bind these pages using `localGraphTab`,
+read their state, use their page-local contents links, copy their examples,
+and verify their guide/editor navigation. Only existing article content
+anchors are authorized; unknown slugs, arbitrary fragments, additional query
+parameters, and other paths remain prohibited.
+
+The user also authorized the existing editor paths `/`, `/en`, and
+`/zh-hans` with the single query parameter `?example=<slug>`, where `<slug>`
+is one of the five exact article slugs above. Agents may open or bind these
+example editors, edit the isolated example, reload to check restoration, and
+use the original-editor link. This extends only the in-app browser exception;
+the Safari runner's allowed paths and all other restrictions remain unchanged.
+
 ## Local UI verification exception
 
 Agents may test this application's local preview in the installed Safari using

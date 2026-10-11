@@ -1,9 +1,10 @@
-import { ArrowUp, ExternalLink } from "lucide-react";
+import { ArrowRight, ArrowUp, ExternalLink } from "lucide-react";
 import { GuideEditorLink } from "./GuideNavigation";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Card } from "@/components/ui/Card";
 import { BrandLogo } from "@/features/graph-editor/ui/brand/BrandLogo";
 import { guideCopy } from "@/lib/guide-content";
+import { articleCopy, articleIndexPath } from "@/lib/article-content";
 import { REPOSITORY_URL, type AppLocale } from "@/lib/site-metadata";
 
 export function GuideFooter({ locale }: { locale: AppLocale }) {
@@ -38,6 +39,10 @@ export function GuideFooter({ locale }: { locale: AppLocale }) {
           <span>by daikusutora3</span>
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <ActionLink href={articleIndexPath(locale)} className="text-sm">
+            {articleCopy[locale].articlesLink}
+            <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+          </ActionLink>
           <ActionLink href="#guide-top">
             {copy.backToTop}
             <ArrowUp className="size-3.5 shrink-0" aria-hidden="true" />

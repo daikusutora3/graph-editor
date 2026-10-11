@@ -1,4 +1,4 @@
-import { BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { GuideExamples } from "./GuideExamples";
 import { GuideFooter } from "./GuideFooter";
 import {
@@ -8,10 +8,21 @@ import {
 } from "./GuideNavigation";
 import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
+import { GuideStickyHeader } from "./GuideStickyHeader";
+import styles from "./GuideLayout.module.css";
+import { ReadingReturnLink } from "@/components/content/ReadingReturnLink";
+import { ActionLink } from "@/components/ui/ActionLink";
 import { Accordion } from "@/components/ui/Accordion";
 import { Callout } from "@/components/ui/Callout";
 import { ContentSection } from "@/components/ui/ContentSection";
 import { focusRing } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
+import {
+  articleCopy,
+  articlePath,
+  getArticle,
+  getArticlesForGuideSection,
+} from "@/lib/article-content";
 import {
   GUIDE_LAST_MODIFIED,
   GUIDE_PUBLISHED_DATE,
@@ -35,7 +46,7 @@ const legacySectionIds: Readonly<Record<string, string>> = {
   shortcuts: "guide-section-4",
 };
 
-/** The guide and diagrams render on the server; only copying needs client code. */
+/** The guide renders on the server; copy and return controls use client code. */
 export function GuidePage({ locale }: { locale: AppLocale }) {
   const copy = guideCopy[locale];
   const entries = [
@@ -96,7 +107,11 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
   return (
     <main
       id="guide-top"
-      className="min-h-dvh bg-[var(--bg)] text-[var(--text)]"
+      data-reading
+      className={cn(
+        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
+        styles.page,
+      )}
     >
       <script
         type="application/ld+json"
@@ -108,7 +123,10 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       >
         {copy.skipToContent}
       </a>
-      <GuideHeader locale={locale} />
+      <GuideStickyHeader>
+        <GuideHeader locale={locale} />
+        <ReadingReturnLink locale={locale} />
+      </GuideStickyHeader>
       <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 sm:pt-12 sm:pb-16">
         <header className="mb-8 sm:mb-10">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -124,16 +142,16 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
           <h1 className="mt-4 max-w-3xl text-[26px] leading-tight font-semibold tracking-tight text-balance sm:text-4xl sm:leading-tight">
             {copy.heading}
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--text-2)] sm:text-base sm:leading-8">
+          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--text-2)]">
             {copy.intro}
           </p>
         </header>
-        <div className="grid min-w-0 gap-8 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
+        <div className="min-w-0 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
           <GuideContents title={copy.onThisPage} entries={entries} />
           <article
             id="guide-content"
             tabIndex={-1}
-            className="min-w-0 scroll-mt-24"
+            className="min-w-0 scroll-mt-36 sm:scroll-mt-28"
           >
             <GuideQuickStart locale={locale} />
             <GuideExamples locale={locale} />
@@ -156,6 +174,33 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                       <p>{section.note.text}</p>
                     </Callout>
                   ) : null}
+                  {getArticlesForGuideSection(locale, section.id).length > 0 ? (
+                    <nav
+                      aria-label={`${section.navTitle}: ${articleCopy[locale].relatedTitle}`}
+                      className="mt-5 border-t border-[var(--hair)] pt-3"
+                    >
+                      <p className="mb-1 text-sm font-medium text-[var(--muted)]">
+                        {articleCopy[locale].relatedTitle}
+                      </p>
+                      <div className="flex flex-col items-start gap-1">
+                        {getArticlesForGuideSection(locale, section.id).map(
+                          (article) => (
+                            <ActionLink
+                              key={article.slug}
+                              href={articlePath(locale, article.slug)}
+                              className="text-sm"
+                            >
+                              {article.title}
+                              <ArrowRight
+                                className="size-4 shrink-0"
+                                aria-hidden="true"
+                              />
+                            </ActionLink>
+                          ),
+                        )}
+                      </div>
+                    </nav>
+                  ) : null}
                 </ContentSection>
               ))}
             </div>
@@ -168,10 +213,26 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
               <Accordion
                 name="guide-faq"
                 className="mt-5"
-                items={copy.faq.map((entry) => ({
+                items={copy.faq.map((entry, index) => ({
                   id: entry.question,
                   title: entry.question,
-                  content: <p>{entry.answer}</p>,
+                  content: (
+                    <>
+                      <p>{entry.answer}</p>
+                      {index === 0 ? (
+                        <ActionLink
+                          href={articlePath(locale, "edge-list")}
+                          className="mt-3 text-sm"
+                        >
+                          {getArticle(locale, "edge-list")!.title}
+                          <ArrowRight
+                            className="size-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                        </ActionLink>
+                      ) : null}
+                    </>
+                  ),
                 }))}
               />
             </ContentSection>
