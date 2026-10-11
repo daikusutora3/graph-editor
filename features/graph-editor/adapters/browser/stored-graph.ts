@@ -105,7 +105,9 @@ export async function flushStoredGraphWrite() {
   const raw = pendingRaw;
   try {
     await navigator.locks.request(GRAPH_STORAGE_KEY, () => {
-      if (request !== generation) return;
+      // A visibility flush and an explicit retry can queue the same edit.
+      // The first successful callback consumes it; later owners must not write.
+      if (request !== generation || pendingRaw !== raw) return;
       const current = window.localStorage.getItem(GRAPH_STORAGE_KEY);
       if (current !== baseline) {
         notify("conflict", current);
@@ -119,7 +121,7 @@ export async function flushStoredGraphWrite() {
       }
     });
   } catch {
-    if (request === generation) notify("failed");
+    if (request === generation && pendingRaw === raw) notify("failed");
   }
 }
 

@@ -195,8 +195,22 @@ function verifyEditingBoundary() {
   const moved = store.get(graphAtom);
   assert.equal(moved.nodes[0]!.x, limit);
   assert.equal(moved.nodes[0]!.y, -inside);
+  assert.equal(
+    store.set(executeCommandAtom, {
+      type: "update-node",
+      nodeId: "a",
+      patch: { x: outside },
+    }).status,
+    "rejected",
+  );
+  assert.equal(store.get(commandErrorAtom)?.reason, "coordinate-range");
   store.set(undoAtom);
   assert.deepEqual(store.get(graphAtom), initial);
+  assert.equal(
+    store.get(commandErrorAtom),
+    null,
+    "successful Undo clears the preceding rejected edit notice",
+  );
   const future = store.get(futureAtom);
   assert.equal(
     store.set(executeCommandAtom, {
@@ -209,6 +223,11 @@ function verifyEditingBoundary() {
   assert.equal(store.get(futureAtom), future, "invalid edits preserve Redo");
   store.set(redoAtom);
   assert.deepEqual(store.get(graphAtom), moved);
+  assert.equal(
+    store.get(commandErrorAtom),
+    null,
+    "successful Redo clears the preceding rejected edit notice",
+  );
 
   const excessiveRoute = {
     ...initial,

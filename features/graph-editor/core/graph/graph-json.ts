@@ -290,7 +290,7 @@ function validSettings(value: unknown) {
   if (!isRecord(value)) return false;
   const defaults = fallbackGraph.settings;
   return Object.entries(value).every(([key, item]) => {
-    if (!(key in defaults)) return false;
+    if (!Object.hasOwn(defaults, key)) return false;
     if (key === "indexBase") return item === 0 || item === 1;
     if (key === "arrowScale")
       return (

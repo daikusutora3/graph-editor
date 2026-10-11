@@ -1,5 +1,5 @@
 import { sameSerializableValue } from "./graph-utils";
-import { assertValidGraphModel } from "./graph-validation";
+import { serializeGraphModel } from "./graph-json";
 import type { GraphModel, GraphPatch } from "./model";
 
 export function applyGraphPatch(
@@ -18,7 +18,7 @@ export function prepareGraphPatch(model: GraphModel, patch: GraphPatch) {
     settings: patch.settings ?? model.settings,
   };
 
-  return { after: next, serialized: assertValidGraphModel(next) };
+  return { after: next, serialized: serializeGraphModel(next) };
 }
 
 function patchElements<T extends { id: string }>(

@@ -11,6 +11,7 @@ mock.module("react", () => ({
   useState: (initial) => currentHarness.state(initial),
   useRef: (initial) => currentHarness.ref(initial),
   useMemo: (create, deps) => currentHarness.memo(create, deps),
+  useCallback: (callback, deps) => currentHarness.memo(() => callback, deps),
   useEffect: (effect, deps) => currentHarness.effect(effect, deps),
   useLayoutEffect: (effect, deps) => currentHarness.effect(effect, deps),
 }));
@@ -113,7 +114,11 @@ Object.assign(globalThis, {
   },
   document: {
     createElement: () => ({
-      getContext: () => ({ fillRect() {}, drawImage() {} }),
+      getContext: () => ({
+        fillRect() {},
+        drawImage() {},
+        measureText: (text) => ({ width: text.length * 7 }),
+      }),
       toBlob: (callback) =>
         callback(new Blob(["padded"], { type: "image/png" })),
     }),
@@ -760,6 +765,253 @@ console.warn = originalWarn;
   cy.destroy();
 }
 assert.equal(urls.size, 0);
+// Real drag/tap closures must cross the domain/local boundary. A geometry-only
+// projection test cannot catch a saved drag silently becoming local coordinates.
+{
+  const { useHtmlNodeDrag } = await import(
+    feature("canvas/graph-canvas-html-node-drag.ts")
+  );
+  const { useCytoscapeInteractionEvents } = await import(
+    feature("canvas/graph-canvas-interaction-events.ts")
+  );
+  const { syncCytoscapeElements } = await import(
+    feature("adapters/cytoscape/graph-canvas-elements-sync.ts")
+  );
+  const { graphModelToCytoscapeElements } = await import(
+    feature("adapters/cytoscape/cytoscape-adapter.ts")
+  );
+  const { toGraphPosition, toCytoscapePosition } = await import(
+    feature("adapters/cytoscape/cytoscape-coordinates.ts")
+  );
+  const { getCytoscapeElement } = await import(
+    feature("adapters/cytoscape/cytoscape-ids.ts")
+  );
+  const { createEmptyGraphModel } = await import(
+    feature("core/graph/graph-factory.ts")
+  );
+  const { graphAtom, syncExternalGraphAtom } = await import(
+    feature("shell/state/graph-atoms.ts")
+  );
+  const { cancelScheduledStoredGraphWrite, uninstallStorageFlushListeners } =
+    await import(feature("adapters/browser/stored-graph.ts"));
+  const { executeCommandAtom, undoAtom, redoAtom } = await import(
+    feature("shell/state/history-atoms.ts")
+  );
+  const { createStore } = await import("jotai/vanilla");
+  const frames = new Map();
+  let nextFrame = 0;
+  const listeners = new Map();
+  globalThis.getComputedStyle = () => ({
+    getPropertyValue: () => "",
+    fontSize: "16px",
+  });
+  Object.assign(window, {
+    requestAnimationFrame: (callback) => {
+      const id = ++nextFrame;
+      frames.set(id, callback);
+      return id;
+    },
+    cancelAnimationFrame: (id) => frames.delete(id),
+    addEventListener: (type, callback) => listeners.set(type, callback),
+    removeEventListener: (type, callback) => {
+      if (listeners.get(type) === callback) listeners.delete(type);
+    },
+  });
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  for (const snapToGrid of [false, true]) {
+    const store = createStore();
+    const graph = {
+      ...createEmptyGraphModel({ autoEdgeRouting: false, snapToGrid }),
+      nodes: [
+        { id: "__proto__", label: "A", order: 0, x: 999999720, y: 999999720 },
+        { id: "constructor", label: "B", order: 1, x: 999999840, y: 999999840 },
+      ],
+    };
+    store.set(syncExternalGraphAtom, graph);
+    const cy = cytoscape({
+      headless: true,
+      layout: { name: "preset", fit: false },
+    });
+    cy.zoom(1.5);
+    const sync = () =>
+      syncCytoscapeElements(
+        cy,
+        graphModelToCytoscapeElements(store.get(graphAtom)),
+      );
+    sync();
+    const selectionRef = {
+      current: { nodeIds: graph.nodes.map((node) => node.id), edgeIds: [] },
+    };
+    const hook = harness(() =>
+      useHtmlNodeDrag({
+        cyRef: { current: cy },
+        draggingNodeIdsRef: { current: new Set() },
+        edgeRoutingMeta: new Map(),
+        edgeRoutingOptions: { mode: "simple" },
+        executeCommand: (command) => store.set(executeCommandAtom, command),
+        acceptRoutingMeta() {},
+        graph,
+        selectionRef,
+        setSelection: (selection) => {
+          selectionRef.current = selection;
+        },
+        updateRenderedHitboxes() {},
+      }),
+    );
+    hook.render();
+    const event = {
+      button: 0,
+      pointerId: 9,
+      clientX: 10,
+      clientY: 20,
+      currentTarget: {
+        setPointerCapture() {},
+        releasePointerCapture() {},
+        hasPointerCapture: () => true,
+      },
+      preventDefault() {},
+    };
+    hook.value.start(event, "__proto__");
+    hook.value.update({ ...event, clientX: 46, clientY: 44 });
+    hook.value.cancel();
+    graph.nodes.forEach((node) =>
+      assert.deepEqual(
+        toGraphPosition(cy, getCytoscapeElement(cy, node.id).position()),
+        { x: node.x, y: node.y },
+        "cancel restores domain snapshot",
+      ),
+    );
+    hook.value.start(event, "__proto__");
+    hook.value.update({ ...event, clientX: 46, clientY: 44 });
+    hook.value.finish(event);
+    const moved = store.get(graphAtom);
+    for (const [index, node] of moved.nodes.entries()) {
+      const original = graph.nodes[index];
+      const x = original.x + 24,
+        y = original.y + 16;
+      assert.deepEqual(
+        { x: node.x, y: node.y },
+        snapToGrid
+          ? { x: Math.round(x / 24) * 24, y: Math.round(y / 24) * 24 }
+          : { x, y },
+      );
+    }
+    store.set(undoAtom);
+    sync();
+    assert.deepEqual(
+      store.get(graphAtom),
+      graph,
+      "Undo preserves original domain coordinates",
+    );
+    store.set(redoAtom);
+    sync();
+    assert.deepEqual(
+      store.get(graphAtom),
+      moved,
+      "Redo preserves moved domain coordinates",
+    );
+    hook.unmount();
+    cancelScheduledStoredGraphWrite();
+    uninstallStorageFlushListeners();
+    assert.equal(frames.size, 0);
+    assert.equal(listeners.size, 0);
+
+    const taps = [];
+    const interactions = harness(() =>
+      useCytoscapeInteractionEvents({
+        cyRef: { current: cy },
+        mode: "node",
+        onPlaceNode: (position) => taps.push(position),
+        rangeSelectionFilterRef: { current: "all" },
+        setContextMenuTarget() {},
+        setEdgeDraft() {},
+        setSelection() {},
+      }),
+    );
+    interactions.render();
+    const placed = { x: 999999900, y: 999999880 };
+    cy.emit({ type: "tap", position: toCytoscapePosition(cy, placed) });
+    assert.deepEqual(taps, [placed], "background taps become domain positions");
+    interactions.unmount();
+    cy.destroy();
+    cancelScheduledStoredGraphWrite();
+  }
+}
+// A representation-only pan must not move the HTML overlay during the frame
+// between a rebase and the renderer's next completed paint.
+{
+  const { useRenderedHitboxes } = await import(
+    feature("canvas/graph-canvas-rendered-hitboxes.ts")
+  );
+  const { syncCytoscapeElements } = await import(
+    feature("adapters/cytoscape/graph-canvas-elements-sync.ts")
+  );
+  const { graphModelToCytoscapeElements } = await import(
+    feature("adapters/cytoscape/cytoscape-adapter.ts")
+  );
+  const { createEmptyGraphModel } = await import(
+    feature("core/graph/graph-factory.ts")
+  );
+  const { createCalculationCanvas } =
+    await import("../fixtures/calculation-canvas");
+  const graph = {
+    ...createEmptyGraphModel(),
+    nodes: [
+      { id: "a", label: "A", order: 0, x: 999880, y: 0 },
+      { id: "b", label: "B", order: 1, x: 1000000, y: 0 },
+    ],
+  };
+  const { cy } = createCalculationCanvas(graph);
+  cy.zoom(1.5);
+  cy.pan({ x: -1499550, y: 400 });
+  const hook = harness(() =>
+    useRenderedHitboxes({
+      graph,
+      mode: "select",
+      chrome: { layout: "desktop" },
+    }),
+  );
+  hook.render();
+  hook.value.hitboxLayerRef.current = { style: { transform: "" } };
+  hook.value.flushRenderedHitboxes(cy);
+  await hook.flush();
+  cy.on("pan", () => hook.value.panRenderedHitboxes(cy));
+  const moved = {
+    ...graph,
+    nodes: graph.nodes.map((node) => ({ ...node, x: node.x + 1 })),
+  };
+  cy.batch(() =>
+    syncCytoscapeElements(
+      cy,
+      graphModelToCytoscapeElements(moved, { edgeRoutingMeta: new Map() }),
+    ),
+  );
+  assert.equal(
+    hook.value.hitboxLayerRef.current.style.transform,
+    "",
+    "origin compensation does not transiently translate the overlay",
+  );
+  cy.panBy({ x: 15, y: -10 });
+  assert.equal(
+    hook.value.hitboxLayerRef.current.style.transform,
+    "translate(15px, -10px)",
+    "ordinary camera pan still translates the overlay",
+  );
+  hook.value.flushRenderedHitboxes(cy);
+  await hook.flush();
+  const basePan = { ...cy.pan() };
+  cy.zoom({ level: 1, renderedPosition: { x: 300, y: 400 } });
+  const dx = cy.pan().x - basePan.x,
+    dy = cy.pan().y - basePan.y;
+  assert.equal(
+    hook.value.hitboxLayerRef.current.style.transform,
+    dx === 0 && dy === 0 ? "" : `translate(${dx}px, ${dy}px)`,
+    "zoom at a stable distant origin retains the renderer-local pan delta",
+  );
+  hook.unmount();
+  cy.destroy();
+}
 assert.equal(timers.size, 0);
 assert.equal(bitmapCloses, bitmapCount);
 console.log("Canvas lifecycle verification passed");

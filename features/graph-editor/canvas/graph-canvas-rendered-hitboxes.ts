@@ -19,6 +19,7 @@ import {
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import { createRenderedHitboxReader } from "../adapters/cytoscape/rendered-hitbox-reader";
 import { readGraphOutOfView } from "../adapters/cytoscape/graph-canvas-viewport";
+import { readCytoscapeCoordinateOrigin } from "../adapters/cytoscape/cytoscape-coordinates";
 
 type UseRenderedHitboxesOptions = {
   graph: GraphModel;
@@ -41,8 +42,13 @@ export function useRenderedHitboxes({
   // Pan is a pure translation of every hitbox, so panning moves the whole
   // layer with one CSS transform instead of rebuilding thousands of nodes.
   const hitboxLayerRef = useRef<HTMLDivElement | null>(null);
-  const basePanRef = useRef({ x: 0, y: 0 });
-  const [hitboxPan, setHitboxPan] = useState({ x: 0, y: 0 });
+  const basePanRef = useRef({ x: 0, y: 0, originX: 0, originY: 0 });
+  const [hitboxPan, setHitboxPan] = useState({
+    x: 0,
+    y: 0,
+    originX: 0,
+    originY: 0,
+  });
   const readerRef = useRef<{
     cy: Core;
     reader: ReturnType<typeof createRenderedHitboxReader>;
@@ -50,9 +56,15 @@ export function useRenderedHitboxes({
 
   const updateRenderedHitboxesNow = useCallback(
     (cy: Core) => {
-      // cy.pan() returns Cytoscape's live object; snapshot it.
+      // Origin rebasing compensates local pan without translating the scene.
       const pan = cy.pan();
-      const nextPan = { x: pan.x, y: pan.y };
+      const origin = readCytoscapeCoordinateOrigin(cy);
+      const nextPan = {
+        x: pan.x,
+        y: pan.y,
+        originX: origin.x,
+        originY: origin.y,
+      };
       if (readerRef.current?.cy !== cy) {
         readerRef.current?.reader.dispose();
         readerRef.current = { cy, reader: createRenderedHitboxReader(cy) };
@@ -69,7 +81,12 @@ export function useRenderedHitboxes({
       // A pan can be cancelled by opposite node movement, leaving all rendered
       // coordinates identical. Even then the layer's old translation must end.
       setHitboxPan((current) =>
-        current.x === nextPan.x && current.y === nextPan.y ? current : nextPan,
+        current.x === nextPan.x &&
+        current.y === nextPan.y &&
+        current.originX === nextPan.originX &&
+        current.originY === nextPan.originY
+          ? current
+          : nextPan,
       );
       setIsGraphOutOfView((current) =>
         current === nextGraphOutOfView ? current : nextGraphOutOfView,
@@ -91,11 +108,13 @@ export function useRenderedHitboxes({
   const panRenderedHitboxes = useCallback(
     (cy: Core) => {
       const pan = cy.pan();
+      const origin = readCytoscapeCoordinateOrigin(cy);
       const layer = hitboxLayerRef.current;
 
       if (layer) {
-        const dx = pan.x - basePanRef.current.x;
-        const dy = pan.y - basePanRef.current.y;
+        const base = basePanRef.current;
+        const dx = pan.x - base.x - (origin.x - base.originX) * cy.zoom();
+        const dy = pan.y - base.y - (origin.y - base.originY) * cy.zoom();
         layer.style.transform =
           dx === 0 && dy === 0 ? "" : `translate(${dx}px, ${dy}px)`;
       }

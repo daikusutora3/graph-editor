@@ -739,13 +739,13 @@ function* separateAutomaticSiblingsFromManualRoutes(
         bestLabels = Infinity;
       for (const candidate of candidates) {
         yield;
+        const candidateBow = representativeBow(candidate);
         const distinct = edges.every((other) => {
           if (other.id === edge.id) return true;
           options.work.units += 1;
           return (
-            Math.abs(
-              canonicalPreviousBow(other, meta) - representativeBow(candidate),
-            ) >= minimumSpacing
+            Math.abs(canonicalPreviousBow(other, meta) - candidateBow) >=
+            minimumSpacing
           );
         });
         if (!distinct) continue;
@@ -760,7 +760,7 @@ function* separateAutomaticSiblingsFromManualRoutes(
             )
           : {
               collisions: 0,
-              score: Math.abs(representativeBow(candidate)) * 0.03,
+              score: Math.abs(candidateBow) * 0.03,
             };
         const labels = scoreCurveLabelOverlap(
           canonicalEdge,

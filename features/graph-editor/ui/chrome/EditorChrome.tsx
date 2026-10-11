@@ -70,7 +70,6 @@ import {
 } from "../hooks/shortcut-platform";
 import { ShortcutsPanel } from "../panels/ShortcutsPanel";
 import {
-  loadSampleGalleryPane,
   StarterPasteBody,
   StarterPasteFooter,
   StarterSampleBody,
@@ -163,12 +162,6 @@ export function EditorChrome() {
     const timeoutId = window.setTimeout(() => textareaRef.current?.focus(), 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [panel, starterView]);
-
-  useEffect(() => {
-    if (panel === "starter" && starterView === "sample") {
-      void loadSampleGalleryPane();
-    }
   }, [panel, starterView]);
 
   useEffect(() => {

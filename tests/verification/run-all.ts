@@ -49,6 +49,10 @@ const suites = [
     path: "tests/verification/integrity-feedback.tsx",
   },
   { name: "samples", path: "tests/verification/samples.ts" },
+  {
+    name: "sample-gallery-load",
+    path: "tests/verification/sample-gallery-load.mjs",
+  },
   { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
   { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
   {
@@ -74,7 +78,12 @@ const suites = [
   },
   { name: "cytoscape", path: "tests/verification/cytoscape-adapter.ts" },
   { name: "cytoscape-ids", path: "tests/verification/cytoscape-ids.ts" },
+  {
+    name: "canvas-coordinates",
+    path: "tests/verification/canvas-coordinates.ts",
+  },
   { name: "canvas-rendering", path: "tests/verification/canvas-rendering.ts" },
+  { name: "hint-idle", path: "tests/verification/hint-idle.mjs" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
   {
     name: "history-clipboard",

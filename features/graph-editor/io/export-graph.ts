@@ -99,9 +99,11 @@ export function hasLossyAdjacencyExport(
   const seen = new Set<string>();
 
   for (const edge of model.edges) {
-    const key = model.settings.directed
-      ? `${edge.source}\0${edge.target}`
-      : [edge.source, edge.target].sort().join("\0");
+    const key = JSON.stringify(
+      model.settings.directed
+        ? [edge.source, edge.target]
+        : [edge.source, edge.target].sort(),
+    );
 
     if (seen.has(key)) {
       return true;

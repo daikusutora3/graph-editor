@@ -20,3 +20,14 @@ export function parallelRoutingFixture(edgeCount: number): GraphModel {
     })),
   };
 }
+
+/** One fixed off-centre sibling also exercises manual-lane reconciliation. */
+export function manualParallelRoutingFixture(edgeCount: number): GraphModel {
+  const graph = parallelRoutingFixture(edgeCount);
+  return {
+    ...graph,
+    edges: graph.edges.map((edge, index) =>
+      index === 0 ? { ...edge, routing: { bowPx: 0, bowT: 0.3 } } : edge,
+    ),
+  };
+}

@@ -28,6 +28,7 @@ import { syncCytoscapeElements } from "./graph-canvas-elements-sync";
 import { refreshCytoscapeGeometry } from "./graph-canvas-geometry-refresh";
 import { afterCytoscapeRender } from "./graph-canvas-render-request";
 import { resizeCytoscapeCanvas } from "./graph-canvas-resize";
+import { readGraphViewportPan } from "./cytoscape-coordinates";
 import { startVisibleTimeout } from "../browser/visible-timeout";
 
 import type { CanvasFitRequest } from "../../canvas/GraphCanvasProvider";
@@ -120,7 +121,8 @@ export function useGraphCanvasLifecycle({
     try {
       cy = cytoscape({
         container: containerRef.current,
-        elements,
+        // The first sync projects domain positions before Canvas sees them.
+        elements: [],
         style: createGraphCanvasStylesheet(
           readCanvasPalette(),
           graph.settings.arrowScale,
@@ -413,7 +415,7 @@ export function useGraphCanvasLifecycle({
 }
 
 function readViewportSignature(cy: Core) {
-  const pan = cy.pan();
+  const pan = readGraphViewportPan(cy);
   // Stable primitive values avoid notifying on unchanged resize events and
   // retain zoom precision beyond the rounded percentage used by the controls.
   return JSON.stringify([

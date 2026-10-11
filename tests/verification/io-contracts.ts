@@ -446,6 +446,52 @@ expectMatrixExportError(
   "parallel-edges",
 );
 
+for (const directed of [false, true]) {
+  const ids = ["a", "b\0c", "a\0b", "c"];
+  const distinctPairs: GraphModel = {
+    ...createEmptyGraphModel({ directed }),
+    nodes: ids.map((id, order) => ({
+      id,
+      label: String(order),
+      order,
+      x: order * 80,
+      y: 0,
+    })),
+    edges: [
+      { id: "first", source: ids[0]!, target: ids[1]! },
+      { id: "second", source: ids[2]!, target: ids[3]! },
+    ],
+  };
+  for (const format of ["adjacency-list", "adjacency-matrix"] as const) {
+    expect(
+      !hasLossyAdjacencyExport(distinctPairs, format) &&
+        graphExportProblem(distinctPairs, format) === null,
+      `accepted IDs containing NUL remain distinct adjacency pairs for directed=${directed}`,
+    );
+    if (graphExportProblem(distinctPairs, format) !== null) continue;
+    const exported = exportGraph(distinctPairs, format);
+    const restored = evaluateGraphInput(exported, { format, directed });
+    expect(
+      restored.result.status === "success" &&
+        restored.result.model.nodes.length === 4 &&
+        restored.result.model.edges.length === 2,
+      `${format} retains both distinct endpoint pairs for directed=${directed}`,
+    );
+    const repeated = {
+      ...distinctPairs,
+      edges: [
+        ...distinctPairs.edges,
+        { ...distinctPairs.edges[0]!, id: "repeat" },
+      ],
+    };
+    expect(
+      hasLossyAdjacencyExport(repeated, format) &&
+        graphExportProblem(repeated, format) === "parallel-edges",
+      `${format} still rejects actual parallel endpoints for directed=${directed}`,
+    );
+  }
+}
+
 for (const weight of ["tag#1", "a//b", "#foo", "https://x", "//"]) {
   const model: GraphModel = {
     ...weightedDirectedModel,

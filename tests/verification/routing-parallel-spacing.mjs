@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mock } from "bun:test";
-import { parallelRoutingFixture } from "../fixtures/parallel-routing.ts";
+import {
+  manualParallelRoutingFixture,
+  parallelRoutingFixture,
+} from "../fixtures/parallel-routing.ts";
 import { RUST_KERNEL_URL } from "../../features/graph-editor/compute/kernel-asset.ts";
 import { initializeRustKernelFromBytes } from "../../features/graph-editor/compute/rust-kernel.ts";
 import * as shared from "../../features/graph-editor/core/layout/edge-routing-shared.ts";
@@ -102,6 +105,100 @@ try {
     }
   } finally {
     Math.round = nativeRound;
+  }
+
+  // Fixed manual geometry removes one automatic lane, so the remaining
+  // siblings run the reconciliation stage even in simple/parallel mode.
+  // Preserve its geometry, orientation, tie decisions and scheduling while
+  // ensuring each candidate's bow is evaluated once, not once per sibling.
+  for (const [mode, count, maxRounds, steps, hash] of [
+    [
+      "simple",
+      100,
+      5_500,
+      3172,
+      "67dc22f5978ec7e6c7b4ae5481d5fbef796b33b74d9b2b955d02341595d2ef41",
+    ],
+    [
+      "simple",
+      200,
+      11_000,
+      6372,
+      "50f5336289c8d45acfb82e9143e5a381de77a388880caa49dcc231c3d36437e8",
+    ],
+    [
+      "parallel",
+      100,
+      5_500,
+      3172,
+      "67dc22f5978ec7e6c7b4ae5481d5fbef796b33b74d9b2b955d02341595d2ef41",
+    ],
+    [
+      "parallel",
+      200,
+      11_000,
+      6372,
+      "50f5336289c8d45acfb82e9143e5a381de77a388880caa49dcc231c3d36437e8",
+    ],
+    [
+      "quality",
+      100,
+      7_000,
+      4064,
+      "ec1264fd03036649105c65064a04504181dfce671f2d0c2f545fe9d1e68e2adf",
+    ],
+    [
+      "quality",
+      200,
+      14_000,
+      8120,
+      "901feb5e6446aa0347a480f452376f91839caaa5449a4a0e187651becb1a2b00",
+    ],
+  ]) {
+    const manualGraph = manualParallelRoutingFixture(count);
+    const savedManual = JSON.stringify(manualGraph);
+    let rounds = 0;
+    let result;
+    try {
+      Math.round = (value) => {
+        rounds++;
+        return nativeRound(value);
+      };
+      result = route(manualGraph, { mode });
+    } finally {
+      Math.round = nativeRound;
+    }
+    assert(
+      rounds < maxRounds,
+      "manual reconciliation reuses one bow per candidate in every routing mode",
+    );
+    assert.equal(result.steps, steps, "manual reconciliation keeps yields");
+    assert.equal(
+      createHash("sha256")
+        .update(JSON.stringify([...result.routes]))
+        .digest("hex"),
+      hash,
+      "manual reconciliation preserves pre-change route values, ties and order",
+    );
+    assert.equal(
+      JSON.stringify(manualGraph),
+      savedManual,
+      "manual routing leaves fixed geometry and the model untouched",
+    );
+    const fixed = result.routes.get("e0");
+    assert.equal(fixed.bowPx, 0);
+    assert.deepEqual(fixed.controlPointDistancesPx, [0]);
+    assert.deepEqual(fixed.controlPointWeights, [0.3]);
+    for (const edge of manualGraph.edges) {
+      const meta = result.routes.get(edge.id);
+      assert(meta, "all reversed/forward siblings retain their route");
+      assert(
+        meta.controlPointDistancesPx.every(
+          (distance) => Number.isFinite(distance) && Math.abs(distance) <= 180,
+        ),
+        "reconciled manual siblings remain within supported curve bounds",
+      );
+    }
   }
 
   const retained = route(graph, {
