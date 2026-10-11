@@ -1,5 +1,15 @@
 "use client";
 
+import { ChevronDown, Palette } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+
 import { useI18n } from "../i18n/I18nProvider";
 import type { GraphCanvasChrome } from "./graph-canvas-types";
 import { rovingFocusKeyDown } from "../ui/primitives/use-roving-focus";
@@ -14,7 +24,7 @@ import type {
   NodeId,
 } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
-import { Button, Kbd } from "../ui/primitives";
+import { Button, IconButton, Kbd, focusRing } from "../ui/primitives";
 import { cn } from "@/lib/utils";
 
 import {
@@ -80,6 +90,21 @@ export function SelectionActionBar({
   const actions = resolveSelectionActions(graph, selection, messages).filter(
     (action) => !action.menuOnly,
   );
+  const mobile = chrome.layout === "mobile";
+  const colorLabel =
+    swatchKind === "node"
+      ? messages.canvas.nodeColor
+      : messages.canvas.edgeColor;
+  const pickColor = (color: GraphColor) => {
+    if (mixedSelection) {
+      onSetNodeColor(selection.nodeIds, color);
+      onSetEdgeColor(selection.edgeIds, color);
+    } else if (swatchKind === "node") {
+      onSetNodeColor(selection.nodeIds, color);
+    } else {
+      onSetEdgeColor(selection.edgeIds, color);
+    }
+  };
   const runAction = (id: SelectionActionId) => {
     switch (id) {
       case "edit":
@@ -107,82 +132,243 @@ export function SelectionActionBar({
       <div
         role="toolbar"
         aria-label={description}
-        className="ge-panel ge-pop pointer-events-auto flex min-h-12 max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pr-1.5 pl-3 backdrop-blur-[12px] touch:rounded-2xl touch:py-1.5"
+        className={cn(
+          "ge-panel ge-pop pointer-events-auto relative flex min-h-12 max-w-full items-center gap-1 backdrop-blur-[12px]",
+          mobile
+            ? "flex-nowrap rounded-2xl p-1 pl-3"
+            : "flex-wrap rounded-xl py-1 pr-1.5 pl-3",
+        )}
       >
         <span
-          className="ge-selection-summary max-w-full min-w-0 truncate pr-2.5 text-xs font-semibold text-[var(--muted)]"
+          className={cn(
+            "ge-selection-summary min-w-0 truncate text-xs font-semibold text-[var(--muted)]",
+            mobile ? "max-w-40 pr-1" : "max-w-full pr-2.5",
+          )}
           title={description}
         >
           {description}
         </span>
-        <span
-          role="radiogroup"
-          aria-label={
-            swatchKind === "node"
-              ? messages.canvas.nodeColor
-              : messages.canvas.edgeColor
-          }
-          onKeyDown={rovingFocusKeyDown}
-          style={
-            chrome.layout === "mobile"
-              ? { width: selectableColors.length * 44 }
-              : undefined
-          }
-          className={cn(
-            "max-w-full items-center border-x border-[var(--line)] py-1",
-            chrome.layout === "mobile"
-              ? "grid min-w-0 auto-cols-fr grid-flow-col gap-0"
-              : "flex gap-0 px-1.5",
-          )}
+        <SelectionColorPalette
+          key={JSON.stringify([selection.nodeIds, selection.edgeIds, mobile])}
+          activeColor={activeColor}
+          kind={swatchKind}
+          label={colorLabel}
+          mobile={mobile}
         >
-          {selectableColors.map((color) => (
-            <ColorSwatch
-              key={color}
-              color={color}
-              kind={swatchKind}
-              large={chrome.layout === "mobile"}
-              active={activeColor === color}
-              tabIndex={
-                activeColor === color ||
-                (activeColor == null && color === SELECTABLE_NODE_COLORS[0])
-                  ? 0
-                  : -1
-              }
-              label={messages.canvas.colorFor(
-                swatchKind,
-                messages.canvas.colors[color],
-              )}
-              onPick={() => {
-                if (mixedSelection) {
-                  onSetNodeColor(selection.nodeIds, color);
-                  onSetEdgeColor(selection.edgeIds, color);
-                } else if (swatchKind === "node") {
-                  onSetNodeColor(selection.nodeIds, color);
-                } else {
-                  onSetEdgeColor(selection.edgeIds, color);
-                }
-              }}
-            />
-          ))}
-        </span>
-        {actions.map(({ id, icon: Icon, label, kbd, danger }) => (
-          <Button
-            key={id}
-            aria-label={label}
-            variant={danger ? "danger" : "ghost"}
-            className="rounded-lg"
-            onClick={() => runAction(id)}
+          <span
+            role="radiogroup"
+            aria-label={colorLabel}
+            onKeyDown={rovingFocusKeyDown}
+            className={cn(
+              "items-center",
+              mobile
+                ? cn(
+                    "grid grid-cols-[repeat(4,44px)]",
+                    swatchKind === "node"
+                      ? "min-[360px]:grid-cols-[repeat(7,44px)]"
+                      : "min-[360px]:grid-cols-[repeat(6,44px)]",
+                  )
+                : "flex gap-0 border-x border-[var(--line)] px-1.5 py-1",
+            )}
           >
-            <Icon className="size-icon-sm" aria-hidden="true" />
-            {label}
-            {kbd ? (
-              <Kbd size="md" tone={danger ? "danger" : "neutral"}>
-                {kbd}
-              </Kbd>
-            ) : null}
-          </Button>
-        ))}
+            {selectableColors.map((color) => (
+              <ColorSwatch
+                key={color}
+                color={color}
+                kind={swatchKind}
+                large={mobile}
+                active={activeColor === color}
+                tabIndex={
+                  activeColor === color ||
+                  ((activeColor == null ||
+                    !selectableColors.includes(activeColor)) &&
+                    color === selectableColors[0])
+                    ? 0
+                    : -1
+                }
+                label={messages.canvas.colorFor(
+                  swatchKind,
+                  messages.canvas.colors[color],
+                )}
+                onPick={() => pickColor(color)}
+              />
+            ))}
+          </span>
+        </SelectionColorPalette>
+        {mobile ? (
+          <span
+            aria-hidden="true"
+            className="h-6 shrink-0 border-l border-[var(--line)]"
+          />
+        ) : null}
+        {actions.map(({ id, icon: Icon, label, kbd, danger }) =>
+          mobile ? (
+            <IconButton
+              key={id}
+              label={label}
+              tooltipSide="top"
+              variant={danger ? "danger" : "ghost"}
+              className="size-11 rounded-xl"
+              onClick={() => runAction(id)}
+            >
+              <Icon
+                className="size-icon-lg"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+            </IconButton>
+          ) : (
+            <Button
+              key={id}
+              aria-label={label}
+              variant={danger ? "danger" : "ghost"}
+              className="rounded-lg"
+              onClick={() => runAction(id)}
+            >
+              <Icon className="size-icon-sm" aria-hidden="true" />
+              {label}
+              {kbd ? (
+                <Kbd size="md" tone={danger ? "danger" : "neutral"}>
+                  {kbd}
+                </Kbd>
+              ) : null}
+            </Button>
+          ),
+        )}
       </div>
+    </div>
+  );
+}
+
+function SelectionColorPalette({
+  activeColor,
+  children,
+  kind,
+  label,
+  mobile,
+}: {
+  activeColor: GraphColor | null;
+  children: ReactNode;
+  kind: "node" | "edge";
+  label: string;
+  mobile: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const wrapper = useRef<HTMLDivElement>(null);
+  const palette = useRef<HTMLDivElement>(null);
+  const close = (restoreFocus = false) => {
+    setOpen(false);
+    if (restoreFocus)
+      wrapper.current
+        ?.querySelector<HTMLButtonElement>("button")
+        ?.focus({ preventScroll: true });
+  };
+
+  useLayoutEffect(() => {
+    if (open) {
+      (
+        palette.current?.querySelector<HTMLElement>("[aria-checked='true']") ??
+        palette.current?.querySelector<HTMLElement>("[role='radio']")
+      )?.focus({ preventScroll: true });
+    }
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !wrapper.current?.contains(event.target)
+      )
+        close();
+    };
+    const blur = () => close();
+    window.addEventListener("pointerdown", dismiss, true);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("pointerdown", dismiss, true);
+      window.removeEventListener("blur", blur);
+    };
+  }, [open]);
+
+  if (!mobile) return children;
+
+  return (
+    <div
+      ref={wrapper}
+      className="flex shrink-0"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) close();
+      }}
+      onKeyDown={(event) => {
+        if (open && event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          close(true);
+        }
+      }}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
+        data-tooltip={label}
+        data-tooltip-side="top"
+        className={cn(
+          focusRing,
+          "flex h-11 w-14 shrink-0 items-center justify-center gap-1 rounded-xl px-2 transition-colors",
+          open
+            ? "bg-[var(--accent-fill)] text-[var(--accent-text)]"
+            : "text-[var(--text-2)] hover:bg-[var(--fill)]",
+        )}
+        onClick={() => setOpen((value) => !value)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        {activeColor ? (
+          <span
+            aria-hidden="true"
+            className="size-5 shrink-0 rounded-full"
+            style={{
+              background:
+                kind === "node"
+                  ? swatchFill(activeColor)
+                  : swatchStroke(activeColor),
+              border: `1.5px solid ${swatchStroke(activeColor)}`,
+            }}
+          />
+        ) : (
+          <Palette
+            className="size-icon-lg"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          />
+        )}
+        <ChevronDown
+          className="size-3 shrink-0"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        />
+      </button>
+      {open ? (
+        <div
+          ref={palette}
+          id={id}
+          className="ge-panel ge-pop absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl p-1.5 backdrop-blur-[12px]"
+          onClick={(event) => {
+            // Roving focus activates radios with .click() (detail=0). Keep
+            // keyboard navigation open; a pointer pick returns to the canvas.
+            if (event.detail > 0) close(true);
+          }}
+        >
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

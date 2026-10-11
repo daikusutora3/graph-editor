@@ -187,6 +187,11 @@ try {
             await settings.waitFor({ state: "detached" });
           }
           await page.locator("button.ge-select-node-hitbox").first().click();
+          const colorTrigger = page.getByRole("button", {
+            name: messages.canvas.nodeColor,
+            exact: true,
+          });
+          if (width < 768) await colorTrigger.click();
           const palette = page.getByRole("radiogroup", {
             name: messages.canvas.nodeColor,
             exact: true,
@@ -194,6 +199,10 @@ try {
           await assertFits(page, '[role="toolbar"] [role="radio"]');
           const last = palette.getByRole("radio").last();
           await last.click();
+          if (width < 768) {
+            await palette.waitFor({ state: "detached" });
+            await colorTrigger.click();
+          }
           assert.equal(await last.getAttribute("aria-checked"), "true");
           await page.waitForFunction(
             () =>
@@ -215,6 +224,10 @@ try {
               (JSON.parse(localStorage.getItem("graph-editor-graph") ?? "null")
                 ?.nodes[0]?.color ?? "paper") === "paper",
           );
+          if (width < 768) {
+            await page.keyboard.press("Escape");
+            await palette.waitFor({ state: "detached" });
+          }
           const rangeTrigger = page.locator("[data-range-selection-trigger]");
           assert.equal(
             await rangeTrigger.count(),
