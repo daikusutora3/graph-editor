@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--text-2)]";
 export const insetFocusRing =
-  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--text-2)]";
+  "focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--muted)]";
 export const panelSurface =
   "min-w-0 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]";
 export const bodyText = "text-sm leading-7 text-[var(--text-2)]";
