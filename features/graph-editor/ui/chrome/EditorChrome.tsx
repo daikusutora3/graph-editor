@@ -3,6 +3,7 @@ import { integrityCopy } from "../../i18n/integrity-copy";
 
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TooltipLayer } from "@/components/ui/TooltipLayer";
 
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
 import {
@@ -490,6 +491,7 @@ export function EditorChrome() {
 
   return (
     <>
+      <TooltipLayer />
       <StorageNotice />
       {graph &&
       graphIsEmpty &&
