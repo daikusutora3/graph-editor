@@ -409,9 +409,11 @@ const SelectEdgePath = memo(function SelectEdgePath({
   edge,
   handlers,
 }: EdgeHitboxProps) {
+  const path = createEdgeHitboxPath(edge);
+  if (!path) return null;
   return (
     <path
-      d={createEdgeHitboxPath(edge)}
+      d={path}
       fill="none"
       pointerEvents="stroke"
       className="cursor-pointer touch-none stroke-transparent"
@@ -564,9 +566,13 @@ export function edgeBendHandlePosition(
 }
 
 export function createEdgeHitboxPath(edge: EdgeLabelHitbox) {
-  if (edge.sourceX === edge.targetX && edge.sourceY === edge.targetY) {
+  if (edge.isLoop) {
     return createLoopHitboxPath(edge);
   }
+
+  // A coincident ordinary edge has no visible stroke in the canvas or preview.
+  // Keep its model/label entry, without an invented loop-shaped pointer target.
+  if (edge.sourceX === edge.targetX && edge.sourceY === edge.targetY) return "";
 
   return edgeCurveSvgPath(
     { x: edge.sourceX, y: edge.sourceY },

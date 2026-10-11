@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mock } from "bun:test";
 import { parallelRoutingFixture } from "../fixtures/parallel-routing.ts";
@@ -57,6 +58,51 @@ try {
     saved,
     "scratch caches never change the model",
   );
+
+  // Count the actual rounding used by representativeBow, rather than timing a
+  // mock. The old sibling loop repeats this calculation for every comparison.
+  const nativeRound = Math.round;
+  try {
+    for (const [count, maxRounds, steps, hash] of [
+      [
+        100,
+        4_000,
+        902,
+        "aacd07a682f661269b64528f1f288aec9a69403d57b55273544e3510ae6014de",
+      ],
+      [
+        200,
+        8_000,
+        1758,
+        "fae90d46cdc8f4a1a402633d43fc11d6c135f4de8d1b637a9bce3e211996ae27",
+      ],
+    ]) {
+      let rounds = 0;
+      Math.round = (value) => {
+        rounds++;
+        return nativeRound(value);
+      };
+      const result = route(parallelRoutingFixture(count));
+      assert(
+        rounds < maxRounds,
+        "one candidate bow is reused across its sibling comparisons",
+      );
+      assert.equal(
+        result.steps,
+        steps,
+        "bow reuse keeps scheduling boundaries",
+      );
+      assert.equal(
+        createHash("sha256")
+          .update(JSON.stringify([...result.routes]))
+          .digest("hex"),
+        hash,
+        "bow reuse preserves every pre-change route value and order",
+      );
+    }
+  } finally {
+    Math.round = nativeRound;
+  }
 
   const retained = route(graph, {
     previousMeta: complete.routes,

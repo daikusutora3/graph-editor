@@ -122,6 +122,13 @@ export type GraphIntent =
       >;
     }
   | { type: "set-edges-color"; edgeIds: EdgeId[]; color: GraphColor }
+  | {
+      type: "set-selection-colors";
+      nodeIds: NodeId[];
+      nodeColor: GraphColor;
+      edgeIds: EdgeId[];
+      edgeColor: GraphColor;
+    }
   | { type: "reverse-edges"; edgeIds: EdgeId[] }
   | { type: "update-settings"; patch: Partial<GraphSettings> }
   | { type: "move-nodes"; label: string; after: NodePositionMap }

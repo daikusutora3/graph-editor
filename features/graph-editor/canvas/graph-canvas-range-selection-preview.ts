@@ -1,6 +1,7 @@
 "use client";
 
 import type { Core } from "cytoscape";
+import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
 import type {
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
@@ -217,13 +218,13 @@ function applyPreviewClassDiff(
 ) {
   currentIds.forEach((id) => {
     if (!nextIds.has(id)) {
-      cy.getElementById(id).removeClass(RANGE_PREVIEW_CLASS);
+      getCytoscapeElement(cy, id).removeClass(RANGE_PREVIEW_CLASS);
     }
   });
 
   nextIds.forEach((id) => {
     if (!currentIds.has(id)) {
-      cy.getElementById(id).addClass(RANGE_PREVIEW_CLASS);
+      getCytoscapeElement(cy, id).addClass(RANGE_PREVIEW_CLASS);
     }
   });
 }

@@ -4,6 +4,7 @@ import type {
   ElementDefinition,
   SingularElementReturnValue,
 } from "cytoscape";
+import { decodeCytoscapeId } from "./cytoscape-ids";
 
 type SyncCytoscapeElementsResult = {
   changedElements: CollectionReturnValue;
@@ -140,7 +141,7 @@ function updateElement(
   if (
     element.isNode() &&
     definition.position &&
-    !options.skipNodePositionIds?.has(element.id())
+    !options.skipNodePositionIds?.has(decodeCytoscapeId(element.id()))
   ) {
     element.position(definition.position);
   }
@@ -165,7 +166,10 @@ function shouldUpdateElement(
 
   const nextPosition = definition.position;
 
-  if (!nextPosition || options.skipNodePositionIds?.has(element.id())) {
+  if (
+    !nextPosition ||
+    options.skipNodePositionIds?.has(decodeCytoscapeId(element.id()))
+  ) {
     return false;
   }
 

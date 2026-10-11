@@ -16,6 +16,10 @@ import type {
 import { createRoutingDelta } from "./routing-result";
 import { restoreRoutingInteractionNodes } from "./routing-interaction";
 import { hasComputeJobCoordinates } from "./worker-input";
+import {
+  isComputeResult,
+  isComputeResultOutsideCoordinateRange,
+} from "./worker-result";
 
 // No DOM or browser measurement APIs enter this worker. Measured widths are
 // part of the immutable model supplied by the editor.
@@ -77,6 +81,13 @@ scope.onmessage = (event) => {
           return current;
         });
         if (step.done) {
+          if (!isComputeResult(job.kind, step.value)) {
+            if (isComputeResultOutsideCoordinateRange(job.kind, step.value))
+              throw new UnsupportedComputeInputError(
+                "Unsupported result coordinates",
+              );
+            throw new Error("Invalid graph computation result");
+          }
           const delta =
             job.kind === "routing" &&
             job.interaction &&
@@ -103,11 +114,11 @@ scope.onmessage = (event) => {
           error:
             error instanceof Error ? error.message : "Graph computation failed",
           failure:
-            !initialized &&
-            !(error instanceof RustKernelCompatibilityError) &&
-            !(error instanceof UnsupportedComputeInputError)
-              ? "transient"
-              : "permanent",
+            error instanceof UnsupportedComputeInputError
+              ? "input"
+              : !initialized && !(error instanceof RustKernelCompatibilityError)
+                ? "transient"
+                : "permanent",
         };
         // eslint-disable-next-line unicorn/require-post-message-target-origin
         scope.postMessage(response);

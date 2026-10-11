@@ -14,6 +14,7 @@ import {
   normalizeGraphModel,
   parseGraphModelJson,
   serializeGraphModel,
+  GraphContractError,
 } from "../../features/graph-editor/core/graph/graph-json";
 import {
   MAX_BOW_PX,
@@ -36,6 +37,7 @@ import {
 } from "../../features/graph-editor/shell/state/graph-atoms";
 import {
   executeCommandAtom,
+  commandErrorAtom,
   futureAtom,
   historyAtom,
   redoAtom,
@@ -109,7 +111,12 @@ for (const coordinate of invalidCoordinates) {
   assert.equal(normalizeGraphModel(graph), null);
   assert.equal(parseGraphModelJson(before), null);
   assert.equal(parseStoredGraph(before), null);
-  assert.throws(() => serializeGraphModel(graph), /JSON contract/);
+  assert.throws(
+    () => serializeGraphModel(graph),
+    (error) =>
+      error instanceof GraphContractError &&
+      error.reason === "coordinate-range",
+  );
   assert.equal(
     renderToStaticMarkup(createElement(SampleGraphPreview, { model: graph })),
     "",
@@ -167,7 +174,11 @@ function verifyEditingBoundary() {
       const history = store.get(historyAtom);
       const future = store.get(futureAtom);
       const input = JSON.stringify(intent);
-      assert.equal(store.set(executeCommandAtom, intent).status, "rejected");
+      const rejected = store.set(executeCommandAtom, intent);
+      assert.equal(rejected.status, "rejected");
+      if (rejected.status === "rejected")
+        assert.equal(rejected.reason, "coordinate-range");
+      assert.equal(store.get(commandErrorAtom)?.reason, "coordinate-range");
       assert.equal(store.get(graphAtom), graph);
       assert.equal(store.get(graphRevisionAtom), revision);
       assert.equal(store.get(historyAtom), history);

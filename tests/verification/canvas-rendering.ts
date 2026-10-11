@@ -1,6 +1,12 @@
 import { createCalculationCanvas } from "../fixtures/calculation-canvas";
 import cytoscape from "cytoscape";
-import type { CollectionReturnValue, Core, EventObject } from "cytoscape";
+import type {
+  CollectionReturnValue,
+  Core,
+  EventObject,
+  Position,
+} from "cytoscape";
+import { createStore } from "jotai/vanilla";
 
 import { refreshCytoscapeGeometry } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-geometry-refresh";
 import { syncCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync";
@@ -9,6 +15,7 @@ import { startVisibleTimeout } from "../../features/graph-editor/adapters/browse
 import {
   readNodeHitboxes,
   readEdgeLabelHitboxes,
+  readRenderedEdgeLabelPosition,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 import { reconcileEdgeLabelHitboxes } from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
 import {
@@ -21,7 +28,13 @@ import {
 } from "../../features/graph-editor/core/layout/edge-routing";
 import { createEdgeHitboxPath } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
+import {
+  parseGraphModelJson,
+  serializeGraphModel,
+} from "../../features/graph-editor/core/graph/graph-json";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
+import { graphAtom } from "../../features/graph-editor/shell/state/graph-atoms";
+import { executeCommandAtom } from "../../features/graph-editor/shell/state/history-atoms";
 import { createVerification } from "./harness";
 
 import { createRenderedHitboxReader } from "../../features/graph-editor/adapters/cytoscape/rendered-hitbox-reader";
@@ -29,6 +42,8 @@ import { createRenderedHitboxReader } from "../../features/graph-editor/adapters
 const { expect, finish } = createVerification("Canvas rendering");
 
 verifyIncrementalHitboxes();
+verifyImmutableModelHitboxes();
+verifyCoincidentEdgeHitboxes();
 verifyHitboxInvalidationDeduplication();
 verifyRepeatedHitboxGeometry();
 verifyEqualGeometryAfterPan();
@@ -339,6 +354,263 @@ function verifyIncrementalHitboxes() {
       beforeDormant.nodes === afterDormant.nodes &&
         beforeDormant.edges === afterDormant.edges,
       "selection mode preserves unchanged dormant overlay arrays",
+    );
+  } finally {
+    reader.dispose();
+    cy.destroy();
+  }
+}
+
+function verifyImmutableModelHitboxes() {
+  const stored: GraphModel = {
+    ...createEmptyGraphModel({ weighted: true }),
+    nodes: Array.from({ length: 100 }, (_, index) => ({
+      id: `n${index}`,
+      order: index,
+      label: String(index),
+      x: (index % 10) * 100,
+      y: Math.floor(index / 10) * 100,
+    })),
+    edges: Array.from({ length: 300 }, (_, index) => ({
+      id: `e${index}`,
+      source: `n${Math.floor(index / 3)}`,
+      target: `n${(Math.floor(index / 3) + (index % 3) + 1) % 100}`,
+      weight: "1",
+    })),
+  };
+  let graph = parseGraphModelJson(serializeGraphModel(stored))!;
+  expect(
+    graph !== null,
+    "operation-count fixture passes the saved-model contract",
+  );
+  const store = createStore();
+  expect(
+    store.set(executeCommandAtom, {
+      type: "replace-model",
+      label: "Hitbox fixture",
+      model: graph,
+    }).status === "applied",
+    "operation-count fixture enters through the normal graph transaction",
+  );
+  const { cy, renderer } = createCalculationCanvas(graph);
+  const reader = createRenderedHitboxReader(cy);
+  const prototype = Object.getPrototypeOf(cy.collection()) as {
+    renderedPosition(this: CollectionReturnValue): Position;
+    renderedMidpoint(this: CollectionReturnValue): Position;
+  };
+  const originalPosition = prototype.renderedPosition;
+  const originalMidpoint = prototype.renderedMidpoint;
+  let positions = 0;
+  let midpoints = 0;
+  prototype.renderedPosition = function () {
+    positions += this.length;
+    return originalPosition.call(this);
+  };
+  prototype.renderedMidpoint = function () {
+    midpoints += this.length;
+    return originalMidpoint.call(this);
+  };
+  const countedRead = (includeEdges = true) => {
+    positions = midpoints = 0;
+    const snapshot = reader.read(graph, includeEdges);
+    return { snapshot, positions, midpoints };
+  };
+  const check = (message: string) => {
+    const measured = countedRead();
+    expect(
+      JSON.stringify(measured.snapshot) ===
+        JSON.stringify({
+          nodes: readNodeHitboxes(cy, graph),
+          edges: readEdgeLabelHitboxes(cy, graph),
+        }),
+      `${message}: immutable updates equal full geometry, text and Cytoscape order`,
+    );
+    return measured;
+  };
+  try {
+    const initial = check("initial").snapshot;
+    const originalJson = JSON.stringify(initial);
+    expect(
+      store.set(executeCommandAtom, {
+        type: "update-edge",
+        edgeId: "e0",
+        patch: { weight: "2" },
+      }).status === "applied",
+      "weight edit uses a real successful immutable command",
+    );
+    graph = store.get(graphAtom);
+    expect(
+      JSON.stringify(parseGraphModelJson(serializeGraphModel(graph))) ===
+        JSON.stringify(graph),
+      "edited operation-count fixture remains a canonical saved graph",
+    );
+    const synced = syncCytoscapeElements(cy, definitions(graph));
+    renderer.flushRenderedStyleQueue();
+    expect(
+      synced.updated === 1 && cy.getElementById("e0").data("label") === "2",
+      "adapter changes only the weighted label of the edited edge",
+    );
+    const edited = check("weighted edge edit");
+    expect(
+      edited.positions === 2 && edited.midpoints === 1,
+      "one immutable edge edit reads two endpoints and one edge midpoint",
+    );
+    positions = midpoints = 0;
+    readNodeHitboxes(cy, graph);
+    readEdgeLabelHitboxes(cy, graph);
+    expect(
+      positions === 200 && midpoints === 300,
+      "same-host full-read reference reads 200 positions and 300 midpoints",
+    );
+    expect(
+      edited.snapshot.nodes === initial.nodes &&
+        edited.snapshot.edges![1] === initial.edges![1] &&
+        JSON.stringify(initial) === originalJson,
+      "edge edits retain remote entries and do not mutate earlier snapshots",
+    );
+    const idle = countedRead();
+    expect(
+      idle.positions === 0 &&
+        idle.midpoints === 0 &&
+        idle.snapshot.edges === edited.snapshot.edges,
+      "idle reads after an immutable edit reuse all geometry",
+    );
+    graph = parseGraphModelJson(serializeGraphModel(graph))!;
+    const replaced = check("equivalent storage-model replacement");
+    expect(
+      replaced.positions === 0 &&
+        replaced.midpoints === 0 &&
+        replaced.snapshot.nodes === edited.snapshot.nodes &&
+        replaced.snapshot.edges === edited.snapshot.edges,
+      "equivalent model replacement reuses snapshots without geometry reads",
+    );
+    graph = {
+      ...graph,
+      nodes: [...graph.nodes].reverse(),
+      edges: [...graph.edges].reverse(),
+    };
+    const reordered = check("model-only order change");
+    expect(
+      reordered.positions === 0 && reordered.midpoints === 0,
+      "model-only reordering preserves the renderer's iteration order cheaply",
+    );
+    // Model display metadata can change before Cytoscape delivers any data
+    // event. Compare it explicitly instead of treating every new root as dirty.
+    graph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === "n0" ? { ...node, label: "renamed" } : node,
+      ),
+      edges: graph.edges.map((edge) =>
+        edge.id === "e299" ? { ...edge, label: "explicit" } : edge,
+      ),
+    };
+    const labels = check("model-only display-label change");
+    expect(
+      labels.snapshot.nodes.find((node) => node.id === "n0")?.label ===
+        "renamed" &&
+        labels.snapshot.edges!.find((edge) => edge.id === "e299")?.label ===
+          "explicit" &&
+        labels.positions < 200 &&
+        labels.midpoints < 300,
+      "changed model labels refresh local hitboxes without a data event",
+    );
+    refreshCytoscapeGeometry(
+      syncCytoscapeElements(cy, definitions(graph)).changedElements,
+    );
+    check("adapter catches up with model-only metadata");
+    graph = { ...graph, settings: { ...graph.settings, weighted: false } };
+    syncCytoscapeElements(cy, definitions(graph));
+    check("weighted-label settings change");
+    cy.getElementById("n50").style({ width: 144, "font-size": 20 });
+    cy.getElementById("e150").style({ "font-size": 22, color: "red" });
+    refreshCytoscapeGeometry(
+      cy.getElementById("n50").union(cy.getElementById("e150")),
+    );
+    check("font, color and node-size events");
+    cy.zoom(0.75);
+    cy.pan({ x: 12, y: -31 });
+    check("camera changes after model replacement");
+    expect(
+      countedRead(false).snapshot.edges === null,
+      "drawing mode omits edge hitboxes",
+    );
+    cy.getElementById("e0").data({ bow: 76, controlPointDistances: [76] });
+    refreshCytoscapeGeometry(cy.getElementById("e0"));
+    countedRead(false);
+    check("return to selection after a hidden route edit");
+  } finally {
+    prototype.renderedPosition = originalPosition;
+    prototype.renderedMidpoint = originalMidpoint;
+    reader.dispose();
+    cy.destroy();
+  }
+}
+
+function verifyCoincidentEdgeHitboxes() {
+  const graph: GraphModel = {
+    ...createEmptyGraphModel({ allowSelfLoops: true }),
+    nodes: [
+      { id: "a", label: "A", order: 0, x: 0, y: 0 },
+      { id: "b", label: "B", order: 1, x: 0, y: 0 },
+    ],
+    edges: [
+      { id: "ab", source: "a", target: "b" },
+      { id: "aa", source: "a", target: "a" },
+    ],
+  };
+  const before = serializeGraphModel(graph);
+  const { cy } = createCalculationCanvas(graph);
+  const reader = createRenderedHitboxReader(cy);
+  try {
+    const initial = reader.read(graph, true).edges!;
+    const ordinary = initial.find((edge) => edge.id === "ab")!;
+    const loop = initial.find((edge) => edge.id === "aa")!;
+    expect(
+      !cy.getElementById("ab").isLoop() &&
+        !ordinary.isLoop &&
+        createEdgeHitboxPath(ordinary) === "",
+      "distinct coincident vertices have no loop-shaped transparent stroke target",
+    );
+    expect(
+      cy.getElementById("aa").isLoop() &&
+        loop.isLoop &&
+        createEdgeHitboxPath(loop).includes("Q"),
+      "a true self-loop retains the installed renderer's visible loop hitbox",
+    );
+    // Simulate renderer-less/nonfinite label midpoint fallbacks using endpoint
+    // identity, including the coincident ordinary edge that has no direction.
+    const fallback = (isLoop: boolean) =>
+      readRenderedEdgeLabelPosition(
+        {
+          getElementById: () => ({
+            empty: () => false,
+            isEdge: () => true,
+            isLoop: () => isLoop,
+            source: () => ({ renderedPosition: () => ({ x: 10, y: 20 }) }),
+            target: () => ({ renderedPosition: () => ({ x: 10, y: 20 }) }),
+            renderedMidpoint: () => ({ x: NaN, y: NaN }),
+          }),
+        } as unknown as Core,
+        "edge",
+      );
+    expect(
+      JSON.stringify(fallback(false)) === JSON.stringify({ x: 10, y: 20 }) &&
+        JSON.stringify(fallback(true)) === JSON.stringify({ x: 46, y: -16 }),
+      "label fallback offsets only true endpoint-identity self-loops",
+    );
+    cy.getElementById("b").unlock().position({ x: 120, y: 90 });
+    refreshCytoscapeGeometry(cy.getElementById("b"));
+    const separated = reader.read(graph, true).edges!;
+    expect(
+      createEdgeHitboxPath(
+        separated.find((edge) => edge.id === "ab")!,
+      ).includes("Q") && separated.find((edge) => edge.id === "aa") === loop,
+      "separating coincident vertices restores their ordinary curve and retains remote loop geometry",
+    );
+    expect(
+      serializeGraphModel(graph) === before,
+      "hitbox reads never rewrite coincident graph data",
     );
   } finally {
     reader.dispose();

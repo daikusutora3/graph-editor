@@ -82,7 +82,7 @@ type StarterView = "paste" | "sample";
 
 export function EditorChrome() {
   const { messages, locale } = useI18n();
-  const integrity = integrityCopy[locale === "ja" ? "ja" : "en"];
+  const integrity = integrityCopy[locale];
   const layout = useAtomValue(editorLayoutAtom);
   const mobile = layout === "mobile";
   const wide = layout === "desktop";

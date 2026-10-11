@@ -1,4 +1,5 @@
 import type { Core, EdgeSingular } from "cytoscape";
+import { decodeCytoscapeId } from "../adapters/cytoscape/cytoscape-ids";
 
 import type { RangeSelectionFilter } from "./range-selection-filter";
 
@@ -34,14 +35,15 @@ export function readRangeSelectionPreview(
         includeUnderlays: false,
       });
 
-      if (boxContains(box, nodeBox)) nodeIds.add(node.id());
+      if (boxContains(box, nodeBox)) nodeIds.add(decodeCytoscapeId(node.id()));
     });
 
   if (filter !== "nodes") {
     const pan = cy.pan();
     const viewport = { zoom: cy.zoom(), pan: { x: pan.x, y: pan.y } };
     cy.edges().forEach((edge) => {
-      if (edgeControlPathInBox(box, edge, viewport)) edgeIds.add(edge.id());
+      if (edgeControlPathInBox(box, edge, viewport))
+        edgeIds.add(decodeCytoscapeId(edge.id()));
     });
   }
 

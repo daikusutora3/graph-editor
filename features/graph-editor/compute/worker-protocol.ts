@@ -41,4 +41,4 @@ export type ComputeRequest =
 export type ComputeResponse =
   | { id: number; result: ComputeValue; kernels: RustKernelCalls }
   | { id: number; routingDelta: RoutingDelta; kernels: RustKernelCalls }
-  | { id: number; error: string; failure: "transient" | "permanent" };
+  | { id: number; error: string; failure: "transient" | "permanent" | "input" };

@@ -228,7 +228,9 @@ export async function verifyDormantWork() {
       );
     });
     resetCalls();
-    await act(async () => store.set(commandErrorAtom, "rejected"));
+    await act(async () =>
+      store.set(commandErrorAtom, { message: "rejected", reason: "operation" }),
+    );
     assert(
       calls.stored === 0,
       "saved command-error notice skips stored parsing",
@@ -245,7 +247,12 @@ export async function verifyDormantWork() {
       hasButton("Load the other tab's document"),
       "valid conflict can load",
     );
-    await act(async () => store.set(commandErrorAtom, "another error"));
+    await act(async () =>
+      store.set(commandErrorAtom, {
+        message: "another error",
+        reason: "operation",
+      }),
+    );
     await act(async () => changeLocale!("ja"));
     await act(async () => changeLocale!("en"));
     assert(calls.stored === 1, "same conflict reuses validation on rerenders");

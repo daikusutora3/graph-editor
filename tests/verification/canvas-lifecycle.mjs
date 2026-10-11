@@ -19,23 +19,42 @@ const feature = (path) =>
   new URL(`../../features/graph-editor/${path}`, import.meta.url).pathname;
 let exports = [];
 let downloads = [];
+let downloadThrows = false;
+let clipboardMode = "hold";
+let clipboardWrites = [];
+const timers = new Map();
+let nextTimer = 0;
 mock.module(feature("canvas/GraphCanvasProvider.tsx"), () => ({
   useGraphCanvasApi: () => ({
     exportPng: (detail) =>
-      new Promise((resolve) => exports.push({ detail, resolve })),
+      new Promise((resolve, reject) =>
+        exports.push({ detail, resolve, reject }),
+      ),
   }),
   useGraphCanvasExportScaleSignature: () => "",
   useGraphCanvasViewportSignature: () => "",
 }));
 mock.module(feature("i18n/I18nProvider.tsx"), () => ({
-  useI18n: () => ({ messages: { screenshot: {} } }),
+  useI18n: () => ({
+    messages: {
+      screenshot: {
+        canvasTooSmall: "canvas-too-small",
+        copyFailed: "copy-failed",
+        copyFallbackSaved: "fallback-saved",
+        downloadFailed: "download-failed",
+      },
+    },
+  }),
 }));
 mock.module(feature("ui/hooks/use-debounced-value.ts"), () => ({
   useDebouncedValue: (value) => value,
 }));
 mock.module(feature("adapters/browser/file-actions.ts"), () => ({
   ensurePngBlob: (blob) => blob,
-  downloadBlob: (blob) => downloads.push(blob),
+  downloadBlob: (blob) => {
+    if (downloadThrows) throw new Error("download blocked");
+    downloads.push(blob);
+  },
   formatTimestamp: () => "test",
 }));
 
@@ -51,7 +70,43 @@ URL.createObjectURL = () => {
 };
 URL.revokeObjectURL = (url) => urls.delete(url);
 Object.assign(globalThis, {
-  window: { clearTimeout, setTimeout },
+  window: {
+    clearTimeout: (id) => timers.delete(id),
+    setTimeout: (callback) => {
+      const id = ++nextTimer;
+      timers.set(id, callback);
+      return id;
+    },
+  },
+  navigator: {
+    clipboard: {
+      write: (items) => {
+        if (clipboardMode === "blocked")
+          return Promise.reject(new Error("clipboard blocked"));
+        let resolve;
+        let reject;
+        const completed = new Promise((accept, fail) => {
+          resolve = accept;
+          reject = fail;
+        });
+        const write = { items, resolve, reject };
+        clipboardWrites.push(write);
+        if (clipboardMode === "auto") resolve();
+        // Consume PNG data as a browser ClipboardItem does before completing.
+        return Promise.all(
+          items.flatMap((item) => Object.values(item.data)),
+        ).then(() => completed);
+      },
+    },
+  },
+  ClipboardItem: class {
+    constructor(data) {
+      this.data = data;
+    }
+    static supports() {
+      return false;
+    }
+  },
   createImageBitmap: async () => {
     bitmapCount++;
     return { width: 40, height: 40, close: () => bitmapCloses++ };
@@ -176,18 +231,23 @@ function harness(renderHook) {
   };
   return api;
 }
-function screenshotFixture() {
+function screenshotFixture(extraOptions = {}) {
   exports = [];
   downloads = [];
+  downloadThrows = false;
+  clipboardMode = "hold";
+  clipboardWrites = [];
   imageMode = "auto";
   bitmapCount = 0;
   bitmapCloses = 0;
   assert.equal(urls.size, 0, "previous fixture releases all URLs");
+  assert.equal(timers.size, 0, "previous fixture releases all action timers");
   const options = {
     graphRevision: 1,
     isGraphEmpty: false,
     previewEnabled: true,
     theme: "light",
+    ...extraOptions,
   };
   const hook = harness(() => useGraphIOScreenshot(options));
   hook.render();
@@ -339,6 +399,306 @@ const png = () => new Blob(["original"], { type: "image/png" });
   assert.equal(urls.size, 0);
 }
 
+// Explicit Copy and Save have independent owners. Settings edits invalidate
+// feedback, while both completion orders retain their actual pending state.
+/* eslint-disable no-await-in-loop -- The fixtures share a hook host and explicitly order each completion/timer. */
+const originalWarn = console.warn;
+console.warn = () => {}; // Expected failure cases below verify their UI state.
+for (const copyFirst of [true, false]) {
+  const { hook } = screenshotFixture({ previewEnabled: false });
+  hook.value.copy();
+  hook.value.copy();
+  hook.value.download();
+  hook.value.download();
+  assert.equal(
+    exports.length,
+    2,
+    "same-render re-entry cannot enqueue another action",
+  );
+  assert.equal(clipboardWrites.length, 1);
+  await hook.flush();
+  hook.value.setPaddingPreset(48);
+  hook.value.setBackground("transparent");
+  hook.value.setScope("natural");
+  await hook.flush();
+  assert.equal(hook.value.copyState, "copying");
+  assert.equal(hook.value.downloadState, "saving");
+  hook.value.copy();
+  hook.value.download();
+  assert.equal(
+    exports.length,
+    2,
+    "settings edits do not release action ownership",
+  );
+  const finishCopy = async () => {
+    exports[0].resolve(png());
+    clipboardWrites[0].resolve();
+    await hook.flush();
+    assert.equal(
+      hook.value.copyState,
+      "idle",
+      "old-setting copy completes without current-setting feedback",
+    );
+  };
+  const finishSave = async () => {
+    exports[1].resolve(png());
+    await hook.flush();
+    assert.equal(downloads.length, 1, "old-setting Save still downloads");
+    assert.equal(hook.value.downloadState, "idle");
+  };
+  if (copyFirst) {
+    await finishCopy();
+    assert.equal(hook.value.downloadState, "saving");
+    await finishSave();
+  } else {
+    await finishSave();
+    assert.equal(hook.value.copyState, "copying");
+    await finishCopy();
+  }
+  assert.equal(
+    timers.size,
+    0,
+    "obsolete settings create no feedback-reset timers",
+  );
+  hook.unmount();
+}
+
+// A cleared timer may already be queued by the host. It must not affect a
+// later pending action or its completed feedback, even without another render.
+for (const kind of ["copy", "download"]) {
+  const { hook } = screenshotFixture({ previewEnabled: false });
+  clipboardMode = "auto";
+  hook.value[kind]();
+  exports[0].resolve(png());
+  await hook.flush();
+  const finishedState = kind === "copy" ? "copied" : "saved";
+  const pendingState = kind === "copy" ? "copying" : "saving";
+  const property = `${kind}State`;
+  assert.equal(hook.value[property], finishedState);
+  const obsoleteTimer = [...timers.values()][0];
+  hook.value[kind]();
+  obsoleteTimer();
+  await hook.flush();
+  assert.equal(hook.value[property], pendingState);
+  exports[1].resolve(png());
+  await hook.flush();
+  obsoleteTimer();
+  await hook.flush();
+  assert.equal(
+    hook.value[property],
+    finishedState,
+    "old timer cannot clear a newer completion",
+  );
+  const currentTimer = [...timers.values()][0];
+  currentTimer();
+  await hook.flush();
+  assert.equal(
+    hook.value[property],
+    "idle",
+    "the owning timer resets its own feedback",
+  );
+  assert.equal(timers.size, 0);
+  hook.unmount();
+  currentTimer();
+  await hook.flush();
+  assert.equal(
+    hook.lateUpdates,
+    0,
+    "queued feedback timer cannot update an unmounted hook",
+  );
+}
+
+{
+  const { options, hook } = screenshotFixture({ previewEnabled: false });
+  hook.value.download();
+  options.theme = "dark";
+  options.graphRevision++;
+  hook.render();
+  assert.equal(hook.value.downloadState, "saving");
+  exports[0].resolve(png());
+  await hook.flush();
+  assert.equal(downloads.length, 1);
+  assert.equal(
+    hook.value.downloadState,
+    "idle",
+    "feedback also follows external graph/theme input keys",
+  );
+  hook.value.download();
+  hook.value.setPaddingPreset(48);
+  hook.value.setPaddingPreset(24);
+  await hook.flush();
+  exports[1].resolve(png());
+  await hook.flush();
+  assert.equal(
+    hook.value.downloadState,
+    "idle",
+    "returning to earlier settings does not resurrect an earlier action revision",
+  );
+  hook.value.download();
+  options.theme = "light";
+  hook.render();
+  options.theme = "dark";
+  hook.render();
+  exports[2].resolve(png());
+  await hook.flush();
+  assert.equal(
+    hook.value.downloadState,
+    "idle",
+    "external settings ABA also invalidates the earlier action revision",
+  );
+  hook.unmount();
+}
+
+{
+  const { hook } = screenshotFixture({ previewEnabled: false });
+  hook.value.download();
+  hook.value.setPaddingPreset(48);
+  await hook.flush();
+  exports[0].reject(new Error("image-export:canvas-too-small"));
+  await hook.flush();
+  assert.equal(hook.value.downloadState, "idle");
+  assert.equal(
+    hook.value.downloadMessage,
+    "",
+    "obsolete failures do not describe current settings",
+  );
+  hook.value.download();
+  exports[1].reject(new Error("image-export:canvas-too-small"));
+  await hook.flush();
+  assert.equal(hook.value.downloadState, "failed");
+  assert.equal(hook.value.downloadMessage, "canvas-too-small");
+  const failedTimer = [...timers.values()][0];
+  hook.value.download();
+  downloadThrows = true;
+  exports[2].resolve(png());
+  await hook.flush();
+  assert.equal(hook.value.downloadState, "failed");
+  assert.equal(hook.value.downloadMessage, "download-failed");
+  failedTimer();
+  await hook.flush();
+  assert.equal(
+    hook.value.downloadState,
+    "failed",
+    "old failure timer cannot clear the new failure",
+  );
+  hook.unmount();
+}
+
+{
+  const { hook } = screenshotFixture({ previewEnabled: false });
+  clipboardMode = "blocked";
+  hook.value.copy();
+  await hook.flush();
+  assert.equal(
+    hook.value.copyState,
+    "copying",
+    "clipboard fallback owns its pending PNG until download completes",
+  );
+  hook.value.setPaddingPreset(48);
+  await hook.flush();
+  hook.value.copy();
+  assert.equal(exports.length, 1);
+  exports[0].resolve(png());
+  await hook.flush();
+  assert.equal(downloads.length, 1);
+  assert.equal(hook.value.copyState, "idle");
+  hook.value.copy();
+  exports[1].resolve(png());
+  await hook.flush();
+  assert.equal(hook.value.copyState, "saved");
+  assert.equal(hook.value.copyMessage, "fallback-saved");
+  hook.value.copy();
+  downloadThrows = true;
+  exports[2].resolve(png());
+  await hook.flush();
+  assert.equal(hook.value.copyState, "blocked");
+  assert.equal(hook.value.copyMessage, "copy-failed");
+  hook.unmount();
+}
+
+for (const blocked of [true, false]) {
+  const { hook } = screenshotFixture({ previewEnabled: false });
+  clipboardMode = blocked ? "blocked" : "hold";
+  hook.value.copy();
+  hook.value.download();
+  await hook.flush();
+  hook.replayEffects();
+  await hook.flush();
+  assert.equal(hook.value.copyState, "copying");
+  assert.equal(hook.value.downloadState, "saving");
+  hook.value.copy();
+  hook.value.download();
+  assert.equal(
+    exports.length,
+    2,
+    "Strict effect replay retains explicit pending owners",
+  );
+  hook.unmount();
+  hook.value.copy();
+  hook.value.download();
+  assert.equal(
+    exports.length,
+    2,
+    "stale handlers cannot start actions after unmount",
+  );
+  exports[0].resolve(png());
+  exports[1].resolve(png());
+  if (!blocked) clipboardWrites[0].resolve();
+  await hook.flush();
+  assert.equal(
+    downloads.length,
+    blocked ? 2 : 1,
+    "explicit Save and clipboard action/fallback finish after unmount",
+  );
+  assert.equal(hook.lateUpdates, 0);
+  assert.equal(timers.size, 0);
+}
+
+{
+  const { hook } = screenshotFixture({ previewEnabled: false });
+  clipboardMode = "auto";
+  hook.value.copy();
+  exports[0].reject(new Error("image-export:canvas-too-small"));
+  await hook.flush();
+  assert.equal(hook.value.copyState, "blocked");
+  assert.equal(hook.value.copyMessage, "canvas-too-small");
+  hook.value.copy();
+  exports[1].resolve(png());
+  await hook.flush();
+  assert.equal(
+    hook.value.copyState,
+    "copied",
+    "PNG failure releases the Copy owner for a successful retry",
+  );
+  hook.unmount();
+}
+
+{
+  const { hook } = screenshotFixture();
+  hook.value.download();
+  exports[1].reject(new Error("image-export:canvas-too-small"));
+  await hook.flush();
+  assert.equal(hook.value.downloadMessage, "canvas-too-small");
+  exports[0].resolve(png());
+  await hook.flush();
+  assert.equal(hook.value.preview.state, "ready");
+  assert.equal(
+    hook.value.downloadMessage,
+    "canvas-too-small",
+    "preview success cannot erase an explicit action failure",
+  );
+  hook.replayEffects();
+  await hook.flush();
+  assert.equal(
+    timers.size,
+    1,
+    "Strict effect replay restores the completed feedback's timer",
+  );
+  hook.unmount();
+}
+
+console.warn = originalWarn;
+/* eslint-enable no-await-in-loop */
 // Exercise the actual pointer handlers with a fractional live Cytoscape zoom.
 {
   const cy = cytoscape({ headless: true });
@@ -399,4 +759,7 @@ const png = () => new Blob(["original"], { type: "image/png" });
   hook.unmount();
   cy.destroy();
 }
+assert.equal(urls.size, 0);
+assert.equal(timers.size, 0);
+assert.equal(bitmapCloses, bitmapCount);
 console.log("Canvas lifecycle verification passed");

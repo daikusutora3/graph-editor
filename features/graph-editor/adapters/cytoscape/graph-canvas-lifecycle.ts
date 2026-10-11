@@ -379,6 +379,11 @@ export function useGraphCanvasLifecycle({
       resolutionQuery.addEventListener("change", updateResolution);
     };
     const updateResolution = () => {
+      if (cy.destroyed()) return;
+      // A monitor change can alter density without changing CSS dimensions or
+      // delivering ResizeObserver. Repaint the backing stores immediately too.
+      resizeCytoscapeCanvas(cy);
+      flushRenderedHitboxesRef.current(cy);
       updateExportSnapshots();
       // The previous density query stays false after the first change. Rebind
       // at the new density so later monitor or browser zoom changes also notify.

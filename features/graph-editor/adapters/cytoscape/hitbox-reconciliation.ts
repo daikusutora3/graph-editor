@@ -89,6 +89,7 @@ function sameNodeHitbox(a: NodeHitbox, b: NodeHitbox) {
 function sameEdgeLabelHitbox(a: EdgeLabelHitbox, b: EdgeLabelHitbox) {
   return (
     a.id === b.id &&
+    a.isLoop === b.isLoop &&
     a.label === b.label &&
     a.sourceX === b.sourceX &&
     a.sourceY === b.sourceY &&

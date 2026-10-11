@@ -1,4 +1,8 @@
 import { atom } from "jotai";
+import {
+  GraphContractError,
+  type GraphContractReason,
+} from "../../core/graph/graph-json";
 
 import { deleteSelectionCommand } from "../../core/graph/graph-intents";
 import { prepareGraphPatch } from "../../core/graph/graph-patch";
@@ -18,10 +22,14 @@ import {
 import { graphAtom, graphRevisionAtom, commitGraphAtom } from "./graph-atoms";
 import { pruneSelectionForGraph } from "./editor-selection";
 
+export type CommandFailure = {
+  message: string;
+  reason: GraphContractReason | "operation";
+};
 export type CommandResult =
   | { status: "applied" | "noop"; graph: GraphModel }
-  | { status: "rejected"; message: string };
-export const commandErrorAtom = atom<string | null>(null);
+  | ({ status: "rejected" } & CommandFailure);
+export const commandErrorAtom = atom<CommandFailure | null>(null);
 
 export const historyAtom = atom<GraphTransaction[]>([]);
 export const futureAtom = atom<GraphTransaction[]>([]);
@@ -42,9 +50,13 @@ export const executeCommandAtom = atom(
     try {
       prepared = prepareGraphTransaction(graph, intent, get(graphRevisionAtom));
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      set(commandErrorAtom, message);
-      return { status: "rejected", message };
+      const failure = {
+        message: error instanceof Error ? error.message : String(error),
+        reason:
+          error instanceof GraphContractError ? error.reason : "operation",
+      } satisfies CommandFailure;
+      set(commandErrorAtom, failure);
+      return { status: "rejected", ...failure };
     }
     set(commandErrorAtom, null);
 

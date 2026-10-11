@@ -1,6 +1,7 @@
 "use client";
 
 import type { Core } from "cytoscape";
+import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 
@@ -79,7 +80,7 @@ export function useGraphCanvasModeEffects({
     cy.nodes(".edge-source").removeClass("edge-source");
 
     if (edgeDraft.sourceNodeId) {
-      cy.getElementById(edgeDraft.sourceNodeId).addClass("edge-source");
+      getCytoscapeElement(cy, edgeDraft.sourceNodeId).addClass("edge-source");
     }
   }, [cyRef, edgeDraft.sourceNodeId]);
 

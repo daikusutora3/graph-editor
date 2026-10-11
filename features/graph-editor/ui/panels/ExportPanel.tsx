@@ -121,7 +121,7 @@ export function ExportPanelBody({
         </p>
       ) : (
         <p className="text-xs text-[var(--muted)]">
-          {integrityCopy[locale === "ja" ? "ja" : "en"].textNote}
+          {integrityCopy[locale].textNote}
         </p>
       )}
       <div className="grid min-h-[200px] grid-cols-[28px_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">

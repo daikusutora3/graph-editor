@@ -1,6 +1,7 @@
 "use client";
 
 import type { Core } from "cytoscape";
+import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import {
   useCallback,
@@ -271,7 +272,7 @@ export function useGraphInlineEdit({
     cy.elements(".label-editing").removeClass("label-editing");
 
     if (editingElementId) {
-      const element = cy.getElementById(editingElementId);
+      const element = getCytoscapeElement(cy, editingElementId);
 
       if (!element.empty()) {
         element.addClass("label-editing");

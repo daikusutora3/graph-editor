@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parallelRoutingFixture } from "../fixtures/parallel-routing";
 import { RUST_KERNEL_URL } from "../../features/graph-editor/compute/kernel-asset";
 import {
@@ -25,6 +27,11 @@ type Metric = {
   kernels: RustKernelCalls;
 };
 const baselinePath = argument("--baseline");
+const modulePath = argument("--module");
+const createTask: typeof createEdgeRoutingTask = modulePath
+  ? (await import(pathToFileURL(resolve(modulePath)).href))
+      .createEdgeRoutingTask
+  : createEdgeRoutingTask;
 const baseline = baselinePath
   ? (JSON.parse(readFileSync(baselinePath, "utf8")) as { metrics: Metric[] })
   : undefined;
@@ -40,7 +47,7 @@ for (const edgeCount of [100, 200]) {
   const stepCounts = new Set<number>();
   const kernels: RustKernelCalls = {};
   for (let pass = 0; pass < PASSES; pass++) {
-    const task = createEdgeRoutingTask(graph, { mode: "quality" });
+    const task = createTask(graph, { mode: "quality" });
     let elapsed = 0;
     let maxStep = 0;
     let steps = 0;

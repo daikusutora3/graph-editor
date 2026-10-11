@@ -1,7 +1,6 @@
 "use client";
 
 import { IMAGE_EXPORT_ERROR } from "../../adapters/cytoscape/graph-canvas-viewport";
-import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -40,6 +39,7 @@ import {
 } from "./graph-io-screenshot-state";
 import type { ThemeMode } from "../theme/theme";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { useScreenshotAction } from "./graph-io-screenshot-action";
 
 type GraphIOScreenshotOptions = {
   graphRevision: number;
@@ -55,11 +55,10 @@ export function useGraphIOScreenshot({
   theme,
 }: GraphIOScreenshotOptions) {
   const { messages } = useI18n();
-  const [copyState, setCopyState] = useState<ScreenshotCopyState>("idle");
-  const [copyMessage, setCopyMessage] = useState("");
-  const [downloadState, setDownloadState] =
-    useState<ScreenshotDownloadState>("idle");
-  const [downloadMessage, setDownloadMessage] = useState("");
+  const [previewMessage, setPreviewMessage] = useState({
+    inputKey: "",
+    message: "",
+  });
   const [background, setBackgroundState] =
     useState<PngExportBackground>("white");
   const [longEdgePreset, setLongEdgePresetState] =
@@ -79,8 +78,6 @@ export function useGraphIOScreenshot({
   const previewUrlRef = useRef("");
   const previewRequestRef = useRef(0);
   const mountedRef = useRef(true);
-  const copyResetTimeoutRef = useRef<number | null>(null);
-  const downloadResetTimeoutRef = useRef<number | null>(null);
   const { exportPng } = useGraphCanvasApi();
   const exportScaleSignature = useGraphCanvasExportScaleSignature(
     previewEnabled && (scope === "natural" || scope === "natural-fixed"),
@@ -129,6 +126,24 @@ export function useGraphIOScreenshot({
     () => makeScreenshotInputKey(debouncedPreviewInput),
     [debouncedPreviewInput],
   );
+  const copyAction = useScreenshotAction<
+    Exclude<ScreenshotCopyState, "copying">
+  >(currentPreviewInputKey, mountedRef);
+  const downloadAction = useScreenshotAction<
+    Exclude<ScreenshotDownloadState, "saving">
+  >(currentPreviewInputKey, mountedRef);
+  const copyState: ScreenshotCopyState = copyAction.pending
+    ? "copying"
+    : copyAction.state;
+  const downloadState: ScreenshotDownloadState = downloadAction.pending
+    ? "saving"
+    : downloadAction.state;
+  const copyMessage = copyAction.message;
+  const downloadMessage =
+    downloadAction.message ||
+    (previewMessage.inputKey === currentPreviewInputKey
+      ? previewMessage.message
+      : "");
   const visiblePreview = isGraphEmpty
     ? createEmptyScreenshotPreview()
     : preview;
@@ -143,28 +158,9 @@ export function useGraphIOScreenshot({
     (previewStale || visiblePreview.state !== "ready");
 
   const resetFeedback = () => {
-    clearTimeoutRef(copyResetTimeoutRef);
-    clearTimeoutRef(downloadResetTimeoutRef);
-    setCopyState("idle");
-    setCopyMessage("");
-    setDownloadState("idle");
-    setDownloadMessage("");
-  };
-
-  const scheduleCopyReset = () => {
-    clearTimeoutRef(copyResetTimeoutRef);
-    copyResetTimeoutRef.current = window.setTimeout(
-      () => setCopyState("idle"),
-      2400,
-    );
-  };
-
-  const scheduleDownloadReset = () => {
-    clearTimeoutRef(downloadResetTimeoutRef);
-    downloadResetTimeoutRef.current = window.setTimeout(
-      () => setDownloadState("idle"),
-      2400,
-    );
+    copyAction.resetFeedback();
+    downloadAction.resetFeedback();
+    setPreviewMessage({ inputKey: "", message: "" });
   };
 
   const createBlob = async (
@@ -279,7 +275,7 @@ export function useGraphIOScreenshot({
 
       revokePreviewUrl();
       previewUrlRef.current = objectUrl;
-      setDownloadMessage("");
+      setPreviewMessage({ inputKey: "", message: "" });
       setPreview({
         height,
         inputKey,
@@ -302,7 +298,10 @@ export function useGraphIOScreenshot({
           error instanceof Error &&
           error.message === "image-export:canvas-too-small"
         ) {
-          setDownloadMessage(messages.screenshot.canvasTooSmall);
+          setPreviewMessage({
+            inputKey,
+            message: messages.screenshot.canvasTooSmall,
+          });
         }
         revokePreviewUrl();
         setPreview({
@@ -329,20 +328,14 @@ export function useGraphIOScreenshot({
     });
 
   const copy = () => {
-    if (isGraphEmpty || copyState === "copying") {
-      return;
-    }
-
-    setCopyState("copying");
-    setCopyMessage("");
+    if (isGraphEmpty) return;
+    const ticket = copyAction.begin();
+    if (!ticket) return;
     const pngBlobPromise = createBlobForAction();
 
     const markFailed = (message: string) => {
-      if (!mountedRef.current) return;
-      console.warn("Screenshot copy failed", message);
-      setCopyMessage(message);
-      setCopyState("blocked");
-      scheduleCopyReset();
+      if (mountedRef.current) console.warn("Screenshot copy failed", message);
+      copyAction.finish(ticket, "blocked", message);
     };
 
     const copyBlob = async () => {
@@ -358,9 +351,7 @@ export function useGraphIOScreenshot({
         }
 
         await writePngBlobToClipboard(pngBlobPromise);
-        if (!mountedRef.current) return;
-        setCopyState("copied");
-        scheduleCopyReset();
+        copyAction.finish(ticket, "copied");
       } catch (error) {
         console.warn("Clipboard image write failed", error);
         try {
@@ -369,10 +360,11 @@ export function useGraphIOScreenshot({
             pngBlob,
             `graph-editor-${formatTimestamp(new Date())}.png`,
           );
-          if (!mountedRef.current) return;
-          setCopyMessage(messages.screenshot.copyFallbackSaved);
-          setCopyState("saved");
-          scheduleCopyReset();
+          copyAction.finish(
+            ticket,
+            "saved",
+            messages.screenshot.copyFallbackSaved,
+          );
         } catch (downloadError) {
           console.warn("Fallback screenshot download failed", downloadError);
           markFailed(
@@ -389,19 +381,15 @@ export function useGraphIOScreenshot({
   };
 
   const download = () => {
-    if (isGraphEmpty || downloadState === "saving") {
-      return;
-    }
-
-    setDownloadState("saving");
-    setDownloadMessage("");
+    if (isGraphEmpty) return;
+    const ticket = downloadAction.begin();
+    if (!ticket) return;
+    setPreviewMessage({ inputKey: "", message: "" });
 
     const markFailed = (message: string) => {
-      if (!mountedRef.current) return;
-      console.warn("Screenshot download failed", message);
-      setDownloadMessage(message);
-      setDownloadState("failed");
-      scheduleDownloadReset();
+      if (mountedRef.current)
+        console.warn("Screenshot download failed", message);
+      downloadAction.finish(ticket, "failed", message);
     };
 
     const saveBlob = (pngBlob: Blob) => {
@@ -410,9 +398,7 @@ export function useGraphIOScreenshot({
           pngBlob,
           `graph-editor-${formatTimestamp(new Date())}.png`,
         );
-        if (!mountedRef.current) return;
-        setDownloadState("saved");
-        scheduleDownloadReset();
+        downloadAction.finish(ticket, "saved");
       } catch (error) {
         console.warn("PNG download failed", error);
         markFailed(messages.screenshot.downloadFailed);
@@ -483,8 +469,6 @@ export function useGraphIOScreenshot({
     return () => {
       mountedRef.current = false;
       previewRequestRef.current += 1;
-      clearTimeoutRef(copyResetTimeoutRef);
-      clearTimeoutRef(downloadResetTimeoutRef);
       revokePreviewUrl();
     };
   }, []);
@@ -539,15 +523,6 @@ export function useGraphIOScreenshot({
     setPaddingPreset,
     solidBackground,
   };
-}
-
-function clearTimeoutRef(ref: MutableRefObject<number | null>) {
-  if (ref.current === null) {
-    return;
-  }
-
-  window.clearTimeout(ref.current);
-  ref.current = null;
 }
 
 function readImageDimensions(url: string, signal?: AbortSignal) {

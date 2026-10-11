@@ -36,7 +36,7 @@ export function StorageNotice() {
   const retrySave = useSetAtom(retryGraphSaveAtom);
   const { requestFit } = useGraphCanvasApi();
   const { locale } = useI18n();
-  const copy = integrityCopy[locale === "ja" ? "ja" : "en"];
+  const copy = integrityCopy[locale];
   const needsStorageAttention =
     state.status !== "saved" && state.status !== "pending";
   const external = useMemo(
@@ -55,7 +55,13 @@ export function StorageNotice() {
       role="status"
       className="pointer-events-auto absolute inset-x-4 top-20 z-[70] mx-auto flex max-w-2xl flex-wrap items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3 text-xs text-[var(--text)] shadow-lg"
     >
-      {error ? <p className="w-full">{copy.rejected}</p> : null}
+      {error ? (
+        <p className="w-full">
+          {error.reason === "coordinate-range"
+            ? copy.coordinatesRejected
+            : copy.rejected}
+        </p>
+      ) : null}
       {needsStorageAttention ? (
         <p className="w-full">{copy[state.status]}</p>
       ) : null}

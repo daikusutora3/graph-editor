@@ -3,6 +3,7 @@
 import type { MutableRefObject } from "react";
 import { useMemo } from "react";
 import type { Core } from "cytoscape";
+import { decodeCytoscapeId, getCytoscapeElement } from "./cytoscape-ids";
 
 import type { GraphCanvasExportOptions } from "../../core/view/types";
 import type { SelectionState } from "../../core/view/types";
@@ -76,7 +77,9 @@ export function createGraphImageExporter({
         throw new Error(IMAGE_EXPORT_ERROR.emptyGraph);
       }
 
-      edgeSourceIds = cy.nodes(".edge-source").map((node) => node.id());
+      edgeSourceIds = cy
+        .nodes(".edge-source")
+        .map((node) => decodeCytoscapeId(node.id()));
 
       suppressSelectionSyncRef.current = true;
 
@@ -139,7 +142,7 @@ export function createGraphImageExporter({
               : edgeSourceIds;
             cy.nodes(".edge-source").removeClass("edge-source");
             currentSourceIds.forEach((id) =>
-              cy.getElementById(id).addClass("edge-source"),
+              getCytoscapeElement(cy, id).addClass("edge-source"),
             );
           });
         }

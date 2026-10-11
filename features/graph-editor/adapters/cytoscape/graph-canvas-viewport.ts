@@ -1,5 +1,6 @@
 import type cytoscape from "cytoscape";
 import type { Core, Position } from "cytoscape";
+import { decodeCytoscapeId, getCytoscapeElement } from "./cytoscape-ids";
 
 import type { GraphCanvasPalette } from "./cytoscape-adapter";
 import type {
@@ -108,17 +109,21 @@ export function syncCytoscapeSelection(
   const selectedEdgeIds = new Set(selection.edgeIds);
 
   cy.nodes(":selected").forEach((node) => {
-    if (!selectedNodeIds.has(node.id())) {
+    if (!selectedNodeIds.has(decodeCytoscapeId(node.id()))) {
       node.unselect();
     }
   });
   cy.edges(":selected").forEach((edge) => {
-    if (!selectedEdgeIds.has(edge.id())) {
+    if (!selectedEdgeIds.has(decodeCytoscapeId(edge.id()))) {
       edge.unselect();
     }
   });
-  selection.nodeIds.forEach((nodeId) => cy.getElementById(nodeId).select());
-  selection.edgeIds.forEach((edgeId) => cy.getElementById(edgeId).select());
+  selection.nodeIds.forEach((nodeId) =>
+    getCytoscapeElement(cy, nodeId).select(),
+  );
+  selection.edgeIds.forEach((edgeId) =>
+    getCytoscapeElement(cy, edgeId).select(),
+  );
 }
 
 export function fitGraphToAvailableViewport(

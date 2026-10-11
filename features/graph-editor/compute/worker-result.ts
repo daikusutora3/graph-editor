@@ -7,39 +7,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
-function isPositionMap(value: unknown) {
+type CoordinateCheck = (value: unknown) => boolean;
+
+function isPositionMap(value: unknown, coordinate: CoordinateCheck) {
   if (!isRecord(value)) return false;
   for (const point of Object.values(value))
-    if (
-      !isRecord(point) ||
-      !isGraphCoordinate(point.x) ||
-      !isGraphCoordinate(point.y)
-    )
+    if (!isRecord(point) || !coordinate(point.x) || !coordinate(point.y))
       return false;
   return true;
 }
 
-function isCoordinateArray(value: unknown): value is number[] {
+function isCoordinateArray(
+  value: unknown,
+  coordinate: CoordinateCheck,
+): value is number[] {
   if (!Array.isArray(value) || value.length === 0) return false;
   // Iteration also rejects holes; Array.every() would silently skip them.
-  for (const number of value) if (!isGraphCoordinate(number)) return false;
+  for (const number of value) if (!coordinate(number)) return false;
   return true;
 }
 
-function isRoutingResult(value: unknown) {
+function isRoutingResult(value: unknown, coordinate: CoordinateCheck) {
   if (!(value instanceof Map)) return false;
   for (const [id, route] of value) {
     if (
       typeof id !== "string" ||
       !isRecord(route) ||
-      !isGraphCoordinate(route.bowPx) ||
+      !coordinate(route.bowPx) ||
       typeof route.duplicate !== "boolean" ||
-      !isGraphCoordinate(route.loopDirectionDeg) ||
-      !isGraphCoordinate(route.loopSweepDeg) ||
+      !coordinate(route.loopDirectionDeg) ||
+      !coordinate(route.loopSweepDeg) ||
       (route.loopStepSizePx !== undefined &&
-        !isGraphCoordinate(route.loopStepSizePx)) ||
-      !isCoordinateArray(route.controlPointDistancesPx) ||
-      !isCoordinateArray(route.controlPointWeights) ||
+        !coordinate(route.loopStepSizePx)) ||
+      !isCoordinateArray(route.controlPointDistancesPx, coordinate) ||
+      !isCoordinateArray(route.controlPointWeights, coordinate) ||
       route.controlPointWeights.some((weight) => weight < 0 || weight > 1) ||
       route.controlPointDistancesPx.length !==
         route.controlPointWeights.length ||
@@ -58,13 +59,37 @@ export function isComputeResult(
   kind: ComputeJob["kind"],
   value: unknown,
 ): value is ComputeValue {
-  if (kind === "routing") return isRoutingResult(value);
+  return isResult(kind, value, isGraphCoordinate);
+}
+
+/** Distinguish finite domain overflow from malformed output/ABI faults. */
+export function isComputeResultOutsideCoordinateRange(
+  kind: ComputeJob["kind"],
+  value: unknown,
+) {
+  return (
+    !isComputeResult(kind, value) &&
+    isResult(
+      kind,
+      value,
+      (coordinate) =>
+        typeof coordinate === "number" && Number.isFinite(coordinate),
+    )
+  );
+}
+
+function isResult(
+  kind: ComputeJob["kind"],
+  value: unknown,
+  coordinate: CoordinateCheck,
+) {
+  if (kind === "routing") return isRoutingResult(value, coordinate);
   if (!isRecord(value)) return false;
   if (kind === "layout")
     return (
       value.type === "move-nodes" &&
       typeof value.label === "string" &&
-      isPositionMap(value.after)
+      isPositionMap(value.after, coordinate)
     );
   return (
     (value.status === "unchanged" ||
@@ -73,6 +98,6 @@ export function isComputeResult(
     typeof value.remainingPairs === "number" &&
     Number.isSafeInteger(value.remainingPairs) &&
     value.remainingPairs >= 0 &&
-    isPositionMap(value.positions)
+    isPositionMap(value.positions, coordinate)
   );
 }

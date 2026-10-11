@@ -244,8 +244,9 @@ export const resolveStorageConflictAtom = atom(
       : parseStoredGraph(raw);
     if (!model) {
       const message = "Invalid stored graph";
-      set(commandErrorAtom, message);
-      return { status: "rejected" as const, message };
+      const failure = { reason: "invalid-graph" as const, message };
+      set(commandErrorAtom, failure);
+      return { status: "rejected" as const, ...failure };
     }
     const result = set(executeCommandAtom, replaceModelCommand(model));
     if (result.status === "rejected") return result;

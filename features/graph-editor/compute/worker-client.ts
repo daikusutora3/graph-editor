@@ -149,7 +149,10 @@ function getWorker(lane: WorkerLane) {
           if (!request || request.owner !== created) return;
           if ("error" in response) {
             completeRequest(response.id, request, null);
-            failWorker(response.failure === "permanent");
+            // Unsupported input/result coordinates are specific to this job;
+            // they do not invalidate healthy lanes or consume transport retries.
+            if (response.failure !== "input")
+              failWorker(response.failure === "permanent");
             return;
           }
           let result: ComputeValue;

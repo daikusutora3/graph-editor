@@ -268,7 +268,7 @@ export function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
   const adjacency = undirectedAdjacency(model);
   const components = connectedComponents(model);
   const order = orderIndex(nodeIds);
-  const positions: Record<NodeId, { x: number; y: number }> = {};
+  const positions = new Map<NodeId, { x: number; y: number }>();
   const leafGap = 112;
   const depthGap = 112;
   let nextComponentX = 0;
@@ -326,16 +326,16 @@ export function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
     const componentWidth = Math.max(leafGap, maxX - minX);
 
     for (const [nodeId, point] of localEntries) {
-      positions[nodeId] = {
+      positions.set(nodeId, {
         x: Math.round(point.x - minX + nextComponentX),
         y: Math.round(point.y),
-      };
+      });
     }
 
     nextComponentX += componentWidth + 180;
   }
 
-  return normalizePositions(positions);
+  return normalizePositions(Object.fromEntries(positions));
 }
 export function layoutComponents(model: GraphModel) {
   return packPositionGroups(
@@ -541,7 +541,7 @@ export function layoutConcentric(model: GraphModel) {
   const nodeIds = orderedNodeIds(model);
   const degree = degreeMap(model);
   const order = orderIndex(nodeIds);
-  const positions: Record<NodeId, { x: number; y: number }> = {};
+  const positions = new Map<NodeId, { x: number; y: number }>();
   const degreeValues = [
     ...new Set(nodeIds.map((nodeId) => degree.get(nodeId)!)),
   ].sort((a, b) => b - a);
@@ -560,7 +560,7 @@ export function layoutConcentric(model: GraphModel) {
       .sort((a, b) => order.get(a)! - order.get(b)!);
 
     if (!hasPreviousShell && shell.length === 1) {
-      positions[shell[0]] = { x: 0, y: 0 };
+      positions.set(shell[0], { x: 0, y: 0 });
       hasPreviousShell = true;
       return;
     }
@@ -575,14 +575,14 @@ export function layoutConcentric(model: GraphModel) {
     shell.forEach((nodeId, nodeIndex) => {
       const angle = (Math.PI * 2 * nodeIndex) / shell.length - Math.PI / 2;
 
-      positions[nodeId] = {
+      positions.set(nodeId, {
         x: Math.round(Math.cos(angle) * effectiveRadius),
         y: Math.round(Math.sin(angle) * effectiveRadius),
-      };
+      });
     });
   });
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 export function layoutRadial(model: GraphModel, rootNodeId?: NodeId) {
   const nodeIds = orderedNodeIds(model);
@@ -617,13 +617,13 @@ export function layoutRadial(model: GraphModel, rootNodeId?: NodeId) {
       }
     }
 
-    const positions: Record<NodeId, { x: number; y: number }> = {};
+    const positions = new Map<NodeId, { x: number; y: number }>();
 
     let previousRadius = 0;
 
     levels.forEach((level, depth) => {
       if (depth === 0) {
-        positions[level[0]] = { x: 0, y: 0 };
+        positions.set(level[0], { x: 0, y: 0 });
         return;
       }
 
@@ -636,14 +636,14 @@ export function layoutRadial(model: GraphModel, rootNodeId?: NodeId) {
 
       level.forEach((nodeId, index) => {
         const angle = (Math.PI * 2 * index) / level.length - Math.PI / 2;
-        positions[nodeId] = {
+        positions.set(nodeId, {
           x: Math.round(Math.cos(angle) * radius),
           y: Math.round(Math.sin(angle) * radius),
-        };
+        });
       });
     });
 
-    groups.push(positions);
+    groups.push(Object.fromEntries(positions));
   }
 
   return packPositionGroups(groups);
@@ -687,20 +687,20 @@ export function positionColumns(
 ) {
   const effectiveRowGap = Math.max(rowGap, LAYOUT_NODE_CLEARANCE);
   const visibleColumns = columns.filter((column) => column.length > 0);
-  const positions: Record<NodeId, { x: number; y: number }> = {};
+  const positions = new Map<NodeId, { x: number; y: number }>();
 
   visibleColumns.forEach((column, columnIndex) => {
     const x = (columnIndex - (visibleColumns.length - 1) / 2) * columnGap;
 
     column.forEach((nodeId, rowIndex) => {
-      positions[nodeId] = {
+      positions.set(nodeId, {
         x,
         y: (rowIndex - (column.length - 1) / 2) * effectiveRowGap,
-      };
+      });
     });
   });
 
-  return positions;
+  return Object.fromEntries(positions);
 }
 export function orderLayerColumns(
   columns: NodeId[][],
