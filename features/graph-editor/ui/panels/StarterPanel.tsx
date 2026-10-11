@@ -1,10 +1,20 @@
 "use client";
 import { CircleAlert, FileInput, FolderOpen } from "lucide-react";
-import { lazy, Suspense, type RefObject, useLayoutEffect, useRef } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  type ReactNode,
+  type RefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
+import { integrityCopy } from "../../i18n/integrity-copy";
 import { formatImportWarning } from "../../i18n/import-warning-messages";
 import type {
   ImportAnalysis,
@@ -34,11 +44,13 @@ import { Button, Select, focusRing, raisedControl } from "../primitives";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/sample-gallery-layout";
 import { SampleGraphPreview } from "../samples/SampleGraphPreview";
 
-const SampleGalleryPane = lazy(() =>
-  import("../samples/SampleGalleryPane").then((module) => ({
-    default: module.SampleGalleryPane,
-  })),
-);
+function createSampleGallery() {
+  return lazy(() =>
+    import("../samples/SampleGalleryPane").then((module) => ({
+      default: module.SampleGalleryPane,
+    })),
+  );
+}
 
 type StarterState = ReturnType<typeof useGraphStarterState>;
 
@@ -294,11 +306,62 @@ export function StarterSampleBody({
 }: {
   onSampleApplied: () => void;
 }) {
+  // React.lazy retains a rejected request. Keep its identity stable during
+  // ordinary renders and create a new request only for an explicit retry.
+  const [attempt, setAttempt] = useState(() => ({
+    id: 0,
+    Gallery: createSampleGallery(),
+  }));
+  const retry = () =>
+    setAttempt((current) => ({
+      id: current.id + 1,
+      Gallery: createSampleGallery(),
+    }));
+  const { Gallery } = attempt;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <Suspense fallback={<SampleGalleryFallback />}>
-        <SampleGalleryPane onSampleApplied={onSampleApplied} />
-      </Suspense>
+      <SampleGalleryBoundary key={attempt.id} onRetry={retry}>
+        <Suspense fallback={<SampleGalleryFallback />}>
+          <Gallery onSampleApplied={onSampleApplied} />
+        </Suspense>
+      </SampleGalleryBoundary>
+    </div>
+  );
+}
+
+class SampleGalleryBoundary extends Component<
+  { children: ReactNode; onRetry: () => void },
+  { failed: boolean }
+> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  override render() {
+    return this.state.failed ? (
+      <SampleGalleryLoadError onRetry={this.props.onRetry} />
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+function SampleGalleryLoadError({ onRetry }: { onRetry: () => void }) {
+  const { locale, messages } = useI18n();
+  return (
+    <div
+      role="alert"
+      className="flex min-h-0 flex-1 flex-col items-start gap-3 p-4"
+    >
+      <p className="m-0 text-control leading-relaxed text-[var(--muted)]">
+        {messages.starter.samplesLoadFailed}
+      </p>
+      <Button variant="secondary" onClick={onRetry}>
+        {integrityCopy[locale].retry}
+      </Button>
     </div>
   );
 }

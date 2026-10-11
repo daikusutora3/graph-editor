@@ -22,7 +22,10 @@ export function toLocale(value: string | null | undefined): Locale | null {
     return null;
   }
 
-  return LOCALE_ALIASES[value.toLowerCase()] ?? null;
+  const alias = value.toLowerCase();
+  return Object.hasOwn(LOCALE_ALIASES, alias)
+    ? (LOCALE_ALIASES[alias] ?? null)
+    : null;
 }
 
 export function detectBrowserLocale(

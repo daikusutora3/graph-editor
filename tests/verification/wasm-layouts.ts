@@ -9,10 +9,17 @@ import {
 } from "../../features/graph-editor/compute/rust-kernel";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
-import { layoutForce } from "../../features/graph-editor/layouts/layout-algorithms";
+import {
+  createForceLayoutTask,
+  layoutForce,
+  layoutForceComponent,
+} from "../../features/graph-editor/layouts/layout-algorithms";
+import { connectedComponents } from "../../features/graph-editor/core/graph/graph-analysis";
+import { disconnectedForceFixture } from "../fixtures/disconnected-force";
 import {
   ensureNodeClearance,
   LAYOUT_NODE_CLEARANCE,
+  packPositionGroups,
 } from "../../features/graph-editor/layouts/layout-geometry";
 import { createVerification } from "./harness";
 
@@ -48,6 +55,10 @@ graphs.push(["isolated vertices", isolated]);
 const disconnected = fixture(20);
 disconnected.edges = disconnected.edges.filter((edge) => edge.id !== "e9");
 graphs.push(["disconnected components", disconnected]);
+graphs.push([
+  "150 disconnected components with 5000 interleaved reversed edges",
+  disconnectedForceFixture(300, 5000),
+]);
 for (let seed = 0; seed < 8; seed++) {
   const graph = fixture(100 + seed * 10);
   graph.edges.push(
@@ -82,6 +93,53 @@ const originalClearance = clearanceFixtures.map(({ nodes, positions }) =>
 
 await initializeRustKernelFromBytes(readFileSync(`public${RUST_KERNEL_URL}`));
 expect(getRustKernelReady(), "compiled Rust Wasm has loaded");
+const manyComponents = disconnectedForceFixture(300, 5000);
+const savedComponents = JSON.stringify(manyComponents);
+const NativeSet = globalThis.Set;
+let membershipReads = 0;
+let manyPositions;
+let manySteps = 0;
+try {
+  globalThis.Set = class CountingSet<T> extends NativeSet<T> {
+    override has(value: T) {
+      membershipReads++;
+      return super.has(value);
+    }
+  };
+  const task = createForceLayoutTask(manyComponents);
+  let step;
+  do {
+    step = task.next();
+    manySteps++;
+  } while (!step.done);
+  manyPositions = step.value;
+} finally {
+  globalThis.Set = NativeSet;
+}
+expect(
+  membershipReads < 20_000,
+  "disconnected force classification does not scan every edge per component",
+);
+expect(manySteps === 151, "component grouping preserves generator yields");
+const referenceGroups = connectedComponents(manyComponents).map((component) => {
+  const members = new Set(component);
+  const edges = manyComponents.edges
+    .filter((edge) => members.has(edge.source) && members.has(edge.target))
+    .map((edge) => [edge.source, edge.target] as const);
+  return layoutForceComponent(component, edges);
+});
+expect(
+  JSON.stringify(manyPositions) ===
+    JSON.stringify(packPositionGroups(referenceGroups)),
+  "classification preserves the established component, edge and vertex order",
+);
+expect(
+  JSON.stringify(manyComponents) === savedComponents,
+  "component buckets never mutate the graph",
+);
+console.log(
+  JSON.stringify({ membershipReads, componentGeneratorSteps: manySteps }),
+);
 const coincident = tryRustForceLayout(
   [
     { x: 0, y: 0 },

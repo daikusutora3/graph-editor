@@ -10,21 +10,23 @@ import {
   MAX_IMPORT_NODES,
   readImportSettings,
   readLines,
-  splitTokens,
   type ImportOptions,
 } from "./import-utils";
 import type { ImportResult, ImportWarning } from "./import-types";
 import { importTextLimitWarning } from "./import-text-limits";
+import { createImportSource, type ImportSource } from "./import-source";
 
 type EdgeListImportOptions = ImportOptions;
 
 export function importStructuredEdgeList(
   input: string,
   options: EdgeListImportOptions = {},
+  preparedSource?: ImportSource,
 ): ImportResult {
   const warnings: ImportWarning[] = [];
   const settings = readImportSettings(options);
-  const lines = readLines(input);
+  const source = preparedSource ?? createImportSource(readLines(input));
+  const { lines } = source;
   const header = lines[0]?.text.split(/\s+/) ?? [];
   const nodeCount = Number(header[0]);
   const edgeCount = Number(header[1]);
@@ -75,7 +77,7 @@ export function importStructuredEdgeList(
   }
 
   const dataLines = lines.slice(1);
-  const dataRows = dataLines.map((line) => splitTokens(line.text));
+  const dataRows = source.rows.slice(1);
   // Check all supplied weight fields before accepting a partial import. An
   // invalid endpoint, extra column or extra row must not hide a text limit.
   if (settings.weighted) {

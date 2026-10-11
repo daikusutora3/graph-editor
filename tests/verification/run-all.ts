@@ -53,6 +53,10 @@ const suites = [
     name: "sample-gallery-load",
     path: "tests/verification/sample-gallery-load.mjs",
   },
+  {
+    name: "sample-gallery-boundary",
+    path: "tests/verification/sample-gallery-boundary.mjs",
+  },
   { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
   { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
   {
@@ -104,6 +108,10 @@ const suites = [
     path: "tests/verification/import-text-contracts.ts",
   },
   {
+    name: "import-source-reuse",
+    path: "tests/verification/import-source-reuse.mjs",
+  },
+  {
     name: "starter-import-guard",
     path: "tests/verification/starter-import-guard.mjs",
   },
@@ -122,6 +130,10 @@ const suites = [
   { name: "canvas-resize", path: "tests/verification/canvas-resize.mjs" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },
   { name: "i18n", path: "tests/verification/i18n-literals.ts" },
+  {
+    name: "locale-preferences",
+    path: "tests/verification/locale-preferences.mjs",
+  },
   { name: "canvas", path: "tests/verification/canvas-logic.ts" },
   {
     name: "range-selection-preview",
