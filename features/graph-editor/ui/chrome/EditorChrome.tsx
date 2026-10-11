@@ -5,7 +5,6 @@ import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
-import type { GraphModel } from "../../core/graph/model";
 import {
   copyTextToClipboard,
   downloadBlob,
@@ -46,7 +45,6 @@ import {
   inactiveGraphRevisionAtom,
 } from "../../shell/state/chrome-atoms";
 import { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
-import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
 import { useEditorPanel } from "./editor-chrome-state";
 import { CanvasHint, Toast } from "./CanvasHint";
 import { EditorPanelShell } from "./EditorPanelShell";
@@ -109,7 +107,6 @@ export function EditorChrome() {
   const reverseAllDirectedEdges = useSetAtom(reverseAllDirectedEdgesAtom);
   const clearGraph = useSetAtom(clearGraphAtom);
   const { requestFit } = useGraphCanvasApi();
-  const applyGraphModel = useApplyGraphModel();
   const { theme, setTheme } = useThemeMode();
   const shortcutPlatform = useShortcutPlatform();
   const showShortcutHints = shortcutPlatform !== "touch";
@@ -295,19 +292,6 @@ export function EditorChrome() {
       `graph-editor-${formatTimestamp(new Date())}.${extension}`,
     );
   }, [exportFormat, exportText]);
-
-  const loadSampleModel = useCallback(
-    (model: GraphModel) => {
-      applyGraphModel(model, {
-        clearEdgeDraft: true,
-        clearSelection: true,
-        fitAfterUpdate: true,
-        selectMode: true,
-      });
-      close();
-    },
-    [applyGraphModel, close],
-  );
 
   const nodeEdgeMeta = graph
     ? `N=${graph.nodes.length} M=${graph.edges.length}`
@@ -512,10 +496,8 @@ export function EditorChrome() {
       <StorageNotice />
       {graph && graphIsEmpty && !visiblePanel && mode === "select" ? (
         <EmptyState
-          graph={graph}
           mobile={mobile}
           onDraw={() => handleModeChange("node")}
-          onLoadSample={loadSampleModel}
           onOpenPaste={() => openStarter("paste")}
           onOpenSamples={() => openStarter("sample")}
         />
