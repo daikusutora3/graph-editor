@@ -41,7 +41,10 @@ be changed.
 The user authorized in-app browser verification on 2026-10-08. Agents may
 open `http://127.0.0.1:3323` or `http://127.0.0.1:3324`, with paths `/`, `/en`, or `/zh-hans`, in the
 in-app browser and read the page, enter graph data, operate editor controls,
-capture screenshots, and reload the preview. Use the dedicated `localGraphTab`
+capture screenshots, and reload the preview. On 2026-10-11, the user also
+authorized `/guide`, `/en/guide`, and `/zh-hans/guide`, including page-local
+contents links and copying guide examples, for the same local verification.
+Use the dedicated `localGraphTab`
 binding. No other origins, paths, tabs, application controls, or arbitrary
 page scripts are authorized. GitHub Issue restrictions remain unchanged.
 Keep the hook enabled and test its permitted and rejected calls.
@@ -85,7 +88,7 @@ policy. Do not disable or bypass it to perform an operation prohibited above.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
