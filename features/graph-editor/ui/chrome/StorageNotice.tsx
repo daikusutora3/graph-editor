@@ -1,10 +1,12 @@
 "use client";
-import { useMemo, useSyncExternalStore } from "react";
+import { useId, useMemo, useSyncExternalStore } from "react";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
+import { ArrowLeftRight, Download } from "lucide-react";
 import {
   getStorageSnapshot,
   parseStoredGraph,
   STORAGE_STATE_EVENT,
+  type StorageSnapshot,
 } from "../../adapters/browser/stored-graph";
 import { downloadBlob } from "../../adapters/browser/file-actions";
 import { serializeGraphModel } from "../../core/graph/graph-json";
@@ -13,7 +15,10 @@ import {
   retryGraphSaveAtom,
 } from "../../shell/state/editor-actions";
 import { graphAtom } from "../../shell/state/graph-atoms";
-import { commandErrorAtom } from "../../shell/state/history-atoms";
+import {
+  commandErrorAtom,
+  type CommandFailure,
+} from "../../shell/state/history-atoms";
 import { useI18n } from "../../i18n/I18nProvider";
 import { integrityCopy } from "../../i18n/integrity-copy";
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
@@ -35,15 +40,6 @@ export function StorageNotice() {
   const resolveConflict = useSetAtom(resolveStorageConflictAtom);
   const retrySave = useSetAtom(retryGraphSaveAtom);
   const { requestFit } = useGraphCanvasApi();
-  const { locale } = useI18n();
-  const copy = integrityCopy[locale];
-  const needsStorageAttention =
-    state.status !== "saved" && state.status !== "pending";
-  const external = useMemo(
-    () => (state.status === "conflict" ? parseStoredGraph(state.raw) : null),
-    [state.raw, state.status],
-  );
-  if (!needsStorageAttention && !error) return null;
   const download = (raw: string, filename: string) =>
     downloadBlob(new Blob([raw], { type: "application/json" }), filename);
   const load = (fresh: boolean) => {
@@ -51,60 +47,140 @@ export function StorageNotice() {
     if (result.status !== "rejected") requestFit(result.graph);
   };
   return (
+    <StorageNoticeContent
+      state={state}
+      error={error}
+      onDownload={() =>
+        download(serializeGraphModel(store.get(graphAtom)), "graph-backup.json")
+      }
+      onRetry={() => void retrySave()}
+      onLoad={load}
+      onDownloadOriginal={() => {
+        if (state.raw !== null) download(state.raw, "graph-original.json");
+      }}
+    />
+  );
+}
+
+export function StorageNoticeContent({
+  state,
+  error,
+  onDownload,
+  onRetry,
+  onLoad,
+  onDownloadOriginal,
+}: {
+  state: StorageSnapshot;
+  error: CommandFailure | null;
+  onDownload: () => void;
+  onRetry: () => void;
+  onLoad: (fresh: boolean) => void;
+  onDownloadOriginal: () => void;
+}) {
+  const { locale } = useI18n();
+  const copy = integrityCopy[locale];
+  const id = useId();
+  const needsStorageAttention =
+    state.status !== "saved" && state.status !== "pending";
+  const external = useMemo(
+    () => (state.status === "conflict" ? parseStoredGraph(state.raw) : null),
+    [state.raw, state.status],
+  );
+  if (!needsStorageAttention && !error) return null;
+  const conflict = state.status === "conflict";
+  const description = external
+    ? copy.conflict
+    : state.raw === null
+      ? copy.conflictDeleted
+      : copy.conflictInvalid;
+  const actionClass =
+    "h-auto min-h-9 w-full px-3 py-2 leading-snug whitespace-normal";
+  return (
     <aside
-      role="status"
-      className="pointer-events-auto absolute inset-x-4 top-20 z-[70] mx-auto flex max-w-2xl flex-wrap items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3 text-xs text-[var(--text)] shadow-lg"
+      data-storage-notice={state.status}
+      className="pointer-events-auto absolute inset-x-3 top-20 z-[70] mx-auto max-h-[calc(100dvh-10rem)] max-w-xl overflow-y-auto overscroll-contain rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3 text-xs leading-relaxed text-[var(--text)] shadow-lg"
     >
-      {error ? (
-        <p className="w-full">
-          {error.reason === "coordinate-range"
-            ? copy.coordinatesRejected
-            : copy.rejected}
-        </p>
-      ) : null}
-      {needsStorageAttention ? (
-        <p className="w-full">{copy[state.status]}</p>
-      ) : null}
+      <div role="status">
+        {needsStorageAttention ? (
+          <p>{conflict ? description : copy[state.status]}</p>
+        ) : null}
+        {error ? (
+          <p className={needsStorageAttention ? "mt-2" : undefined}>
+            {error.reason === "coordinate-range"
+              ? copy.coordinatesRejected
+              : copy.rejected}
+          </p>
+        ) : null}
+      </div>
       {state.status !== "pending" ? (
-        <>
-          <Button
-            size="sm"
-            onClick={() =>
-              download(
-                serializeGraphModel(store.get(graphAtom)),
-                "graph-backup.json",
-              )
-            }
-          >
-            {copy.backup}
-          </Button>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="min-w-0">
+            <Button
+              variant="primary"
+              className={actionClass}
+              aria-describedby={`${id}-backup`}
+              tooltip={copy.backupHint}
+              tooltipSide="top"
+              onClick={onDownload}
+            >
+              <Download aria-hidden="true" className="size-4 shrink-0" />
+              {copy.backup}
+            </Button>
+            <p id={`${id}-backup`} className="sr-only">
+              {copy.backupHint}
+            </p>
+          </div>
           {state.status === "failed" ? (
-            <Button size="sm" onClick={() => void retrySave()}>
+            <Button
+              variant="secondary"
+              className={`${actionClass} self-start`}
+              onClick={onRetry}
+            >
               {copy.retry}
             </Button>
           ) : null}
-          {state.status === "conflict" && external ? (
-            <Button size="sm" onClick={() => load(false)}>
-              {copy.load}
-            </Button>
+          {conflict && external ? (
+            <div className="min-w-0">
+              <Button
+                variant="secondary"
+                className={actionClass}
+                aria-describedby={`${id}-load`}
+                tooltip={copy.loadHint}
+                tooltipSide="top"
+                onClick={() => onLoad(false)}
+              >
+                <ArrowLeftRight
+                  aria-hidden="true"
+                  className="size-4 shrink-0"
+                />
+                {copy.load}
+              </Button>
+              <p id={`${id}-load`} className="sr-only">
+                {copy.loadHint}
+              </p>
+            </div>
           ) : null}
-          {state.status === "invalid" ||
-          (state.status === "conflict" && !external) ? (
-            <>
+          {state.status === "invalid" || (conflict && !external) ? (
+            <div className="flex min-w-0 flex-col gap-2">
               {state.raw !== null ? (
                 <Button
-                  size="sm"
-                  onClick={() => download(state.raw!, "graph-original.json")}
+                  variant="secondary"
+                  className={actionClass}
+                  onClick={onDownloadOriginal}
                 >
                   {copy.raw}
                 </Button>
               ) : null}
-              <Button size="sm" onClick={() => load(true)}>
+              <Button
+                variant="secondary"
+                className={actionClass}
+                onClick={() => onLoad(true)}
+              >
                 {copy.fresh}
               </Button>
-            </>
+            </div>
           ) : null}
-        </>
+        </div>
       ) : null}
     </aside>
   );
