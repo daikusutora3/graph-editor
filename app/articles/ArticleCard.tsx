@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { ArticleDiagram } from "./ArticleDiagram";
+import { ArticleThumbnail } from "./ArticleThumbnail";
 import { focusRing } from "@/components/ui/styles";
 import {
   articleCopy,
@@ -27,7 +27,7 @@ export function ArticleCard({
       )}
     >
       <div className="relative flex min-h-44 items-center justify-center border-b border-[var(--line)] bg-[var(--fill)] px-5 py-3">
-        <ArticleDiagram example={article.example} decorative />
+        <ArticleThumbnail article={article} />
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[var(--text)] opacity-0 transition-opacity duration-150 group-hover:opacity-5 motion-reduce:transition-none"
