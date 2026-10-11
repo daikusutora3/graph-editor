@@ -118,9 +118,9 @@ class Session:
 
 def run_editor_review(session):
     messages = {
-        "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "save": "再編集用に保存", "image": "画像にする"},
-        "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "save": "Save for editing", "image": "Create an image"},
-        "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "save": "保存以便再编辑", "image": "生成图像"},
+        "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像"},
+        "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "image": "PNG image"},
+        "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "image": "PNG 图像"},
     }
     results = []
     for locale, m in messages.items():
@@ -169,7 +169,7 @@ def run_editor_review(session):
                     {"type": "pointerUp", "button": 0}]}]})
                 session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].x!==" + str(before["x"]))
                 session.click(session.button(m["export"]))
-                session.click(session.button(m["save"]))
+                session.command("POST", f"/element/{session.element('[data-editor-panel=export] select')}/value", {"text": "JSON"})
                 text = session.wait("const e=document.querySelector('[data-editor-panel=export] pre');return e&&e.textContent.trim().startsWith('{')&&e.textContent;")
                 graph = json.loads(text)
                 assert len(graph["nodes"]) == 4 and graph["nodes"][0]["color"] == "green"
@@ -1207,12 +1207,13 @@ def run_promo_recording(session):
     # Escape dismisses the selection so the export scene is uncluttered.
     range_key(session, "\ue00c")
     operate("書き出し", "return !!document.querySelector('[data-editor-panel=export]')")
-    exported_text = operate("再編集用に保存", "const e=document.querySelector('[data-editor-panel=export] pre');return e&&e.textContent.trim().startsWith('{')&&e.textContent;")
+    session.command("POST", f"/element/{session.element('[data-editor-panel=export] select')}/value", {"text": "JSON"})
+    exported_text = session.wait("const e=document.querySelector('[data-editor-panel=export] pre');return e&&e.textContent.trim().startsWith('{')&&e.textContent;")
     exported = json.loads(exported_text)
     assert exported["nodes"] == edited["nodes"] and exported["edges"] == edited["edges"]
     (output / "edited-graph.json").write_text(exported_text)
     capture("json-export", 2.0)
-    preview = operate("画像にする", "const img=document.querySelector('[data-editor-panel=png] img');return img&&img.complete&&img.naturalWidth>0&&{width:img.naturalWidth,height:img.naturalHeight,alt:img.alt};")
+    preview = operate("PNG 画像", "const img=document.querySelector('[data-editor-panel=png] img');return img&&img.complete&&img.naturalWidth>0&&{width:img.naturalWidth,height:img.naturalHeight,alt:img.alt};")
     # A native WebDriver click scrolls the image into the panel's visible body.
     session.click(session.element('[data-editor-panel=png] img'))
     session.js("document.querySelector('[data-editor-panel=png] img').scrollIntoView({block:'nearest'});")

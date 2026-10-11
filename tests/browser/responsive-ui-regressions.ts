@@ -74,6 +74,11 @@ try {
           const appOpener = page.locator('[data-editor-panel-trigger="app"]');
           await appOpener.click();
           const appMenu = page.locator('[data-editor-panel="app"]');
+          assert.equal(
+            await page.locator("[data-editor-empty-state]").count(),
+            1,
+            "Opening the app menu preserves the start screen",
+          );
           const menuItems = appMenu.getByRole("menuitem");
           await page.waitForFunction(() =>
             document
@@ -111,6 +116,11 @@ try {
           });
           await load.click();
           const dialog = page.locator('[data-editor-panel="starter"]');
+          assert.equal(
+            await page.locator("[data-editor-empty-state]").count(),
+            1,
+            "Opening Load preserves the start screen behind the panel",
+          );
           await page.locator("textarea").fill("4 4\n1 2\n2 3\n2 4\n3 4");
           const apply = page.getByRole("button", {
             name: messages.chrome.starterApply,
@@ -132,6 +142,11 @@ try {
             () =>
               document.querySelectorAll("button.ge-select-node-hitbox")
                 .length === 4,
+          );
+          assert.equal(
+            await page.locator("[data-editor-empty-state]").count(),
+            0,
+            "Applying a graph removes the start screen",
           );
           if (width >= 768) {
             const settingsOpener = page.locator(

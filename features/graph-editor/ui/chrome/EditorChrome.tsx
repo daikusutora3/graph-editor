@@ -392,7 +392,6 @@ export function EditorChrome() {
             }
           >
             <ExportPanelBody
-              onOpenImage={() => open("png")}
               pending={exportResult.pending}
               exportFormat={exportFormat}
               exportText={exportText}
@@ -493,10 +492,7 @@ export function EditorChrome() {
     <>
       <TooltipLayer />
       <StorageNotice />
-      {graph &&
-      graphIsEmpty &&
-      (visiblePanel === null || visiblePanel === "app") &&
-      mode === "select" ? (
+      {graph && graphIsEmpty && mode === "select" ? (
         <EmptyState
           mobile={mobile}
           onDraw={() => handleModeChange("node")}

@@ -129,8 +129,8 @@ try {
         .click();
       const panel = page.locator('[data-editor-panel="export"]');
       await panel
-        .getByRole("button", { name: m.exportPanel.purposes.save, exact: true })
-        .click();
+        .getByRole("combobox", { name: m.exportPanel.formatAria, exact: true })
+        .selectOption("json");
       await page.waitForFunction(
         () =>
           document.querySelector<HTMLSelectElement>(
@@ -151,8 +151,8 @@ try {
       const download = await downloadPromise;
       assert(download.suggestedFilename().endsWith(".json"));
       await panel
-        .getByRole("button", { name: m.exportPanel.purposes.data, exact: true })
-        .click();
+        .getByRole("combobox", { name: m.exportPanel.formatAria, exact: true })
+        .selectOption("edge-list");
       await page.waitForFunction(
         () =>
           document.querySelector<HTMLSelectElement>(
@@ -163,9 +163,9 @@ try {
       await page.screenshot({
         path: `${output}/${engine}-${locale}-${width}-export.png`,
       });
-      await panel
+      await page
         .getByRole("button", {
-          name: m.exportPanel.purposes.image,
+          name: m.chrome.png,
           exact: true,
         })
         .click();

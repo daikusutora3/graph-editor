@@ -30,6 +30,7 @@ export function EmptyState({
 
   return (
     <div
+      data-editor-empty-state
       className={
         mobile
           ? "pointer-events-none absolute inset-0 z-50 grid place-items-center px-4 pt-[72px] pb-[calc(var(--ge-mobile-controls-bottom,92px)+8px)]"
