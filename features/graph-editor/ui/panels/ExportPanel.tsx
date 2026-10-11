@@ -1,17 +1,10 @@
 "use client";
 
-import {
-  Camera,
-  ClipboardCopy,
-  Download,
-  FileJson,
-  FileText,
-} from "lucide-react";
+import { ClipboardCopy, Download } from "lucide-react";
 import { memo, useId, useMemo } from "react";
 
 import {
   Button,
-  ChoiceButton,
   ControlRow,
   Notice,
   PanelActions,
@@ -34,7 +27,6 @@ export function ExportPanelBody({
   mobile,
   pending = false,
   onExportFormatChange,
-  onOpenImage,
 }: {
   exportFormat: GraphExportFormat;
   exportText: string;
@@ -42,7 +34,6 @@ export function ExportPanelBody({
   mobile: boolean;
   pending?: boolean;
   onExportFormatChange: (format: GraphExportFormat) => void;
-  onOpenImage: () => void;
 }) {
   const { messages, locale } = useI18n();
   const formatId = useId();
@@ -58,50 +49,6 @@ export function ExportPanelBody({
 
   return (
     <>
-      <div
-        role="group"
-        aria-label={messages.exportPanel.purpose}
-        className="grid grid-cols-3 gap-1.5"
-      >
-        {[
-          {
-            label: messages.exportPanel.purposes.save,
-            detail: "JSON",
-            icon: FileJson,
-            active: exportFormat === "json",
-            onClick: () => onExportFormatChange("json"),
-          },
-          {
-            label: messages.exportPanel.purposes.data,
-            detail: "TXT / TeX",
-            icon: FileText,
-            active: exportFormat !== "json",
-            onClick: () => onExportFormatChange("edge-list"),
-          },
-          {
-            label: messages.exportPanel.purposes.image,
-            detail: "PNG",
-            icon: Camera,
-            active: false,
-            onClick: onOpenImage,
-          },
-        ].map(({ label, detail, icon: Icon, active, onClick }) => (
-          <ChoiceButton
-            key={label}
-            aria-label={label}
-            aria-pressed={detail === "PNG" ? undefined : active}
-            active={active}
-            layout="tile"
-            onClick={onClick}
-          >
-            <Icon className="size-4 shrink-0" aria-hidden="true" />
-            <span className="w-full text-xs leading-snug [overflow-wrap:anywhere] whitespace-normal">
-              {label}
-            </span>
-            <span className="text-[10px] font-normal">{detail}</span>
-          </ChoiceButton>
-        ))}
-      </div>
       <ControlRow
         htmlFor={formatId}
         label={messages.exportPanel.formatAria}

@@ -255,7 +255,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           {
             title: "あとで編集するなら JSON",
             description:
-              "「書き出し」で「再編集用に保存」を選び、.json ファイルを保存します。頂点、辺、ラベル、位置、色、曲げ方、グラフ設定を保てます。再開するときは「読み込み」から開いてください。",
+              "「書き出し」の形式で「JSON」を選び、.json ファイルを保存します。頂点、辺、ラベル、位置、色、曲げ方、グラフ設定を保てます。再開するときは「読み込み」から開いてください。",
           },
           {
             title: "図を共有するなら PNG",
@@ -528,7 +528,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           {
             title: "Save for editing with JSON",
             description:
-              "In Export, choose Save for editing and save the .json file. It preserves nodes, edges, labels, positions, colors, bends, and graph settings. Open it through Load to resume editing.",
+              "In Export, choose JSON as the format and save the .json file. It preserves nodes, edges, labels, positions, colors, bends, and graph settings. Open it through Load to resume editing.",
           },
           {
             title: "Share an image with PNG",
@@ -805,7 +805,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
           {
             title: "用 JSON 保存以便再编辑",
             description:
-              "在“导出”中选择“保存以便再编辑”，保存 .json 文件。它保留顶点、边、标签、位置、颜色、弯曲和图设置。再次编辑时从“加载”打开。",
+              "在“导出”的格式中选择“JSON”，保存 .json 文件。它保留顶点、边、标签、位置、颜色、弯曲和图设置。再次编辑时从“加载”打开。",
           },
           {
             title: "用 PNG 分享图像",

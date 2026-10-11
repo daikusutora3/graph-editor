@@ -125,8 +125,6 @@ type Messages = {
   exportPanel: {
     title: string;
     formatAria: string;
-    purpose: string;
-    purposes: { save: string; data: string; image: string };
     emptyPlaceholder: string;
     preparing: string;
     exportedAria: (label: string) => string;
@@ -711,12 +709,6 @@ const ja: Messages = {
   },
   exportPanel: {
     title: "書き出し",
-    purpose: "用途を選ぶ",
-    purposes: {
-      save: "再編集用に保存",
-      data: "データを使う",
-      image: "画像にする",
-    },
     formatAria: "書き出し形式",
     emptyPlaceholder: "グラフを入力すると、ここに出力が表示されます",
     preparing: "書き出しを準備中",
@@ -1237,12 +1229,6 @@ const en: Messages = {
   },
   exportPanel: {
     title: "Export",
-    purpose: "Choose what to export",
-    purposes: {
-      save: "Save for editing",
-      data: "Use graph data",
-      image: "Create an image",
-    },
     formatAria: "Export format",
     emptyPlaceholder: "Graph output appears here after you create a graph.",
     preparing: "Preparing export",
@@ -1761,8 +1747,6 @@ const zhHans: Messages = {
   },
   exportPanel: {
     title: "导出",
-    purpose: "选择导出用途",
-    purposes: { save: "保存以便再编辑", data: "使用图数据", image: "生成图像" },
     formatAria: "导出格式",
     emptyPlaceholder: "创建图后，输出会显示在这里。",
     preparing: "正在准备导出",
