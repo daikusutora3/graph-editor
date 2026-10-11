@@ -2,6 +2,10 @@
 
 import type { Core, Position } from "cytoscape";
 import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
+import {
+  toCytoscapePosition,
+  toGraphPosition,
+} from "../adapters/cytoscape/cytoscape-coordinates";
 import type {
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
@@ -29,7 +33,6 @@ import {
 } from "../adapters/cytoscape/cytoscape-adapter";
 import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import { refreshCytoscapeGeometry } from "../adapters/cytoscape/graph-canvas-geometry-refresh";
-import { clonePosition } from "../adapters/cytoscape/graph-canvas-viewport";
 
 type DragSnapshot = Record<NodeId, Position>;
 const NODE_DRAG_GRID_SIZE_PX = 24;
@@ -196,7 +199,10 @@ export function useHtmlNodeDrag({
           const positioned = {
             ...graph,
             nodes: graph.nodes.map((node) => {
-              const position = getCytoscapeElement(cy, node.id).position();
+              const position = toGraphPosition(
+                cy,
+                getCytoscapeElement(cy, node.id).position(),
+              );
               return { ...node, x: position.x, y: position.y };
             }),
           };
@@ -381,7 +387,7 @@ export function useHtmlNodeDrag({
             return null;
           }
 
-          return [id, clonePosition(node.position())] as const;
+          return [id, toGraphPosition(cy, node.position())] as const;
         })
         .filter((entry): entry is readonly [NodeId, Position] =>
           Boolean(entry),
@@ -446,13 +452,14 @@ export function useHtmlNodeDrag({
           return;
         }
 
-        const nextPosition = resolveDragPosition(
+        const nextGraphPosition = resolveDragPosition(
           {
             x: startPosition.x + dx,
             y: startPosition.y + dy,
           },
           graph.settings.snapToGrid,
         );
+        const nextPosition = toCytoscapePosition(cy, nextGraphPosition);
         const currentPosition = node.position();
         if (
           currentPosition.x !== nextPosition.x ||
@@ -510,7 +517,7 @@ export function useHtmlNodeDrag({
             return [
               id,
               resolveDragPosition(
-                clonePosition(node.position()),
+                toGraphPosition(cy, node.position()),
                 graph.settings.snapToGrid,
               ),
             ] as const;
@@ -630,6 +637,6 @@ function restoreDragSnapshot(cy: Core, state: HtmlNodeDragState) {
       return;
     }
 
-    node.position(startPosition);
+    node.position(toCytoscapePosition(cy, startPosition));
   });
 }

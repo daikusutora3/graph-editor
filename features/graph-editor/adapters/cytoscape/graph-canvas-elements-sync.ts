@@ -5,6 +5,7 @@ import type {
   SingularElementReturnValue,
 } from "cytoscape";
 import { decodeCytoscapeId } from "./cytoscape-ids";
+import { projectCytoscapeElements } from "./cytoscape-coordinates";
 
 type SyncCytoscapeElementsResult = {
   changedElements: CollectionReturnValue;
@@ -30,6 +31,12 @@ export function syncCytoscapeElements(
   elements: ElementDefinition[],
   options: SyncCytoscapeElementsOptions = {},
 ): SyncCytoscapeElementsResult {
+  const projection = projectCytoscapeElements(
+    cy,
+    elements,
+    Boolean(options.skipNodePositionIds?.size),
+  );
+  elements = projection.elements;
   const result: SyncCytoscapeElementsResult = {
     changedElements: cy.collection(),
     added: 0,
@@ -38,6 +45,7 @@ export function syncCytoscapeElements(
     skipped: 0,
     updated: 0,
   };
+  if (projection.rebased) result.changedElements.merge(cy.elements());
   const nextIds = new Set(
     elements
       .map((element) => element.data?.id)

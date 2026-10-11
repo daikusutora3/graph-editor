@@ -2,6 +2,7 @@
 
 import type { Core, EventObject, Position } from "cytoscape";
 import { decodeCytoscapeId } from "../adapters/cytoscape/cytoscape-ids";
+import { toGraphPosition } from "../adapters/cytoscape/cytoscape-coordinates";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef } from "react";
 
@@ -63,7 +64,7 @@ export function useCytoscapeInteractionEvents({
       setContextMenuTarget(null);
 
       if (mode === "node") {
-        onPlaceNodeRef.current(event.position);
+        onPlaceNodeRef.current(toGraphPosition(cy, event.position));
         return;
       }
 

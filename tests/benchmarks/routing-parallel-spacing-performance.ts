@@ -3,7 +3,10 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { parallelRoutingFixture } from "../fixtures/parallel-routing";
+import {
+  manualParallelRoutingFixture,
+  parallelRoutingFixture,
+} from "../fixtures/parallel-routing";
 import { RUST_KERNEL_URL } from "../../features/graph-editor/compute/kernel-asset";
 import {
   initializeRustKernelFromBytes,
@@ -15,6 +18,7 @@ import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/e
 // Capture the old version, then compare the new version on the same machine:
 // node scripts/toolchain.mjs run tests/benchmarks/routing-parallel-spacing-performance.ts --output /tmp/parallel-spacing-before.json
 // node scripts/toolchain.mjs run tests/benchmarks/routing-parallel-spacing-performance.ts --baseline /tmp/parallel-spacing-before.json --output /tmp/parallel-spacing-after.json
+// Add --manual to both runs to measure fixed manual-sibling reconciliation.
 // Current Wasm is initialized. Measured runs have no mocks, spies or diagnostics.
 const PASSES = 7;
 const WARMUPS = 2;
@@ -28,6 +32,7 @@ type Metric = {
 };
 const baselinePath = argument("--baseline");
 const modulePath = argument("--module");
+const manual = process.argv.includes("--manual");
 const createTask: typeof createEdgeRoutingTask = modulePath
   ? (await import(pathToFileURL(resolve(modulePath)).href))
       .createEdgeRoutingTask
@@ -40,7 +45,9 @@ await initializeRustKernelFromBytes(
   readFileSync(`${process.cwd()}/public${RUST_KERNEL_URL}`),
 );
 for (const edgeCount of [100, 200]) {
-  const graph = parallelRoutingFixture(edgeCount);
+  const graph = manual
+    ? manualParallelRoutingFixture(edgeCount)
+    : parallelRoutingFixture(edgeCount);
   const times: number[] = [];
   const maxSteps: number[] = [];
   const signatures = new Set<string>();
@@ -110,7 +117,11 @@ const outputPath = argument("--output");
 if (outputPath)
   writeFileSync(
     outputPath,
-    JSON.stringify({ passes: PASSES, warmups: WARMUPS, metrics }, null, 2),
+    JSON.stringify(
+      { passes: PASSES, warmups: WARMUPS, manual, metrics },
+      null,
+      2,
+    ),
   );
 
 function median(values: number[]) {

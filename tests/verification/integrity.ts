@@ -92,6 +92,16 @@ expect(
   ) === null,
   "node and edge IDs share one namespace",
 );
+for (const key of ["__proto__", "constructor", "toString", "unknown-setting"]) {
+  const settings = Object.fromEntries([
+    ...Object.entries(graph.settings),
+    [key, true],
+  ]);
+  expect(
+    parseGraphModelJson(JSON.stringify({ ...graph, settings })) === null,
+    `unknown own settings key ${key} rejects instead of silently dropping data`,
+  );
+}
 for (const patch of [{ x: Infinity }, { id: "" }, { order: -1 }])
   expect(
     parseGraphModelJson(

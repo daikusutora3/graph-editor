@@ -190,6 +190,70 @@ try {
       raw === serializeGraphModel(edited),
     "new graph cannot overwrite a newer external snapshot",
   );
+  acceptStorageBaseline(raw);
+  const lockWaiters: Array<() => void> = [];
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      locks: {
+        request: async (_name: string, callback: () => void) => {
+          await new Promise<void>((resolve) => lockWaiters.push(resolve));
+          locked = true;
+          try {
+            callback();
+          } finally {
+            locked = false;
+          }
+        },
+      },
+    },
+  });
+  scheduleStoredGraphWrite(graph);
+  const duplicateCount = writes;
+  const concurrentFlushes = [flushStoredGraphWrite(), flushStoredGraphWrite()];
+  expect(lockWaiters.length === 2, "both flushes queue behind Web Locks");
+  for (const releaseLock of lockWaiters) releaseLock();
+  await Promise.all(concurrentFlushes);
+  expect(
+    writes === duplicateCount + 1 &&
+      raw === serializeGraphModel(graph) &&
+      getStorageSnapshot().status === "saved",
+    "concurrent flushes write and complete one generation only once",
+  );
+  const queuedLocks: Array<{
+    resolve: () => void;
+    reject: (error: Error) => void;
+  }> = [];
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      locks: {
+        request: async (_name: string, callback: () => void) => {
+          await new Promise<void>((resolve, reject) => {
+            queuedLocks.push({ resolve, reject });
+          });
+          locked = true;
+          try {
+            callback();
+          } finally {
+            locked = false;
+          }
+        },
+      },
+    },
+  });
+  scheduleStoredGraphWrite(edited);
+  const successful = flushStoredGraphWrite();
+  const obsoleteFailure = flushStoredGraphWrite();
+  queuedLocks[0]!.resolve();
+  await successful;
+  queuedLocks[1]!.reject(new Error("Web Lock became unavailable"));
+  await obsoleteFailure;
+  expect(
+    getStorageSnapshot().status === "saved" &&
+      raw === serializeGraphModel(edited),
+    "a redundant lock failure cannot mark an already completed edit unsaved",
+  );
   acceptStorageBaseline(null);
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,

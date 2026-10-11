@@ -100,6 +100,7 @@ export const undoAtom = atom(null, (get, set) => {
     graph,
     transaction.backward,
   );
+  set(commandErrorAtom, null);
   set(commitGraphAtom, nextGraph, serialized);
   set(graphRevisionAtom, transaction.beforeRevision);
   set(edgeDraftAtom, createEmptyEdgeDraft());
@@ -128,6 +129,7 @@ export const redoAtom = atom(null, (get, set) => {
     graph,
     transaction.forward,
   );
+  set(commandErrorAtom, null);
   set(commitGraphAtom, nextGraph, serialized);
   set(graphRevisionAtom, transaction.afterRevision);
   set(edgeDraftAtom, createEmptyEdgeDraft());

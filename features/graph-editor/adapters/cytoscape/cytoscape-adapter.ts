@@ -3,6 +3,7 @@ import {
   withMeasuredNodeGeometry,
 } from "../browser/node-geometry";
 import { refreshCytoscapeGeometry } from "./graph-canvas-geometry-refresh";
+import { toGraphPosition } from "./cytoscape-coordinates";
 import {
   decodeCytoscapeId,
   encodeCytoscapeId,
@@ -241,7 +242,7 @@ function graphModelWithCytoscapeNodePositions(
         return node;
       }
 
-      const position = cyNode.position();
+      const position = toGraphPosition(cy, cyNode.position());
 
       return {
         ...node,

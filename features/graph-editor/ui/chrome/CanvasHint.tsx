@@ -43,7 +43,6 @@ export function CanvasHint({
   const sourceLabel = useAtomValue(edgeDraftSourceLabelAtom);
   const hasSource = sourceLabel !== null;
 
-  const idle = useIdle(HINT_IDLE_MS);
   const showPlaceNode = useStuckHint({
     id: "place-node",
     active: visible && mode === "node" && !hasNodes,
@@ -69,6 +68,15 @@ export function CanvasHint({
     active: visible && mode === "select" && hasNodes && !hasSelection,
     done: hasSelection,
   });
+  const idle = useIdle(
+    HINT_IDLE_MS,
+    visible &&
+      (showPlaceNode ||
+        showConnect ||
+        showEdgeStart ||
+        showEdgeTarget ||
+        showSelect),
+  );
 
   if (!visible || !idle) {
     return null;
@@ -96,16 +104,33 @@ export function CanvasHint({
 }
 
 /** True once the user has not touched pointer or keyboard for `delayMs`. */
-function useIdle(delayMs: number) {
+function useIdle(delayMs: number, enabled: boolean) {
   const [idle, setIdle] = useState(false);
 
   useEffect(() => {
-    let timeoutId = window.setTimeout(() => setIdle(true), delayMs);
+    setIdle(false);
+    if (!enabled) return;
+
+    let lastActivity = performance.now();
+    let timeoutId: number | null = null;
+    const checkIdle = () => {
+      const remaining = lastActivity + delayMs - performance.now();
+      if (remaining > 0) {
+        timeoutId = window.setTimeout(checkIdle, remaining);
+      } else {
+        timeoutId = null;
+        setIdle(true);
+      }
+    };
     const reset = () => {
       setIdle(false);
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => setIdle(true), delayMs);
+      lastActivity = performance.now();
+      // Pointer movement can fire hundreds of times per second. Keep one
+      // timer and check the latest deadline when it wakes instead of
+      // allocating and cancelling a timer for each event.
+      timeoutId ??= window.setTimeout(checkIdle, delayMs);
     };
+    timeoutId = window.setTimeout(checkIdle, delayMs);
     const events = ["pointerdown", "pointermove", "keydown", "wheel"] as const;
 
     for (const event of events) {
@@ -113,14 +138,14 @@ function useIdle(delayMs: number) {
     }
 
     return () => {
-      window.clearTimeout(timeoutId);
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
       for (const event of events) {
         window.removeEventListener(event, reset);
       }
     };
-  }, [delayMs]);
+  }, [delayMs, enabled]);
 
-  return idle;
+  return enabled && idle;
 }
 
 /**

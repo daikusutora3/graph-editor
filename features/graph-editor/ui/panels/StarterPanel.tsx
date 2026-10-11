@@ -34,12 +34,11 @@ import { Button, Select, focusRing, raisedControl } from "../primitives";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/sample-gallery-layout";
 import { SampleGraphPreview } from "../samples/SampleGraphPreview";
 
-export const loadSampleGalleryPane = () =>
+const SampleGalleryPane = lazy(() =>
   import("../samples/SampleGalleryPane").then((module) => ({
     default: module.SampleGalleryPane,
-  }));
-
-const SampleGalleryPane = lazy(loadSampleGalleryPane);
+  })),
+);
 
 type StarterState = ReturnType<typeof useGraphStarterState>;
 
