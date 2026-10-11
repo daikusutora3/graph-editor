@@ -64,6 +64,8 @@ const suites = [
     path: "tests/verification/ui-control-contracts.tsx",
   },
   { name: "panel-dismissal", path: "tests/verification/panel-dismissal.mjs" },
+  { name: "tooltip-position", path: "tests/verification/tooltip-position.ts" },
+  { name: "tooltip-layer", path: "tests/verification/tooltip-layer.mjs" },
   {
     name: "sample-parameters",
     path: "tests/verification/sample-parameters.ts",

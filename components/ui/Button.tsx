@@ -3,6 +3,9 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import type { TooltipSide } from "./tooltip-position";
+
+export type { TooltipSide } from "./tooltip-position";
 
 import {
   controlIcon,
@@ -47,8 +50,6 @@ const wrapSizeClass: Record<ButtonSize, string> = {
   md: "min-h-9 gap-1.5 px-2.5 py-2 text-control touch:min-h-11 touch:px-3",
   lg: "min-h-10 gap-2 px-3.5 py-2 text-control touch:min-h-11",
 };
-
-export type TooltipSide = "bottom" | "bottom-end" | "top" | "top-start";
 
 type TooltipProps = {
   /** Visible on hover/focus. Replaces the native `title` so pointer users

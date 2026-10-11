@@ -46,6 +46,12 @@ mock.module("react", () => ({
       return load();
     }),
 }));
+// Tooltip DOM lifecycle is covered independently; this suite doubles only the
+// browser resources used by sample loading.
+mock.module(
+  new URL("../../components/ui/TooltipLayer.tsx", import.meta.url).pathname,
+  () => ({ TooltipLayer: () => null }),
+);
 const feature = (path) =>
   new URL(`../../features/graph-editor/${path}`, import.meta.url).pathname;
 const controlledError = new Error("Controlled sample module load failure");
