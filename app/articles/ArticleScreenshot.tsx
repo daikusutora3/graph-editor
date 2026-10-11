@@ -61,12 +61,19 @@ export function ArticleScreenshot({
     <figure className="mt-5 space-y-3">
       <Image
         unoptimized
+        src={`/articles/screenshots/${slug}-mobile.jpg`}
+        alt={caption}
+        width={375}
+        height={812}
+        className="h-auto w-full rounded-xl border border-[var(--line)] sm:hidden"
+      />
+      <Image
+        unoptimized
         src={`/articles/screenshots/${slug}.png`}
         alt={caption}
         width={853}
         height={954}
-        sizes="(max-width: 768px) 100vw, 672px"
-        className="h-auto w-full rounded-xl border border-[var(--line)]"
+        className="hidden h-auto w-full rounded-xl border border-[var(--line)] sm:block"
       />
       <figcaption className="text-[15px] leading-7 text-[var(--text-2)]">
         {caption}

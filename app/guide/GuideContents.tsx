@@ -19,7 +19,7 @@ export function GuideContents({
         </p>
         <ol
           className={cn(
-            "grid gap-x-2 border-l border-[var(--line)] pl-2 sm:grid-cols-2 lg:grid-cols-1",
+            "grid grid-cols-2 gap-x-2 gap-y-1 lg:grid-cols-1 lg:border-l lg:border-[var(--line)] lg:pl-2",
             styles.contentsList,
           )}
         >
@@ -27,7 +27,10 @@ export function GuideContents({
             <li key={entry.href}>
               <a
                 href={entry.href}
-                className={cn(actionStyles(), "w-full text-sm leading-6")}
+                className={cn(
+                  actionStyles(),
+                  "h-full w-full px-2 text-sm leading-5 lg:px-3 lg:leading-6",
+                )}
               >
                 {entry.title}
               </a>

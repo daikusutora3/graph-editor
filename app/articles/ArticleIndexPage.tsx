@@ -55,7 +55,7 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
         <div
           id="articles-content"
           tabIndex={-1}
-          className="mt-8 grid min-w-0 scroll-mt-28 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          className="mt-8 grid min-w-0 scroll-mt-36 gap-5 sm:grid-cols-2 md:scroll-mt-28 lg:grid-cols-3"
         >
           {articles.map((article) => (
             <ArticleCard key={article.slug} article={article} locale={locale} />

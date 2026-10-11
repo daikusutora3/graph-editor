@@ -6,7 +6,7 @@
   scroll-margin-top: calc(var(--guide-header-height) + 24px);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .page {
     --guide-header-height: 60px;
   }

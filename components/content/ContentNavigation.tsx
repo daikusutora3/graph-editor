@@ -12,6 +12,7 @@ import {
 } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
 import { ContentLanguageMenu } from "./ContentLanguageMenu";
+import { ContentThemeToggle } from "./ContentThemeToggle";
 import { ContextGuideLink } from "./ContextGuideLink";
 
 type ReadingSection = "articles" | "guide";
@@ -30,7 +31,7 @@ export function ContentHeader({
   const copy = contentNavigationCopy[locale];
   const navClass = cn(
     actionStyles(),
-    "text-sm",
+    "px-2 text-sm sm:px-3",
     "aria-[current=page]:bg-[var(--fill)] aria-[current=page]:font-semibold aria-[current=page]:text-[var(--text)]",
   );
   return (
@@ -50,10 +51,10 @@ export function ContentHeader({
           <BrandLogo size={28} />
           <span translate="no">{APP_NAME}</span>
         </a>
-        <div className="order-3 flex w-full items-center justify-center gap-2 sm:order-none sm:w-auto">
+        <div className="order-3 flex w-full items-center justify-between gap-1 md:order-none md:w-auto md:justify-center md:gap-2">
           <nav
             aria-label={copy.navigation}
-            className="flex flex-wrap items-center justify-center gap-1"
+            className="flex shrink-0 items-center gap-1"
           >
             {section === "guide" ? (
               <a
@@ -85,19 +86,22 @@ export function ContentHeader({
               {copy.articles}
             </Link>
           </nav>
-          <ContentLanguageMenu
-            preserveGuideSection={section === "guide"}
-            label={copy.languages}
-            current={locale}
-            options={languages.map((language) => ({
-              locale: language,
-              name: languageNames[language],
-              href:
-                section === "guide"
-                  ? appGuidePaths[language]
-                  : `${appArticlePaths[language]}${slug ? `/${slug}` : ""}`,
-            }))}
-          />
+          <div className="flex shrink-0 items-center">
+            <ContentLanguageMenu
+              preserveGuideSection={section === "guide"}
+              label={copy.languages}
+              current={locale}
+              options={languages.map((language) => ({
+                locale: language,
+                name: languageNames[language],
+                href:
+                  section === "guide"
+                    ? appGuidePaths[language]
+                    : `${appArticlePaths[language]}${slug ? `/${slug}` : ""}`,
+              }))}
+            />
+            <ContentThemeToggle labels={copy} />
+          </div>
         </div>
         <ContentEditorLink locale={locale} />
       </div>

@@ -57,7 +57,10 @@ export function GuideOperationVisual({
       )}
     >
       {captions.map((caption, index) => (
-        <figure key={caption} className="min-w-0">
+        <figure
+          key={caption}
+          className="grid min-w-0 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3 sm:block"
+        >
           <svg
             viewBox="0 0 240 156"
             aria-hidden="true"
@@ -80,7 +83,7 @@ export function GuideOperationVisual({
             />
             <Operation id={id} step={index} />
           </svg>
-          <figcaption className="flex min-h-11 items-center gap-2 px-1 pt-2 text-sm leading-6 font-medium">
+          <figcaption className="flex min-h-11 items-start gap-2 text-sm leading-6 font-medium sm:items-center sm:px-1 sm:pt-2">
             {id === "export" || id === "appearance" ? null : (
               <span
                 className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--fill)] text-[11px] text-[var(--muted)]"
