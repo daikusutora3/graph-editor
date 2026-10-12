@@ -1,21 +1,18 @@
-import readingStyles from "@/components/content/ReadingLayout.module.css";
 import { ArrowRight } from "lucide-react";
 import { GuideExamples } from "./GuideExamples";
 import { ContentFooter } from "@/components/content/ContentFooter";
 import {
+  ReadingPage,
   ReadingContainer,
   ReadingIntro,
   ReadingBody,
 } from "@/components/content/ReadingLayout";
-import { ContentHeader } from "@/components/content/ContentNavigation";
 import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
 import { RelatedLinks } from "@/components/content/RelatedLinks";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Accordion } from "@/components/ui/Accordion";
 import { ContentSection } from "@/components/ui/ContentSection";
-import { focusRing } from "@/components/ui/styles";
-import { cn } from "@/lib/utils";
 import {
   articleCopy,
   articlePath,
@@ -105,25 +102,14 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
     },
   ];
   return (
-    <main
-      id="guide-top"
-      data-reading
-      className={cn(
-        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
-        readingStyles.page,
-      )}
+    <ReadingPage
+      locale={locale}
+      section="guide"
+      topId="guide-top"
+      contentId="guide-content"
+      skipLabel={copy.skipToContent}
+      structuredData={structuredData}
     >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-      <a
-        href="#guide-content"
-        className={`sr-only fixed top-3 left-3 z-50 rounded-lg bg-[var(--panel-solid)] px-4 py-3 text-sm focus:not-sr-only ${focusRing}`}
-      >
-        {copy.skipToContent}
-      </a>
-      <ContentHeader locale={locale} section="guide" />
       <ReadingContainer>
         <ReadingIntro
           title={copy.heading}
@@ -197,6 +183,6 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
           <ContentFooter locale={locale} topId="guide-top" />
         </ReadingBody>
       </ReadingContainer>
-    </main>
+    </ReadingPage>
   );
 }

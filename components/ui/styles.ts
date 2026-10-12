@@ -9,6 +9,7 @@ export const panelSurface =
 /** Reading surfaces share a scale distinct from compact navigation labels. */
 export const bodyText =
   "text-base leading-[1.85] text-[var(--text-2)] [overflow-wrap:break-word] sm:text-[17px]";
+export const figureCaption = "text-sm leading-7 text-[var(--text-2)]";
 export const readingMeasure = "max-w-[42rem]";
 
 const actionVariants = {

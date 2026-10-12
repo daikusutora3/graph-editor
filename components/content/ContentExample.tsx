@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { figureCaption } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
 import { ContentCopyButton } from "./ContentCopyButton";
 
 export function ContentExample({
@@ -42,7 +44,7 @@ export function ContentExample({
         </p>
         <div className="mt-3 flex items-center justify-center">{children}</div>
         {caption ? (
-          <figcaption className="mt-3 text-sm leading-7 text-[var(--text-2)]">
+          <figcaption className={cn("mt-3", figureCaption)}>
             {caption}
           </figcaption>
         ) : null}

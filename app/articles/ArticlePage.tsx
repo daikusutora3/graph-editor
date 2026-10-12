@@ -1,13 +1,15 @@
-import readingStyles from "@/components/content/ReadingLayout.module.css";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { ContentExample } from "@/components/content/ContentExample";
 import {
+  ReadingPage,
   ReadingContainer,
   ReadingIntro,
   ReadingBody,
 } from "@/components/content/ReadingLayout";
 import { ArticleCover } from "./ArticleCover";
+import { ContentCardGrid } from "@/components/content/ContentCard";
+import { ActionLink } from "@/components/ui/ActionLink";
 import { ArticleCard } from "./ArticleCard";
 import { ArticleDiagram } from "./ArticleDiagram";
 import {
@@ -16,14 +18,8 @@ import {
 } from "./ArticleScreenshot";
 import { ContentFooter } from "@/components/content/ContentFooter";
 import { ContextGuideLink } from "@/components/content/ContextGuideLink";
-import { ContentHeader } from "@/components/content/ContentNavigation";
 import { ContentSection } from "@/components/ui/ContentSection";
-import {
-  actionStyles,
-  bodyText,
-  readingMeasure,
-  focusRing,
-} from "@/components/ui/styles";
+import { actionStyles, bodyText, readingMeasure } from "@/components/ui/styles";
 import {
   articleCopy,
   articleIndexPath,
@@ -113,30 +109,15 @@ export function ArticlePage({
   ];
 
   return (
-    <main
-      id="articles-top"
-      data-reading
-      className={cn(
-        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
-        readingStyles.page,
-      )}
+    <ReadingPage
+      locale={locale}
+      section="articles"
+      slug={article.slug}
+      topId="articles-top"
+      contentId="article-content"
+      skipLabel={copy.skipToContent}
+      structuredData={structuredData}
     >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
-        }}
-      />
-      <a
-        href="#article-content"
-        className={cn(
-          "sr-only fixed top-3 left-3 z-50 rounded-lg bg-[var(--panel-solid)] px-4 py-3 text-sm focus:not-sr-only",
-          focusRing,
-        )}
-      >
-        {copy.skipToContent}
-      </a>
-      <ContentHeader locale={locale} section="articles" slug={article.slug} />
       <ReadingContainer>
         <ArticleCover article={article} />
         <nav
@@ -219,18 +200,18 @@ export function ArticlePage({
               title={copy.relatedTitle}
               variant="plain"
             >
-              <div className="mt-5 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
+              <ContentCardGrid className="mt-5" columns={2}>
                 {related.map((relatedArticle) => (
                   <ArticleCard
                     key={relatedArticle.slug}
                     article={relatedArticle}
                     locale={locale}
+                    headingLevel={3}
                   />
                 ))}
-              </div>
-              <Link
+              </ContentCardGrid>
+              <ActionLink
                 href={articleIndexPath(locale)}
-                prefetch={false}
                 className={cn(
                   actionStyles(),
                   "mt-4 -ml-3 text-sm active:bg-[var(--fill-2)]",
@@ -238,12 +219,12 @@ export function ArticlePage({
               >
                 {copy.allArticles}
                 <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
-              </Link>
+              </ActionLink>
             </ContentSection>
           </div>
           <ContentFooter locale={locale} topId="articles-top" />
         </ReadingBody>
       </ReadingContainer>
-    </main>
+    </ReadingPage>
   );
 }

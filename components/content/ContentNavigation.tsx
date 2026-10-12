@@ -32,7 +32,7 @@ export function ContentHeader({
   const copy = contentNavigationCopy[locale];
   const navClass = cn(
     actionStyles(),
-    "px-2 text-sm max-[319px]:gap-1 max-[319px]:px-1 sm:px-3",
+    "px-2 text-sm max-[319px]:gap-1 max-[319px]:px-1 max-sm:gap-1.5 max-sm:px-1.5 max-sm:text-[13px] sm:px-3",
     "aria-[current=page]:bg-[var(--fill)] aria-[current=page]:font-semibold aria-[current=page]:text-[var(--text)]",
   );
   return (
