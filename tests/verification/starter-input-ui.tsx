@@ -79,6 +79,7 @@ const cases: [StarterState, StarterInputStatus][] = [
   [reading, "reading"],
   [{ ...reading, inputText: "" }, "reading"],
   [valid, "ready"],
+  [starter("1 1 5\n1 1 a", { weighted: true }), "ready"],
   [emptyJson, "ready"],
   [warning, "warning"],
   [noEdgeWarning, "warning"],

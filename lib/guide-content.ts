@@ -181,7 +181,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
         },
         note: {
           title: "重みや矢印を使う場合",
-          text: "辺リストの 3 列目が重みです。重み付き辺リストを読み込むと、自動で重みありになります。有向グラフは「設定」で「有向」に切り替えてください。",
+          text: "辺リストの 3 列目には数値の重みや文字ラベルを指定できます。読み込むと自動で重みありになります。文字ラベル付きで先頭行が N M K の入力は、M 行の辺が揃っていれば K を除いて読み込みます。有向グラフは「設定」で「有向」に切り替えてください。",
         },
       },
       {
@@ -453,7 +453,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
         },
         note: {
           title: "Weights and arrows",
-          text: "A third column in an edge list supplies the weight and turns weights on automatically. For a directed graph, choose Directed in Settings.",
+          text: "The third column in an edge list can contain a numeric weight or a text label, and turns weights on automatically. Text-labeled input with an N M K header is imported without K when all M edge rows are present. For a directed graph, choose Directed in Settings.",
         },
       },
       {
@@ -733,7 +733,7 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
         },
         note: {
           title: "权重和箭头",
-          text: "边列表的第三列表示权重，编辑器会自动开启权重。有向图需要在“设置”中选择“有向”。",
+          text: "边列表的第三列可以是数值权重或文字标签，编辑器会自动开启权重。对于以 N M K 开头的文字标签输入，如果 M 行边数据完整，将忽略 K 后导入。有向图需要在“设置”中选择“有向”。",
         },
       },
       {

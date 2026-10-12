@@ -14,7 +14,11 @@ import {
 } from "./import-utils";
 import type { ImportResult, ImportWarning } from "./import-types";
 import { importTextLimitWarning } from "./import-text-limits";
-import { createImportSource, type ImportSource } from "./import-source";
+import {
+  createImportSource,
+  isStructuredEdgeListHeader,
+  type ImportSource,
+} from "./import-source";
 
 type EdgeListImportOptions = ImportOptions;
 
@@ -31,7 +35,7 @@ export function importStructuredEdgeList(
   const nodeCount = Number(header[0]);
   const edgeCount = Number(header[1]);
 
-  if (header.length !== 2) {
+  if (!isStructuredEdgeListHeader(header, source.rows.slice(1))) {
     return {
       model: createEmptyGraphModel(settings),
       warnings: [
