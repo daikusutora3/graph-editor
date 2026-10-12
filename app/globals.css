@@ -55,10 +55,6 @@
   --warning: rgb(251 191 36 / 0.16);
   --warning-text: #fcd34d;
 
-  /* elevation */
-  --shadow: 0 14px 32px -18px rgb(0 0 0 / 0.6);
-  --shadow-lg: 0 18px 40px -20px rgb(0 0 0 / 0.7);
-
   /* canvas */
   --canvas-node: #27272a;
   --canvas-node-border: #e4e4e7;
@@ -132,11 +128,6 @@
   --success-text: #166534;
   --warning: #fef3c7;
   --warning-text: #92400e;
-
-  --shadow:
-    0 1px 0 rgb(27 35 48 / 0.04), 0 14px 32px -18px rgb(27 35 48 / 0.18);
-  --shadow-lg:
-    0 1px 0 rgb(27 35 48 / 0.04), 0 18px 40px -20px rgb(27 35 48 / 0.24);
 
   --canvas-node: #ffffff;
   --canvas-node-border: #111827;
@@ -254,7 +245,6 @@
 .ge-panel {
   border: 1px solid var(--line);
   background: var(--panel);
-  box-shadow: var(--shadow);
 }
 
 .ge-popover {
@@ -374,7 +364,6 @@
   white-space: normal;
   overflow: hidden;
   overflow-wrap: anywhere;
-  box-shadow: var(--shadow);
   pointer-events: none;
 }
 
@@ -423,7 +412,6 @@
   border: 2px solid var(--accent);
   border-radius: 999px;
   background: var(--panel-solid);
-  box-shadow: 0 1px 3px rgb(15 23 42 / 0.2);
   box-sizing: border-box;
 }
 

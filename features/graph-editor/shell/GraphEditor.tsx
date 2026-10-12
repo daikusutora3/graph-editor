@@ -56,7 +56,7 @@ function GraphEditorContent() {
         href={appGuidePaths[locale]}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute -top-20 left-3 z-[100] inline-flex min-h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow)] focus:top-3 focus:outline-2 focus:outline-offset-2"
+        className="absolute -top-20 left-3 z-[100] inline-flex min-h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-sm font-semibold text-[var(--text)] focus:top-3 focus:outline-2 focus:outline-offset-2"
       >
         {messages.appMenu.guide}
       </a>

@@ -97,7 +97,7 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
         </summary>
         <div
           className={cn(
-            "absolute inset-x-0 bottom-full z-10 mb-2 flex flex-col gap-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1 shadow-[var(--shadow)]",
+            "absolute inset-x-0 bottom-full z-10 mb-2 flex flex-col gap-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1",
             // Leave the toolbar, 54px footer and the popup's 8px gap uncovered.
             mobile
               ? "max-h-[max(48px,calc(var(--ge-viewport-height,100dvh)-var(--ge-mobile-controls-bottom,92px)-190px))]"

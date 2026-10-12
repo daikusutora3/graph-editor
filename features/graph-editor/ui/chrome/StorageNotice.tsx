@@ -98,7 +98,7 @@ export function StorageNoticeContent({
   return (
     <aside
       data-storage-notice={state.status}
-      className="pointer-events-auto absolute inset-x-3 top-20 z-[70] mx-auto max-h-[calc(100dvh-10rem)] max-w-xl overflow-y-auto overscroll-contain rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3 text-xs leading-relaxed text-[var(--text)] shadow-lg"
+      className="pointer-events-auto absolute inset-x-3 top-20 z-[70] mx-auto max-h-[calc(100dvh-10rem)] max-w-xl overflow-y-auto overscroll-contain rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] p-3 text-xs leading-relaxed text-[var(--text)]"
     >
       <div role="status">
         {needsStorageAttention ? (
