@@ -1,7 +1,5 @@
 "use client";
 
-import { Check } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
 import { focusRing } from "./control-styles";
@@ -20,7 +18,7 @@ export function Segment<T extends string>({
   options,
   size = "sm",
   value,
-  wrap = false,
+  wrap = true,
 }: {
   disabled?: boolean;
   label: string;
@@ -51,28 +49,21 @@ export function Segment<T extends string>({
             aria-label={`${label}: ${option.label}`}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex min-w-0 items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-control transition-colors disabled:cursor-default disabled:opacity-50",
+              "flex min-w-0 items-center justify-center rounded-lg border px-0.5 py-1 text-control font-semibold transition-colors disabled:cursor-default disabled:opacity-50",
               "focus-visible:relative focus-visible:z-10",
               focusRing,
               size === "md" ? "min-h-9" : "min-h-[30px]",
               "touch:min-h-11",
               selected
-                ? "bg-[var(--panel-solid)] font-semibold text-[var(--text)]"
-                : "font-medium text-[var(--muted)] hover:text-[var(--text)]",
+                ? "border-[var(--accent)] bg-[var(--panel-solid)] text-[var(--accent-text)]"
+                : "border-transparent text-[var(--muted)] hover:text-[var(--text)]",
             )}
           >
-            {selected ? (
-              <Check
-                className="size-3 shrink-0 text-[var(--accent-text)]"
-                strokeWidth={1.75}
-                aria-hidden="true"
-              />
-            ) : null}
             <span
               className={cn(
                 "min-w-0 text-center leading-snug",
                 wrap
-                  ? "[overflow-wrap:anywhere] whitespace-normal"
+                  ? "[overflow-wrap:anywhere] hyphens-auto whitespace-normal"
                   : "whitespace-nowrap",
               )}
             >

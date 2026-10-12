@@ -57,7 +57,7 @@ export function ControlRow({
     >
       <Label
         htmlFor={htmlFor}
-        className="text-control font-medium text-[var(--muted)]"
+        className="min-w-0 text-control font-medium [overflow-wrap:anywhere] text-[var(--muted)]"
       >
         {label}
       </Label>
