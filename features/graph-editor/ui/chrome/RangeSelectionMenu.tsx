@@ -123,7 +123,7 @@ export function RangeSelectionMenu({
           role="menu"
           aria-label={copy.target}
           className={cn(
-            "ge-panel ge-pop pointer-events-auto absolute left-0 z-50 flex w-52 max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-xl p-1.5 backdrop-blur-[12px]",
+            "ge-pop pointer-events-auto absolute left-0 z-50 flex w-52 max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-1.5",
             above ? "bottom-full mb-3" : "top-full mt-3",
           )}
           onBlur={(event) => {
