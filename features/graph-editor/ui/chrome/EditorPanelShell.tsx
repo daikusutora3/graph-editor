@@ -102,9 +102,12 @@ export function EditorPanelShell({
       return;
     }
 
+    const anchorSurface = anchor.closest<HTMLElement>(".ge-panel") ?? anchor;
+
     const updatePosition = () => {
       const bounds = container.getBoundingClientRect();
       const trigger = anchor.getBoundingClientRect();
+      const surface = anchorSurface.getBoundingClientRect();
       const margin = mobile ? 12 : 16;
       const panelWidth = section.offsetWidth;
       const desiredLeft =
@@ -120,7 +123,7 @@ export function EditorPanelShell({
       const top = Math.max(
         margin,
         Math.min(
-          trigger.bottom - bounds.top + 8,
+          surface.bottom - bounds.top + 8,
           bounds.height - section.offsetHeight - margin,
         ),
       );
@@ -132,6 +135,7 @@ export function EditorPanelShell({
     const observer = new ResizeObserver(updatePosition);
     observer.observe(container);
     observer.observe(anchor);
+    if (anchorSurface !== anchor) observer.observe(anchorSurface);
     observer.observe(section);
     return () => observer.disconnect();
   }, [mobile, mobileSheet, modal, panel]);
