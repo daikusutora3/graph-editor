@@ -148,12 +148,7 @@ export function ArticlePage({
           <span className="py-2">{article.category}</span>
         </nav>
         <header className="mb-7 sm:mb-9">
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-            <p className="text-[13px] font-medium text-[var(--text-2)]">
-              {article.category}
-            </p>
-          </div>
-          <h1 className="mt-4 max-w-4xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
+          <h1 className="max-w-4xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
             {article.title}
           </h1>
           <p className={cn("mt-4", bodyText, readingMeasure)}>
