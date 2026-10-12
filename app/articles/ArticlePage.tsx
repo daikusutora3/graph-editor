@@ -1,15 +1,20 @@
 import readingStyles from "@/components/content/ReadingLayout.module.css";
-import { ArrowRight, BookOpen, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { GuideCopyButton } from "@/app/guide/GuideCopyButton";
-import { GuideContents } from "@/app/guide/GuideNavigation";
+import { ContentExample } from "@/components/content/ContentExample";
+import {
+  ReadingContainer,
+  ReadingIntro,
+  ReadingBody,
+} from "@/components/content/ReadingLayout";
+import { ArticleCover } from "./ArticleCover";
 import { ArticleCard } from "./ArticleCard";
 import { ArticleDiagram } from "./ArticleDiagram";
 import {
   ArticleScreenshot,
   articleScreenshotSections,
 } from "./ArticleScreenshot";
-import { ArticleFooter } from "./ArticleFooter";
+import { ContentFooter } from "@/components/content/ContentFooter";
 import { ContextGuideLink } from "@/components/content/ContextGuideLink";
 import { ContentHeader } from "@/components/content/ContentNavigation";
 import { ContentSection } from "@/components/ui/ContentSection";
@@ -132,7 +137,8 @@ export function ArticlePage({
         {copy.skipToContent}
       </a>
       <ContentHeader locale={locale} section="articles" slug={article.slug} />
-      <div className="mx-auto max-w-6xl px-[var(--reading-gutter)] pt-5 pb-12 sm:pt-8 sm:pb-16">
+      <ReadingContainer>
+        <ArticleCover article={article} />
         <nav
           aria-label={copy.articlesLink}
           className="mb-5 flex min-w-0 flex-wrap items-center gap-x-1 text-sm text-[var(--muted)]"
@@ -147,135 +153,97 @@ export function ArticlePage({
           <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="py-2">{article.category}</span>
         </nav>
-        <header className="mb-7 sm:mb-9">
-          <h1 className="max-w-4xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
-            {article.title}
-          </h1>
-          <p className={cn("mt-4", bodyText, readingMeasure)}>
-            {article.introduction}
-          </p>
-          <aside className="mt-6 flex min-w-0 items-start gap-3 rounded-xl border border-[var(--line)] bg-[var(--fill)] p-4 sm:p-5">
-            <BookOpen
-              className="mt-1.5 size-5 shrink-0 text-[var(--muted)]"
-              aria-hidden="true"
+        <ReadingIntro title={article.title} description={article.introduction}>
+          <div className="mt-4 flex min-w-0 flex-wrap items-center gap-x-3 text-sm">
+            <span className="text-xs text-[var(--muted)]">
+              {copy.operationGuideLabel}
+            </span>
+            <ContextGuideLink
+              locale={locale}
+              target={article.guide.sectionId}
+              label={article.guide.label}
             />
-            <div className="min-w-0">
-              <p className="text-[13px] font-medium text-[var(--muted)]">
-                {copy.operationGuideLabel}
-              </p>
-              <ContextGuideLink
-                locale={locale}
-                target={article.guide.sectionId}
-                label={article.guide.label}
-              />
-            </div>
-          </aside>
-        </header>
-        <div className="grid min-w-0 gap-8 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
-          <GuideContents title={copy.onThisPage} entries={entries} />
-          <article
-            id="article-content"
-            tabIndex={-1}
-            className={cn(readingMeasure, "@container/reading min-w-0")}
-          >
-            <div className="space-y-10 sm:space-y-12">
-              {article.sections.map((section, index) => (
-                <ContentSection
-                  key={section.id}
-                  id={section.id}
-                  title={section.title}
-                  variant={index === 0 ? "plain" : "divided"}
-                >
-                  {section.id === articleScreenshotSections[article.slug] ? (
-                    <ArticleScreenshot slug={article.slug} locale={locale} />
-                  ) : null}
-                  <div className={cn("mt-4 space-y-5", bodyText)}>
-                    {section.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                    {section.points?.length ? (
-                      <ul className="list-disc space-y-2 pl-5 marker:text-[var(--muted)]">
-                        {section.points.map((point) => (
-                          <li key={point}>{point}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                </ContentSection>
-              ))}
-              <ContentSection id="article-example" title={copy.exampleTitle}>
-                <div className="mt-5 grid min-w-0 overflow-hidden rounded-xl border border-[var(--line)] @min-[32rem]/reading:grid-cols-2">
-                  <div className="min-w-0 bg-[var(--fill)] px-4 pb-5 sm:px-5">
-                    <div className="flex flex-wrap items-center justify-between gap-2 py-2">
-                      <p className="text-sm font-medium text-[var(--text-2)]">
-                        {copy.input}
-                      </p>
-                      <GuideCopyButton
-                        text={article.example.input}
-                        title={article.title}
-                        labels={{
-                          copy: copy.copy,
-                          copySuccess: copy.copySuccess,
-                          copyFailure: copy.copyFailure,
-                        }}
-                      />
-                    </div>
-                    <pre
-                      translate="no"
-                      className="min-w-0 overflow-x-auto font-mono text-base leading-7 text-[var(--text)]"
-                    >
-                      <code>{article.example.input}</code>
-                    </pre>
-                  </div>
-                  <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 sm:p-5 @min-[32rem]/reading:border-t-0 @min-[32rem]/reading:border-l">
-                    <p className="text-sm font-medium text-[var(--text-2)]">
-                      {copy.result}
-                    </p>
-                    <div className="mt-3 flex items-center justify-center">
-                      <ArticleDiagram example={article.example} />
-                    </div>
-                    <figcaption className="mt-3 text-sm leading-7 text-[var(--text-2)]">
-                      {article.example.result}
-                    </figcaption>
-                  </figure>
-                </div>
-                {article.canonicalGuideExampleId ? (
-                  <div className="mt-3">
-                    <ContextGuideLink
-                      locale={locale}
-                      target={article.canonicalGuideExampleId}
-                      label={copy.sameExampleGuideLabel}
-                    />
-                  </div>
+          </div>
+        </ReadingIntro>
+        <ReadingBody id="article-content" locale={locale} entries={entries}>
+          <div className="space-y-10 sm:space-y-14">
+            {article.sections.map((section) => (
+              <ContentSection
+                key={section.id}
+                id={section.id}
+                title={section.title}
+                variant="plain"
+              >
+                {section.id === articleScreenshotSections[article.slug] ? (
+                  <ArticleScreenshot slug={article.slug} locale={locale} />
                 ) : null}
-              </ContentSection>
-              <ContentSection id="article-related" title={copy.relatedTitle}>
-                <div className="mt-5 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
-                  {related.map((relatedArticle) => (
-                    <ArticleCard
-                      key={relatedArticle.slug}
-                      article={relatedArticle}
-                      locale={locale}
-                    />
+                <div className={cn("mt-4 space-y-5", bodyText, readingMeasure)}>
+                  {section.paragraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
                   ))}
+                  {section.points?.length ? (
+                    <ul className="list-disc space-y-2 pl-5 marker:text-[var(--muted)]">
+                      {section.points.map((point) => (
+                        <li key={point}>{point}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
-                <Link
-                  href={articleIndexPath(locale)}
-                  prefetch={false}
-                  className={cn(
-                    actionStyles(),
-                    "mt-4 -ml-3 text-sm active:bg-[var(--fill-2)]",
-                  )}
-                >
-                  {copy.allArticles}
-                  <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
-                </Link>
               </ContentSection>
-            </div>
-          </article>
-        </div>
-      </div>
-      <ArticleFooter locale={locale} />
+            ))}
+            <ContentSection
+              id="article-example"
+              title={copy.exampleTitle}
+              variant="plain"
+            >
+              <ContentExample
+                input={article.example.input}
+                title={article.title}
+                labels={copy}
+                caption={article.example.result}
+              >
+                <ArticleDiagram example={article.example} />
+              </ContentExample>
+              {article.canonicalGuideExampleId ? (
+                <div className="mt-3">
+                  <ContextGuideLink
+                    locale={locale}
+                    target={article.canonicalGuideExampleId}
+                    label={copy.sameExampleGuideLabel}
+                  />
+                </div>
+              ) : null}
+            </ContentSection>
+            <ContentSection
+              id="article-related"
+              title={copy.relatedTitle}
+              variant="plain"
+            >
+              <div className="mt-5 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5">
+                {related.map((relatedArticle) => (
+                  <ArticleCard
+                    key={relatedArticle.slug}
+                    article={relatedArticle}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+              <Link
+                href={articleIndexPath(locale)}
+                prefetch={false}
+                className={cn(
+                  actionStyles(),
+                  "mt-4 -ml-3 text-sm active:bg-[var(--fill-2)]",
+                )}
+              >
+                {copy.allArticles}
+                <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+              </Link>
+            </ContentSection>
+          </div>
+          <ContentFooter locale={locale} topId="articles-top" />
+        </ReadingBody>
+      </ReadingContainer>
     </main>
   );
 }

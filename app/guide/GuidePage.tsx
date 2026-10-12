@@ -1,15 +1,20 @@
 import readingStyles from "@/components/content/ReadingLayout.module.css";
 import { ArrowRight } from "lucide-react";
 import { GuideExamples } from "./GuideExamples";
-import { GuideFooter } from "./GuideFooter";
-import { GuideContents, GuideHeader } from "./GuideNavigation";
+import { ContentFooter } from "@/components/content/ContentFooter";
+import {
+  ReadingContainer,
+  ReadingIntro,
+  ReadingBody,
+} from "@/components/content/ReadingLayout";
+import { ContentHeader } from "@/components/content/ContentNavigation";
 import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
 import { RelatedLinks } from "@/components/content/RelatedLinks";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Accordion } from "@/components/ui/Accordion";
 import { ContentSection } from "@/components/ui/ContentSection";
-import { bodyText, readingMeasure, focusRing } from "@/components/ui/styles";
+import { focusRing } from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
 import {
   articleCopy,
@@ -118,91 +123,80 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
       >
         {copy.skipToContent}
       </a>
-      <GuideHeader locale={locale} />
-      <div className="mx-auto max-w-6xl px-[var(--reading-gutter)] pt-8 pb-12 sm:pt-12 sm:pb-16">
-        <header className="mb-8 sm:mb-10">
-          <h1 className="max-w-3xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
-            {copy.heading}
-          </h1>
-          <p className={cn("mt-4", bodyText, readingMeasure)}>
-            {guideVisualCopy[locale].intro}
-          </p>
-        </header>
-        <div className="min-w-0 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
-          <GuideContents title={copy.onThisPage} entries={entries} />
-          <article
-            id="guide-content"
-            tabIndex={-1}
-            className="@container/reading min-w-0"
+      <ContentHeader locale={locale} section="guide" />
+      <ReadingContainer>
+        <ReadingIntro
+          title={copy.heading}
+          description={guideVisualCopy[locale].intro}
+        />
+        <ReadingBody id="guide-content" locale={locale} entries={entries}>
+          <GuideQuickStart locale={locale} />
+          <GuideExamples locale={locale} />
+          <div className="mt-10 space-y-10 sm:mt-14 sm:space-y-14">
+            {copy.sections.map((section) => (
+              <ContentSection
+                key={section.id}
+                id={`guide-${section.id}`}
+                anchorId={legacySectionIds[section.id]}
+                title={section.title}
+                variant="plain"
+              >
+                <GuideSectionContent section={section} locale={locale} />
+                {section.id === "shortcuts" ? (
+                  <p className="mt-4 text-xs leading-6 text-[var(--muted)]">
+                    {copy.shortcutsNote}
+                  </p>
+                ) : null}
+                <RelatedLinks
+                  title={articleCopy[locale].relatedTitle}
+                  label={`${section.navTitle}: ${articleCopy[locale].relatedTitle}`}
+                  className="mt-5"
+                  links={getArticlesForGuideSection(locale, section.id).map(
+                    (article) => ({
+                      href: articlePath(locale, article.slug),
+                      title: article.title,
+                    }),
+                  )}
+                />
+              </ContentSection>
+            ))}
+          </div>
+          <ContentSection
+            id="guide-faq"
+            title={copy.faqTitle}
+            variant="plain"
+            description={copy.faqIntro}
+            className="mt-10 sm:mt-14"
           >
-            <GuideQuickStart locale={locale} />
-            <GuideExamples locale={locale} />
-            <div className="mt-10 space-y-10 sm:mt-14 sm:space-y-14">
-              {copy.sections.map((section) => (
-                <ContentSection
-                  key={section.id}
-                  id={`guide-${section.id}`}
-                  anchorId={legacySectionIds[section.id]}
-                  title={section.title}
-                  variant="plain"
-                >
-                  <GuideSectionContent section={section} locale={locale} />
-                  {section.id === "shortcuts" ? (
-                    <p className="mt-4 text-xs leading-6 text-[var(--muted)]">
-                      {copy.shortcutsNote}
-                    </p>
-                  ) : null}
-                  <RelatedLinks
-                    title={articleCopy[locale].relatedTitle}
-                    label={`${section.navTitle}: ${articleCopy[locale].relatedTitle}`}
-                    className="mt-5"
-                    links={getArticlesForGuideSection(locale, section.id).map(
-                      (article) => ({
-                        href: articlePath(locale, article.slug),
-                        title: article.title,
-                      }),
-                    )}
-                  />
-                </ContentSection>
-              ))}
-            </div>
-            <ContentSection
-              id="guide-faq"
-              title={copy.faqTitle}
-              variant="plain"
-              description={copy.faqIntro}
-              className="mt-10 sm:mt-14"
-            >
-              <Accordion
-                name="guide-faq"
-                className="mt-5"
-                items={copy.faq.map((entry, index) => ({
-                  id: entry.question,
-                  title: entry.question,
-                  content: (
-                    <>
-                      <p>{entry.answer}</p>
-                      {index === 0 ? (
-                        <ActionLink
-                          href={articlePath(locale, "edge-list")}
-                          className="mt-3 text-sm"
-                        >
-                          {getArticle(locale, "edge-list")!.title}
-                          <ArrowRight
-                            className="size-4 shrink-0"
-                            aria-hidden="true"
-                          />
-                        </ActionLink>
-                      ) : null}
-                    </>
-                  ),
-                }))}
-              />
-            </ContentSection>
-            <GuideFooter locale={locale} />
-          </article>
-        </div>
-      </div>
+            <Accordion
+              name="guide-faq"
+              className="mt-5"
+              items={copy.faq.map((entry, index) => ({
+                id: entry.question,
+                title: entry.question,
+                content: (
+                  <>
+                    <p>{entry.answer}</p>
+                    {index === 0 ? (
+                      <ActionLink
+                        href={articlePath(locale, "edge-list")}
+                        className="mt-3 text-sm"
+                      >
+                        {getArticle(locale, "edge-list")!.title}
+                        <ArrowRight
+                          className="size-4 shrink-0"
+                          aria-hidden="true"
+                        />
+                      </ActionLink>
+                    ) : null}
+                  </>
+                ),
+              }))}
+            />
+          </ContentSection>
+          <ContentFooter locale={locale} topId="guide-top" />
+        </ReadingBody>
+      </ReadingContainer>
     </main>
   );
 }

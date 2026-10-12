@@ -21,7 +21,6 @@ export type GuideCopy = {
   intro: string;
   openApp: string;
   breadcrumbHome: string;
-  onThisPage: string;
   languages: string;
   languageName: string;
   skipToContent: string;
@@ -101,7 +100,6 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       "Graph Editor で辺リストや隣接行列から図を作る方法、サンプルの使い方、空白から描く方法を紹介します。基本操作と、作ったグラフの保存方法も説明します。",
     openApp: "エディタに戻る",
     breadcrumbHome: "Graph Editor",
-    onThisPage: "目的から探す",
     languages: "ガイドの言語",
     languageName: "日本語",
     skipToContent: "ガイド本文へ移動",
@@ -372,7 +370,6 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       "Turn an edge list or adjacency matrix into a diagram, try a sample, or draw from scratch. Learn the everyday controls and how to save your work.",
     openApp: "Back to editor",
     breadcrumbHome: "Graph Editor",
-    onThisPage: "Find what you need",
     languages: "Guide language",
     languageName: "English",
     skipToContent: "Skip to guide content",
@@ -655,7 +652,6 @@ export const guideCopy: Record<AppLocale, GuideCopy> = {
       "把边列表或邻接矩阵变成图形，试用示例，或从空白开始绘制。了解常用操作，以及如何保存自己的图。",
     openApp: "返回编辑器",
     breadcrumbHome: "Graph Editor",
-    onThisPage: "按需查找",
     languages: "指南语言",
     languageName: "简体中文",
     skipToContent: "跳转到指南正文",
