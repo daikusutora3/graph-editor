@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { contentNavigationCopy } from "@/lib/content-navigation";
 import type { AppLocale } from "@/lib/site-metadata";
 import { ContentContents } from "./ContentContents";
-import { bodyText, readingMeasure } from "@/components/ui/styles";
+import { ContentHeader } from "./ContentNavigation";
+import readingStyles from "./ReadingLayout.module.css";
+import { bodyText, readingMeasure, focusRing } from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
 
 export function ReadingContainer({ children }: { children: ReactNode }) {
@@ -54,5 +56,55 @@ export function ReadingBody({
         {children}
       </article>
     </div>
+  );
+}
+
+/** One server-rendered page shell for guide, article list and article details. */
+export function ReadingPage({
+  locale,
+  section,
+  slug,
+  topId,
+  contentId,
+  skipLabel,
+  structuredData,
+  children,
+}: {
+  locale: AppLocale;
+  section: "guide" | "articles";
+  slug?: string;
+  topId: string;
+  contentId: string;
+  skipLabel: string;
+  structuredData: Record<string, unknown> | readonly Record<string, unknown>[];
+  children: ReactNode;
+}) {
+  return (
+    <main
+      id={topId}
+      data-reading
+      className={cn(
+        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
+        readingStyles.page,
+      )}
+    >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+        }}
+      />
+      <a
+        href={`#${contentId}`}
+        className={cn(
+          "sr-only fixed top-3 left-3 z-50 rounded-lg bg-[var(--panel-solid)] px-4 py-3 text-sm focus:not-sr-only",
+          focusRing,
+        )}
+      >
+        {skipLabel}
+      </a>
+      <ContentHeader locale={locale} section={section} slug={slug} />
+      {children}
+    </main>
   );
 }

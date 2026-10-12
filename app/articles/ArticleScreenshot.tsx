@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { figureCaption } from "@/components/ui/styles";
 import {
   articleScreenshotCaptions,
   articleScreenshotInterfaceNotes,
@@ -40,7 +41,7 @@ export function ArticleScreenshot({
         height={954}
         className="hidden h-auto w-full rounded-xl border border-[var(--line)] @min-[40rem]/article-shot:block"
       />
-      <figcaption className="text-[15px] leading-7 text-[var(--text-2)]">
+      <figcaption className={figureCaption}>
         {caption}
         {articleScreenshotInterfaceNotes[locale]}
       </figcaption>

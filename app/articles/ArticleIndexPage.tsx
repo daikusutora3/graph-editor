@@ -1,15 +1,13 @@
-import readingStyles from "@/components/content/ReadingLayout.module.css";
+import { ContentCardGrid } from "@/components/content/ContentCard";
 import { ArticleCard } from "./ArticleCard";
 import { ContentFooter } from "@/components/content/ContentFooter";
 import {
+  ReadingPage,
   ReadingContainer,
   ReadingIntro,
 } from "@/components/content/ReadingLayout";
-import { ContentHeader } from "@/components/content/ContentNavigation";
-import { focusRing } from "@/components/ui/styles";
 import { articleCopy, articlePath, getArticles } from "@/lib/article-content";
 import { getAppPathUrl, type AppLocale } from "@/lib/site-metadata";
-import { cn } from "@/lib/utils";
 
 export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
   const copy = articleCopy[locale];
@@ -27,43 +25,23 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
   };
 
   return (
-    <main
-      id="articles-top"
-      data-reading
-      className={cn(
-        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
-        readingStyles.page,
-      )}
+    <ReadingPage
+      locale={locale}
+      section="articles"
+      topId="articles-top"
+      contentId="articles-content"
+      skipLabel={copy.skipToContent}
+      structuredData={structuredData}
     >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
-        }}
-      />
-      <a
-        href="#articles-content"
-        className={cn(
-          "sr-only fixed top-3 left-3 z-50 rounded-lg bg-[var(--panel-solid)] px-4 py-3 text-sm focus:not-sr-only",
-          focusRing,
-        )}
-      >
-        {copy.skipToContent}
-      </a>
-      <ContentHeader locale={locale} section="articles" />
       <ReadingContainer>
         <ReadingIntro title={copy.heading} description={copy.indexIntro} />
-        <div
-          id="articles-content"
-          tabIndex={-1}
-          className="mt-8 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-5"
-        >
+        <ContentCardGrid id="articles-content" tabIndex={-1} className="mt-8">
           {articles.map((article) => (
             <ArticleCard key={article.slug} article={article} locale={locale} />
           ))}
-        </div>
+        </ContentCardGrid>
         <ContentFooter locale={locale} topId="articles-top" />
       </ReadingContainer>
-    </main>
+    </ReadingPage>
   );
 }

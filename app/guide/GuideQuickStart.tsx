@@ -1,8 +1,6 @@
 import { Disclosure } from "@/components/ui/Disclosure";
 import { guideVisualCopy } from "@/lib/guide-visual-content";
-import { ArrowRight } from "lucide-react";
-import { ActionLink } from "@/components/ui/ActionLink";
-import { Card } from "@/components/ui/Card";
+import { ContentCard, ContentCardGrid } from "@/components/content/ContentCard";
 import { ContentSection } from "@/components/ui/ContentSection";
 import { EmptyStateIllustration } from "@/features/graph-editor/ui/chrome/EmptyStateIllustration";
 import { guideCopy } from "@/lib/guide-content";
@@ -18,34 +16,25 @@ export function GuideQuickStart({ locale }: { locale: AppLocale }) {
       variant="plain"
       className="@container/guide-start"
     >
-      <div className="mt-5 grid grid-cols-1 gap-3 @min-[40rem]/guide-start:grid-cols-3">
+      <ContentCardGrid className="mt-5">
         {copy.quickStartCards.map((card) => (
-          <Card key={card.id} className="flex flex-col">
-            <div className="mb-3 flex items-center gap-3 @min-[40rem]/guide-start:flex-col @min-[40rem]/guide-start:items-start">
-              <div className="h-20 w-24 shrink-0 text-[var(--text-2)] @min-[40rem]/guide-start:h-36 @min-[40rem]/guide-start:w-full">
-                <EmptyStateIllustration
-                  method={card.id === "data" ? "paste" : card.id}
-                  tone="neutral"
-                />
-              </div>
-              <h3 className="text-base leading-7 font-semibold">
-                {card.title}
-              </h3>
-            </div>
-            <p className="flex-1 text-sm leading-7 text-[var(--text-2)]">
-              {card.description}
-            </p>
-            <ActionLink
-              href={`#guide-${card.targetId}`}
-              variant="soft"
-              className="mt-4 justify-between text-sm"
-            >
-              {card.id === "data" ? copy.examplesLink : copy.quickStartAction}
-              <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
-            </ActionLink>
-          </Card>
+          <ContentCard
+            key={card.id}
+            href={`#guide-${card.targetId}`}
+            title={card.title}
+            description={card.description}
+            actionLabel={
+              card.id === "data" ? copy.examplesLink : copy.quickStartAction
+            }
+            illustration={
+              <EmptyStateIllustration
+                method={card.id === "data" ? "paste" : card.id}
+                tone="neutral"
+              />
+            }
+          />
         ))}
-      </div>
+      </ContentCardGrid>
       <Disclosure
         variant="compact"
         title={guideVisualCopy[locale].details}
