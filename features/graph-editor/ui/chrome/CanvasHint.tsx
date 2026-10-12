@@ -248,7 +248,7 @@ function HintPill({
         role="status"
         aria-live="polite"
         className={cn(
-          "ge-pop inline-flex max-w-full items-center gap-2 rounded-full px-3 text-xs font-semibold shadow-[var(--shadow)]",
+          "ge-pop inline-flex max-w-full items-center gap-2 rounded-full px-3 text-xs font-semibold",
           tone === "hint"
             ? "min-h-[30px] bg-[var(--primary)] py-1.5 text-center leading-relaxed text-[var(--primary-text)]"
             : "ge-panel h-9 text-[var(--text)] backdrop-blur-[12px]",

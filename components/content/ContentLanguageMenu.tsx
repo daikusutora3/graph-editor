@@ -72,7 +72,7 @@ export function ContentLanguageMenu({
             aria-hidden="true"
           />
         </summary>
-        <div className="absolute top-full right-0 z-30 mt-1 w-40 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-1 shadow-lg">
+        <div className="absolute top-full right-0 z-30 mt-1 w-40 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-1">
           {options.map((option) => (
             <a
               key={option.locale}

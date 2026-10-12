@@ -407,7 +407,7 @@ const SampleCard = memo(function SampleCard({
       data-sample-kind={sample.kind}
       aria-label={title}
       noValidate
-      className="@container/sample-card flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] shadow-[var(--shadow)]"
+      className="@container/sample-card flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]"
       onCompositionStart={() => {
         isComposingRef.current = true;
       }}

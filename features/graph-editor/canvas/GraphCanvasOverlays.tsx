@@ -136,7 +136,7 @@ export function ZoomBadge({
       <span
         role="status"
         aria-live="polite"
-        className="ge-pop inline-flex h-[30px] items-center rounded-full bg-[var(--primary)] px-3 font-mono text-xs font-semibold text-[var(--primary-text)] tabular-nums shadow-[var(--shadow)]"
+        className="ge-pop inline-flex h-[30px] items-center rounded-full bg-[var(--primary)] px-3 font-mono text-xs font-semibold text-[var(--primary-text)] tabular-nums"
       >
         {zoomPercent}%
       </span>

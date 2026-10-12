@@ -5,17 +5,15 @@
 export const focusRing =
   "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)]";
 
-export const panelSurface =
-  "border border-[var(--line)] bg-[var(--panel)] shadow-[var(--shadow)]";
+export const panelSurface = "border border-[var(--line)] bg-[var(--panel)]";
 
 export const solidSurface =
-  "border border-[var(--line)] bg-[var(--panel-solid)] shadow-[var(--shadow)]";
+  "border border-[var(--line)] bg-[var(--panel-solid)]";
 
-/** Secondary (raised) control: white face, hairline border, soft shadow.
- * Used for every clickable choice or secondary action so "raised = pressable"
- * reads the same in every panel. */
+/** Secondary control: white face and hairline border.
+ * Used for clickable choices and secondary actions across panels. */
 export const raisedControl =
-  "border border-[var(--line)] bg-[var(--panel-solid)] text-[var(--text)] shadow-[0_1px_2px_rgb(0_0_0/0.06)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-text)] active:translate-y-px";
+  "border border-[var(--line)] bg-[var(--panel-solid)] text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-text)] active:translate-y-px";
 
 /** Disabled control: no face, no border, faded label. Never a grey fill so
  * disabled states are not confused with secondary buttons or inputs. */

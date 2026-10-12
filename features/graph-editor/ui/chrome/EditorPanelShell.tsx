@@ -266,13 +266,13 @@ export function EditorPanelShell({
               "h-[min(760px,calc(var(--ge-viewport-height,100dvh)-80px))]",
             mobileSheet
               ? cn(
-                  "ge-sheet bg-[var(--panel-solid)] shadow-[0_-12px_40px_-20px_rgb(17_24_39/0.3)]",
+                  "ge-sheet bg-[var(--panel-solid)]",
                   fullscreen
                     ? "h-full max-h-full rounded-none"
                     : "max-h-[calc(var(--ge-viewport-height,100dvh)*0.84)] rounded-t-[20px]",
                 )
               : cn(
-                  "ge-popover ge-panel rounded-xl shadow-[var(--shadow-lg)] backdrop-blur-[16px]",
+                  "ge-popover ge-panel rounded-xl backdrop-blur-[16px]",
                   modal
                     ? "ge-modal-panel max-h-[calc(var(--ge-viewport-height,100dvh)-80px)]"
                     : "max-h-[calc(var(--ge-viewport-height,100dvh)-100px)]",
