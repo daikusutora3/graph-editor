@@ -3,7 +3,7 @@ import { guideVisualCopy } from "@/lib/guide-visual-content";
 import Image from "next/image";
 import { RelatedLinks } from "@/components/content/RelatedLinks";
 import { ContentSection } from "@/components/ui/ContentSection";
-import { GuideCopyButton } from "./GuideCopyButton";
+import { ContentExample } from "@/components/content/ContentExample";
 import { guideExamples } from "@/lib/guide-examples";
 import { guideExampleCopy } from "@/lib/guide-content";
 import {
@@ -35,46 +35,23 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
             variant="plain"
             className="mt-6 scroll-mt-36 sm:mt-8 sm:scroll-mt-28"
           >
-            <div className="mt-4 grid overflow-hidden rounded-lg border border-[var(--line)] @min-[32rem]/reading:grid-cols-2">
-              <div className="min-w-0 bg-[var(--fill)] px-4 pb-4">
-                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 py-2">
-                  <p className="text-sm font-medium text-[var(--muted)]">
-                    {copy.input}
-                  </p>
-                  <GuideCopyButton
-                    text={example.input}
-                    title={text.title}
-                    labels={{
-                      copy: copy.copy,
-                      copySuccess: copy.copySuccess,
-                      copyFailure: copy.copyFailure,
-                    }}
-                  />
-                </div>
-                <pre
-                  className="overflow-x-auto font-mono text-sm leading-7"
-                  translate="no"
-                >
-                  <code>{example.input}</code>
-                </pre>
+            <ContentExample
+              input={example.input}
+              title={text.title}
+              labels={copy}
+            >
+              <div className="flex w-full items-center justify-center rounded-lg bg-white p-3">
+                <Image
+                  src={`/guide/${example.id}.png`}
+                  alt={text.result}
+                  width={example.imageWidth}
+                  height={1280}
+                  unoptimized
+                  loading="lazy"
+                  className="h-auto max-h-44 w-auto max-w-full"
+                />
               </div>
-              <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 @min-[32rem]/reading:border-t-0 @min-[32rem]/reading:border-l">
-                <p className="text-sm font-medium text-[var(--muted)]">
-                  {copy.result}
-                </p>
-                <div className="mt-3 flex items-center justify-center rounded-lg bg-white p-3">
-                  <Image
-                    src={`/guide/${example.id}.png`}
-                    alt={text.result}
-                    width={example.imageWidth}
-                    height={1280}
-                    unoptimized
-                    loading="lazy"
-                    className="h-auto max-h-44 w-auto max-w-full"
-                  />
-                </div>
-              </figure>
-            </div>
+            </ContentExample>
             <Disclosure
               title={guideVisualCopy[locale].details}
               variant="compact"

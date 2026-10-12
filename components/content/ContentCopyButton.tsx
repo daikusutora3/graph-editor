@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { actionStyles } from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
 
-export function GuideCopyButton({
+export function ContentCopyButton({
   text,
   title,
   labels,

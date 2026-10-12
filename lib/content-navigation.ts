@@ -4,6 +4,7 @@ import type { AppLocale } from "./site-metadata";
 export const contentNavigationCopy = {
   ja: {
     guide: "ガイド",
+    contents: "目次",
     articles: "記事",
     navigation: "ガイドと記事",
     languages: "表示言語",
@@ -16,6 +17,7 @@ export const contentNavigationCopy = {
   },
   en: {
     guide: "Guide",
+    contents: "Contents",
     articles: "Articles",
     navigation: "Guide and articles",
     languages: "Language",
@@ -28,6 +30,7 @@ export const contentNavigationCopy = {
   },
   "zh-Hans": {
     guide: "指南",
+    contents: "目录",
     articles: "文章",
     navigation: "指南与文章",
     languages: "语言",

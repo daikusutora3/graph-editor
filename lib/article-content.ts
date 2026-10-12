@@ -52,7 +52,6 @@ export type ArticleCopy = {
   indexIntro: string;
   articlesLink: string;
   guideLink: string;
-  onThisPage: string;
   skipToContent: string;
   readArticle: string;
   input: string;
@@ -79,7 +78,6 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
       "辺リストや隣接行列の読み方、木の配置、TikZ の書き出しを図と入力例で解説します。操作に迷ったら、各記事から使い方ガイドの手順を確認できます。",
     articlesLink: "記事",
     guideLink: guideCopy.ja.guideLink,
-    onThisPage: "この記事の内容",
     skipToContent: "記事本文へ移動",
     readArticle: "記事を読む",
     input: guideExampleCopy.ja.input,
@@ -104,7 +102,6 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
       "Worked examples explain what graph input means and how to make a diagram readable. Each article links to the relevant steps in the guide.",
     articlesLink: "Articles",
     guideLink: guideCopy.en.guideLink,
-    onThisPage: "In this article",
     skipToContent: "Skip to article content",
     readArticle: "Read article",
     input: guideExampleCopy.en.input,
@@ -129,7 +126,6 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
       "通过具体示例解释输入的含义，以及如何让图形更清晰。每篇文章都链接到使用指南中的相关操作步骤。",
     articlesLink: "文章",
     guideLink: guideCopy["zh-Hans"].guideLink,
-    onThisPage: "本文内容",
     skipToContent: "跳转到文章正文",
     readArticle: "阅读文章",
     input: guideExampleCopy["zh-Hans"].input,

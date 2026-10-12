@@ -1,8 +1,12 @@
 import readingStyles from "@/components/content/ReadingLayout.module.css";
 import { ArticleCard } from "./ArticleCard";
-import { ArticleFooter } from "./ArticleFooter";
+import { ContentFooter } from "@/components/content/ContentFooter";
+import {
+  ReadingContainer,
+  ReadingIntro,
+} from "@/components/content/ReadingLayout";
 import { ContentHeader } from "@/components/content/ContentNavigation";
-import { bodyText, readingMeasure, focusRing } from "@/components/ui/styles";
+import { focusRing } from "@/components/ui/styles";
 import { articleCopy, articlePath, getArticles } from "@/lib/article-content";
 import { getAppPathUrl, type AppLocale } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
@@ -47,15 +51,8 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
         {copy.skipToContent}
       </a>
       <ContentHeader locale={locale} section="articles" />
-      <div className="mx-auto max-w-6xl px-[var(--reading-gutter)] pt-8 pb-12 sm:pt-12 sm:pb-16">
-        <header>
-          <h1 className="max-w-3xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
-            {copy.heading}
-          </h1>
-          <p className={cn("mt-4", bodyText, readingMeasure)}>
-            {copy.indexIntro}
-          </p>
-        </header>
+      <ReadingContainer>
+        <ReadingIntro title={copy.heading} description={copy.indexIntro} />
         <div
           id="articles-content"
           tabIndex={-1}
@@ -65,8 +62,8 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
             <ArticleCard key={article.slug} article={article} locale={locale} />
           ))}
         </div>
-      </div>
-      <ArticleFooter locale={locale} />
+        <ContentFooter locale={locale} topId="articles-top" />
+      </ReadingContainer>
     </main>
   );
 }

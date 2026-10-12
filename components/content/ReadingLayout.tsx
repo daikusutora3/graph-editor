@@ -1,0 +1,58 @@
+import type { ReactNode } from "react";
+import { contentNavigationCopy } from "@/lib/content-navigation";
+import type { AppLocale } from "@/lib/site-metadata";
+import { ContentContents } from "./ContentContents";
+import { bodyText, readingMeasure } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
+
+export function ReadingContainer({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto max-w-6xl px-[var(--reading-gutter)] pt-8 pb-12 sm:pt-12 sm:pb-16">
+      {children}
+    </div>
+  );
+}
+
+export function ReadingIntro({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
+  return (
+    <header className="mb-8 sm:mb-10">
+      <h1 className="max-w-3xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
+        {title}
+      </h1>
+      <p className={cn("mt-4", bodyText, readingMeasure)}>{description}</p>
+      {children}
+    </header>
+  );
+}
+
+export function ReadingBody({
+  id,
+  locale,
+  entries,
+  children,
+}: {
+  id: string;
+  locale: AppLocale;
+  entries: readonly { href: string; title: string }[];
+  children: ReactNode;
+}) {
+  return (
+    <div className="min-w-0 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
+      <ContentContents
+        title={contentNavigationCopy[locale].contents}
+        entries={entries}
+      />
+      <article id={id} tabIndex={-1} className="@container/reading min-w-0">
+        {children}
+      </article>
+    </div>
+  );
+}

@@ -1,5 +1,4 @@
 import {
-  ArrowDown,
   BookOpen,
   CircleHelp,
   Download,
@@ -14,7 +13,7 @@ import {
 } from "lucide-react";
 import { focusRing } from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
-import styles from "./GuideLayout.module.css";
+import styles from "./ReadingLayout.module.css";
 
 type ContentsEntry = { href: string; title: string };
 
@@ -31,7 +30,7 @@ const topicIcons: Record<string, LucideIcon> = {
   "#guide-faq": CircleHelp,
 };
 
-export function GuideContents({
+export function ContentContents({
   title,
   entries,
 }: {
@@ -46,7 +45,7 @@ export function GuideContents({
         </p>
         <ol className={cn("grid grid-cols-1 gap-2", styles.contentsList)}>
           {entries.map((entry) => {
-            const Icon = topicIcons[entry.href] ?? BookOpen;
+            const Icon = topicIcons[entry.href];
             return (
               <li key={entry.href} className="min-w-0">
                 <a
@@ -56,20 +55,15 @@ export function GuideContents({
                     "group flex h-full min-h-12 w-full min-w-0 items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] px-3 py-2.5 text-sm leading-5 text-[var(--text-2)] transition-colors hover:border-[var(--muted)] hover:bg-[var(--fill)] hover:text-[var(--text)] active:bg-[var(--fill-2)] lg:gap-2 lg:rounded-lg lg:px-2.5",
                   )}
                 >
-                  <Icon
-                    className="size-4 shrink-0 text-[var(--muted)] group-hover:text-[var(--text)]"
-                    aria-hidden="true"
-                  />
+                  {Icon && (
+                    <Icon
+                      className="size-4 shrink-0 text-[var(--muted)] group-hover:text-[var(--text)]"
+                      aria-hidden="true"
+                    />
+                  )}
                   <span className="min-w-0 flex-1 font-medium [overflow-wrap:anywhere]">
                     {entry.title}
                   </span>
-                  <ArrowDown
-                    className={cn(
-                      "size-3.5 shrink-0 text-[var(--muted)] group-hover:text-[var(--text)] lg:hidden",
-                      styles.contentsArrow,
-                    )}
-                    aria-hidden="true"
-                  />
                 </a>
               </li>
             );

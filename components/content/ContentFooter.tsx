@@ -3,7 +3,13 @@ import { ActionLink } from "@/components/ui/ActionLink";
 import { guideCopy } from "@/lib/guide-content";
 import { REPOSITORY_URL, type AppLocale } from "@/lib/site-metadata";
 
-export function GuideFooter({ locale }: { locale: AppLocale }) {
+export function ContentFooter({
+  locale,
+  topId,
+}: {
+  locale: AppLocale;
+  topId: string;
+}) {
   const copy = guideCopy[locale];
   return (
     <footer className="mt-10 border-t border-[var(--line)] pt-6 sm:mt-14 sm:pt-8">
@@ -16,7 +22,7 @@ export function GuideFooter({ locale }: { locale: AppLocale }) {
           <span>by daikusutora3</span>
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <ActionLink href="#guide-top">
+          <ActionLink href={`#${topId}`}>
             {copy.backToTop}
             <ArrowUp className="size-3.5 shrink-0" aria-hidden="true" />
           </ActionLink>
