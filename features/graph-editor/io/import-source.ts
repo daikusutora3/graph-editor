@@ -1,6 +1,11 @@
 import { readRustNumericMatrix } from "../compute/wasm-import";
 import type { NumericImportMatrix } from "./import-types";
-import { MAX_IMPORT_NODES, type ParsedLine, splitTokens } from "./import-utils";
+import {
+  MAX_IMPORT_NODES,
+  type ImportOptions,
+  type ParsedLine,
+  splitTokens,
+} from "./import-utils";
 
 type AdjacencyRow = {
   separator: string;
@@ -53,6 +58,35 @@ export function createImportSource(lines: ParsedLine[]) {
 }
 
 export type ImportSource = ReturnType<typeof createImportSource>;
+
+/** A third contest parameter is safe to skip only for complete labeled rows.
+ * Numeric triples can also be matrices or headerless weighted edges.
+ */
+export function isStructuredEdgeListHeader(
+  header: string[],
+  dataRows: string[][],
+) {
+  if (header.length === 2) return true;
+  return (
+    header.length === 3 &&
+    header.every((token) => /^\d+$/.test(token)) &&
+    dataRows.length === Number(header[1]) &&
+    dataRows.length > 0 &&
+    dataRows.every((row) => row.length === 3) &&
+    dataRows.some((row) => !Number.isFinite(Number(row[2])))
+  );
+}
+
+export function inferEdgeListWeightKind(
+  rows: string[][],
+  fallback: ImportOptions["weightKind"],
+) {
+  return rows.some(
+    (row) => row[2] !== undefined && !Number.isFinite(Number(row[2])),
+  )
+    ? "string"
+    : fallback;
+}
 
 function readAdjacencyRow(text: string): AdjacencyRow | null {
   const separator = text.match(/->|:/)?.[0];

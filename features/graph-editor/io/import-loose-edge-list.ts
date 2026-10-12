@@ -11,7 +11,11 @@ import {
   type ParsedLine,
   readImportSettings,
 } from "./import-utils";
-import { createImportSource, type ImportSource } from "./import-source";
+import {
+  createImportSource,
+  inferEdgeListWeightKind,
+  type ImportSource,
+} from "./import-source";
 import type { NodeId } from "../core/graph/model";
 import type { ImportResult, ImportWarning } from "./import-types";
 import { importTextLimitWarning } from "./import-text-limits";
@@ -71,7 +75,11 @@ export function tryImportLooseEdgeList(
   }
 
   const settings = readImportSettings(
-    { ...options, indexBase: detectIndexBase(labels, options.indexBase) },
+    {
+      ...options,
+      indexBase: detectIndexBase(labels, options.indexBase),
+      weightKind: inferEdgeListWeightKind(rows, options.weightKind),
+    },
     { weighted: Boolean(hasWeights || options.weighted) },
   );
   const model = createEmptyGraphModel(settings);

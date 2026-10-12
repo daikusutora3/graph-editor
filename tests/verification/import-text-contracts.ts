@@ -9,6 +9,7 @@ import { SUPPORTED_LOCALES } from "../../features/graph-editor/i18n/locale";
 import { tryImportAdjacencyList } from "../../features/graph-editor/io/import-adjacency";
 import { importStructuredEdgeList } from "../../features/graph-editor/io/import-edge-list";
 import { evaluateGraphInput } from "../../features/graph-editor/io/import-graph";
+import { exportEdgeList } from "../../features/graph-editor/io/export-edge-list";
 import { tryImportLooseEdgeList } from "../../features/graph-editor/io/import-loose-edge-list";
 import { createImportSource } from "../../features/graph-editor/io/import-source";
 import { tryImportWeightedParentList } from "../../features/graph-editor/io/import-tree";
@@ -273,6 +274,81 @@ for (const input of [
   );
   assert.equal(validPartial.result.model.edges.length, 1);
 }
+// Issue #49: complete AtCoder game_h samples must not turn N M K into an edge.
+const labeledSamples = [
+  {
+    input: "3 6 2\n1 2 a\n2 3 b\n3 1 c\n2 1 d\n3 2 e\n1 3 f",
+    nodes: 3,
+    labels: "abcdef",
+  },
+  { input: "1 1 5\n1 1 a", nodes: 1, labels: "a" },
+  {
+    input: "4 7 9\n1 4 a\n3 2 t\n4 3 c\n2 1 o\n4 1 d\n3 3 e\n2 2 r",
+    nodes: 4,
+    labels: "atcoder",
+  },
+];
+for (const sample of labeledSamples) {
+  for (const format of ["auto", "contest-edge-list"] as const) {
+    for (const weighted of [false, true]) {
+      const { analysis, result } = evaluateGraphInput(sample.input, {
+        format,
+        weighted,
+        weightKind: "number",
+        directed: true,
+      });
+      assert.equal(analysis.status, "detected");
+      assert.equal(result.status, "success");
+      assert.equal(result.formatKind, "contest-edge-list");
+      assert.equal(result.model.nodes.length, sample.nodes);
+      assert.equal(result.model.settings.weightKind, "string");
+      assert.equal(result.model.settings.weighted, true);
+      assert.equal(result.model.settings.directed, true);
+      assert.deepEqual(
+        result.model.edges.map((edge) => edge.weight),
+        [...sample.labels],
+      );
+      const restored = evaluateGraphInput(exportEdgeList(result.model)).result;
+      assert.equal(restored.status, "success");
+      assert.deepEqual(
+        restored.model.edges.map((edge) => edge.weight),
+        [...sample.labels],
+      );
+      assert.doesNotThrow(() => serializeGraphModel(result.model));
+    }
+  }
+}
+for (const input of ["3 2\n1 2 赤\n2 3 blue", "A B 赤\nB C 12"]) {
+  const { result } = evaluateGraphInput(input, {
+    weighted: true,
+    weightKind: "number",
+  });
+  assert.equal(result.status, "success");
+  assert.equal(result.model.settings.weightKind, "string");
+  assert.deepEqual(
+    result.model.edges.map((edge) => edge.weight),
+    input.includes("blue") ? ["赤", "blue"] : ["赤", "12"],
+  );
+}
+assert.equal(
+  evaluateGraphInput("3 2\n1 2 5\n2 3 -2.5").result.model.settings.weightKind,
+  "number",
+);
+assert.equal(
+  evaluateGraphInput("0 1 0\n1 0 1\n0 1 0").result.formatKind,
+  "adjacency-matrix",
+);
+for (const input of ["3 6 2\n1 2 a", "3 1 nope\n1 2 a", "3 1 2 4\n1 2 a"]) {
+  assert.equal(
+    evaluateGraphInput(input, { format: "contest-edge-list" }).result.status,
+    "failure",
+  );
+}
+assert.equal(
+  evaluateGraphInput(`2 1 5\n1 2 ${"界".repeat(257)}`).result.warnings[0]?.code,
+  "text-too-long",
+);
+
 console.log(
   `Import text contract verification passed (${evaluations} evaluations, Unicode boundaries, direct parsers and localized guidance)`,
 );

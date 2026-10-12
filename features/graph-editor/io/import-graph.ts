@@ -24,7 +24,12 @@ import {
   analyzeGraphJsonModel,
   analyzeGraphSource,
 } from "./import-analysis";
-import { createImportSource, type ImportSource } from "./import-source";
+import {
+  createImportSource,
+  inferEdgeListWeightKind,
+  isStructuredEdgeListHeader,
+  type ImportSource,
+} from "./import-source";
 import {
   looksLikeGraphJson,
   parseGraphModelJson,
@@ -291,7 +296,7 @@ function detectStructuredEdgeListOptions(
   const edgeCount = Number(header[1]);
 
   if (
-    header.length !== 2 ||
+    !isStructuredEdgeListHeader(header, source.rows.slice(1)) ||
     !Number.isInteger(nodeCount) ||
     !Number.isInteger(edgeCount) ||
     nodeCount < 0 ||
@@ -306,6 +311,7 @@ function detectStructuredEdgeListOptions(
   return {
     ...options,
     weighted: hasWeightedEdgeRow,
+    weightKind: inferEdgeListWeightKind(edgeRows, options.weightKind),
   };
 }
 

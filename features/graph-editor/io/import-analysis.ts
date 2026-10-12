@@ -18,6 +18,7 @@ import {
 } from "./import-utils";
 import {
   createImportSource,
+  isStructuredEdgeListHeader,
   parseAdjacencyTarget,
   type ImportSource,
 } from "./import-source";
@@ -199,7 +200,7 @@ function collectCandidates(
   pushCandidate(candidates, probeTreeEdgeList(source, options));
   pushCandidate(candidates, probeWeightedParentList(source, options));
   pushCandidate(candidates, probeStructuredEdgeList(source));
-  pushCandidate(candidates, probeLooseEdgeList(source, options));
+  pushCandidate(candidates, probeLooseEdgeList(source));
 
   return candidates;
 }
@@ -425,7 +426,7 @@ function probeStructuredEdgeList(source: ImportSource): ImportCandidate | null {
   const nodeCount = Number(header?.[0]);
   const edgeCount = Number(header?.[1]);
   if (
-    header?.length !== 2 ||
+    !isStructuredEdgeListHeader(header, source.rows.slice(1)) ||
     !Number.isInteger(nodeCount) ||
     !Number.isInteger(edgeCount) ||
     nodeCount < 0 ||
@@ -459,26 +460,11 @@ function probeStructuredEdgeList(source: ImportSource): ImportCandidate | null {
   };
 }
 
-function probeLooseEdgeList(
-  source: ImportSource,
-  options: ImportOptions,
-): ImportCandidate | null {
+function probeLooseEdgeList(source: ImportSource): ImportCandidate | null {
   if (
     source.firstRow.length < 2 ||
     source.firstRow.length > 3 ||
     source.rows.some((row) => row.length < 2 || row.length > 3)
-  ) {
-    return null;
-  }
-
-  const hasWeights = source.rows.some((row) => row.length === 3);
-  if (
-    hasWeights &&
-    options.weighted &&
-    options.weightKind !== "string" &&
-    source.rows.some(
-      (row) => row[2] != null && !Number.isFinite(Number(row[2])),
-    )
   ) {
     return null;
   }
