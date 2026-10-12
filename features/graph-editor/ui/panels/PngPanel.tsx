@@ -5,7 +5,6 @@ import { useId } from "react";
 
 import {
   Button,
-  ControlGroup,
   ControlRow,
   Notice,
   PanelActions,
@@ -86,8 +85,12 @@ export function PngPanelBody({
 
   return (
     <>
-      <ControlGroup>
-        <ControlRow label={messages.screenshot.scope} layout="stacked">
+      <div className="flex min-w-0 flex-col gap-2">
+        <ControlRow
+          label={messages.screenshot.scope}
+          layout="stacked"
+          className="gap-1"
+        >
           <Segment
             label={messages.screenshot.scope}
             size={segmentSize}
@@ -99,7 +102,11 @@ export function PngPanelBody({
             onChange={onScopeChange}
           />
         </ControlRow>
-        <ControlRow label={messages.screenshot.background} layout="stacked">
+        <ControlRow
+          label={messages.screenshot.background}
+          layout="stacked"
+          className="gap-1"
+        >
           <Segment
             label={messages.screenshot.background}
             size={segmentSize}
@@ -120,93 +127,99 @@ export function PngPanelBody({
             onChange={onBackgroundChange}
           />
         </ControlRow>
-      </ControlGroup>
 
-      {scope !== "viewport" ? (
-        <ControlGroup label={messages.screenshot.imageSize}>
-          <Segment
+        {scope !== "viewport" ? (
+          <ControlRow
             label={messages.screenshot.imageSize}
-            size={segmentSize}
-            wrap
-            value={scope}
-            options={[
-              { label: messages.screenshot.fixedLongEdge, value: "full" },
-              { label: messages.screenshot.natural, value: "natural" },
-              {
-                label: messages.screenshot.naturalFixed,
-                value: "natural-fixed",
-              },
-            ]}
-            onChange={onScopeChange}
+            layout="stacked"
+            className="gap-1"
+          >
+            <Segment
+              label={messages.screenshot.imageSize}
+              size={segmentSize}
+              wrap
+              value={scope}
+              options={[
+                { label: messages.screenshot.fixedLongEdge, value: "full" },
+                { label: messages.screenshot.natural, value: "natural" },
+                {
+                  label: messages.screenshot.naturalFixed,
+                  value: "natural-fixed",
+                },
+              ]}
+              onChange={onScopeChange}
+            />
+          </ControlRow>
+        ) : null}
+
+        {scope === "full" ? (
+          <Slider
+            compact
+            label={messages.chrome.pngSize}
+            max={MAX_LONG_EDGE_PX}
+            min={MIN_LONG_EDGE_PX}
+            name="screenshot-long-edge"
+            step={LONG_EDGE_STEP}
+            value={longEdgePx}
+            presets={PNG_EXPORT_LONG_EDGE_PRESETS}
+            onChange={onLongEdgeChange}
           />
-        </ControlGroup>
-      ) : null}
+        ) : null}
 
-      {scope === "full" ? (
+        {scope === "natural-fixed" ? (
+          <div className="grid grid-cols-2 gap-2.5">
+            {(
+              [
+                [
+                  "width",
+                  messages.screenshot.canvasWidth,
+                  canvasWidthPx,
+                  onCanvasWidthChange,
+                ],
+                [
+                  "height",
+                  messages.screenshot.canvasHeight,
+                  canvasHeightPx,
+                  onCanvasHeightChange,
+                ],
+              ] as const
+            ).map(([dimension, label, value, onChange]) => (
+              <ControlRow
+                key={dimension}
+                htmlFor={`${dimensionsId}-${dimension}`}
+                label={label}
+                layout="stacked"
+              >
+                <TextInput
+                  id={`${dimensionsId}-${dimension}`}
+                  type="number"
+                  min={1}
+                  max={MAX_LONG_EDGE_PX}
+                  value={value}
+                  aria-label={label}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    if (Number.isFinite(next) && next > 0) {
+                      onChange(Math.min(MAX_LONG_EDGE_PX, Math.round(next)));
+                    }
+                  }}
+                />
+              </ControlRow>
+            ))}
+          </div>
+        ) : null}
+
         <Slider
-          label={messages.chrome.pngSize}
-          max={MAX_LONG_EDGE_PX}
-          min={MIN_LONG_EDGE_PX}
-          name="screenshot-long-edge"
-          step={LONG_EDGE_STEP}
-          value={longEdgePx}
-          presets={PNG_EXPORT_LONG_EDGE_PRESETS}
-          onChange={onLongEdgeChange}
+          compact
+          label={messages.chrome.pngPadding}
+          max={MAX_PADDING_PX}
+          min={MIN_PADDING_PX}
+          name="screenshot-padding"
+          step={PADDING_STEP}
+          value={paddingPx}
+          onChange={onPaddingChange}
         />
-      ) : null}
-
-      {scope === "natural-fixed" ? (
-        <div className="grid grid-cols-2 gap-2.5">
-          {(
-            [
-              [
-                "width",
-                messages.screenshot.canvasWidth,
-                canvasWidthPx,
-                onCanvasWidthChange,
-              ],
-              [
-                "height",
-                messages.screenshot.canvasHeight,
-                canvasHeightPx,
-                onCanvasHeightChange,
-              ],
-            ] as const
-          ).map(([dimension, label, value, onChange]) => (
-            <ControlRow
-              key={dimension}
-              htmlFor={`${dimensionsId}-${dimension}`}
-              label={label}
-              layout="stacked"
-            >
-              <TextInput
-                id={`${dimensionsId}-${dimension}`}
-                type="number"
-                min={1}
-                max={MAX_LONG_EDGE_PX}
-                value={value}
-                aria-label={label}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  if (Number.isFinite(next) && next > 0) {
-                    onChange(Math.min(MAX_LONG_EDGE_PX, Math.round(next)));
-                  }
-                }}
-              />
-            </ControlRow>
-          ))}
-        </div>
-      ) : null}
-
-      <Slider
-        label={messages.chrome.pngPadding}
-        max={MAX_PADDING_PX}
-        min={MIN_PADDING_PX}
-        name="screenshot-padding"
-        step={PADDING_STEP}
-        value={paddingPx}
-        onChange={onPaddingChange}
-      />
+      </div>
 
       <section
         aria-label={messages.screenshot.preview}
