@@ -153,6 +153,55 @@ function scores(curve: EdgeCurveGeometry) {
 }
 
 resetRustKernelForTests();
+const pairNodes = new Map(
+  ['a","b', "c", "a", 'b","c'].map((id, order) => [
+    id,
+    { id, order, label: id, x: order % 2 ? 100 : -100, y: 0 },
+  ]),
+);
+const pairEdge = { id: "chosen", source: 'a","b', target: "c", label: "L" };
+const pairEdges = [
+  pairEdge,
+  { ...pairEdge, id: "same" },
+  {
+    ...pairEdge,
+    id: "reverse",
+    source: pairEdge.target,
+    target: pairEdge.source,
+  },
+  { id: "different", source: "a", target: 'b","c', label: "L" },
+  { id: "loop", source: "a", target: "a", label: "L" },
+];
+for (const includeParallelLabels of [false, true]) {
+  const opts = options();
+  const score = scoreCurveLabelOverlap(
+    pairEdge,
+    pairEdges,
+    pairNodes,
+    curves[1]!,
+    opts,
+    new Map(),
+    includeParallelLabels,
+  );
+  expect(
+    opts.work.units === (includeParallelLabels ? 3 : 1) && score > 0,
+    "label scoring excludes both parallel orientations and loops, keeping distinct escaped endpoint IDs",
+  );
+}
+pairEdges[3]!.source = pairEdge.target;
+pairEdges[3]!.target = pairEdge.source;
+const mutatedPairOptions = options();
+expect(
+  scoreCurveLabelOverlap(
+    pairEdge,
+    pairEdges,
+    pairNodes,
+    curves[1]!,
+    mutatedPairOptions,
+    new Map(),
+  ) === 0 && mutatedPairOptions.work.units === 0,
+  "public label scoring reads changed endpoints before excluding parallel labels",
+);
 const reference = curves.map(scores);
 let maximumNodeScoreDifference = 0;
 let maximumLabelScoreDifference = 0;
@@ -312,6 +361,104 @@ for (const mutate of [
   );
   expect(close(actual.score, expected.score), "mutated snapshot score");
   await initializeRustKernelFromBytes(bytes);
+}
+
+// A measured width overrides the label exactly as nodeGeometryWidth does,
+// including zero and negative values. Null/undefined retain label sizing;
+// non-finite widths retain the existing Rust rejection and JS fallback.
+type SnapshotNode = GraphNode & { measuredWidth?: number };
+function snapshotNodes(): SnapshotNode[] {
+  return [
+    { ...source },
+    { ...target },
+    { id: "snapshot-obstacle", label: "1", order: 2, x: 350, y: 0 },
+  ];
+}
+function snapshotScore(nodes: SnapshotNode[]) {
+  return scoreRustCurveNodeAndShape(straight, source, target, edge, nodes, 30);
+}
+function expectFreshSnapshot(nodes: SnapshotNode[], label: string) {
+  expect(
+    JSON.stringify(snapshotScore(nodes)) ===
+      JSON.stringify(snapshotScore(nodes.map((node) => ({ ...node })))),
+    label,
+  );
+}
+const snapshotWidths = [undefined, null, 48, 0, -24, NaN, Infinity];
+for (const measuredWidth of snapshotWidths) {
+  const nodes = snapshotNodes();
+  // Runtime public helpers can receive null even though the TS field is optional.
+  Object.assign(nodes[2]!, { measuredWidth });
+  const before = snapshotScore(nodes);
+  nodes[2]!.label = "非常に広い頂点".repeat(12);
+  const after = snapshotScore(nodes);
+  expectFreshSnapshot(
+    nodes,
+    `label mutation with width ${String(measuredWidth)}`,
+  );
+  if (measuredWidth == null) {
+    expect(
+      before?.collisions === 0 && after?.collisions === 1,
+      "nullish widths invalidate label-derived obstacle geometry",
+    );
+  } else if (Number.isFinite(measuredWidth)) {
+    expect(
+      JSON.stringify(before) === JSON.stringify(after),
+      "numeric measured widths keep geometry unchanged when the label changes",
+    );
+  } else {
+    expect(
+      before === null && after === null,
+      "non-finite measured widths preserve the Rust fallback decision",
+    );
+  }
+}
+const changingWidths = snapshotNodes();
+snapshotScore(changingWidths);
+for (const measuredWidth of snapshotWidths) {
+  Object.assign(changingWidths[2]!, { measuredWidth });
+  expectFreshSnapshot(
+    changingWidths,
+    `changed measured width ${String(measuredWidth)}`,
+  );
+}
+for (const measuredWidth of [undefined, null]) {
+  const nodes = snapshotNodes();
+  Object.assign(nodes[2]!, { measuredWidth: 48 });
+  snapshotScore(nodes);
+  nodes[2]!.label = "非常に広い頂点".repeat(12);
+  snapshotScore(nodes);
+  Object.assign(nodes[2]!, { measuredWidth });
+  expect(
+    snapshotScore(nodes)?.collisions === 1,
+    "removing a measurement restores the latest label geometry",
+  );
+  expectFreshSnapshot(nodes, "nullish measurement restores the changed label");
+}
+for (const mutate of [
+  (nodes: SnapshotNode[]) => {
+    nodes[2] = { ...nodes[2]! };
+  },
+  (nodes: SnapshotNode[]) => nodes.reverse(),
+  (nodes: SnapshotNode[]) => {
+    nodes[2]!.x = 0;
+  },
+  (nodes: SnapshotNode[]) => {
+    nodes[2]!.y = 160;
+  },
+  (nodes: SnapshotNode[]) => {
+    nodes[2]!.id = edge.source;
+  },
+  (nodes: SnapshotNode[]) =>
+    nodes.push({ id: "extra", order: 3, label: "L", x: 0, y: 0 }),
+]) {
+  const nodes = snapshotNodes();
+  snapshotScore(nodes);
+  mutate(nodes);
+  expectFreshSnapshot(
+    nodes,
+    "replacement, reordering and geometry mutations refresh snapshots",
+  );
 }
 
 // Source-target identity and zero length geometry are intentional edge cases.

@@ -36,11 +36,22 @@ export function pruneSelectionForGraph(
   selection: SelectionState,
   graph: GraphModel,
 ): SelectionState {
-  const nodeIds = new Set(graph.nodes.map((node) => node.id));
-  const edgeIds = new Set(graph.edges.map((edge) => edge.id));
+  if (selection.nodeIds.length === 0 && selection.edgeIds.length === 0)
+    return selection;
+
+  const nodeIds = selection.nodeIds.length
+    ? new Set(graph.nodes.map((node) => node.id))
+    : null;
+  const edgeIds = selection.edgeIds.length
+    ? new Set(graph.edges.map((edge) => edge.id))
+    : null;
   const nextSelection = {
-    nodeIds: selection.nodeIds.filter((nodeId) => nodeIds.has(nodeId)),
-    edgeIds: selection.edgeIds.filter((edgeId) => edgeIds.has(edgeId)),
+    nodeIds: nodeIds
+      ? selection.nodeIds.filter((nodeId) => nodeIds.has(nodeId))
+      : [],
+    edgeIds: edgeIds
+      ? selection.edgeIds.filter((edgeId) => edgeIds.has(edgeId))
+      : [],
   };
 
   return nextSelection.nodeIds.length === selection.nodeIds.length &&

@@ -310,7 +310,6 @@ export function createPreparedPreviewEdgePath(
 ) {
   const transform = (point: EdgeCurvePoint) => toPoint(point.x, point.y);
   const source = transform(prepared.source);
-  const target = transform(prepared.target);
   if (prepared.loop) {
     if (!editorLike)
       return createLoopPath(source, radius, scale, prepared.routing);
@@ -326,31 +325,39 @@ export function createPreparedPreviewEdgePath(
       `${round(d.x)} ${round(d.y)}`,
     ].join(" ");
   }
-  let segments = (prepared.clippedSegments ?? prepared.segments).map(
-    ({ start, control, end }) => ({
+  let segments = prepared.clippedSegments ?? prepared.segments;
+  if (directed && !editorLike) {
+    const target = transform(prepared.target);
+    const transformed = segments.map(({ start, control, end }) => ({
       start: transform(start),
       control: transform(control),
       end: transform(end),
-    }),
-  );
-  if (directed && !editorLike) {
-    segments = [
-      ...clipPreviewEdgeAtTarget(straightFallback(segments, source, target), {
+    }));
+    segments = clipPreviewEdgeAtTarget(
+      straightFallback(transformed, source, target),
+      {
         centre: target,
         width: targetWidth,
         height: radius * 2,
-      }),
-    ];
+      },
+    );
   }
-  if (!directed && segments.length === 0)
+  if (!directed && segments.length === 0) {
+    const target = transform(prepared.target);
     return `M${round(source.x)} ${round(source.y)}L${round(target.x)} ${round(target.y)}`;
-  return [
-    `M${round(source.x)} ${round(source.y)}`,
-    ...segments.map(
-      ({ control, end }) =>
-        `Q${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`,
-    ),
-  ].join("");
+  }
+  const parts = [`M${round(source.x)} ${round(source.y)}`];
+  for (const segment of segments) {
+    // Editor curves are already clipped in model space. Undirected curves do
+    // not need clipping, so both can transform only the two points SVG uses.
+    const control =
+      directed && !editorLike ? segment.control : transform(segment.control);
+    const end = directed && !editorLike ? segment.end : transform(segment.end);
+    parts.push(
+      `Q${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`,
+    );
+  }
+  return parts.join("");
 }
 
 function getEditorPaintBounds(
@@ -417,22 +424,20 @@ function getPreparedModelBounds(
 
   // The paste preview includes labels, so fit the whole pill and scale its
   // text with it. Fitting only node centres clips long labels at the frame.
-  const xs = model.nodes.flatMap((node) =>
-    editorLike
-      ? [
-          node.x - nodeWidths.get(node.id)! / 2,
-          node.x + nodeWidths.get(node.id)! / 2,
-        ]
-      : [node.x],
-  );
-  const ys = model.nodes.flatMap((node) =>
-    editorLike
-      ? [
-          node.y - (NODE_SIZE_PX / 2) * radiusScale,
-          node.y + (NODE_SIZE_PX / 2) * radiusScale,
-        ]
-      : [node.y],
-  );
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const node of model.nodes) {
+    const halfWidth = editorLike ? nodeWidths.get(node.id)! / 2 : 0;
+    const halfHeight = editorLike ? (NODE_SIZE_PX / 2) * radiusScale : 0;
+    includeBounds(
+      node.x - halfWidth,
+      node.x + halfWidth,
+      node.y - halfHeight,
+      node.y + halfHeight,
+    );
+  }
   for (const prepared of edges.values()) {
     const node = prepared.source;
     if (prepared.loop) {
@@ -441,17 +446,18 @@ function getPreparedModelBounds(
       if (!editorLike) {
         // Gallery nodes stay a fixed screen size. Keep the existing roomy loop
         // reservation; their radius is independent of the graph fit scale.
-        xs.push(
-          node.x - nodeGeometryWidth(node) / 2,
-          node.x + nodeGeometryWidth(node) / 2,
-          loop.controlA.x,
-          loop.controlB.x,
-        );
-        ys.push(
+        const halfWidth = nodeGeometryWidth(node) / 2;
+        includeBounds(
+          node.x - halfWidth,
+          node.x + halfWidth,
           node.y - NODE_SIZE_PX / 2,
           node.y + NODE_SIZE_PX / 2,
-          loop.controlA.y,
-          loop.controlB.y,
+        );
+        includeBounds(
+          Math.min(loop.controlA.x, loop.controlB.x),
+          Math.max(loop.controlA.x, loop.controlB.x),
+          Math.min(loop.controlA.y, loop.controlB.y),
+          Math.max(loop.controlA.y, loop.controlB.y),
         );
       }
       continue;
@@ -460,11 +466,6 @@ function getPreparedModelBounds(
       includeCurve([start, control, segmentEnd]);
     }
   }
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-
   return {
     minX,
     minY,
@@ -474,7 +475,23 @@ function getPreparedModelBounds(
 
   function includeCurve(points: PreviewCurvePoints) {
     const curveBounds = previewCurveBounds(points);
-    xs.push(curveBounds.minX, curveBounds.maxX);
-    ys.push(curveBounds.minY, curveBounds.maxY);
+    includeBounds(
+      curveBounds.minX,
+      curveBounds.maxX,
+      curveBounds.minY,
+      curveBounds.maxY,
+    );
+  }
+
+  function includeBounds(
+    left: number,
+    right: number,
+    top: number,
+    bottom: number,
+  ) {
+    minX = Math.min(minX, left);
+    maxX = Math.max(maxX, right);
+    minY = Math.min(minY, top);
+    maxY = Math.max(maxY, bottom);
   }
 }

@@ -12,7 +12,6 @@ type NodeSnapshot = {
   collisionBounded: boolean;
   hasWidePills: boolean;
   records: {
-    node: GraphNode;
     id: string;
     x: number;
     y: number;
@@ -23,8 +22,8 @@ type NodeSnapshot = {
 };
 const snapshots = new WeakMap<GraphNode[], NodeSnapshot>();
 
-/** Validate coordinates and sizing inputs as well as identities. Public scoring
- * helpers may be called with an array mutated in place between candidates. */
+/** Ordered IDs, coordinates and effective widths determine the numeric input.
+ * Public helpers may mutate their node array between candidates. */
 function nodeSnapshot(nodes: GraphNode[]) {
   const cached = snapshots.get(nodes);
   if (
@@ -35,12 +34,11 @@ function nodeSnapshot(nodes: GraphNode[]) {
       const measuredWidth = (node as GraphNode & { measuredWidth?: number })
         .measuredWidth;
       return (
-        previous.node === node &&
         previous.id === node.id &&
         previous.x === node.x &&
         previous.y === node.y &&
-        previous.label === node.label &&
-        previous.measuredWidth === measuredWidth
+        previous.measuredWidth === measuredWidth &&
+        (measuredWidth != null || previous.label === node.label)
       );
     })
   )
@@ -60,7 +58,6 @@ function nodeSnapshot(nodes: GraphNode[]) {
       boundedCollisionCoordinate(data[index * 3 + 2]!);
     indexes.set(node.id, index);
     return {
-      node,
       id: node.id,
       x: node.x,
       y: node.y,

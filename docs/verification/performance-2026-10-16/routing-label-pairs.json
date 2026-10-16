@@ -1,0 +1,80 @@
+{
+  "passes": 15,
+  "warmups": 5,
+  "results": [
+    {
+      "name": "unlabelled dense",
+      "medianMs": 98.10945900000002,
+      "beforeMedianMs": 99.43570899999986,
+      "speedup": 1.013518064552775,
+      "steps": 4884,
+      "kernels": {
+        "routing_node_shape": 2550,
+        "routing_projected_obstacles": 150,
+        "routing_node_collisions": 1313
+      },
+      "signature": "2c3a9a1d5e7974853a88e529019e0ce5a637fb91e0b256a5d04fde6ab30448f4"
+    },
+    {
+      "name": "labelled small",
+      "medianMs": 9.31270799999993,
+      "beforeMedianMs": 9.647292000000107,
+      "speedup": 1.0359276807562505,
+      "steps": 1258,
+      "kernels": {
+        "routing_node_shape": 680,
+        "routing_node_collisions": 283
+      },
+      "signature": "e6212eb1c486b4678983274e15c08fdd48220c42c636cfa70e6b9a6533281597"
+    },
+    {
+      "name": "labelled dense",
+      "medianMs": 52.84400000000005,
+      "beforeMedianMs": 53.721708000000035,
+      "speedup": 1.0166094163954278,
+      "steps": 3345,
+      "kernels": {
+        "routing_node_shape": 1700,
+        "routing_projected_obstacles": 100,
+        "routing_node_collisions": 927
+      },
+      "signature": "154ad96155e441afeb53a72f46ba2652b3c75e8987690af2fdb1853f584f4370"
+    },
+    {
+      "name": "labelled parallel",
+      "medianMs": 58.097875000000386,
+      "beforeMedianMs": 55.63783299999977,
+      "speedup": 0.9576569366779664,
+      "steps": 3476,
+      "kernels": {
+        "routing_node_shape": 340,
+        "routing_projected_obstacles": 20,
+        "routing_node_collisions": 2636
+      },
+      "signature": "e28232595a8cf25525e82ac6b8e41e42836660a75d518f315f3e689926cb7b80"
+    },
+    {
+      "name": "sparse",
+      "medianMs": 29.969874999999774,
+      "beforeMedianMs": 46.0698339999999,
+      "speedup": 1.5372047430962006,
+      "steps": 2689,
+      "kernels": {
+        "routing_node_shape": 664,
+        "routing_projected_obstacles": 12
+      },
+      "signature": "0dffb878c22ba4bf603a86acd7ff4721111b4198b72d3a8d50190e7fc90815e1"
+    },
+    {
+      "name": "one edge",
+      "medianMs": 0.11416600000029575,
+      "beforeMedianMs": 0.11441699999977573,
+      "speedup": 1.0021985529796904,
+      "steps": 7,
+      "kernels": {
+        "routing_node_shape": 1
+      },
+      "signature": "96f226e1f8c6446869015573d40e597d19e9e646cac1ea5485ffafe0a26cbfdb"
+    }
+  ]
+}

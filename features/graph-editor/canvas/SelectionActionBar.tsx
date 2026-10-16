@@ -32,6 +32,7 @@ import {
   resolveSelectionActions,
   type SelectionActionId,
 } from "./selection-actions";
+import { pickSelectionColor } from "./selection-color-actions";
 
 type SelectionActionBarProps = {
   graph: GraphModel;
@@ -39,6 +40,7 @@ type SelectionActionBarProps = {
   chrome: GraphCanvasChrome;
   onSetNodeColor: (nodeIds: NodeId[], color: GraphColor) => void;
   onSetEdgeColor: (edgeIds: EdgeId[], color: GraphColor) => void;
+  onSetSelectionColors: (selection: SelectionState, color: GraphColor) => void;
   onReverseEdges: (edgeIds: EdgeId[]) => void;
   onResetEdgeCurve: (edgeId: EdgeId) => void;
   onEditSelectedNode: () => void;
@@ -52,6 +54,7 @@ export function SelectionActionBar({
   chrome,
   onSetNodeColor,
   onSetEdgeColor,
+  onSetSelectionColors,
   onReverseEdges,
   onResetEdgeCurve,
   onEditSelectedNode,
@@ -96,14 +99,16 @@ export function SelectionActionBar({
       ? messages.canvas.nodeColor
       : messages.canvas.edgeColor;
   const pickColor = (color: GraphColor) => {
-    if (mixedSelection) {
-      onSetNodeColor(selection.nodeIds, color);
-      onSetEdgeColor(selection.edgeIds, color);
-    } else if (swatchKind === "node") {
-      onSetNodeColor(selection.nodeIds, color);
-    } else {
-      onSetEdgeColor(selection.edgeIds, color);
-    }
+    pickSelectionColor(
+      selection,
+      mixedSelection ? "mixed" : swatchKind,
+      color,
+      {
+        onSetNodeColor,
+        onSetEdgeColor,
+        onSetSelectionColors,
+      },
+    );
   };
   const runAction = (id: SelectionActionId) => {
     switch (id) {

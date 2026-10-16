@@ -1,0 +1,218 @@
+{
+  "environment": "Bun 1.4.2; CPU only, excludes browser storage/paint",
+  "referenceRevision": "595087f982a6e6c84a949a47b98e7d9458bd0d8f",
+  "source": "features/graph-editor/shell/state/editor-selection.ts",
+  "referenceSha256": "5bb7cdc59bee5d7037aa2c6a0d144566cb8e26f65cd118a2fe39b300270455ee",
+  "currentSha256": "ed5e26955cae27d25c4decfdbf6398c1755ed4990ff61c7c13af353594d3cd91",
+  "modules": [
+    {
+      "source": "features/graph-editor/shell/state/editor-selection.ts",
+      "referenceSha256": "5bb7cdc59bee5d7037aa2c6a0d144566cb8e26f65cd118a2fe39b300270455ee",
+      "currentSha256": "ed5e26955cae27d25c4decfdbf6398c1755ed4990ff61c7c13af353594d3cd91"
+    },
+    {
+      "source": "features/graph-editor/core/graph/graph-json.ts",
+      "referenceSha256": "191e919f4ba6a1468157197fe37fed11827f42ec4d0e393fcb2127c355e67b96",
+      "currentSha256": "f78125b3bc0795ff970c930f987beb896aba61e618a0959b98dadac959c96d91"
+    }
+  ],
+  "mode": "all-command-changes",
+  "bundles": [
+    {
+      "variant": "reference",
+      "sha256": "8de17258a53b069f8e8d19a8497463af4fc06fcc4b9729c83045f39750184d52"
+    },
+    {
+      "variant": "current",
+      "sha256": "e2f0deefa555e35007a44ca065cce0aac57f9cae8cac6bda6d8de83144c36d37"
+    }
+  ],
+  "preparation": "Same-form bundles built from current source; only the listed reference modules come from the recorded revision. Store initialization and exact-output validation are outside the timed command operation.",
+  "passes": 35,
+  "warmups": 10,
+  "repetitions": 32,
+  "results": [
+    {
+      "size": "small",
+      "selection": "empty",
+      "operation": "prune",
+      "baselineMedianMs": 0.0011393124999998783,
+      "candidateMedianMs": 4.556249999998485e-5,
+      "speedup": 25.005486968455575,
+      "signature": "a3721202fd95b330c0b0429f743b41b6a108431d11cf2b33fe1902e4eff02c62"
+    },
+    {
+      "size": "small",
+      "selection": "empty",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.05349999999999966,
+      "candidateMedianMs": 0.04116600000000403,
+      "speedup": 1.299616188116271,
+      "signature": "4ba40be80875ebadcac823db265db45cda8fd4fdcae1d0cf0b0a0080a74b90cf"
+    },
+    {
+      "size": "small",
+      "selection": "node only",
+      "operation": "prune",
+      "baselineMedianMs": 0.001031250000000039,
+      "candidateMedianMs": 0.00046875000000001776,
+      "speedup": 2.2,
+      "signature": "923793125ef2e57ef4eb95e9cf528cd4915272ecde7c82c5e4c21c0672b61a8e"
+    },
+    {
+      "size": "small",
+      "selection": "node only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.04224999999999568,
+      "candidateMedianMs": 0.03254200000000651,
+      "speedup": 1.2983221682744523,
+      "signature": "d3edc3139bdeb06af899e4f45b6de030664e421c0dbfd1dfa180a3243a43d237"
+    },
+    {
+      "size": "small",
+      "selection": "edge only",
+      "operation": "prune",
+      "baselineMedianMs": 0.0010078125000001492,
+      "candidateMedianMs": 0.0006471562500003358,
+      "speedup": 1.5572939301747086,
+      "signature": "70d17bd3a8e9a78a23fc954bd62bcddf3be4b2471d9abee802a8753aa3058132"
+    },
+    {
+      "size": "small",
+      "selection": "edge only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.03883299999999679,
+      "candidateMedianMs": 0.026957999999993376,
+      "speedup": 1.4405000370949748,
+      "signature": "a492c2641c5265dc7fe7748485dc01d5f63516f975324a4d22738288537fa840"
+    },
+    {
+      "size": "small",
+      "selection": "mixed invalid",
+      "operation": "prune",
+      "baselineMedianMs": 0.0009388125000002745,
+      "candidateMedianMs": 0.00093096874999965,
+      "speedup": 1.0084253633654485,
+      "signature": "d73f439673bdebc9f05ff346be55f077e3628a56c7202d23149107e93d6e38e3"
+    },
+    {
+      "size": "small",
+      "selection": "mixed invalid",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.03525000000000489,
+      "candidateMedianMs": 0.023458000000005086,
+      "speedup": 1.5026856509505178,
+      "signature": "63f9fcad880819d7f85f5218bf1accf78dee19707eaad37374f16ac5c50c04ed"
+    },
+    {
+      "size": "small",
+      "selection": "all",
+      "operation": "prune",
+      "baselineMedianMs": 0.001308593749999698,
+      "candidateMedianMs": 0.0013073125000002683,
+      "speedup": 1.0009800640622877,
+      "signature": "acd6e4a48f10bd4d541a191d7e571f92385c192c7ccf7ea59e841da0e2008997"
+    },
+    {
+      "size": "small",
+      "selection": "all",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.0313329999999894,
+      "candidateMedianMs": 0.02287499999999909,
+      "speedup": 1.3697486338793723,
+      "signature": "debe4b3f253d37bf1a69348caefa0da1bbbc646505c61ba533239e3812deb9be"
+    },
+    {
+      "size": "limits",
+      "selection": "empty",
+      "operation": "prune",
+      "baselineMedianMs": 0.13017968750000009,
+      "candidateMedianMs": 3.3874999999738975e-5,
+      "speedup": 3842.942804457659,
+      "signature": "a3721202fd95b330c0b0429f743b41b6a108431d11cf2b33fe1902e4eff02c62"
+    },
+    {
+      "size": "limits",
+      "selection": "empty",
+      "operation": "executeCommand",
+      "baselineMedianMs": 2.7584170000000086,
+      "candidateMedianMs": 1.5832090000000107,
+      "speedup": 1.742294921264337,
+      "signature": "72ba6d62d9a14086ba618b9a1d8950a822a9a246811dbc47ce124185ab14d650"
+    },
+    {
+      "size": "limits",
+      "selection": "node only",
+      "operation": "prune",
+      "baselineMedianMs": 0.1313789062500028,
+      "candidateMedianMs": 0.016247374999998954,
+      "speedup": 8.086161995399952,
+      "signature": "923793125ef2e57ef4eb95e9cf528cd4915272ecde7c82c5e4c21c0672b61a8e"
+    },
+    {
+      "size": "limits",
+      "selection": "node only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 2.7893750000000637,
+      "candidateMedianMs": 1.5420420000000377,
+      "speedup": 1.8088839344194227,
+      "signature": "44fcbfc41b20e031dd45e203583760f4153072dee14291914987a95a908e1a3f"
+    },
+    {
+      "size": "limits",
+      "selection": "edge only",
+      "operation": "prune",
+      "baselineMedianMs": 0.13010546875000273,
+      "candidateMedianMs": 0.11242709375000004,
+      "speedup": 1.1572430133194889,
+      "signature": "70d17bd3a8e9a78a23fc954bd62bcddf3be4b2471d9abee802a8753aa3058132"
+    },
+    {
+      "size": "limits",
+      "selection": "edge only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 2.7582499999998618,
+      "candidateMedianMs": 1.6622079999999642,
+      "speedup": 1.6593891979823951,
+      "signature": "3e03d1db7d69ac69b3506c00cae37055b52320f2bfc5946f8a44c9ab2a617f40"
+    },
+    {
+      "size": "limits",
+      "selection": "mixed invalid",
+      "operation": "prune",
+      "baselineMedianMs": 0.12614584375000248,
+      "candidateMedianMs": 0.13088803124999515,
+      "speedup": 0.9637691280501032,
+      "signature": "d73f439673bdebc9f05ff346be55f077e3628a56c7202d23149107e93d6e38e3"
+    },
+    {
+      "size": "limits",
+      "selection": "mixed invalid",
+      "operation": "executeCommand",
+      "baselineMedianMs": 2.838207999999895,
+      "candidateMedianMs": 1.7136249999998654,
+      "speedup": 1.65625968341972,
+      "signature": "bf0b69bb1b15afd5d13868368ddad82fd396e7a8589348ff1f5b32d3b9c04ba1"
+    },
+    {
+      "size": "limits",
+      "selection": "all",
+      "operation": "prune",
+      "baselineMedianMs": 0.16779946875000462,
+      "candidateMedianMs": 0.16371093749999943,
+      "speedup": 1.0249740873300246,
+      "signature": "f9edf424251a3cd0790c34e467e8b827bc541f407c91263e402883e875c984a4"
+    },
+    {
+      "size": "limits",
+      "selection": "all",
+      "operation": "executeCommand",
+      "baselineMedianMs": 2.890374999999949,
+      "candidateMedianMs": 1.8757089999999152,
+      "speedup": 1.5409506485281457,
+      "signature": "c7283e9c7b069cab1897a7c76009beb65a38fc24cee7ba14fa65947af9187bb3"
+    }
+  ],
+  "recordedAt": "2026-10-16T01:46:05.178532+00:00",
+  "measuredSamplesPerVariant": 25
+}

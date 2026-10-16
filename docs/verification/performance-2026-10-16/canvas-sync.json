@@ -1,0 +1,101 @@
+{
+  "iterations": 15,
+  "reports": [
+    {
+      "name": "reversed parallel 200",
+      "operation": "unchanged",
+      "currentMedianMs": 0.1812919999999849,
+      "referenceMedianMs": 0.173041000000012,
+      "speedup": 0.9544877876576263,
+      "signature": "969a51933f4751d4f6576a68c8d26e120a85cd8ad84cafa006d853606663812d"
+    },
+    {
+      "name": "reversed parallel 200",
+      "operation": "remove half of edges",
+      "currentMedianMs": 2.7232500000000073,
+      "referenceMedianMs": 3.521250000000009,
+      "speedup": 1.293032222528229,
+      "signature": "56d7415f4f9301ae05aacad1dc65bfc2d2d241d1422f438d7e26cbc0fbb12a16"
+    },
+    {
+      "name": "reversed parallel 200",
+      "operation": "remove every edge",
+      "currentMedianMs": 1.6296669999999267,
+      "referenceMedianMs": 2.791832999999997,
+      "speedup": 1.7131309647922688,
+      "signature": "3b2a341ce473f5a51e89e5eacd8b877a1bbd2a3852321e4860499f70093ddbc0"
+    },
+    {
+      "name": "reversed parallel 200",
+      "operation": "reset graph",
+      "currentMedianMs": 1.72912499999984,
+      "referenceMedianMs": 2.2636250000000473,
+      "speedup": 1.3091158823105657,
+      "signature": "9195997b0a1a89fb1f803354310dcecfd354d29a094c0d9eb0d0ad364e4fa50f"
+    },
+    {
+      "name": "reversed parallel 1000",
+      "operation": "unchanged",
+      "currentMedianMs": 0.5146249999997963,
+      "referenceMedianMs": 0.549167000000125,
+      "speedup": 1.0671207189707892,
+      "signature": "b27e8baa77c838077b51ec199f5aa41c6e43e70a1141cd740a07d43ab73a6083"
+    },
+    {
+      "name": "reversed parallel 1000",
+      "operation": "remove half of edges",
+      "currentMedianMs": 38.59162500000093,
+      "referenceMedianMs": 60.897500000000036,
+      "speedup": 1.5779978168838076,
+      "signature": "734c6b65d01e1253086fd72feef0f92a4949ca7c360fae393cf5b4920db6d49f"
+    },
+    {
+      "name": "reversed parallel 1000",
+      "operation": "remove every edge",
+      "currentMedianMs": 43.099458000000595,
+      "referenceMedianMs": 76.49366599999848,
+      "speedup": 1.7748173538515828,
+      "signature": "3822b30728655b0f6a582dba9c07225b8c38f24c83daf29cce45edc03546c2cf"
+    },
+    {
+      "name": "reversed parallel 1000",
+      "operation": "reset graph",
+      "currentMedianMs": 38.99162499999875,
+      "referenceMedianMs": 61.58629099999962,
+      "speedup": 1.5794748487656411,
+      "signature": "d82fafcfa9321fa2132f9df572544904e6cfd2aa610a1fedb502e7f58d3c1245"
+    },
+    {
+      "name": "sparse parallel 1000/5000",
+      "operation": "unchanged",
+      "currentMedianMs": 3.1593339999999444,
+      "referenceMedianMs": 3.4810839999991003,
+      "speedup": 1.101841084228246,
+      "signature": "d5527a15e0f40c55db455f93be8732ff74efa1d457d495095812e28d138129f5"
+    },
+    {
+      "name": "sparse parallel 1000/5000",
+      "operation": "remove half of edges",
+      "currentMedianMs": 88.26191699999981,
+      "referenceMedianMs": 85.51862500000061,
+      "speedup": 0.9689187353589974,
+      "signature": "050976d8e125b1ebd0752dc08c06c86c9c8485b7e0acbb174be4074fd12100b5"
+    },
+    {
+      "name": "sparse parallel 1000/5000",
+      "operation": "remove every edge",
+      "currentMedianMs": 123.60224999999627,
+      "referenceMedianMs": 134.1074160000062,
+      "speedup": 1.084991705248167,
+      "signature": "e885b1782a2b84f1c2646850bff7e8b32fa93108b2a18c486c9bde67e08ead89"
+    },
+    {
+      "name": "sparse parallel 1000/5000",
+      "operation": "reset graph",
+      "currentMedianMs": 28.328999999997905,
+      "referenceMedianMs": 30.33595900000364,
+      "speedup": 1.0708446821280626,
+      "signature": "6e8d7e10e03a03a614c4d53a10d274c8afd420ebc48add8f899accc1bf99295e"
+    }
+  ]
+}

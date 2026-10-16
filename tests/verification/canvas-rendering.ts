@@ -50,11 +50,126 @@ verifyEqualGeometryAfterPan();
 verifyCachedRouteBounds();
 verifyAffectedGeometry();
 verifyParallelGeometryExpansion();
+verifyBulkElementRemoval();
 verifyLabelDimensions();
 verifySizedLoopGeometry();
 verifyVisibleDeadline();
 verifyRenderRequestCancellation();
 finish();
+
+function verifyBulkElementRemoval() {
+  const graph: GraphModel = {
+    ...fixture(),
+    settings: {
+      ...fixture().settings,
+      allowMultiEdges: true,
+      allowSelfLoops: true,
+    },
+    edges: [
+      ...Array.from({ length: 200 }, (_, index) => ({
+        id: `parallel${index}`,
+        source: index % 2 ? "a" : "b",
+        target: index % 2 ? "b" : "a",
+        label: String(index),
+      })),
+      { id: "loop1", source: "a", target: "a", label: "first loop" },
+      { id: "loop2", source: "a", target: "a", label: "second loop" },
+      { id: "ac", source: "a", target: "c", label: "removed with node" },
+      { id: "de", source: "d", target: "e", label: "remote" },
+    ],
+  };
+  const nextGraph = {
+    ...graph,
+    nodes: graph.nodes.filter((node) => node.id !== "c"),
+    edges: graph.edges.filter((edge) =>
+      ["parallel199", "loop2", "de"].includes(edge.id),
+    ),
+  };
+  const current = createCalculationCanvas(graph).cy;
+  const reference = createCalculationCanvas(nextGraph).cy;
+  const prototype = Object.getPrototypeOf(current.collection()) as {
+    parallelEdges: CollectionReturnValue["parallelEdges"];
+    remove: CollectionReturnValue["remove"];
+  };
+  const originalParallelEdges = prototype.parallelEdges;
+  const originalRemove = prototype.remove;
+  let removing = false;
+  const expansions: number[] = [];
+  const removals: number[] = [];
+  try {
+    const sibling = current.getElementById("parallel199");
+    sibling.select().addClass("range-preview");
+    prototype.parallelEdges = function (this: CollectionReturnValue) {
+      if (!removing) expansions.push(this.length);
+      return originalParallelEdges.call(this);
+    };
+    prototype.remove = function (this: CollectionReturnValue) {
+      removals.push(this.length);
+      removing = true;
+      try {
+        return originalRemove.call(this);
+      } finally {
+        removing = false;
+      }
+    };
+    const synced = syncCytoscapeElements(current, definitions(nextGraph));
+    expect(
+      synced.removed === 202 && removals.length === 202,
+      "bulk model removal must count all missing nodes and edges",
+    );
+    expect(
+      expansions.length === 1 && expansions[0] === 3,
+      "bulk removal must expand reversed parallel edges, loops and incident edges once per endpoint pair",
+    );
+    expect(
+      current.getElementById("parallel199") === sibling &&
+        sibling.selected() &&
+        sibling.hasClass("range-preview"),
+      "bulk removal must preserve surviving element identity, selection and transient classes",
+    );
+    expect(
+      refreshCytoscapeGeometry(synced.changedElements) === 2,
+      "bulk removal must refresh the surviving parallel and loop groups only",
+    );
+    // Cytoscape's pool swaps on deletion, so compare geometry by ID and check
+    // its established sequential-removal ordering separately below.
+    const sorted = <T extends { id: string }>(items: T[]) =>
+      items.toSorted((a, b) => a.id.localeCompare(b.id));
+    expect(
+      JSON.stringify(sorted(readNodeHitboxes(current, nextGraph))) ===
+        JSON.stringify(sorted(readNodeHitboxes(reference, nextGraph))) &&
+        JSON.stringify(sorted(readEdgeLabelHitboxes(current, nextGraph))) ===
+          JSON.stringify(sorted(readEdgeLabelHitboxes(reference, nextGraph))),
+      "bulk removal must retain the exact geometry of a fresh final graph",
+    );
+    expect(
+      current
+        .elements()
+        .map((element) => element.id())
+        .join(",") === "a,b,de,d,e,loop2,parallel199",
+      "bulk removal must preserve the established element and overlay focus order",
+    );
+    expansions.length = 0;
+    const emptied = syncCytoscapeElements(current, []);
+    expect(
+      emptied.removed === 7 &&
+        current.elements().empty() &&
+        expansions.length === 0 &&
+        emptied.changedElements.empty(),
+      "resetting a graph must remove every remaining element without expanding obsolete edge geometry",
+    );
+    syncCytoscapeElements(current, definitions(nextGraph));
+    expect(
+      current.nodes().length === 4 && current.edges().length === 3,
+      "a reset must allow the same IDs to be added without stale references",
+    );
+  } finally {
+    prototype.parallelEdges = originalParallelEdges;
+    prototype.remove = originalRemove;
+    current.destroy();
+    reference.destroy();
+  }
+}
 
 function verifyParallelGeometryExpansion() {
   let graph: GraphModel = {

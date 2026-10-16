@@ -1,0 +1,117 @@
+{
+  "environment": "Bun 1.4.2; CPU routing tasks with one shared Rust kernel; excludes browser scheduling and paint",
+  "reference": {
+    "path": "temporary/graph-editor-routing-combined-final-20261016/reference/routing.mjs",
+    "sha256": "ba79e5c649163cd2b81ea24df3c418843ef15bf8893043d7ce4650d55cfb443f"
+  },
+  "current": {
+    "path": "temporary/graph-editor-routing-combined-final-20261016/current/routing.mjs",
+    "sha256": "b51f974e3e7c34f93cbc5ab69ff449cab3ed2e19ce427f9afbdca1677e4329c2"
+  },
+  "scoring": {
+    "path": "features/graph-editor/core/layout/edge-routing-scoring.ts",
+    "sha256": "94bfb9d46d7091d49667cb374b4ecaca40bf0a9c146b6aba4e97ea0f138726c8"
+  },
+  "snapshot": {
+    "path": "features/graph-editor/compute/wasm-routing.ts",
+    "sha256": "71c2ae8915e0caf25ef249747c482643875946d1659d67e61e439323575e1120"
+  },
+  "wasm": {
+    "path": "public/wasm/graph-kernels.0a6aa1ac2de4a8aa.wasm",
+    "sha256": "0a6aa1ac2de4a8aa3f3eb2e1c6ef61abea0dcb2f55a3e42b3fa5ce1a3ebca073"
+  },
+  "passes": 15,
+  "warmups": 5,
+  "results": [
+    {
+      "name": "unlabelled dense",
+      "medianMs": 98.73920799999996,
+      "beforeMedianMs": 95.1685,
+      "speedup": 0.9638369795309684,
+      "steps": 4884,
+      "kernels": {
+        "routing_node_shape": 2550,
+        "routing_projected_obstacles": 150,
+        "routing_node_collisions": 1313
+      },
+      "signature": "2c3a9a1d5e7974853a88e529019e0ce5a637fb91e0b256a5d04fde6ab30448f4"
+    },
+    {
+      "name": "labelled small",
+      "medianMs": 9.746833000000152,
+      "beforeMedianMs": 10.390166000000136,
+      "speedup": 1.06600431134913,
+      "steps": 1258,
+      "kernels": {
+        "routing_node_shape": 680,
+        "routing_node_collisions": 283
+      },
+      "signature": "e6212eb1c486b4678983274e15c08fdd48220c42c636cfa70e6b9a6533281597"
+    },
+    {
+      "name": "labelled dense",
+      "medianMs": 50.38887500000055,
+      "beforeMedianMs": 54.29670800000076,
+      "speedup": 1.0775534877490351,
+      "steps": 3345,
+      "kernels": {
+        "routing_node_shape": 1700,
+        "routing_projected_obstacles": 100,
+        "routing_node_collisions": 927
+      },
+      "signature": "154ad96155e441afeb53a72f46ba2652b3c75e8987690af2fdb1853f584f4370"
+    },
+    {
+      "name": "labelled parallel",
+      "medianMs": 52.88291699999991,
+      "beforeMedianMs": 56.53283300000021,
+      "speedup": 1.0690188099873597,
+      "steps": 3476,
+      "kernels": {
+        "routing_node_shape": 340,
+        "routing_projected_obstacles": 20,
+        "routing_node_collisions": 2636
+      },
+      "signature": "e28232595a8cf25525e82ac6b8e41e42836660a75d518f315f3e689926cb7b80"
+    },
+    {
+      "name": "sparse",
+      "medianMs": 29.73645800000031,
+      "beforeMedianMs": 45.88733400000001,
+      "speedup": 1.543133819098412,
+      "steps": 2689,
+      "kernels": {
+        "routing_node_shape": 664,
+        "routing_projected_obstacles": 12
+      },
+      "signature": "0dffb878c22ba4bf603a86acd7ff4721111b4198b72d3a8d50190e7fc90815e1"
+    },
+    {
+      "name": "one edge",
+      "medianMs": 0.1160409999993135,
+      "beforeMedianMs": 0.10762499999964348,
+      "speedup": 0.9274739100859195,
+      "steps": 7,
+      "kernels": {
+        "routing_node_shape": 1
+      },
+      "signature": "96f226e1f8c6446869015573d40e597d19e9e646cac1ea5485ffafe0a26cbfdb"
+    }
+  ],
+  "preparation": {
+    "referenceRevision": "595087f982a6e6c84a949a47b98e7d9458bd0d8f",
+    "sources": [
+      {
+        "source": "features/graph-editor/compute/wasm-routing.ts",
+        "referenceSha256": "5b2d64bf37af11e22a9055f8c7463027f0ba5864d1b364c620ba18f047389216",
+        "currentSha256": "71c2ae8915e0caf25ef249747c482643875946d1659d67e61e439323575e1120"
+      },
+      {
+        "source": "features/graph-editor/core/layout/edge-routing-scoring.ts",
+        "referenceSha256": "8ca23bd25cc0f6574da8d7ad284bdb6ac7dc461dab55b0a02df7bed800ecbc07",
+        "currentSha256": "94bfb9d46d7091d49667cb374b4ecaca40bf0a9c146b6aba4e97ea0f138726c8"
+      }
+    ],
+    "preparation": "Both factory bundles use current source; only the listed reference modules come from the recorded commit. Both externalize one canonical rust-kernel.ts instance."
+  }
+}

@@ -68,6 +68,7 @@ measure(
           chrome: { layout: "desktop" },
           onSetNodeColor: noOp,
           onSetEdgeColor: noOp,
+          onSetSelectionColors: noOp,
           onReverseEdges: noOp,
           onResetEdgeCurve: noOp,
           onEditSelectedNode: noOp,

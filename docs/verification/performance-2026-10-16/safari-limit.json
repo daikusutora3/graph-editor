@@ -1,0 +1,10 @@
+{
+  "status": "blocked_before_session_creation",
+  "retriedAt": "2026-10-15T19:02:49Z",
+  "runner": "tests/browser/safari-workflow.py",
+  "runnerSha256": "a8bd29bf7ad7d9cad208e0d49c1bab26c994302b396c4b03c823b459242d73a0",
+  "targetOrigin": "http://127.0.0.1:3323",
+  "urlPolicyChecksPassed": 13,
+  "message": "Could not create a session: The Safari instance is already paired with another WebDriver session.",
+  "scope": "No final Safari application checks ran; existing normal Safari state was preserved. In-app browser checks are recorded separately."
+}

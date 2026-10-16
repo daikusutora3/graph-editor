@@ -1,0 +1,212 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-15T17:40:49.415Z",
+  "expectedStopAt": "2026-10-15T17:41:29.415Z",
+  "finishedAt": "2026-10-15T17:41:29.423Z",
+  "elapsedSeconds": 40.008222334,
+  "configuration": {
+    "durationMs": 40000,
+    "intervalMs": 2000,
+    "output": "docs/verification/performance-2026-10-16/worker-lifecycle-smoke.json",
+    "forceGc": true
+  },
+  "counts": {
+    "cycles": 20,
+    "settledJobs": 70,
+    "cancelledForceJobs": 2,
+    "replayedOverlapJobs": 2,
+    "disposedPendingJobs": 4,
+    "disposalCycles": 2,
+    "resumedJobs": 4,
+    "mutationChecks": 62,
+    "verifiedResults": 64,
+    "gcSamples": 3,
+    "initializations": 8,
+    "createdWorkers": 8,
+    "maxLiveWorkers": 2,
+    "liveWorkers": 0,
+    "liveWasmCommittedBytes": 0,
+    "responses": {
+      "full": 22,
+      "routingDelta": 42,
+      "error": 0
+    }
+  },
+  "finalCounts": {
+    "initializations": 8,
+    "createdWorkers": 8,
+    "maxLiveWorkers": 2,
+    "liveWorkers": 0,
+    "liveWasmCommittedBytes": 0
+  },
+  "latency": {
+    "force cancellation": {
+      "count": 2,
+      "meanMs": 20.891458499999686,
+      "maxMs": 34.53083399999997,
+      "recentSamples": 2,
+      "recentMedianMs": 34.53083399999997,
+      "recentP95Ms": 34.53083399999997
+    },
+    "interactive routing": {
+      "count": 42,
+      "meanMs": 6.656176619047905,
+      "maxMs": 139.85633400000006,
+      "recentSamples": 42,
+      "recentMedianMs": 0.8907909999979893,
+      "recentP95Ms": 21.983292000000006
+    },
+    "replayed overlap": {
+      "count": 2,
+      "meanMs": 24.60864600000039,
+      "maxMs": 31.796167000000025,
+      "recentSamples": 2,
+      "recentMedianMs": 31.796167000000025,
+      "recentP95Ms": 31.796167000000025
+    },
+    "pagehide overlap": {
+      "count": 2,
+      "meanMs": 0.1335624999991296,
+      "maxMs": 0.15962500000000546,
+      "recentSamples": 2,
+      "recentMedianMs": 0.15962500000000546,
+      "recentP95Ms": 0.15962500000000546
+    },
+    "pagehide routing": {
+      "count": 2,
+      "meanMs": 0.07547900000034247,
+      "maxMs": 0.0994169999999599,
+      "recentSamples": 2,
+      "recentMedianMs": 0.0994169999999599,
+      "recentP95Ms": 0.0994169999999599
+    },
+    "resumed overlap": {
+      "count": 2,
+      "meanMs": 79.52435450000013,
+      "maxMs": 140.88125000000002,
+      "recentSamples": 2,
+      "recentMedianMs": 140.88125000000002,
+      "recentP95Ms": 140.88125000000002
+    },
+    "cycle work": {
+      "count": 20,
+      "meanMs": 21.958291650000085,
+      "maxMs": 221.81100000000004,
+      "recentSamples": 20,
+      "recentMedianMs": 8.404459000001225,
+      "recentP95Ms": 221.81100000000004
+    },
+    "overlap": {
+      "count": 18,
+      "meanMs": 3.094337888888731,
+      "maxMs": 8.746250000000146,
+      "recentSamples": 18,
+      "recentMedianMs": 2.849415999997291,
+      "recentP95Ms": 8.746250000000146
+    }
+  },
+  "memory": {
+    "beforeGc": {
+      "rss": 159399936,
+      "heapTotal": 10038272,
+      "heapUsed": 11581686,
+      "external": 5094022,
+      "arrayBuffers": 3468404
+    },
+    "current": {
+      "rss": 159088640,
+      "heapTotal": 9385984,
+      "heapUsed": 7137777,
+      "external": 1498417,
+      "arrayBuffers": 0
+    },
+    "gcRequested": true,
+    "gcSupported": true,
+    "gcMs": 2.659333000003244,
+    "jsc": {
+      "heapSize": 7137777,
+      "heapCapacity": 10989185,
+      "objectCount": 135183
+    }
+  },
+  "referenceHashes": {
+    "overlap0": "cf6ea7d96faba37989a0b8f3f492052b71a69c60f7c9858ff46e2c07e742c6f4",
+    "overlap1": "de42fa0c44616be148b0e666149824fc97b57cd648ff28f5cec6cba40e0a9bd9",
+    "overlap2": "8f88ac906033d5d13f7f0e4b89313a6134a36d62969b7c54d8bc08984eb24179",
+    "overlap3": "2fbd45a80ca8701a60f720f412feb2635eeec2c4371259bc5c49040c04f93754",
+    "routing0": "b60ff5cc65e05459552e1c71eaf89f7752a2e1454a50db01067829d431f93235",
+    "routing1": "bddf525bada1c641d90d919f1f561a6310a46a10ecc8a11d6d59bf75e9ceee3b",
+    "routing2": "203b3c4414637a4830264078fcb5d8e289e1b30a0750a1f5d94e7e93e2120bbd",
+    "routing3": "dc030901a9818a71632d7cc80286fbec22d157c49ca71e8cce16b1e2ad9d6e2d"
+  },
+  "sources": [
+    {
+      "path": "features/graph-editor/compute/worker-client.ts",
+      "sha256": "c9566aae7021177a0b4080ae1ce9f28e636d0c2bf8c198a30edebd2cd695ad5d"
+    },
+    {
+      "path": "features/graph-editor/compute/graph-compute.worker.ts",
+      "sha256": "63f7b9ba0590de8b01cb1a9f60759f0fc9bbc518384ae4d45edf4584a9f81b70"
+    },
+    {
+      "path": "features/graph-editor/compute/wasm-routing.ts",
+      "sha256": "71c2ae8915e0caf25ef249747c482643875946d1659d67e61e439323575e1120"
+    },
+    {
+      "path": "features/graph-editor/compute/routing-result.ts",
+      "sha256": "15f3bac511182729590766542eb02beb0ccfa70545d646965696054ace33b36b"
+    },
+    {
+      "path": "features/graph-editor/compute/routing-interaction.ts",
+      "sha256": "872adec5e3c34d6c5e9380d87974bbb1210feae0919ff7ca694496370ce45860"
+    },
+    {
+      "path": "features/graph-editor/compute/rust-kernel.ts",
+      "sha256": "120984c482473352e1279338bd952e580cd2c12331e8f996e4a6963fcdf2f0f4"
+    },
+    {
+      "path": "features/graph-editor/core/layout/edge-routing.ts",
+      "sha256": "59090fa8261939c2ae2cafca91b4c0ab6b770496a965efd07b5641c5fb0de444"
+    },
+    {
+      "path": "features/graph-editor/core/layout/edge-routing-scoring.ts",
+      "sha256": "94bfb9d46d7091d49667cb374b4ecaca40bf0a9c146b6aba4e97ea0f138726c8"
+    },
+    {
+      "path": "features/graph-editor/layouts/resolve-node-overlaps.ts",
+      "sha256": "fad96dc367b8aaa141e80a0820a6fa48b099dbafa3dda885792574f1ef64fccd"
+    },
+    {
+      "path": "features/graph-editor/layouts/layout-algorithms.ts",
+      "sha256": "bb197f880b11c57a98eb2354ad1c140c9bc46075e0be52d638759792138e2740"
+    },
+    {
+      "path": "tests/fixtures/real-compute-workers.ts",
+      "sha256": "3c10f2bd5baead2b0131c6dc724d181a85bd59ee57e405c71f6b81a9ca2efdc4"
+    },
+    {
+      "path": "tests/benchmarks/worker-lifecycle-soak.ts",
+      "sha256": "b092b3a62d27c3ad30dad21449dbe6d15243e0b83b9c664813fea4b6be0bb7a9"
+    },
+    {
+      "path": "public/wasm/graph-kernels.0a6aa1ac2de4a8aa.wasm",
+      "sha256": "0a6aa1ac2de4a8aa3f3eb2e1c6ef61abea0dcb2f55a3e42b3fa5ce1a3ebca073"
+    }
+  ],
+  "sourceChanges": [],
+  "environment": {
+    "bun": "1.4.2",
+    "node": "26.3.0",
+    "platform": "darwin"
+  },
+  "limits": [
+    "Real Bun Workers and production client/Worker/Wasm, file-backed fetch; no browser, UI, GPU or deployment measurements",
+    "Low-duty lifecycle diagnostic; latencies are not CPU before/after performance comparisons",
+    "Per-job timings start after synchronous client submission; cycle work includes snapshots and postMessage preparation",
+    "The 1000-node force cancellation intentionally stresses the internal API beyond the UI's 300-node force limit",
+    "Routing checks mutate caller Maps and input snapshots; route value objects keep their existing immutable ownership contract",
+    "Live Worker counts track fixture owners; underlying native termination and reclamation can complete asynchronously",
+    "Rolling latency quantiles cover the latest 128 samples; heap/RSS include allocator and native Worker behavior",
+    "Heap samples alone do not establish or exclude a leak; controlled repeated GC/isolation would be needed"
+  ]
+}

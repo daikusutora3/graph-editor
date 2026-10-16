@@ -1,0 +1,318 @@
+Reviewed source: full 73-suite check
+====================================
+$ node scripts/toolchain.mjs --check
+Toolchain verified: Bun 1.4.2, Node 24.15.0
+$ tsc --noEmit && tsc -p tsconfig.strict.json --noEmit && oxlint . --deny-warnings && prettier . --check && bun run policy:check && bun run test
+Checking formatting...
+All matched files use Prettier code style!
+$ /usr/bin/python3 .codex/hooks/block_github_issues.py --self-test
+issue guard: 1630 checks passed
+$ bun run tests/verification/run-all.ts
+
+> verify:toolchain
+Toolchain verification passed
+
+> verify:static-preview-server
+Static preview server verification passed
+
+> verify:wasm-runtime
+Wasm runtime verification passed
+
+> verify:wasm-worker
+Wasm worker verification passed
+
+> verify:worker-lanes
+Worker lanes verification passed
+
+> verify:worker-cancellation
+Real Worker cancellation verification passed
+
+> verify:wasm-layouts
+{"membershipReads":10600,"componentGeneratorSteps":151}
+{"exactForceFixtures":38,"forceFixtures":38,"maximumForceDifference":0}
+Wasm layouts verification passed
+
+> verify:wasm-overlaps
+Wasm overlap equivalence passed (20 fixtures, max error 2.9842794901924208e-12 px)
+
+> verify:wasm-routing
+{"maximumNodeScoreDifference":4.656612873077393e-10,"maximumLabelScoreDifference":1.4551915228366852e-11}
+Edge routing verification passed
+Rust routing verification passed
+
+> verify:wasm-routing-collisions
+{"cases":134,"rawCases":111}
+Rust final-route collisions verification passed
+
+> verify:wasm-interactive-routing
+Rust interactive selection verification passed (61 reference fixtures)
+
+> verify:wasm-projected-obstacles
+Rust projected obstacles verification passed (110 fixtures, 68 Rust results, 42 exact JS fallbacks)
+
+> verify:loop-preparation
+{"fixtures":34,"stableFixtures":15}
+Loop preparation verification passed
+
+> verify:wasm-import
+Rust matrix import passed (34 fixtures; 9 Rust)
+
+> verify:integrity
+Integrity verification passed
+
+> verify:selection-pruning
+Selection pruning: identity, ordering, mutation, and history passed
+
+> verify:graph-serialization
+Graph serialization verification passed (1146 differential cases plus independent contract boundaries)
+
+> verify:autosave
+Autosave verification passed
+
+> verify:example-sessions
+Article example sessions verification passed
+
+> verify:core
+Graph core verification passed
+
+> verify:geometry-contracts
+Geometry contracts passed (coordinate/route boundaries, non-destructive import/edit/storage/Worker rejection, endpoint loop identity and finite previews)
+
+> verify:routing-hook-lifecycle
+Routing hook lifecycle passed (shared geometry, stable Worker owner, font/drag invalidation and fallback upgrade)
+
+> verify:node-id-contracts
+Node ID contracts passed (partial move, inherited properties, nudge, Undo/Redo, all 12 JS/Rust layouts and real Worker transport)
+
+> verify:integrity-feedback
+Integrity feedback passed (three locales, every storage state, recovery actions, typed rejections and backup UI)
+
+> verify:samples
+Sample verification passed (80 kinds)
+
+> verify:sample-gallery-load
+{"scenario":"reject","importInvocations":1,"lazyImports":1,"prefetchImports":0,"renderErrors":1,"unhandled":0}
+{"scenario":"success","importInvocations":1,"lazyImports":1,"prefetchImports":0,"renderErrors":0,"unhandled":0}
+Sample gallery loading passed (real chrome effects, controlled import failure and healthy lazy render)
+
+> verify:sample-gallery-boundary
+Sample gallery boundary passed (localized recovery, stable lazy identity and fresh retry)
+
+> verify:sample-preview
+{"previewNodes":260,"previewEdges":259,"work":{"nodeIndexBuilds":1,"nodeWidthReads":260,"edgeSegmentBuilds":259,"targetClips":259,"loopBuilds":0}}
+Sample preview bounds verification passed
+
+> verify:focus-navigation
+Focus navigation: selected radios, unavailable controls and menu-only focus passed
+
+> verify:ui-control-contracts
+Shared UI: names, selection, focus stops and action semantics passed
+
+> verify:panel-dismissal
+Panel dismissal passed (8 panels × 3 layouts, trigger ownership, canvas capture and cleanup)
+
+> verify:tooltip-position
+Tooltip viewport positioning passed
+
+> verify:tooltip-layer
+Tooltip layer events, suppression and cleanup passed
+
+> verify:sample-parameters
+Sample parameters verification passed
+
+> verify:algorithmic-samples
+Algorithmic samples verification passed
+
+> verify:layouts
+Layout verification passed (12 kinds)
+
+> verify:layout-topology
+Layout topology verification passed (512 directed graphs and layout contracts)
+
+> verify:overlaps
+Overlap verification passed (18 original + 8 stability fixtures, native/scaled hypot)
+
+> verify:overlap-boundary
+Overlap boundary verification passed (24 JS/Rust cases, bounded translation/grid/full-span failure and real Worker recovery)
+
+> verify:edge-routing
+Edge routing verification passed
+
+> verify:routing-collision-reuse
+Routing collision reuse verification passed
+
+> verify:routing-parallel-spacing
+Routing parallel spacing verification passed (lazy group reads, retained/pending routes, display settings and task isolation)
+
+> verify:cytoscape
+Cytoscape adapter verification passed
+
+> verify:cytoscape-ids
+Cytoscape ID verification passed (reserved IDs and prefix collisions retain domain identity through editing, routing, selection, deletion and history)
+
+> verify:canvas-coordinates
+Canvas coordinates passed (local renderer origin, domain roundtrip, camera preservation, routing, active drag, reset and immutability)
+
+> verify:canvas-rendering
+Canvas rendering verification passed
+
+> verify:hint-idle
+Hidden hint observer: 0 activity listeners, 0 timers
+10,000 activity events: 0 timer creations, 0 cancellations
+Hint idle lifecycle passed (activity deadline, learned/hidden dormancy and cleanup)
+
+> verify:editor
+Editor state verification passed
+
+> verify:selection-color-actions
+Selection palette verification passed: mixed swatch 2→1 transactions and 2→1 full-graph serializations; no-op feedback retained
+
+> verify:history-clipboard
+History and clipboard verification passed
+
+> verify:chrome-subscriptions
+100 moves: {"graph":100,"revision":100,"history":100,"future":100,"chrome":0,"inactiveRevision":0,"settings":0,"undo":0,"redo":0,"hasNodes":0,"hasEdges":0,"empty":0,"source":0,"selection":0}
+Chrome subscriptions verification passed
+
+> verify:storage
+Storage verification passed
+
+> verify:storage-notifications
+100 queued edits: 1 storage notifications
+Storage notifications verification passed
+
+> verify:io
+IO contract verification passed
+
+> verify:guide
+Guide: 3-locale SSR, navigation, accessible examples, valid format inputs and FAQ parity passed
+
+> verify:content-header-resize
+Content header resize passed (sidebar breakpoint, event ordering, anchor visibility, reading position and cleanup)
+
+> verify:article-content
+Article content and guide links verification passed
+
+> verify:article-pages
+Articles: 18 localized static pages, SSR content, reachable guide links, accessible examples and metadata passed
+
+> verify:import-text-contracts
+Import text contract verification passed (150 evaluations, Unicode boundaries, direct parsers and localized guidance)
+
+> verify:import-source-reuse
+Structured import source reuse verification passed
+
+> verify:starter-import-guard
+Starter import guard passed (current-input rejection preserves graph/history before debounced validation)
+
+> verify:starter-file-read
+Starter file read verification passed
+
+> verify:starter-input-ui
+Starter UI: current-input action labels in 3 locales and deferred focus handoff passed
+
+> verify:tikz
+TikZ export verification passed
+
+> verify:screenshot
+Screenshot verification passed
+
+> verify:image-export
+Image export ownership verification passed
+
+> verify:canvas-lifecycle
+Screenshot preview failed warn: Could not read PNG dimensions
+      at <anonymous> (<repository>/features/graph-editor/ui/io/graph-io-screenshot.ts:555:18)
+      at <anonymous> (<repository>/tests/verification/canvas-lifecycle.mjs:132:41)
+
+Canvas lifecycle verification passed
+
+> verify:canvas-resize
+Canvas resize verification passed (CSS-size and DPR-only changes repaint and keep pan, zoom, selection, readiness and core identity)
+
+> verify:privacy
+Privacy guard verification passed
+
+> verify:i18n
+i18n literal check passed
+
+> verify:locale-preferences
+Locale preferences passed (aliases, inherited-name rejection, startup and cross-tab fallback)
+
+> verify:canvas
+Canvas logic verification passed
+
+> verify:range-selection-preview
+Range selection geometry equivalence and early rejection passed
+
+Verification passed (toolchain, static-preview-server, wasm-runtime, wasm-worker, worker-lanes, worker-cancellation, wasm-layouts, wasm-overlaps, wasm-routing, wasm-routing-collisions, wasm-interactive-routing, wasm-projected-obstacles, loop-preparation, wasm-import, integrity, selection-pruning, graph-serialization, autosave, example-sessions, core, geometry-contracts, routing-hook-lifecycle, node-id-contracts, integrity-feedback, samples, sample-gallery-load, sample-gallery-boundary, sample-preview, focus-navigation, ui-control-contracts, panel-dismissal, tooltip-position, tooltip-layer, sample-parameters, algorithmic-samples, layouts, layout-topology, overlaps, overlap-boundary, edge-routing, routing-collision-reuse, routing-parallel-spacing, cytoscape, cytoscape-ids, canvas-coordinates, canvas-rendering, hint-idle, editor, selection-color-actions, history-clipboard, chrome-subscriptions, storage, storage-notifications, io, guide, content-header-resize, article-content, article-pages, import-text-contracts, import-source-reuse, starter-import-guard, starter-file-read, starter-input-ui, tikz, screenshot, image-export, canvas-lifecycle, canvas-resize, privacy, i18n, locale-preferences, canvas, range-selection-preview)
+
+Reviewed source: Node 24.15.0 Webpack production build
+======================================================
+▲ Next.js 16.4.0 (webpack)
+✓ Running next.config.ts took 15ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1672ms
+  Running TypeScript ...
+  Finished TypeScript in 211ms ...
+  Collecting page data using 13 workers ...
+  Generating static pages using 13 workers (0/29) ...
+  Generating static pages using 13 workers (7/29)
+  Generating static pages using 13 workers (14/29)
+  Generating static pages using 13 workers (21/29)
+✓ Generating static pages using 13 workers (29/29) in 385ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├   /[locale]
+│ ├ ● /en
+│ └ ● /zh-hans
+├   /[locale]/articles
+│ ├ ● /en/articles
+│ └ ● /zh-hans/articles
+├   /[locale]/articles/[slug]
+│ ├ ● /en/articles/edge-list
+│ ├ ● /en/articles/adjacency-matrix
+│ ├ ● /en/articles/tree-layout
+│ └ ● [+7 more paths]
+├   /[locale]/guide
+│ ├ ● /en/guide
+│ └ ● /zh-hans/guide
+├ ○ /articles
+├   /articles/[slug]
+│ ├ ● /articles/edge-list
+│ ├ ● /articles/adjacency-matrix
+│ ├ ● /articles/tree-layout
+│ └ ● [+2 more paths]
+├ ○ /guide
+├ ○ /manifest.webmanifest
+├ ○ /robots.txt
+└ ○ /sitemap.xml
+
+
+○  (Static)  prerendered as static content
+●  (SSG)     prerendered as static HTML (uses generateStaticParams)
+
+Reviewed source: CSP headers
+============================
+out/_headers written with per-page CSP rules for 26 pages (33 inline script hashes)
+
+Reviewed source: release checks
+===============================
+Release verification passed
+
+Reviewed source: 10000 randomized archived-original comparisons
+===============================================================
+10,000 saved-original randomized serialization and normalization comparisons passed
+
+Reviewed source: explicit accessor reproductions
+================================================
+{"referenceSha256":"191e919f4ba6a1468157197fe37fed11827f42ec4d0e393fcb2127c355e67b96"}
+{"name":"settingsGetter","expected":{"result":"threw","name":"Error","message":"third directed read","reads":3},"current":{"result":"threw","name":"Error","message":"third directed read","reads":3},"equal":true}
+{"name":"iteratorGetter","expected":{"result":"accepted","reads":1},"current":{"result":"accepted","reads":1},"equal":true}
+{"name":"unusedEveryGetter","expected":{"result":"threw","name":"GraphContractError","message":"Graph exceeds the JSON contract","reason":"invalid-graph","reads":0},"current":{"result":"threw","name":"GraphContractError","message":"Graph exceeds the JSON contract","reason":"invalid-graph","reads":0},"equal":true}
+{"differences":0,"total":3}

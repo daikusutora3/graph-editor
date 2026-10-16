@@ -1,0 +1,102 @@
+{
+  "randomCurveEqualityCount": 20000,
+  "exactBoundsAndPathsVerified": true,
+  "report": [
+    {
+      "fixture": "2n/10e-undirected",
+      "variant": "gallery",
+      "beforeMedianMs": 0.046875,
+      "afterMedianMs": 0.02429100000000517
+    },
+    {
+      "fixture": "2n/10e-undirected",
+      "variant": "editor",
+      "beforeMedianMs": 0.026667000000003327,
+      "afterMedianMs": 0.015124999999983402
+    },
+    {
+      "fixture": "2n/10e-directed",
+      "variant": "gallery",
+      "beforeMedianMs": 0.025834000000003243,
+      "afterMedianMs": 0.01570800000001782
+    },
+    {
+      "fixture": "2n/10e-directed",
+      "variant": "editor",
+      "beforeMedianMs": 0.025666000000001077,
+      "afterMedianMs": 0.015667000000007647
+    },
+    {
+      "fixture": "20n/100e-undirected",
+      "variant": "gallery",
+      "beforeMedianMs": 0.13862499999999045,
+      "afterMedianMs": 0.07504199999999628
+    },
+    {
+      "fixture": "20n/100e-undirected",
+      "variant": "editor",
+      "beforeMedianMs": 0.11949999999998795,
+      "afterMedianMs": 0.05895799999998985
+    },
+    {
+      "fixture": "20n/100e-directed",
+      "variant": "gallery",
+      "beforeMedianMs": 0.19304199999999128,
+      "afterMedianMs": 0.12087499999998386
+    },
+    {
+      "fixture": "20n/100e-directed",
+      "variant": "editor",
+      "beforeMedianMs": 0.19037500000001728,
+      "afterMedianMs": 0.12933300000000258
+    },
+    {
+      "fixture": "250n/1250e-undirected",
+      "variant": "gallery",
+      "beforeMedianMs": 1.644124999999974,
+      "afterMedianMs": 0.7916670000000181
+    },
+    {
+      "fixture": "250n/1250e-undirected",
+      "variant": "editor",
+      "beforeMedianMs": 1.6139579999999683,
+      "afterMedianMs": 0.7708329999999819
+    },
+    {
+      "fixture": "250n/1250e-directed",
+      "variant": "gallery",
+      "beforeMedianMs": 2.24670900000001,
+      "afterMedianMs": 1.3631669999999758
+    },
+    {
+      "fixture": "250n/1250e-directed",
+      "variant": "editor",
+      "beforeMedianMs": 2.4366660000000593,
+      "afterMedianMs": 1.3393330000000105
+    },
+    {
+      "fixture": "1000n/5000e-undirected",
+      "variant": "gallery",
+      "beforeMedianMs": 7.561207999999851,
+      "afterMedianMs": 3.8209580000000187
+    },
+    {
+      "fixture": "1000n/5000e-undirected",
+      "variant": "editor",
+      "beforeMedianMs": 7.336916999999858,
+      "afterMedianMs": 3.713416999999936
+    },
+    {
+      "fixture": "1000n/5000e-directed",
+      "variant": "gallery",
+      "beforeMedianMs": 9.944000000000415,
+      "afterMedianMs": 6.282999999999902
+    },
+    {
+      "fixture": "1000n/5000e-directed",
+      "variant": "editor",
+      "beforeMedianMs": 11.2356249999998,
+      "afterMedianMs": 6.540457999999944
+    }
+  ]
+}
