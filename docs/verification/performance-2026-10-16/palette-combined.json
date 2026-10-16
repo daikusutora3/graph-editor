@@ -1,0 +1,92 @@
+{
+  "environment": "Bun 1.4.2; CPU only, excludes browser storage/paint",
+  "referenceRevision": "595087f982a6e6c84a949a47b98e7d9458bd0d8f",
+  "source": "features/graph-editor/shell/state/editor-selection.ts",
+  "referenceSha256": "5bb7cdc59bee5d7037aa2c6a0d144566cb8e26f65cd118a2fe39b300270455ee",
+  "currentSha256": "ed5e26955cae27d25c4decfdbf6398c1755ed4990ff61c7c13af353594d3cd91",
+  "modules": [
+    {
+      "source": "features/graph-editor/shell/state/editor-selection.ts",
+      "referenceSha256": "5bb7cdc59bee5d7037aa2c6a0d144566cb8e26f65cd118a2fe39b300270455ee",
+      "currentSha256": "ed5e26955cae27d25c4decfdbf6398c1755ed4990ff61c7c13af353594d3cd91"
+    },
+    {
+      "source": "features/graph-editor/core/graph/graph-json.ts",
+      "referenceSha256": "191e919f4ba6a1468157197fe37fed11827f42ec4d0e393fcb2127c355e67b96",
+      "currentSha256": "f78125b3bc0795ff970c930f987beb896aba61e618a0959b98dadac959c96d91"
+    }
+  ],
+  "mode": "mixed-color",
+  "paletteAction": {
+    "reference": "setNodesColor then setEdgesColor",
+    "current": "production pickSelectionColor with setSelectionColors"
+  },
+  "bundles": [
+    {
+      "variant": "reference",
+      "sha256": "3ef76c027cc1c1084c894ff646eb919a0a1e291cc9241a561c1a7eec7f6d3405"
+    },
+    {
+      "variant": "current",
+      "sha256": "17e5002f78921c74fdb199a1f68cb15050d369d5177d9c4cadacd459bd2ed781"
+    }
+  ],
+  "preparation": "Same-form bundles built from current source; only the listed reference modules come from the recorded revision. Store initialization and exact-output validation are outside the timed command operation.",
+  "passes": 35,
+  "warmups": 10,
+  "repetitions": 1,
+  "results": [
+    {
+      "size": "small",
+      "selection": "all",
+      "operation": "mixedPalette",
+      "baselineMedianMs": 0.12774999999999181,
+      "candidateMedianMs": 0.08058400000000177,
+      "speedup": 1.5853022932590715,
+      "signature": "5398e77c9380f95425937c441ea95513eba783fe521d67d64b7d9f3dfeec36a0",
+      "paletteWork": [
+        {
+          "variant": "reference",
+          "serializations": 2,
+          "historyEntries": 2,
+          "undoSteps": 2,
+          "redoSteps": 2
+        },
+        {
+          "variant": "current",
+          "serializations": 1,
+          "historyEntries": 1,
+          "undoSteps": 1,
+          "redoSteps": 1
+        }
+      ]
+    },
+    {
+      "size": "limits",
+      "selection": "all",
+      "operation": "mixedPalette",
+      "baselineMedianMs": 9.834208000000046,
+      "candidateMedianMs": 6.281292000000008,
+      "speedup": 1.5656345860055598,
+      "signature": "2079bcda9b3d403cc715027d1a2f38b878daa66a23c0407c0a6e1a56fea1ba62",
+      "paletteWork": [
+        {
+          "variant": "reference",
+          "serializations": 2,
+          "historyEntries": 2,
+          "undoSteps": 2,
+          "redoSteps": 2
+        },
+        {
+          "variant": "current",
+          "serializations": 1,
+          "historyEntries": 1,
+          "undoSteps": 1,
+          "redoSteps": 1
+        }
+      ]
+    }
+  ],
+  "recordedAt": "2026-10-16T01:46:05.178532+00:00",
+  "measuredSamplesPerVariant": 25
+}

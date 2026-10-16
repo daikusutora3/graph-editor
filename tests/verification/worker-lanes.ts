@@ -226,12 +226,27 @@ try {
     a.controller.signal,
   );
   const retainedModel = structuredClone(model);
+  retainedModel.edges.push({
+    id: "unused-loop",
+    source: "a",
+    target: "a",
+    label: "topology is irrelevant to overlap resolution",
+  });
   const retained = computeOverlapsInWorker(retainedModel, b.controller.signal);
   const routing = computeRoutingInWorker(model, {});
   const original = heavy();
   const light = interactive();
   const retainedId = original.request().id;
   const originalTimers = new Set(timers.keys());
+  expect(
+    original.request().job.model.edges.length === 0 &&
+      retainedModel.edges.length === 1 &&
+      original.request().job.model.settings.showNodeLabels ===
+        retainedModel.settings.showNodeLabels &&
+      original.request().job.model.settings.snapToGrid ===
+        retainedModel.settings.snapToGrid,
+    "overlap transport omits unused edges while retaining display settings and source ownership",
+  );
   retainedModel.nodes[0].x = 123;
   expect(
     workers.length === 2 &&
@@ -249,6 +264,7 @@ try {
     replacement !== original &&
       replacement.request().id === retainedId &&
       replacement.request().job.model.nodes[0].x === 0 &&
+      replacement.request().job.model.edges.length === 0 &&
       timers.size === 2 &&
       [...timers.keys()].every((id) => originalTimers.has(id)) &&
       b.attached.size === 1,

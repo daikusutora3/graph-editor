@@ -55,13 +55,21 @@ export class GraphContractError extends Error {
   }
 }
 
+const defaultArrayIterator = Array.prototype[Symbol.iterator];
+const defaultArrayEvery = Array.prototype.every;
+
 export function serializeGraphModel(model: GraphModel) {
   const raw = JSON.stringify(model);
-  const normalized = normalizeGraphModel(model);
+  // Only ordinary data properties use the direct check. Accessors and array
+  // hooks must run through normalization without extra observable reads.
+  const direct =
+    typeof raw === "string" &&
+    raw.length <= GRAPH_MAX_JSON_CHARS &&
+    isSerializableGraphModel(model);
+  const normalized = direct ? undefined : normalizeGraphModel(model);
   if (
     raw.length > GRAPH_MAX_JSON_CHARS ||
-    !normalized ||
-    !sameDocument(model, normalized)
+    (!direct && (!normalized || !sameDocument(model, normalized)))
   ) {
     const invalidCoordinate =
       Array.isArray(model.nodes) &&
@@ -74,6 +82,126 @@ export function serializeGraphModel(model: GraphModel) {
     );
   }
   return raw;
+}
+
+function hasPlainArrayMethods(value: unknown): value is unknown[] {
+  return (
+    Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Array.prototype &&
+    !Object.hasOwn(value, Symbol.iterator) &&
+    !Object.hasOwn(value, "every") &&
+    Object.getOwnPropertyDescriptor(Array.prototype, Symbol.iterator)?.value ===
+      defaultArrayIterator &&
+    Object.getOwnPropertyDescriptor(Array.prototype, "every")?.value ===
+      defaultArrayEvery
+  );
+}
+
+function isPlainDataRecord(value: unknown): value is Record<string, unknown> {
+  if (!isRecord(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  return Reflect.ownKeys(value).every((key) =>
+    Object.hasOwn(Object.getOwnPropertyDescriptor(value, key)!, "value"),
+  );
+}
+
+const modelKeys = new Set(["version", "nodes", "edges", "settings"]);
+const nodeKeys = new Set(["id", "label", "order", "x", "y", "color"]);
+const edgeKeys = new Set([
+  "id",
+  "source",
+  "target",
+  "weight",
+  "label",
+  "color",
+  "routing",
+]);
+
+/** Check the lossless document without allocating a normalized copy on every edit. */
+function isSerializableGraphModel(model: GraphModel) {
+  if (
+    !isPlainDataRecord(model) ||
+    model.version !== GRAPH_JSON_VERSION ||
+    !hasPlainArrayMethods(model.nodes) ||
+    !hasPlainArrayMethods(model.edges) ||
+    model.nodes.length > GRAPH_MAX_NODES ||
+    model.edges.length > GRAPH_MAX_EDGES ||
+    !hasDocumentKeys(model, modelKeys, 4) ||
+    !isPlainDataRecord(model.settings) ||
+    !validSettings(model.settings) ||
+    Object.keys(model.settings).length !==
+      Object.keys(fallbackGraph.settings).length
+  )
+    return false;
+
+  const nodeIds = new Set<string>();
+  const nodeOrders = new Set<number>();
+  for (let index = 0; index < model.nodes.length; index++) {
+    const entry = Object.getOwnPropertyDescriptor(model.nodes, index);
+    if (!entry || !Object.hasOwn(entry, "value")) return false;
+    const node: unknown = entry.value;
+    if (
+      !isPlainDataRecord(node) ||
+      !validNode(node) ||
+      !hasDocumentKeys(node, nodeKeys, 5 + Number(node.color !== undefined)) ||
+      nodeIds.has(node.id) ||
+      nodeOrders.has(node.order)
+    )
+      return false;
+    nodeIds.add(node.id);
+    nodeOrders.add(node.order);
+  }
+  const edgeIds = new Set<string>();
+  for (let index = 0; index < model.edges.length; index++) {
+    const entry = Object.getOwnPropertyDescriptor(model.edges, index);
+    if (!entry || !Object.hasOwn(entry, "value")) return false;
+    const edge: unknown = entry.value;
+    if (
+      !isPlainDataRecord(edge) ||
+      (edge.routing !== undefined && !isPlainDataRecord(edge.routing)) ||
+      !validEdge(edge) ||
+      !hasDocumentKeys(
+        edge,
+        edgeKeys,
+        3 +
+          Number(edge.weight !== undefined) +
+          Number(edge.label !== undefined) +
+          Number(edge.color !== undefined) +
+          Number(edge.routing !== undefined),
+      ) ||
+      (edge.routing !== undefined &&
+        !sameDocument(
+          edge.routing,
+          normalizeEdgeRoutingOverride(edge.routing),
+        )) ||
+      edgeIds.has(edge.id) ||
+      nodeIds.has(edge.id) ||
+      !nodeIds.has(edge.source) ||
+      !nodeIds.has(edge.target)
+    )
+      return false;
+    edgeIds.add(edge.id);
+  }
+  return true;
+}
+
+// Like sameDocument, undefined properties do not belong to the JSON document.
+// Counting own fields also rejects inherited/missing fields that normalization
+// would add, while retaining the original acceptance of extra undefined fields.
+function hasDocumentKeys(
+  value: object,
+  allowed: Set<string>,
+  expected: number,
+) {
+  let count = 0;
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(value)) {
+    if (record[key] === undefined) continue;
+    if (!allowed.has(key)) return false;
+    count += 1;
+  }
+  return count === expected;
 }
 
 /** Parses a JSON document produced by serializeGraphModel; null if invalid. */
@@ -161,26 +289,7 @@ export function normalizeGraphModel(input: unknown): GraphModel | null {
 }
 
 function normalizeNode(value: unknown): GraphNode | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  if (
-    typeof value.id !== "string" ||
-    !value.id.trim() ||
-    !isGraphText(value.label) ||
-    (value.color !== undefined &&
-      normalizeGraphColor(value.color) === undefined) ||
-    typeof value.order !== "number" ||
-    typeof value.x !== "number" ||
-    typeof value.y !== "number" ||
-    !Number.isSafeInteger(value.order) ||
-    value.order < 0 ||
-    !isGraphCoordinate(value.x) ||
-    !isGraphCoordinate(value.y)
-  ) {
-    return null;
-  }
+  if (!validNode(value)) return null;
 
   return stripUndefinedProperties({
     id: value.id,
@@ -192,24 +301,28 @@ function normalizeNode(value: unknown): GraphNode | null {
   });
 }
 
-function normalizeEdge(value: unknown): GraphEdge | null {
-  if (!isRecord(value)) {
-    return null;
-  }
+function validNode(value: unknown): value is GraphNode {
+  return (
+    isRecord(value) &&
+    !(
+      typeof value.id !== "string" ||
+      !value.id.trim() ||
+      !isGraphText(value.label) ||
+      (value.color !== undefined &&
+        normalizeGraphColor(value.color) === undefined) ||
+      typeof value.order !== "number" ||
+      typeof value.x !== "number" ||
+      typeof value.y !== "number" ||
+      !Number.isSafeInteger(value.order) ||
+      value.order < 0 ||
+      !isGraphCoordinate(value.x) ||
+      !isGraphCoordinate(value.y)
+    )
+  );
+}
 
-  if (
-    typeof value.id !== "string" ||
-    typeof value.source !== "string" ||
-    typeof value.target !== "string" ||
-    !value.id.trim() ||
-    (value.weight !== undefined && !isGraphText(value.weight)) ||
-    (value.label !== undefined && !isGraphText(value.label)) ||
-    (value.color !== undefined &&
-      normalizeGraphColor(value.color) === undefined) ||
-    !validRouting(value.routing)
-  ) {
-    return null;
-  }
+function normalizeEdge(value: unknown): GraphEdge | null {
+  if (!validEdge(value)) return null;
 
   return stripUndefinedProperties({
     id: value.id,
@@ -220,6 +333,23 @@ function normalizeEdge(value: unknown): GraphEdge | null {
     color: normalizeGraphColor(value.color),
     routing: normalizeEdgeRoutingOverride(value.routing),
   });
+}
+
+function validEdge(value: unknown): value is GraphEdge {
+  return (
+    isRecord(value) &&
+    !(
+      typeof value.id !== "string" ||
+      typeof value.source !== "string" ||
+      typeof value.target !== "string" ||
+      !value.id.trim() ||
+      (value.weight !== undefined && !isGraphText(value.weight)) ||
+      (value.label !== undefined && !isGraphText(value.label)) ||
+      (value.color !== undefined &&
+        normalizeGraphColor(value.color) === undefined) ||
+      !validRouting(value.routing)
+    )
+  );
 }
 
 function normalizeSettings(value: unknown): GraphSettings {

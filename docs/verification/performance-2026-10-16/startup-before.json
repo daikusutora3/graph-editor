@@ -1,0 +1,23 @@
+[
+  {
+    "phase": "mount before main Wasm ready",
+    "measurements": 3,
+    "clonedNodes": 3000,
+    "requests": 1,
+    "aborted": 0
+  },
+  {
+    "phase": "main Wasm ready while first Worker job pending",
+    "measurements": 4,
+    "clonedNodes": 4000,
+    "requests": 2,
+    "aborted": 1
+  },
+  {
+    "phase": "first graph edit",
+    "measurements": 6,
+    "clonedNodes": 6000,
+    "requests": 3,
+    "aborted": 2
+  }
+]

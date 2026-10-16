@@ -257,7 +257,14 @@ function run(
   let snapshot = job;
   if (lane === "heavy") {
     try {
-      snapshot = structuredClone(job);
+      // Overlap resolution uses node geometry and display/snap settings only.
+      // Omit unused topology from both this replay snapshot and postMessage's
+      // second clone. Keep the caller's model and the no-edge path unchanged.
+      snapshot = structuredClone(
+        job.kind === "overlap" && job.model.edges?.length
+          ? { ...job, model: { ...job.model, edges: [] } }
+          : job,
+      );
     } catch (error) {
       failWorker(permanentTransportError(error));
       return Promise.resolve(null);

@@ -20,18 +20,32 @@ export function installRealComputeWorkers() {
     "../../features/graph-editor/compute/graph-compute.worker.ts",
     import.meta.url,
   );
-  const transports: Transport[] = [];
+  // Long lifecycle runs must not retain every terminated native Worker through
+  // this fixture. Keep only live owners and retain creation counts separately.
+  const transports = new Set<Transport>();
+  let created = 0;
   let initialized = 0;
   let maxLive = 0;
+  const responses = { full: 0, routingDelta: 0, error: 0 };
   let waiting: { nodes: number; resolve: () => void } | undefined;
   const source = `
     import { readFile } from "node:fs/promises";
     const originalInstantiate = WebAssembly.instantiate;
+    const nativePostMessage = globalThis.postMessage.bind(globalThis);
+    let actualMemory = null;
+    globalThis.postMessage = (message, ...options) => {
+      // Probe the actual current buffer before the result settles on the host.
+      // Calling the captured transport avoids recursively probing our probes.
+      if (!message.probe && actualMemory)
+        nativePostMessage({ probe: "memory", bytes: actualMemory.buffer.byteLength });
+      nativePostMessage(message, ...options);
+    };
     let current = { id: 0, nodes: 0 };
     globalThis.fetch = async () => new Response(await readFile(new URL(${JSON.stringify(assetUrl.href)})));
     WebAssembly.instantiate = async (...args) => {
       const result = await originalInstantiate(...args);
       const actual = result.instance.exports;
+      actualMemory = actual.memory;
       const exports = { ...actual };
       exports.force_layout = (...values) => {
         postMessage({ probe: "force-start", id: current.id, nodes: current.nodes });
@@ -86,15 +100,16 @@ export function installRealComputeWorkers() {
           }
           return;
         }
+        if ("routingDelta" in control) responses.routingDelta++;
+        else if ("error" in control) responses.error++;
+        else responses.full++;
         this.onmessage?.(event);
       };
       this.native.onerror = (event) => this.onerror?.(event);
       this.native.onmessageerror = (event) => this.onmessageerror?.(event);
-      transports.push(this);
-      maxLive = Math.max(
-        maxLive,
-        transports.filter((transport) => !transport.terminated).length,
-      );
+      transports.add(this);
+      created++;
+      maxLive = Math.max(maxLive, transports.size);
     }
     postMessage(value: ComputeRequest) {
       if (this.ready) this.native.postMessage(value);
@@ -106,6 +121,7 @@ export function installRealComputeWorkers() {
       if (this.terminated) return;
       this.terminated = true;
       this.queued = [];
+      transports.delete(this);
       this.native.terminate();
     }
   }
@@ -119,10 +135,10 @@ export function installRealComputeWorkers() {
       });
     },
     counts() {
-      const live = transports.filter((transport) => !transport.terminated);
+      const live = [...transports];
       return {
         initializations: initialized,
-        createdWorkers: transports.length,
+        createdWorkers: created,
         maxLiveWorkers: maxLive,
         liveWorkers: live.length,
         liveWasmCommittedBytes: live.reduce(
@@ -131,12 +147,14 @@ export function installRealComputeWorkers() {
         ),
       };
     },
+    responses: () => ({ ...responses }),
     pagehide() {
       events.dispatchEvent(new Event("pagehide"));
     },
     restore() {
       events.dispatchEvent(new Event("pagehide"));
       for (const transport of transports) transport.terminate();
+      waiting = undefined;
       globalThis.Worker = NativeWorker;
       globalThis.window = previousWindow;
     },

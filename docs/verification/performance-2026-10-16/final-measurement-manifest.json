@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-10-16T01:46:05.178532+00:00",
+  "referenceRevision": "595087f982a6e6c84a949a47b98e7d9458bd0d8f",
+  "runtime": "Bun 1.4.2 using the pinned toolchain launcher",
+  "scope": "Follow-up review: serializer and combined edit/palette CPU comparisons ran sequentially after builds, checks and UI smoke had finished. The unchanged overlap client/Worker/fixture/Wasm retain the prior isolated Worker comparison.",
+  "harnesses": [
+    {
+      "path": "tests/benchmarks/serialization-performance.ts",
+      "sha256": "7710c3c9410b8f2ea414e0c28696228853938ae3a123f32f1fb89052d20b3710"
+    },
+    {
+      "path": "tests/benchmarks/selection-pruning-performance.mjs",
+      "sha256": "e9034d9f86a176fec4c86227322812e1735e0698f442b9af746d514529e94ea8"
+    },
+    {
+      "path": "tests/benchmarks/worker-overlap-performance.ts",
+      "sha256": "badb5feac17d0cb13a867a973034ba2309651652dde48be06a29fe2eccb04a49"
+    },
+    {
+      "path": "tests/fixtures/real-compute-workers.ts",
+      "sha256": "3c10f2bd5baead2b0131c6dc724d181a85bd59ee57e405c71f6b81a9ca2efdc4"
+    }
+  ],
+  "serializationReference": "Untouched git archive; graph-json.ts, graph-transaction.ts and graph-patch.ts rechecked byte-for-byte against the recorded revision.",
+  "serializationModules": [
+    {
+      "path": "features/graph-editor/core/graph/graph-json.ts",
+      "referenceSha256": "191e919f4ba6a1468157197fe37fed11827f42ec4d0e393fcb2127c355e67b96",
+      "currentSha256": "f78125b3bc0795ff970c930f987beb896aba61e618a0959b98dadac959c96d91"
+    },
+    {
+      "path": "features/graph-editor/core/graph/graph-transaction.ts",
+      "referenceSha256": "5e310afff5c3ee0a4a437d20bcb71b2db61800f7af24c506e902a2d438db53c3",
+      "currentSha256": "5e310afff5c3ee0a4a437d20bcb71b2db61800f7af24c506e902a2d438db53c3"
+    },
+    {
+      "path": "features/graph-editor/core/graph/graph-patch.ts",
+      "referenceSha256": "17f5e2ae131e05e5b360d8c08bfef2dc278608540669617ec2afa23198523227",
+      "currentSha256": "17f5e2ae131e05e5b360d8c08bfef2dc278608540669617ec2afa23198523227"
+    }
+  ],
+  "outputs": [
+    "serialization.json",
+    "command-combined.json",
+    "palette-combined.json",
+    "worker-overlap.json"
+  ],
+  "limits": [
+    "CPU or warm native Bun Worker timings; no browser storage I/O, DOM paint, GPU completion or whole-app speedup claim.",
+    "Paired execution order alternates; medians are fixture-specific and subject to normal runtime noise.",
+    "Combined command comparison restores only the listed serializer/selection modules; remaining dependencies are shared current source.",
+    "Mixed palette reference dispatches the original two commands, current calls the production combined palette helper; history grouping intentionally changes from two to one."
+  ],
+  "reviewNote": "Accessor/property-descriptor and undefined-toJSON guards preserve legacy reads and exception order. Earlier measurements are retained in pre-review-measurements.json; they do not describe the reviewed serializer."
+}

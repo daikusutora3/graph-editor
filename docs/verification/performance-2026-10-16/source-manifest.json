@@ -1,0 +1,79 @@
+{
+  "recordedAt": "2026-10-16T01:46:05.178532+00:00",
+  "baseline": "595087f982a6e6c84a949a47b98e7d9458bd0d8f",
+  "state": "Reviewed product source prepared for commit; local Node 24.15.0 Webpack static export, no deployment",
+  "files": [
+    {
+      "path": "features/graph-editor/adapters/cytoscape/graph-canvas-elements-sync.ts",
+      "sha256": "6a5b0c1aa34c519bac947ff5c2ce14c25b910858d6a277e6e611926b7a5703ee"
+    },
+    {
+      "path": "features/graph-editor/canvas/GraphCanvas.tsx",
+      "sha256": "ff4de828641944a6667267b75346fdaf28d535bc84d6e28916a58a235d78b33c"
+    },
+    {
+      "path": "features/graph-editor/canvas/SelectionActionBar.tsx",
+      "sha256": "d57c86bb241684eb1dc153d3127155ccdf497117ef6acd6463b8c58cc3696245"
+    },
+    {
+      "path": "features/graph-editor/canvas/graph-canvas-context-actions.ts",
+      "sha256": "8c802ffa5ff201cb68b93627cb0ab7cb5330e6a5a2e4eac2d6173c96b29fe493"
+    },
+    {
+      "path": "features/graph-editor/canvas/selection-color-actions.ts",
+      "sha256": "41ddd0288b0c9a16d59e2d28650dcf22ad8db36a1b7959938c04bf1224d33e1e"
+    },
+    {
+      "path": "features/graph-editor/canvas/use-edge-routing-meta.ts",
+      "sha256": "916c6967c1bcb2e6ed2663f3c9c4252cefe7e0e9a4f9b1ec910cd8cd6385243f"
+    },
+    {
+      "path": "features/graph-editor/compute/wasm-routing.ts",
+      "sha256": "71c2ae8915e0caf25ef249747c482643875946d1659d67e61e439323575e1120"
+    },
+    {
+      "path": "features/graph-editor/compute/worker-client.ts",
+      "sha256": "c9566aae7021177a0b4080ae1ce9f28e636d0c2bf8c198a30edebd2cd695ad5d"
+    },
+    {
+      "path": "features/graph-editor/core/graph/graph-json.ts",
+      "sha256": "f78125b3bc0795ff970c930f987beb896aba61e618a0959b98dadac959c96d91"
+    },
+    {
+      "path": "features/graph-editor/core/layout/edge-routing-scoring.ts",
+      "sha256": "94bfb9d46d7091d49667cb374b4ecaca40bf0a9c146b6aba4e97ea0f138726c8"
+    },
+    {
+      "path": "features/graph-editor/shell/state/editor-selection.ts",
+      "sha256": "ed5e26955cae27d25c4decfdbf6398c1755ed4990ff61c7c13af353594d3cd91"
+    },
+    {
+      "path": "features/graph-editor/ui/samples/preview-curve-bounds.ts",
+      "sha256": "5409bb04d483bfb21596559a1875382c881f64744867d7e863122f96f993fb43"
+    },
+    {
+      "path": "features/graph-editor/ui/samples/preview-geometry.ts",
+      "sha256": "cf48ba0bbccfc2bce3f11c5119ad3840afebc8f4111e3dc53418e2825207cffe"
+    }
+  ],
+  "buildFiles": [
+    {
+      "path": "out/index.html",
+      "sha256": "87c03d25dfbe726f7ef400a52d1242a613e9f10d535c84260f4fd28269668726"
+    },
+    {
+      "path": "out/en.html",
+      "sha256": "ecfd69efb2e1791f964e2317fec1aee32f8d533ace175232a358448e681cb14a"
+    },
+    {
+      "path": "out/zh-hans.html",
+      "sha256": "937db1518622b2234a9f41b6d01f9fbb79bf236bd8ee9bea7cc46806d4e67e25"
+    },
+    {
+      "path": "out/_headers",
+      "sha256": "f34a584b356c487887ad8a3a32c0b33c0458a4058b6fdb3d82d6b3f2e886f0b9"
+    }
+  ],
+  "lastVerifiedAt": "2026-10-16T01:46:05.178532+00:00",
+  "previousSnapshot": "source-manifest-before-review.json"
+}

@@ -1,0 +1,59 @@
+{
+  "environment": "Bun 1.4.2; real native Workers, production client/Worker and checked-in Wasm; excludes browser scheduling and paint",
+  "reference": {
+    "path": "graph-editor-worker-client-before-20261016.ts",
+    "sha256": "497264197b3f0e1aa09b83320c37f93be9eb31c71b27bd9d4d0d793d3d727f29",
+    "revision": "595087f982a6e6c84a949a47b98e7d9458bd0d8f",
+    "repositoryPath": "features/graph-editor/compute/worker-client.ts",
+    "originalGitBlob": "442071b5b533bd160dfa5090d21ee1b8e14cee1b",
+    "originalSourceSha256": "98543518293ab6c70731e14ed081599d3c62b58d3eb9b372d894b81ec220209e",
+    "preparation": "Saved git show revision:repositoryPath, rewriting only relative static import specifiers to their absolute original workspace paths. Verified the relocated saved file exactly matches this transformation. Real-compute-worker harness maps Worker URLs to the production worker module.",
+    "relocationVerified": true
+  },
+  "current": {
+    "path": "features/graph-editor/compute/worker-client.ts",
+    "sha256": "c9566aae7021177a0b4080ae1ce9f28e636d0c2bf8c198a30edebd2cd695ad5d"
+  },
+  "worker": {
+    "path": "features/graph-editor/compute/graph-compute.worker.ts",
+    "sha256": "63f7b9ba0590de8b01cb1a9f60759f0fc9bbc518384ae4d45edf4584a9f81b70"
+  },
+  "harness": {
+    "path": "tests/fixtures/real-compute-workers.ts",
+    "sha256": "3c10f2bd5baead2b0131c6dc724d181a85bd59ee57e405c71f6b81a9ca2efdc4"
+  },
+  "wasm": {
+    "path": "public/wasm/graph-kernels.0a6aa1ac2de4a8aa.wasm",
+    "sha256": "0a6aa1ac2de4a8aa3f3eb2e1c6ef61abea0dcb2f55a3e42b3fa5ce1a3ebca073"
+  },
+  "passes": 20,
+  "warmups": 5,
+  "results": [
+    {
+      "name": "1000 nodes / no edges",
+      "fullMedianMs": 1.477708000000007,
+      "projectedMedianMs": 1.4881659999999926,
+      "speedup": 0.9929725581689236,
+      "resultStatus": "unchanged",
+      "resultPairs": 0
+    },
+    {
+      "name": "1000 nodes / 5000 edges",
+      "fullMedianMs": 6.063875000000024,
+      "projectedMedianMs": 1.4071670000000154,
+      "speedup": 4.30927885602772,
+      "resultStatus": "unchanged",
+      "resultPairs": 0
+    },
+    {
+      "name": "1000 nodes / 5000 edges / overlap",
+      "fullMedianMs": 6.849166999999966,
+      "projectedMedianMs": 2.0490839999999935,
+      "speedup": 3.342550622619662,
+      "resultStatus": "resolved",
+      "resultPairs": 0
+    }
+  ],
+  "recordedAt": "2026-10-15T19:20:02.204759+00:00",
+  "metadataNote": "Final quiet refresh after the 90-minute lifecycle diagnostic completed. Uses the final fixture and product source. Reference import relocation provenance retained and SHA256 rechecked. Evidence paths are repository-relative or temporary basenames."
+}

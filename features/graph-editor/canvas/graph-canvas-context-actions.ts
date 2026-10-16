@@ -7,6 +7,7 @@ import {
   reverseEdgesCommand,
   setEdgesColorCommand,
   setNodesColorCommand,
+  setSelectionColorsCommand,
 } from "../core/graph/graph-intents";
 import type {
   EdgeId,
@@ -108,6 +109,20 @@ export function useGraphCanvasContextActions({
     [executeCommand],
   );
 
+  const setSelectionColors = useCallback(
+    (selection: SelectionState, color: GraphColor) => {
+      executeCommand(
+        setSelectionColorsCommand({
+          nodeIds: selection.nodeIds,
+          nodeColor: color,
+          edgeIds: selection.edgeIds,
+          edgeColor: color,
+        }),
+      );
+    },
+    [executeCommand],
+  );
+
   const deleteContextSelection = useCallback(
     (nextSelection: SelectionState) => {
       deleteSelection(nextSelection);
@@ -122,6 +137,7 @@ export function useGraphCanvasContextActions({
     reverseSelectionEdges,
     setSelectionEdgeColor,
     setSelectionNodeColor,
+    setSelectionColors,
   };
 }
 

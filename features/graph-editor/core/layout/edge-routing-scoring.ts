@@ -8,7 +8,6 @@ import { singleBowCurve } from "./edge-route-geometry";
 import type { EdgeRoutingMeta } from "./edge-routing";
 import { edgeHasVisibleLabel } from "./edge-routing-shared";
 import { representativeBow } from "./edge-routing";
-import { routeEdgeKey } from "./edge-routing";
 import { edgeLabelSize } from "./edge-routing-shared";
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
 import { EDGE_PAIR_SCORING_WORK_LIMIT } from "./edge-routing";
@@ -182,7 +181,10 @@ export function scoreCurveLabelOverlap(
       otherEdge.id === edge.id ||
       otherEdge.source === otherEdge.target ||
       (!includeParallelLabels &&
-        routeEdgeKey(otherEdge) === routeEdgeKey(edge)) ||
+        ((otherEdge.source === edge.source &&
+          otherEdge.target === edge.target) ||
+          (otherEdge.source === edge.target &&
+            otherEdge.target === edge.source))) ||
       !edgeHasVisibleLabel(otherEdge)
     ) {
       continue;

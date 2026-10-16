@@ -34,12 +34,24 @@ const suites = [
   },
   { name: "wasm-import", path: "tests/verification/wasm-import.ts" },
   { name: "integrity", path: "tests/verification/integrity.ts" },
+  {
+    name: "selection-pruning",
+    path: "tests/verification/selection-pruning.ts",
+  },
+  {
+    name: "graph-serialization",
+    path: "tests/verification/graph-serialization.ts",
+  },
   { name: "autosave", path: "tests/verification/autosave.ts" },
   { name: "example-sessions", path: "tests/verification/example-sessions.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
   {
     name: "geometry-contracts",
     path: "tests/verification/geometry-contracts.ts",
+  },
+  {
+    name: "routing-hook-lifecycle",
+    path: "tests/verification/routing-hook-lifecycle.mjs",
   },
   {
     name: "node-id-contracts",
@@ -97,6 +109,10 @@ const suites = [
   { name: "canvas-rendering", path: "tests/verification/canvas-rendering.ts" },
   { name: "hint-idle", path: "tests/verification/hint-idle.mjs" },
   { name: "editor", path: "tests/verification/editor-state.ts" },
+  {
+    name: "selection-color-actions",
+    path: "tests/verification/selection-color-actions.ts",
+  },
   {
     name: "history-clipboard",
     path: "tests/verification/history-clipboard.ts",

@@ -52,18 +52,47 @@ export function syncCytoscapeElements(
       .filter((id): id is string => typeof id === "string"),
   );
 
-  cy.elements().forEach((element) => {
-    if (!nextIds.has(element.id())) {
-      // Removing an edge can change surviving parallel and self-loop routes.
-      result.changedElements.merge(
-        element.group() === "edges"
-          ? element.parallelEdges()
-          : element.connectedEdges().parallelEdges(),
-      );
-      element.remove();
-      result.removed += 1;
-    }
+  let hasSurvivingEdges = false;
+  const removed = cy.elements().filter((element) => {
+    if (!nextIds.has(element.id())) return true;
+    hasSurvivingEdges ||= element.isEdge();
+    return false;
   });
+  if (removed.length > 0) {
+    // Capture surviving siblings before removal. Expanding once
+    // per endpoint pair avoids repeating the same incident-edge scan for every
+    // deleted parallel edge.
+    // If every old edge disappears, only newly added edges will need geometry.
+    if (hasSurvivingEdges) {
+      const pairs = new Map<string, Set<string>>();
+      const representatives = removed
+        .edges()
+        .merge(removed.nodes().connectedEdges())
+        .filter((edge) => {
+          const source = edge.source().id();
+          const target = edge.target().id();
+          const first = source <= target ? source : target;
+          const second = source <= target ? target : source;
+          let targets = pairs.get(first);
+          if (targets?.has(second)) return false;
+          if (!targets) {
+            targets = new Set();
+            pairs.set(first, targets);
+          }
+          targets.add(second);
+          return true;
+        });
+      result.changedElements.merge(
+        representatives.parallelEdges().not(removed),
+      );
+    }
+    result.removed = removed.length;
+    // Keep the established removal order: Cytoscape swaps the core pool's last
+    // entry into each deleted slot, which also determines overlay focus order.
+    removed.forEach((element) => {
+      element.remove();
+    });
+  }
 
   for (const definition of elements) {
     const id = definition.data?.id;

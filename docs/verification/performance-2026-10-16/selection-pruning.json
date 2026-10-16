@@ -1,0 +1,203 @@
+{
+  "environment": "Bun 1.4.2; CPU only, excludes browser storage/paint",
+  "referenceRevision": "595087f982a6e6c84a949a47b98e7d9458bd0d8f",
+  "source": "features/graph-editor/shell/state/editor-selection.ts",
+  "referenceSha256": "5bb7cdc59bee5d7037aa2c6a0d144566cb8e26f65cd118a2fe39b300270455ee",
+  "currentSha256": "ed5e26955cae27d25c4decfdbf6398c1755ed4990ff61c7c13af353594d3cd91",
+  "bundles": [
+    {
+      "variant": "reference",
+      "sha256": "30e0619f16561f7610a13371352dd8163d41db382800ce059b727c7cac93dba5"
+    },
+    {
+      "variant": "current",
+      "sha256": "40da0960af827a5ec19de096f314d184dca868352ce2fa092b45f89e83f21e8f"
+    }
+  ],
+  "preparation": "Same-form bundles built from current source; only reference editor-selection.ts comes from the recorded revision. Store initialization and exact-output validation are outside the timed command operation.",
+  "passes": 35,
+  "warmups": 10,
+  "repetitions": 32,
+  "results": [
+    {
+      "size": "small",
+      "selection": "empty",
+      "operation": "prune",
+      "baselineMedianMs": 0.0014466249999998126,
+      "candidateMedianMs": 4.81875000000187e-5,
+      "speedup": 30.020752269763967,
+      "signature": "a3721202fd95b330c0b0429f743b41b6a108431d11cf2b33fe1902e4eff02c62"
+    },
+    {
+      "size": "small",
+      "selection": "empty",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.03495799999998894,
+      "candidateMedianMs": 0.03316700000000594,
+      "speedup": 1.0539994572913642,
+      "signature": "4ba40be80875ebadcac823db265db45cda8fd4fdcae1d0cf0b0a0080a74b90cf"
+    },
+    {
+      "size": "small",
+      "selection": "node only",
+      "operation": "prune",
+      "baselineMedianMs": 0.0011927187500000436,
+      "candidateMedianMs": 0.0006445312499998579,
+      "speedup": 1.8505212121216876,
+      "signature": "923793125ef2e57ef4eb95e9cf528cd4915272ecde7c82c5e4c21c0672b61a8e"
+    },
+    {
+      "size": "small",
+      "selection": "node only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.030707999999989966,
+      "candidateMedianMs": 0.029832999999996446,
+      "speedup": 1.0293299366471231,
+      "signature": "d3edc3139bdeb06af899e4f45b6de030664e421c0dbfd1dfa180a3243a43d237"
+    },
+    {
+      "size": "small",
+      "selection": "edge only",
+      "operation": "prune",
+      "baselineMedianMs": 0.0011783749999998427,
+      "candidateMedianMs": 0.0007447812499998818,
+      "speedup": 1.5821759744891937,
+      "signature": "70d17bd3a8e9a78a23fc954bd62bcddf3be4b2471d9abee802a8753aa3058132"
+    },
+    {
+      "size": "small",
+      "selection": "edge only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.024083000000004517,
+      "candidateMedianMs": 0.02254100000000392,
+      "speedup": 1.0684086775209765,
+      "signature": "a492c2641c5265dc7fe7748485dc01d5f63516f975324a4d22738288537fa840"
+    },
+    {
+      "size": "small",
+      "selection": "mixed invalid",
+      "operation": "prune",
+      "baselineMedianMs": 0.0010729062500001163,
+      "candidateMedianMs": 0.00109896875000004,
+      "speedup": 0.9762845849803075,
+      "signature": "d73f439673bdebc9f05ff346be55f077e3628a56c7202d23149107e93d6e38e3"
+    },
+    {
+      "size": "small",
+      "selection": "mixed invalid",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.023082999999999743,
+      "candidateMedianMs": 0.02312499999999318,
+      "speedup": 0.9981837837840671,
+      "signature": "63f9fcad880819d7f85f5218bf1accf78dee19707eaad37374f16ac5c50c04ed"
+    },
+    {
+      "size": "small",
+      "selection": "all",
+      "operation": "prune",
+      "baselineMedianMs": 0.001630187499999991,
+      "candidateMedianMs": 0.0017161562500001004,
+      "speedup": 0.9499062221169521,
+      "signature": "acd6e4a48f10bd4d541a191d7e571f92385c192c7ccf7ea59e841da0e2008997"
+    },
+    {
+      "size": "small",
+      "selection": "all",
+      "operation": "executeCommand",
+      "baselineMedianMs": 0.0262079999999969,
+      "candidateMedianMs": 0.0262079999999969,
+      "speedup": 1,
+      "signature": "debe4b3f253d37bf1a69348caefa0da1bbbc646505c61ba533239e3812deb9be"
+    },
+    {
+      "size": "limits",
+      "selection": "empty",
+      "operation": "prune",
+      "baselineMedianMs": 0.18691406249999964,
+      "candidateMedianMs": 9.503124999987733e-5,
+      "speedup": 1966.8694508410751,
+      "signature": "a3721202fd95b330c0b0429f743b41b6a108431d11cf2b33fe1902e4eff02c62"
+    },
+    {
+      "size": "limits",
+      "selection": "empty",
+      "operation": "executeCommand",
+      "baselineMedianMs": 1.1756249999999682,
+      "candidateMedianMs": 0.9622080000000324,
+      "speedup": 1.2217992367553883,
+      "signature": "72ba6d62d9a14086ba618b9a1d8950a822a9a246811dbc47ce124185ab14d650"
+    },
+    {
+      "size": "limits",
+      "selection": "node only",
+      "operation": "prune",
+      "baselineMedianMs": 0.1857851562499988,
+      "candidateMedianMs": 0.018772156250001615,
+      "speedup": 9.896846892587677,
+      "signature": "923793125ef2e57ef4eb95e9cf528cd4915272ecde7c82c5e4c21c0672b61a8e"
+    },
+    {
+      "size": "limits",
+      "selection": "node only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 1.036542000000054,
+      "candidateMedianMs": 0.8903749999999491,
+      "speedup": 1.1641634142918582,
+      "signature": "44fcbfc41b20e031dd45e203583760f4153072dee14291914987a95a908e1a3f"
+    },
+    {
+      "size": "limits",
+      "selection": "edge only",
+      "operation": "prune",
+      "baselineMedianMs": 0.18547396875000288,
+      "candidateMedianMs": 0.15612237500000248,
+      "speedup": 1.1880037614723702,
+      "signature": "70d17bd3a8e9a78a23fc954bd62bcddf3be4b2471d9abee802a8753aa3058132"
+    },
+    {
+      "size": "limits",
+      "selection": "edge only",
+      "operation": "executeCommand",
+      "baselineMedianMs": 1.1161669999999049,
+      "candidateMedianMs": 0.9768749999998363,
+      "speedup": 1.1425893793986865,
+      "signature": "3e03d1db7d69ac69b3506c00cae37055b52320f2bfc5946f8a44c9ab2a617f40"
+    },
+    {
+      "size": "limits",
+      "selection": "mixed invalid",
+      "operation": "prune",
+      "baselineMedianMs": 0.1778841249999985,
+      "candidateMedianMs": 0.18523178124999617,
+      "speedup": 0.9603326373022296,
+      "signature": "d73f439673bdebc9f05ff346be55f077e3628a56c7202d23149107e93d6e38e3"
+    },
+    {
+      "size": "limits",
+      "selection": "mixed invalid",
+      "operation": "executeCommand",
+      "baselineMedianMs": 1.1366669999999885,
+      "candidateMedianMs": 1.1853750000000218,
+      "speedup": 0.9589092059474577,
+      "signature": "bf0b69bb1b15afd5d13868368ddad82fd396e7a8589348ff1f5b32d3b9c04ba1"
+    },
+    {
+      "size": "limits",
+      "selection": "all",
+      "operation": "prune",
+      "baselineMedianMs": 0.27369662499999947,
+      "candidateMedianMs": 0.24320575000000133,
+      "speedup": 1.1253706995003119,
+      "signature": "f9edf424251a3cd0790c34e467e8b827bc541f407c91263e402883e875c984a4"
+    },
+    {
+      "size": "limits",
+      "selection": "all",
+      "operation": "executeCommand",
+      "baselineMedianMs": 1.362916000000041,
+      "candidateMedianMs": 1.309291999999914,
+      "speedup": 1.0409564864064935,
+      "signature": "c7283e9c7b069cab1897a7c76009beb65a38fc24cee7ba14fa65947af9187bb3"
+    }
+  ]
+}

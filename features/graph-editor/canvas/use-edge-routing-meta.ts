@@ -15,7 +15,6 @@ import {
 } from "../compute/rust-kernel";
 import { computeRoutingInWorker } from "../compute/worker-client";
 
-import { computeCytoscapeEdgeRoutingMeta } from "../adapters/cytoscape/cytoscape-adapter";
 import type { GraphModel } from "../core/graph/model";
 import {
   withMeasuredNodeGeometry,
@@ -23,6 +22,7 @@ import {
 } from "../adapters/browser/node-geometry";
 import {
   edgeRoutingProgress,
+  computeEdgeRouting,
   createEdgeRoutingTask,
   createEdgeRoutingCacheKey,
 } from "../core/layout/edge-routing";
@@ -32,7 +32,7 @@ import {
   updateAutomaticRoutingSnapshot,
 } from "../core/layout/edge-routing-continuity";
 
-type RoutingMeta = ReturnType<typeof computeCytoscapeEdgeRoutingMeta>;
+type RoutingMeta = ReturnType<typeof computeEdgeRouting>;
 
 export function useEdgeRoutingMeta(graph: GraphModel) {
   const kernelReady = useSyncExternalStore(
@@ -61,10 +61,17 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     }),
     [mode],
   );
+  // Font loading invalidates the browser's label measurements. All routing
+  // stages for this render share one transient snapshot of the same geometry.
+  const measured = useMemo(
+    () => ({ graph: withMeasuredNodeGeometry(graph), fontRevision }),
+    [graph, fontRevision],
+  );
+  const measuredGraph = measured.graph;
   const cacheKey = useMemo(
     () =>
-      `${fontRevision}:${createEdgeRoutingCacheKey(withMeasuredNodeGeometry(graph), edgeRoutingOptions)}`,
-    [edgeRoutingOptions, graph, fontRevision],
+      `${measured.fontRevision}:${createEdgeRoutingCacheKey(measured.graph, edgeRoutingOptions)}`,
+    [edgeRoutingOptions, measured],
   );
   const cacheRef = useRef<{ key: string; meta: RoutingMeta } | null>(null);
   const routingSnapshotRef = useRef(emptyEdgeRoutingContinuitySnapshot());
@@ -73,7 +80,7 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   if (!cacheRef.current) {
     cacheRef.current = {
       key: mode ? "" : cacheKey,
-      meta: computeCytoscapeEdgeRoutingMeta(graph, {
+      meta: computeEdgeRouting(measuredGraph, {
         mode: mode ? "parallel" : "simple",
       }),
     };
@@ -84,7 +91,10 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   const acceptRoutingMeta = useCallback(
     (model: GraphModel, meta: RoutingMeta) => {
       cacheRef.current = {
-        key: `${fontRevision}:${createEdgeRoutingCacheKey(withMeasuredNodeGeometry(model), { mode: model.settings.autoEdgeRouting ? "quality" : "simple" })}`,
+        key:
+          model === graph
+            ? cacheKey
+            : `${measured.fontRevision}:${createEdgeRoutingCacheKey(withMeasuredNodeGeometry(model), { mode: model.settings.autoEdgeRouting ? "quality" : "simple" })}`,
         meta,
       };
       routingSnapshotRef.current = updateAutomaticRoutingSnapshot(
@@ -93,8 +103,15 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
         meta,
       );
     },
-    [fontRevision],
+    [cacheKey, measured, graph],
   );
+
+  const restartFallbackRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    // The Worker initializes its own kernel. Main-thread readiness only
+    // upgrades an active JS fallback, without cancelling a healthy Worker job.
+    if (kernelReady) restartFallbackRef.current?.();
+  }, [kernelReady]);
 
   useEffect(() => {
     let frame: number | null = null;
@@ -102,6 +119,11 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     const controller = new AbortController();
     let sourceCache = cacheRef.current;
     let task: ReturnType<typeof createEdgeRoutingTask> | null = null;
+    const restartFallback = () => {
+      if (cancelled || cacheRef.current !== sourceCache || !task) return;
+      task = null;
+    };
+    restartFallbackRef.current = restartFallback;
     const refine = () => {
       if (cancelled || cacheRef.current !== sourceCache) return;
       if (!task) {
@@ -111,7 +133,7 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
             ? edgeRoutingProgress(current.meta).pendingEdgeIds
             : null;
         if (pending && !pending.length) return;
-        task = createEdgeRoutingTask(withMeasuredNodeGeometry(graph), {
+        task = createEdgeRoutingTask(measuredGraph, {
           ...edgeRoutingOptions,
           previousMeta: pending
             ? current!.meta
@@ -143,7 +165,7 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
           : null;
       if (pending && !pending.length) return;
       const result = await computeRoutingInWorker(
-        withMeasuredNodeGeometry(graph),
+        measuredGraph,
         {
           ...edgeRoutingOptions,
           previousMeta: pending
@@ -167,10 +189,12 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     void start();
     return () => {
       cancelled = true;
+      if (restartFallbackRef.current === restartFallback)
+        restartFallbackRef.current = null;
       controller.abort();
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [cacheKey, graph, edgeRoutingOptions, acceptRoutingMeta, kernelReady]);
+  }, [cacheKey, graph, measuredGraph, edgeRoutingOptions, acceptRoutingMeta]);
 
   return {
     edgeRoutingMeta,

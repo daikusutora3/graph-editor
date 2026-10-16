@@ -371,6 +371,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     reverseSelectionEdges,
     setSelectionEdgeColor,
     setSelectionNodeColor,
+    setSelectionColors,
   } = useGraphCanvasContextActions({
     cancelInlineEdit,
     deleteSelection,
@@ -601,6 +602,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
                 chrome={chrome}
                 onSetNodeColor={setSelectionNodeColor}
                 onSetEdgeColor={setSelectionEdgeColor}
+                onSetSelectionColors={setSelectionColors}
                 onReverseEdges={reverseSelectionEdges}
                 onResetEdgeCurve={(edgeId) =>
                   executeCommand(
