@@ -3,13 +3,49 @@
 Use these checks when UI geometry, themes, or static-export headers change.
 They are separate from `bun run check` and `bun run check:all`.
 
-For the current agent task, rendered UI verification uses only the in-app
+For agent tasks, rendered UI verification can use the in-app
 browser at the approved `http://127.0.0.1:3323` or `:3324` preview, on `/`,
-`/en` or `/zh-hans`, through the `localGraphTab` binding. Keep the policy hook
-enabled. Do not launch Safari or Playwright, or execute arbitrary page scripts.
+`/en` or `/zh-hans`, through the `localGraphTab` binding, or installed Safari
+through the fixed runner below. Keep the policy hook enabled and follow
+`AGENTS.md` for the exact allowed paths and operations. Do not launch Playwright
+or other browser automation through an interface outside those exceptions.
 The CLI commands below document the maintained audit tools; changes to their
 source or a passing `bun run check` do not establish that those browser suites
 were executed. Record actual in-app screenshots and interactions separately.
+
+## Installed Safari regression
+
+Start the approved preview at `http://127.0.0.1:3323`, then run from the
+repository root without URL, scenario, or command overrides:
+
+```bash
+python3 tests/browser/safari-workflow.py
+```
+
+The runner tests the URL policy before opening isolated Safari WebDriver
+sessions, renews the session between suites to isolate native input state, and
+closes the final session afterward. Editor workflow and range-selection cases
+also start in fresh sessions. Navigation and refresh wait for a new document
+before checking editor state. It visits only `/`, `/en`, and
+`/zh-hans`. The default run covers design controls, Rust/Wasm computation,
+multi-selection and history, range menus and gestures, edge routing, and the
+localized import/edit/export/reload workflow. Ordinary buttons use native
+keyboard activation; drag and hover checks use native pointer actions.
+The expected editor state is checked between workflow stages. Commands such as
+Undo and setting toggles are not replayed on a timeout. Only read-only WebDriver
+requests may be retried after transport failures. A hover check may repeat
+pointer entry once when a recorded window blur interrupted tooltip display.
+
+Results and screenshots are saved under `/tmp/graph-editor-safari-review`.
+Use `results.json` from a completed run for the full-suite result. A `passed`
+status is saved only after session cleanup succeeds; `cleanup.json` carries the
+same run ID and records session closure and driver shutdown. Requested
+window sizes are reported alongside actual viewport sizes. Focus appearance
+checks record when Safari's test window is inactive, because keyboard focus in
+the DOM alone does not establish that an active focus outline was displayed.
+This is an expert review on installed desktop Safari, not a physical-device,
+screen-reader, native-download, or first-time-participant test. Any native
+keyboard limitations and use of DOM keyboard events are recorded per case.
 
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 

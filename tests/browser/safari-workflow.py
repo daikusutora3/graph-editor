@@ -16,6 +16,10 @@ OUTPUT = Path("/tmp/graph-editor-safari-review")
 ELEMENT = "element-6066-11e4-a52e-4f735466cecf"
 
 
+class DriverTimeoutError(RuntimeError):
+    """The browser may still be processing the timed-out native command."""
+
+
 def approved(url):
     p = urllib.parse.urlsplit(url)
     return (p.scheme == "http" and p.netloc == "127.0.0.1:3323"
@@ -40,16 +44,34 @@ class Session:
         self.id = result["sessionId"]
         self.capabilities = result["capabilities"]
 
+    def restart(self):
+        self.close()
+        self.__init__()
+        self.navigate("/")
+        self.wait("return document.readyState==='complete'")
+
+    def focus_window(self):
+        handle = self.command("GET", "/window")
+        self.command("POST", "/window", {"handle": handle})
+
     @staticmethod
     def request(method, path, data=None):
         payload = None if data is None else json.dumps(data).encode()
         request = urllib.request.Request(DRIVER + path, data=payload, method=method,
                                          headers={"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(request, timeout=40) as response:
-                result = json.load(response)
-        except urllib.error.HTTPError as error:
-            raise RuntimeError(error.read().decode()) from error
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(request, timeout=40) as response:
+                    result = json.load(response)
+                break
+            except urllib.error.HTTPError as error:
+                raise RuntimeError(error.read().decode()) from error
+            except TimeoutError as error:
+                # A read can be repeated without replaying an editor command.
+                # Never repeat POST/DELETE: its effect may already be committed.
+                if method != "GET" or attempt == 1:
+                    raise DriverTimeoutError(f"Safari driver timed out: {method} {path}") from error
+                print(f"Safari driver: retrying timed-out read {method} {path}", flush=True)
         value = result.get("value")
         if isinstance(value, dict) and "error" in value:
             raise RuntimeError(json.dumps(value))
@@ -64,8 +86,22 @@ class Session:
     def navigate(self, path):
         url = ORIGIN + path
         assert approved(url), f"Navigation denied: {url}"
+        token = str(time.time_ns())
+        current = self.request("GET", f"/session/{self.id}/url")
+        if approved(current):
+            self.js("window.__safariPreviousDocument=arguments[0];", token)
         self.command("POST", "/url", {"url": url}, check=False)
-        assert approved(self.command("GET", "/url"))
+        condition = "return location.href===" + json.dumps(url) + "&&document.readyState==='complete'&&window.__safariPreviousDocument!==" + json.dumps(token)
+        if path != "/":
+            locale = {"/en": "en", "/zh-hans": "zh-Hans"}[path]
+            condition += "&&document.documentElement.dataset.locale===" + json.dumps(locale)
+        self.wait(condition)
+
+    def refresh(self):
+        token = str(time.time_ns())
+        url = self.js("window.__safariPreviousDocument=arguments[0];return location.href;", token)
+        self.command("POST", "/refresh", {})
+        self.wait("return location.href===" + json.dumps(url) + "&&document.readyState==='complete'&&window.__safariPreviousDocument!==" + json.dumps(token))
 
     def js(self, script, *args):
         return self.command("POST", "/execute/sync", {"script": script, "args": list(args)})
@@ -84,30 +120,37 @@ class Session:
         return self.command("POST", "/element", {"using": "css selector", "value": selector})[ELEMENT]
 
     def button(self, label):
-        self.wait("return [...document.querySelectorAll('button')].some(e=>e.getAttribute('aria-label')===" + json.dumps(label) + "||e.textContent.trim()===" + json.dumps(label) + ")")
-        element = self.js("return [...document.querySelectorAll('button')].find(e=>e.getAttribute('aria-label')===arguments[0]||e.textContent.trim()===arguments[0]);", label)
+        element = self.wait("return [...document.querySelectorAll('button')].find(e=>"
+            "(e.getAttribute('aria-label')===" + json.dumps(label) + "||e.textContent.trim()===" + json.dumps(label) + ")"
+            "&&!e.disabled&&e.getClientRects().length&&!e.closest('[inert],[data-panel-state=closing]')"
+            "&&getComputedStyle(e).visibility!=='hidden');")
         return element[ELEMENT]
 
     def click(self, element):
         self.command("POST", f"/element/{element}/click", {})
 
-    def focus_window(self):
-        handle = self.command("GET", "/window")
-        self.command("POST", "/window", {"handle": handle})
+    def activate(self, element):
+        """Activate one real button with native Space; never repeat a command."""
+        assert self.js("const e=arguments[0];return e.tagName==='BUTTON'&&!e.disabled&&!e.closest('[inert]');", {ELEMENT: element})
+        self.js("arguments[0].focus();", {ELEMENT: element})
+        self.command("POST", "/actions", {"actions": [{"type": "key", "id": "activation-keyboard", "actions": [
+            {"type": "keyDown", "value": " "}, {"type": "keyUp", "value": " "}]}]})
+
+    def close_panel(self, panel):
+        self.activate(self.element(f"[data-editor-panel={panel}] [data-panel-close=true]"))
+        self.wait("return !document.querySelector(arguments[0])".replace(
+            "arguments[0]", json.dumps(f"[data-editor-panel={panel}]")))
 
     def open_panel(self, label, panel):
         # SafariDriver can swallow mouse clicks in an unfocused automation
-        # window. Focus the real control, then activate it with native Enter.
+        # window. Focus the real control, then activate it with native Space.
         # Retry only an opening action after checking that it is still closed.
         script = "return !!document.querySelector(arguments[0])".replace(
             "arguments[0]", json.dumps(f"[data-editor-panel={panel}]"))
         for attempt in range(2):
             if self.js(script):
                 return
-            self.focus_window()
-            self.js("arguments[0].focus();", {ELEMENT: self.button(label)})
-            self.command("POST", "/actions", {"actions": [{"type": "key", "id": "panel-keyboard", "actions": [
-                {"type": "keyDown", "value": "\ue007"}, {"type": "keyUp", "value": "\ue007"}]}]})
+            self.activate(self.button(label))
             try:
                 self.wait(script, timeout=3)
                 return
@@ -124,7 +167,7 @@ class Session:
 
 
 def run_design_guidelines_review(session):
-    """Rendered expert review of the design changes before compute regressions."""
+    """Rendered expert review of the design changes in each locale and theme."""
     messages = {
         "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像",
                "input": "グラフのデータ", "format": "形式"},
@@ -149,7 +192,6 @@ def run_design_guidelines_review(session):
         }, indent=2, ensure_ascii=False))
 
     def key(value):
-        session.focus_window()
         session.command("POST", "/actions", {"actions": [{"type": "key", "id": "design-keyboard", "actions": [
             {"type": "keyDown", "value": value}, {"type": "keyUp", "value": value}]}]})
 
@@ -188,7 +230,7 @@ def run_design_guidelines_review(session):
                     session.navigate(m["path"])
                     # This session is isolated from the user's normal Safari data.
                     session.js("localStorage.clear();localStorage.setItem('graph-editor-theme',arguments[0]);", theme)
-                    session.command("POST", "/refresh", {})
+                    session.refresh()
                     session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
                     session.wait("return document.documentElement.dataset.theme===" + json.dumps(theme))
                     dimensions = session.js("return {width:innerWidth,height:innerHeight,devicePixelRatio,layout:document.querySelector('[data-layout]')?.dataset.layout}")
@@ -328,48 +370,57 @@ def run_design_guidelines_review(session):
 
 def run_editor_review(session):
     messages = {
-        "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像"},
-        "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "image": "PNG image"},
-        "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "image": "PNG 图像"},
+        "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像", "color": "頂点の色", "green": "頂点の色: 緑"},
+        "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "image": "PNG image", "color": "Node color", "green": "Node color: Green"},
+        "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "image": "PNG 图像", "color": "顶点颜色", "green": "顶点颜色：绿色"},
     }
     results = []
-    for locale, m in messages.items():
+    for locale in ("zh-hans", "ja", "en"):
+        m = messages[locale]
         for width in (600, 960, 1440):
             for theme in ("light", "dark"):
+                if results:
+                    session.restart()
                 session.command("POST", "/window/rect", {"width": width, "height": 1000}, check=False)
                 session.navigate(m["path"])
                 # Reset only this isolated Safari automation session's local state.
                 session.js("localStorage.clear(); localStorage.setItem('graph-editor-theme',arguments[0]);", theme)
-                session.command("POST", "/refresh", {})
+                session.refresh()
                 session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
                 dimensions = session.js("return {width:innerWidth,height:innerHeight}")
                 prefix = f"safari-{locale}-{theme}-{width}"
                 session.screenshot(prefix + "-empty")
+                session.focus_window()
                 opener = session.button(m["load"])
                 session.js("arguments[0].focus()", {ELEMENT: opener})
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue007"}, {"type": "keyUp", "value": "\ue007"}]}]})
-                session.wait("return document.querySelector('[data-editor-panel=starter]')?.contains(document.activeElement)")
+                session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&p!==document.activeElement&&p.contains(document.activeElement)")
+                session.js("window.__editorTabStart=document.activeElement;")
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue004"}, {"type": "keyUp", "value": "\ue004"}]}]})
-                assert session.js("return document.querySelector('[data-editor-panel=starter]').contains(document.activeElement)"), "Tab stays inside panel"
+                session.wait("return document.activeElement!==window.__editorTabStart&&document.querySelector('[data-editor-panel=starter]')?.contains(document.activeElement)")
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue00c"}, {"type": "keyUp", "value": "\ue00c"}]}]})
                 session.wait("return !document.querySelector('[data-editor-panel=starter]')")
-                assert session.js("return document.activeElement.getAttribute('aria-label')===arguments[0]", m["load"]), "Escape restores opener"
-                session.click(session.button(m["load"]))
+                session.wait("return document.activeElement.getAttribute('aria-label')===" + json.dumps(m["load"]))
+                session.open_panel(m["load"], "starter")
                 session.js("window.__focusTrace=[];document.addEventListener('focusin',e=>window.__focusTrace.push({event:'focus',tag:e.target.tagName,label:e.target.getAttribute('aria-label'),time:performance.now()}));document.addEventListener('input',e=>window.__focusTrace.push({event:'input',tag:e.target.tagName,value:e.target.value,time:performance.now()}));")
                 textarea = session.element("textarea")
                 session.command("POST", f"/element/{textarea}/value", {"text": "4 4\n1 2\n2 3\n2 4\n3 4"})
                 session.wait("return [...document.querySelectorAll('[data-editor-panel=starter] button')].some(e=>e.textContent.trim()===" + json.dumps(m["apply"]) + "&&!e.disabled)")
                 session.screenshot(prefix + "-import")
-                session.click(session.button(m["apply"]))
+                session.activate(session.button(m["apply"]))
                 session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===4&&!document.querySelector('[data-editor-panel=starter]')")
-                session.click(session.element("button.ge-select-node-hitbox"))
-                radios = session.command("POST", "/elements", {"using": "css selector", "value": "[role=radiogroup] [role=radio]"})
-                assert radios, "Node color controls appear"
-                session.click(radios[-1][ELEMENT])
+                session.activate(session.element("button.ge-select-node-hitbox"))
+                mobile = session.js("return document.querySelector('[data-layout]').dataset.layout==='mobile'")
+                if mobile:
+                    session.activate(session.button(m["color"]))
+                session.activate(session.button(m["green"]))
                 session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].color==='green'")
+                if mobile:
+                    range_key(session, "\ue00c")
+                    session.wait("return !document.querySelector('[role=radiogroup]')")
                 before = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0]")
                 node = session.element("button.ge-select-node-hitbox")
                 session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
@@ -378,8 +429,8 @@ def run_editor_review(session):
                     {"type": "pointerMove", "duration": 400, "origin": "pointer", "x": 40, "y": 20},
                     {"type": "pointerUp", "button": 0}]}]})
                 session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].x!==" + str(before["x"]))
-                session.click(session.button(m["export"]))
-                session.command("POST", f"/element/{session.element('[data-editor-panel=export] select')}/value", {"text": "JSON"})
+                session.open_panel(m["export"], "export")
+                session.click(session.element('[data-editor-panel=export] option[value="json"]'))
                 text = session.wait("const e=document.querySelector('[data-editor-panel=export] pre');return e&&e.textContent.trim().startsWith('{')&&e.textContent;")
                 graph = json.loads(text)
                 assert len(graph["nodes"]) == 4 and graph["nodes"][0]["color"] == "green"
@@ -389,14 +440,14 @@ def run_editor_review(session):
                 findings = session.js("""return [...document.querySelectorAll('[data-editor-panel] button, [data-editor-chrome-control]')].flatMap(e=>{
                     const r=e.getBoundingClientRect(); return r.width&&r.height&&(r.left< -1||r.right>innerWidth+1||r.top< -1||r.bottom>innerHeight+1)?[{text:e.textContent,x:r.x,y:r.y,width:r.width,height:r.height}]:[];});""")
                 assert not findings, findings
-                session.click(session.button(m["image"]))
+                session.open_panel(m["image"], "png")
                 session.wait("return !!document.querySelector('[data-editor-panel=png] img')")
                 session.screenshot(prefix + "-png")
-                session.command("POST", "/refresh", {})
+                session.refresh()
                 session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===4")
                 restored = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
                 assert restored["nodes"][0]["color"] == "green" and restored["nodes"][0]["x"] == graph["nodes"][0]["x"]
-                results.append({"locale": locale, "theme": theme, "requestedWindowWidth": width, "viewport": dimensions, "checks": ["keyboard Enter opens panel", "Tab focus", "Escape and opener restoration", "immediate typing", "import", "node color", "drag", "JSON export data", "PNG preview", "reload persistence", "geometry"]})
+                results.append({"locale": locale, "theme": theme, "requestedWindowWidth": width, "viewport": dimensions, "checks": ["keyboard Enter opens panel", "Tab focus", "Escape and opener restoration", "text input after reopening", "import", "node color", "drag", "JSON export data", "PNG preview", "reload persistence", "geometry"]})
                 print(f"{prefix} {dimensions}: passed", flush=True)
     return results
 
@@ -459,28 +510,24 @@ def run_edge_routing_regression(session):
         session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
         session.navigate("/en")
         session.js("localStorage.clear(); localStorage.setItem('graph-editor-theme','light');")
-        session.command("POST", "/refresh", {})
+        session.refresh()
         session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
-        settings = session.button("Settings")
-        session.js("arguments[0].focus();", {ELEMENT: settings})
-        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
-            {"type": "keyDown", "value": "\ue007"}, {"type": "keyUp", "value": "\ue007"}]}]})
-        session.wait("return !!document.querySelector('[data-editor-panel=settings]')")
-        session.click(session.button("Weighted" if weighted else "Unweighted"))
-        session.click(session.button("Directed" if directed else "Undirected"))
-        session.click(session.button("Settings"))
-        session.click(session.button("Load a graph"))
-        session.click(session.button("Use a sample"))
+        session.open_panel("Settings", "settings")
+        session.activate(session.button("Weighted" if weighted else "Unweighted"))
+        session.activate(session.button("Directed" if directed else "Undirected"))
+        session.close_panel("settings")
+        session.open_panel("Load a graph", "starter")
+        session.activate(session.button("Use a sample"))
         tree_card = session.element('[data-sample-kind="tree"]')
         session.js("arguments[0].scrollIntoView({block:'center'});", {ELEMENT: tree_card})
         assert session.js("return arguments[0].querySelector('input').value;", {ELEMENT: tree_card}) == "7", "Tree sample defaults to seven nodes"
         session.wait("return !!document.querySelector('[data-sample-kind=tree] [data-sample-stats]')")
-        session.click(session.element('[data-sample-kind="tree"] button[type="submit"]'))
+        session.activate(session.element('[data-sample-kind="tree"] button[type="submit"]'))
         session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===7&&!document.querySelector('[data-editor-panel=starter]')")
-        session.click(session.button("Layout"))
+        session.open_panel("Layout", "layouts")
         offset = session.button("Offset overlapping edges")
         if session.command("GET", f"/element/{offset}/attribute/aria-checked") != "true":
-            session.click(offset)
+            session.activate(offset)
         variant = f"{'weighted' if weighted else 'unweighted'}-{'directed' if directed else 'undirected'}"
         snapshots = []
 
@@ -503,14 +550,14 @@ def run_edge_routing_regression(session):
         record("sample", True)
         for cycle in (1, 2):
             worker_after = session.js("return performance.now()")
-            session.click(session.button("Line: Input order"))
+            session.activate(session.button("Line: Input order"))
             record(f"line-{cycle}", False, worker_after)
-            session.click(session.button("Tree: Root downward"))
+            session.activate(session.button("Tree: Root downward"))
             record(f"tree-{cycle}", True)
-        session.click(session.button("Layout"))
+        session.close_panel("layouts")
         session.wait("return !document.querySelector('[data-editor-panel=layouts]')")
         record("tree-restored", True)
-        session.command("POST", "/refresh", {})
+        session.refresh()
         session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===7")
         record("tree-reloaded", True)
         results.append({"scenario": "issue-45-edge-routing", "variant": variant, "snapshots": snapshots})
@@ -579,7 +626,7 @@ def choose_range_target(session, label):
     element = session.js("""return [...document.querySelectorAll('[data-range-selection-controls] [role=menuitemradio]')]
         .find(e => e.getAttribute('aria-label') === arguments[0] || e.textContent.trim() === arguments[0]);""", label)
     assert element, f"Range target menu item missing: {label}"
-    session.click(element[ELEMENT])
+    session.activate(element[ELEMENT])
     session.wait("return !document.querySelector('[data-range-selection-controls]')")
     assert_range_menu_closed(session, restore_focus=True)
     inspect_range_target(session, label)
@@ -595,9 +642,10 @@ def assert_range_menu_closed(session, restore_focus=False):
 
 def open_range_menu(session):
     assert_range_menu_closed(session)
+    session.focus_window()
     trigger = session.element("[data-range-selection-trigger]")
     assert session.command("GET", f"/element/{trigger}/attribute/aria-haspopup") == "menu"
-    session.click(trigger)
+    session.activate(trigger)
     session.wait("return !!document.querySelector('[data-range-selection-controls][role=menu]')")
 
 
@@ -622,6 +670,12 @@ def inspect_range_target(session, label):
 def range_drag(session, points, keys, expected_nodes, expected_edges, summary,
                name, release_before_up=False):
     assert_range_menu_closed(session)
+    session.focus_window()
+    session.js("""window.__rangePointerEvents=[];
+        for(const type of ['pointerdown','pointermove','pointerup','pointercancel','mousedown','mouseup','blur'])window.addEventListener(type,e=>{
+            window.__rangePointerEvents.push({type,x:e.clientX,y:e.clientY,buttons:e.buttons,ctrl:e.ctrlKey,meta:e.metaKey,shift:e.shiftKey,target:e.target===window?'window':e.target.tagName});
+            window.__rangePointerEvents=window.__rangePointerEvents.slice(-40);
+        },true);""")
     # Separate actions let us inspect the actual drag preview before release.
     session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
         {"type": "keyDown", "value": RANGE_KEYS[key]} for key in keys]}]})
@@ -630,8 +684,12 @@ def range_drag(session, points, keys, expected_nodes, expected_edges, summary,
         {"type": "pointerDown", "button": 0},
         {"type": "pointerMove", "duration": 400, "origin": "viewport", "x": round(points[1]["x"]), "y": round(points[1]["y"])},
     ]}]})
-    session.wait(RANGE_CY + "return cy.nodes('.range-preview').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_nodes)) +
-                 " && cy.edges('.range-preview').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_edges)))
+    try:
+        session.wait(RANGE_CY + "return cy.nodes('.range-preview').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_nodes)) +
+                     " && cy.edges('.range-preview').map(e=>e.id()).sort().join(',') === " + json.dumps(",".join(expected_edges)))
+    except AssertionError as error:
+        snapshot = session.js(RANGE_CY + "return {events:window.__rangePointerEvents,pan:cy.pan(),zoom:cy.zoom(),focused:document.hasFocus(),previewNodes:cy.nodes('.range-preview').map(e=>e.id()),previewEdges:cy.edges('.range-preview').map(e=>e.id())};")
+        raise AssertionError("Native range drag failed: " + json.dumps({"name": name, "points": points, **snapshot})) from error
     preview = range_snapshot(session)
     assert preview["previewNodes"] == expected_nodes and preview["previewEdges"] == expected_edges, (name, preview)
     if release_before_up:
@@ -682,14 +740,16 @@ def run_range_selection(session):
                     "select": "选择", "node": "顶点", "mixed": "3 个顶点 · 2 条边", "nodes": "3 个顶点", "edges": "2 条边"},
     }
     results = []
-    cases = [(locale, 1440) for locale in messages] + [("en", 600)]
-    for locale, width in cases:
+    cases = [("en", 600)] + [(locale, 1440) for locale in messages]
+    for index, (locale, width) in enumerate(cases):
+        if index:
+            session.restart()
         m = messages[locale]
         session.command("POST", "/window/rect", {"width": width, "height": 1000}, check=False)
         session.navigate(m["path"])
         # Only the isolated WebDriver session's local application data is reset.
         session.js("localStorage.clear(); localStorage.setItem('graph-editor-graph', arguments[0]);", json.dumps(RANGE_FIXTURE))
-        session.command("POST", "/refresh", {})
+        session.refresh()
         session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length === 4 && !!document.querySelector('[data-range-selection-trigger]')")
         session.js("""window.__rangeEvents=[]; for(const type of ['keydown','keyup']) window.addEventListener(type,e=>window.__rangeEvents.push({type,key:e.key,ctrl:e.ctrlKey,meta:e.metaKey,shift:e.shiftKey}));""")
         assert_range_menu_closed(session)
@@ -758,9 +818,9 @@ return {viewport: {width: innerWidth, height: innerHeight},
         checks.append(range_drag(session, geometry["background"], ["meta", "shift"], ["a", "b", "c"], [], m["nodes"], prefix + "-node-shortcut-override"))
         inspect_range_target(session, edges_label)
         checks.append(range_drag(session, geometry["edgeStart"], ["ctrl"], [], ["ab", "ac"], m["edges"], prefix + "-edge-start"))
-        session.click(session.button(m["node"]))
+        session.activate(session.button(m["node"]))
         assert_range_menu_closed(session)
-        session.click(session.button(m["select"]))
+        session.activate(session.button(m["select"]))
         session.wait("return document.querySelectorAll('.ge-select-node-hitbox').length === 4 && !document.querySelector('.ge-select-node-hitbox')?.closest('[inert]')")
         inspect_range_target(session, edges_label)
         choose_range_target(session, all_label)
@@ -789,29 +849,81 @@ return {x: r.x, y: r.y, width: r.width, height: r.height, viewportWidth: innerWi
 
 def run_range_menu_review(session):
     results = []
-    for locale, path, width in (("ja", "/", 896), ("en", "/en", 600), ("zh-hans", "/zh-hans", 960)):
+    for index, (locale, path, width) in enumerate((("ja", "/", 896), ("en", "/en", 600), ("zh-hans", "/zh-hans", 960))):
+        if index:
+            session.restart()
         session.command("POST", "/window/rect", {"width": width, "height": 984}, check=False)
         session.navigate(path)
-        session.wait("return !!document.querySelector('[data-canvas-ready=true]') && !!document.querySelector('[data-range-selection-trigger]')")
+        session.js("localStorage.clear();localStorage.setItem('graph-editor-graph',arguments[0]);localStorage.setItem('graph-editor-theme','light');", json.dumps(RANGE_FIXTURE))
+        session.refresh()
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]') && !!document.querySelector('[data-range-selection-trigger]')", timeout=30)
+        session.focus_window()
+        time.sleep(0.2)
+        session.command("DELETE", "/actions")
         trigger = session.element("[data-range-selection-trigger]")
+        session.wait("return !!document.querySelector('.ge-tooltip')")
+        session.js("""window.__safariHoverEvents=[];
+            for(const type of ['pointerover','pointerout']) document.addEventListener(type,e=>{
+                window.__safariHoverEvents.push({type,pointerType:e.pointerType,x:e.clientX,y:e.clientY,time:performance.now(),
+                    label:e.target.closest?.('[data-tooltip]')?.dataset.tooltip});
+                window.__safariHoverEvents=window.__safariHoverEvents.slice(-12);
+            },true);
+            for(const type of ['blur','scroll']) window.addEventListener(type,e=>{
+                if(type==='blur'&&e.target!==window)return;
+                window.__safariHoverEvents.push({type,target:e.target===window?'window':e.target.tagName,time:performance.now()});
+                window.__safariHoverEvents=window.__safariHoverEvents.slice(-12);
+            },true);
+            """)
 
         def hover(element):
+            session.js("window.__safariHoverStarted=performance.now();")
             session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
-                {"type": "pointerMove", "duration": 0, "origin": {ELEMENT: element}, "x": 0, "y": 0}]}]})
+                # Escape dismisses a tooltip until a fresh pointer entry.
+                {"type": "pointerMove", "duration": 150, "origin": "viewport", "x": 1, "y": 300},
+                {"type": "pause", "duration": 100},
+                {"type": "pointerMove", "duration": 150, "origin": {ELEMENT: element}, "x": 0, "y": 0}]}]})
             time.sleep(0.6)
 
+        hover_retries = 0
+        def wait_tooltip():
+            nonlocal hover_retries
+            condition = "const t=document.querySelector('[data-range-selection-trigger]');return window.__safariHoverEvents.some(e=>e.type==='pointerover'&&e.time>=window.__safariHoverStarted&&e.label===t.dataset.tooltip)&&[...document.querySelectorAll('.ge-tooltip')].some(e=>!e.hidden&&e.textContent===t.dataset.tooltip)"
+            try:
+                try:
+                    session.wait(condition, timeout=3)
+                except AssertionError:
+                    interrupted = session.js("return window.__safariHoverEvents.some(e=>e.type==='blur'&&e.time>=window.__safariHoverStarted)")
+                    if not interrupted:
+                        raise
+                    # Blur correctly dismisses a tooltip. Repeat only this
+                    # read-only pointer entry after Safari's window transition.
+                    hover_retries += 1
+                    hover(trigger)
+                    session.wait(condition, timeout=3)
+            except AssertionError as error:
+                snapshot = session.js("""const t=document.querySelector('[data-range-selection-trigger]');const r=t.getBoundingClientRect();
+                    return {focused:document.hasFocus(),hover:matchMedia('(hover:hover)').matches,
+                        viewport:visualViewport&&{left:visualViewport.offsetLeft,top:visualViewport.offsetTop,width:visualViewport.width,height:visualViewport.height},
+                        trigger:t.dataset.tooltip,expanded:t.getAttribute('aria-expanded'),rect:{x:r.x,y:r.y,width:r.width,height:r.height},
+                        tooltips:[...document.querySelectorAll('.ge-tooltip')].map(e=>({hidden:e.hidden,text:e.textContent})),
+                        events:window.__safariHoverEvents};""")
+                raise AssertionError("Native tooltip activation failed: " + json.dumps(snapshot)) from error
+
         hover(trigger)
-        session.wait("const t=document.querySelector('[data-range-selection-trigger]');return [...document.querySelectorAll('.ge-tooltip')].some(e=>!e.hidden&&e.textContent===t.dataset.tooltip)")
-        session.click(trigger)
+        wait_tooltip()
+        session.activate(trigger)
         session.wait("return !!document.querySelector('[data-range-selection-controls]')")
         toolbar = session.js("return document.querySelector('[data-range-selection-trigger]').closest('[role=toolbar]')")
         neighbor = session.js("return arguments[0].querySelector('[data-tooltip]:not([data-range-selection-trigger])')", toolbar)
         hover(neighbor[ELEMENT] if neighbor else trigger)
-        layout = session.js("""const menu=document.querySelector('[data-range-selection-controls]');const footer=menu.lastElementChild;
+        layout = session.js("""const menu=document.querySelector('[data-range-selection-controls]');
+if(!menu)return {menuMissing:true,focused:document.hasFocus(),events:window.__safariHoverEvents};
+const footer=menu.lastElementChild;
 const text=document.createRange();text.selectNodeContents(footer);const rect=menu.getBoundingClientRect();
 return {hint:footer.textContent,lines:text.getClientRects().length,footerWidth:footer.clientWidth,textWidth:footer.scrollWidth,
     x:rect.x,y:rect.y,right:rect.right,bottom:rect.bottom,viewportWidth:innerWidth,viewportHeight:innerHeight,
     tooltipsHidden:[...document.querySelectorAll('.ge-tooltip')].every(e=>e.hidden)};""")
+        assert not layout.get("menuMissing"), layout
         assert layout["lines"] == 1 and layout["textWidth"] <= layout["footerWidth"] + 1, layout
         assert layout["tooltipsHidden"], layout
         assert layout["x"] >= 0 and layout["right"] <= layout["viewportWidth"] + 1, layout
@@ -819,10 +931,16 @@ return {hint:footer.textContent,lines:text.getClientRects().length,footerWidth:f
         session.screenshot(f"safari-range-menu-{locale}-{width}")
         range_key(session, "\ue00c")
         session.wait("return !document.querySelector('[data-range-selection-controls]')")
+        # Escape dismisses the current activation. Leave focus before testing
+        # a new hover activation, rather than reusing that dismissed trigger.
+        assert neighbor, "The toolbar supplies a separate focus target"
+        session.js("arguments[0].focus();", neighbor)
+        session.wait("return document.activeElement!==document.querySelector('[data-range-selection-trigger]')")
         hover(trigger)
-        session.wait("const t=document.querySelector('[data-range-selection-trigger]');return [...document.querySelectorAll('.ge-tooltip')].some(e=>!e.hidden&&e.textContent===t.dataset.tooltip)")
+        wait_tooltip()
         session.command("DELETE", "/actions")
-        results.append({"locale": locale, "requestedWindowWidth": width, **layout, "closedTooltipRestored": True})
+        results.append({"locale": locale, "requestedWindowWidth": width, **layout, "closedTooltipRestored": True,
+                        "windowBlurHoverRetries": hover_retries})
         print(f"safari-range-menu-{locale}-{width}: single-line hint and tooltip open/close passed", flush=True)
     return results
 
@@ -838,21 +956,21 @@ def run_self_loop_review(session):
                    "nodes": [{"id": "a", "label": "0", "order": 0, "x": 0, "y": 0}],
                    "edges": [{"id": f"loop-{i}", "source": "a", "target": "a"} for i in range(count)]}
         session.js("localStorage.clear(); localStorage.setItem('graph-editor-graph',arguments[0]); localStorage.setItem('graph-editor-theme','light');", json.dumps(fixture))
-        session.command("POST", "/refresh", {})
+        session.refresh()
         session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
         session.wait(RANGE_CY + f"return cy.edges().length==={count};")
         if session.command("GET", f"/element/{session.button('Layout')}/attribute/aria-expanded") != "true":
-            session.click(session.button("Layout"))
+            session.activate(session.button("Layout"))
         session.wait("return !!document.querySelector('[data-editor-panel=layouts]')")
-        session.click(session.button("Offset overlapping edges"))
-        session.click(session.button("Layout"))
+        session.activate(session.button("Offset overlapping edges"))
+        session.activate(session.button("Layout"))
         def snapshot():
             return session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:parseFloat(e.data('loopDirection')),sweep:parseFloat(e.data('loopSweep')),points:e.controlPoints()}));")
         session.wait(RANGE_CY + f"return cy.edges().length==={count} && Math.abs(parseFloat(cy.edges()[1].data('loopDirection'))-parseFloat(cy.edges()[0].data('loopDirection')))>{360/count-1};")
         before = snapshot()
         assert all(edge["sweep"] < 360/count for edge in before), before
         session.screenshot(f"self-loops-{count}")
-        session.command("POST", "/refresh", {})
+        session.refresh()
         session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
         restored = snapshot()
         assert [e["direction"] for e in before] == [e["direction"] for e in restored]
@@ -865,13 +983,13 @@ def run_self_loop_review(session):
 def run_text_weight_review(session):
     session.navigate("/en")
     session.js("localStorage.clear();")
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
-    session.click(session.button("Load a graph"))
+    session.open_panel("Load a graph", "starter")
     textarea = session.element("textarea")
     session.command("POST", f"/element/{textarea}/value", {"text": "3 2\n1 2 INF\n2 3 ∞"})
     session.wait("return [...document.querySelectorAll('button')].some(e=>e.textContent.trim()==='Apply to graph'&&!e.disabled)")
-    session.click(session.button("Apply to graph"))
+    session.activate(session.button("Apply to graph"))
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.edges[0]?.weight==='INF'")
     session.click(session.element(".ge-select-edge-hitbox"))
     range_key(session, "\ue007")
@@ -882,7 +1000,7 @@ def run_text_weight_review(session):
     range_key(session, "\ue007")
     session.wait("return !document.querySelector('input[name=graph-edge-weight]') && JSON.parse(localStorage.getItem('graph-editor-graph')).edges[0].weight==='容量 ∞'")
     session.screenshot("text-weight-edited")
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
     weights = session.js("const cy=[...document.querySelectorAll('div')].find(e=>'_cyreg' in e)?._cyreg?.cy;return cy?.edges().map(e=>e.data('weight'));")
     assert weights == ["容量 ∞", "∞"], weights
@@ -898,7 +1016,7 @@ def run_multi_selection_review(session):
         session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
         session.navigate("/en")
         session.js("localStorage.clear(); localStorage.setItem('graph-editor-graph',arguments[0]); localStorage.setItem('graph-editor-theme','light');", json.dumps(RANGE_FIXTURE))
-        session.command("POST", "/refresh", {})
+        session.refresh()
         session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length === 4")
         session.js(RANGE_CY + "cy.zoom(1); cy.pan({x:container.clientWidth/2,y:400});")
         session.js("window.__multiKeys=[];for(const type of ['keydown','keyup'])window.addEventListener(type,e=>window.__multiKeys.push({type,key:e.key,shift:e.shiftKey,ctrl:e.ctrlKey,meta:e.metaKey,target:e.target.tagName,prevented:e.defaultPrevented}),true);")
@@ -1037,7 +1155,7 @@ def run_multi_selection_review(session):
                     hit:document.elementFromPoint(x,y)?.closest('button')?.getAttribute('aria-label'),
                     animations:button.closest('[role=toolbar]')?.getAnimations().map(a=>({state:a.playState,time:a.currentTime}))};
             """)
-            session.click(session.element('[role=radio][aria-label="Node color: Green"]'))
+            session.activate(session.element('[role=radio][aria-label="Node color: Green"]'))
             after_color = json.loads(json.dumps(after_down))
             for node in after_color["nodes"]:
                 if node["id"] in selected_ids:
@@ -1050,14 +1168,14 @@ def run_multi_selection_review(session):
 
             for stage, expected in (("undo-color", after_down), ("undo-shift-arrow", after_right),
                                     ("undo-arrow", after_drag), ("undo-drag", baseline)):
-                session.click(session.button("Undo"))
+                session.activate(session.button("Undo"))
                 verify(stage, expected)
             # Redo keeps the saved result meaningful for the reload check.
             for stage, expected in (("redo-drag", after_drag), ("redo-arrow", after_right),
                                     ("redo-shift-arrow", after_down), ("redo-color", after_color)):
-                session.click(session.button("Redo"))
+                session.activate(session.button("Redo"))
                 verify(stage, expected)
-            session.command("POST", "/refresh", {})
+            session.refresh()
             session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length===4")
             restored = snapshot()
             assert restored["saved"] == after_color, (variant, "reload", restored)
@@ -1081,7 +1199,7 @@ def run_rust_compute_review(session):
     def load(fixture):
         session.navigate("/en")
         session.js("localStorage.clear();localStorage.setItem('graph-editor-graph',arguments[0]);localStorage.setItem('graph-editor-theme','light');", json.dumps(fixture))
-        session.command("POST", "/refresh", {})
+        session.refresh()
         session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
 
     def saved():
@@ -1100,7 +1218,7 @@ def run_rust_compute_review(session):
     # Start with an empty graph so input-time loading, rather than canvas
     # routing, makes the Rust integer scanner available before the preview.
     load({**RANGE_FIXTURE, "nodes": [], "edges": []})
-    session.click(session.button("Load a graph"))
+    session.open_panel("Load a graph", "starter")
     matrix_text = "\n".join(" ".join("1" if abs(source - target) == 1 else "0"
                                    for target in range(128)) for source in range(128))
     textarea = session.element("textarea")
@@ -1108,17 +1226,17 @@ def run_rust_compute_review(session):
     mark("import")
     session.wait("return [...document.querySelectorAll('[data-editor-panel=starter] button')].some(e=>e.textContent.trim()==='Apply to graph'&&!e.disabled)")
     session.screenshot("rust-integer-matrix-preview-128")
-    session.click(session.button("Apply to graph"))
+    session.activate(session.button("Apply to graph"))
     session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return g?.nodes.length===128&&g?.edges.length===127&&!document.querySelector('[data-editor-panel=starter]')")
     matrix_saved = saved()
     assert matrix_saved["nodes"][0]["label"] == "0"
     assert matrix_saved["edges"][0]["source"] == "n0" and matrix_saved["edges"][0]["target"] == "n1"
-    session.click(session.button("Undo"))
+    session.activate(session.button("Undo"))
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.length===0")
-    session.click(session.button("Redo"))
+    session.activate(session.button("Redo"))
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.length===128")
     assert saved() == matrix_saved
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
     assert saved() == matrix_saved
     results.append({"scenario": "integer-matrix-128", "status": "passed", "rustPreview": True,
@@ -1135,7 +1253,7 @@ def run_rust_compute_review(session):
     session.open_panel("Layout", "layouts")
     session.js("window.__rustFrames=0;window.__rustFrameActive=true;const tick=()=>{if(window.__rustFrameActive){window.__rustFrames++;requestAnimationFrame(tick)}};requestAnimationFrame(tick);")
     started = time.monotonic()
-    session.click(session.button("Auto layout: Force-directed"))
+    session.activate(session.button("Auto layout: Force-directed"))
     mark("layout", "force_layout")
     session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return g.nodes.some(n=>n.y!==0)")
     laid_out = saved()
@@ -1144,13 +1262,13 @@ def run_rust_compute_review(session):
     assert len(laid_out["nodes"]) == 200 and len(laid_out["edges"]) == 199
     assert all(isinstance(n["x"], (int, float)) and isinstance(n["y"], (int, float)) for n in laid_out["nodes"])
     session.screenshot("rust-force-200")
-    session.click(session.button("Undo"))
+    session.activate(session.button("Undo"))
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.every(n=>n.y===0)")
     assert saved() == baseline, "Worker result is one undoable command"
-    session.click(session.button("Redo"))
+    session.activate(session.button("Redo"))
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.some(n=>n.y!==0)")
     assert saved() == laid_out
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
     assert saved() == laid_out, "Computed positions persist after reload"
     results.append({"scenario": "force-200", "status": "passed", "workflowFrames": frame_count,
@@ -1175,7 +1293,7 @@ def run_rust_compute_review(session):
     load(crowded)
     baseline = saved()
     session.open_panel("Layout", "layouts")
-    session.click(session.button("Resolve overlap: Move nodes apart"))
+    session.activate(session.button("Resolve overlap: Move nodes apart"))
     mark("overlap", "resolve_overlaps")
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.some(n=>n.y!==0)")
     separated = saved()
@@ -1184,7 +1302,7 @@ def run_rust_compute_review(session):
         for other in separated["nodes"][i + 1:]:
             assert ((node["x"]-other["x"])**2 + (node["y"]-other["y"])**2)**0.5 >= 60 - 0.00001
     session.screenshot("rust-overlap-80")
-    session.click(session.button("Undo"))
+    session.activate(session.button("Undo"))
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes.every(n=>n.x===0&&n.y===0)")
     assert saved() == baseline
     results.append({"scenario": "overlap-80", "status": "passed", "gridPreserved": True})
@@ -1198,7 +1316,7 @@ def run_rust_compute_review(session):
     snapshot = session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));")
     assert len(snapshot) == 10 and len(set(e["direction"] for e in snapshot)) == 10
     session.screenshot("rust-routing-10-loops")
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
     mark("routing")
     assert session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));") == snapshot
@@ -1214,7 +1332,7 @@ def run_rust_compute_review(session):
     wide_snapshot = session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));")
     assert len(wide_snapshot) == 32
     session.screenshot("routing-wide-32-loops")
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
     mark("routing")
     assert session.js(RANGE_CY + "return cy.edges().map(e=>({id:e.id(),direction:e.data('loopDirection'),sweep:e.data('loopSweep'),points:e.controlPoints()}));") == wide_snapshot
@@ -1234,12 +1352,28 @@ def run_rust_compute_review(session):
     session.wait(RANGE_CY + "return cy.getElementById('ab').data('bow')===0")
     baseline = saved()
     start = session.js(RANGE_CY + "cy.zoom(1);cy.pan({x:container.clientWidth/2,y:400});const p=cy.getElementById('c').renderedPosition(),r=container.getBoundingClientRect();performance.clearMarks('graph-compute:routing:worker');performance.clearMarks('graph-compute:routing:wasm:routing_node_shape');return {x:p.x+r.x,y:p.y+r.y};")
-    session.wait("return !document.querySelector('.ge-select-node-hitbox')?.closest('[inert]')")
+    # The DOM hitboxes follow Cytoscape's viewport on the next animation frame.
+    # Start only when the real pointer target agrees with the requested view.
+    session.wait("""const e=document.querySelector('button[aria-label="Select node C"]');
+        if(!e||e.closest('[inert]'))return false;const r=e.getBoundingClientRect();
+        return Math.abs(r.x+r.width/2-""" + str(start["x"]) + ")<0.5&&Math.abs(r.y+r.height/2-" + str(start["y"]) + ")<0.5&&document.elementFromPoint(" + str(round(start["x"])) + "," + str(round(start["y"])) + ")?.closest('button')===e;")
+    session.js("""window.__routingDragEvents=[];
+        for(const type of ['pointerdown','pointermove','pointerup','pointercancel','lostpointercapture','mousedown','mousemove','mouseup','focus','blur'])window.addEventListener(type,e=>{
+            window.__routingDragEvents.push({type,x:e.clientX,y:e.clientY,buttons:e.buttons,target:e.target===window?'window':e.target.tagName,label:e.target.closest?.('button')?.getAttribute('aria-label')});
+            window.__routingDragEvents=window.__routingDragEvents.slice(-100);
+        },true);""")
+    session.focus_window()
+    session.click(session.element('button[aria-label="Select node C"]'))
     session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
-        {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(start["x"]), "y": round(start["y"])},
+        {"type": "pointerMove", "duration": 150, "origin": "viewport", "x": round(start["x"]), "y": round(start["y"])},
         {"type": "pointerDown", "button": 0},
+        {"type": "pause", "duration": 50},
         {"type": "pointerMove", "duration": 400, "origin": "pointer", "x": 0, "y": -180}]}]})
-    session.wait(RANGE_CY + "return cy.getElementById('c').position('y')===0&&Math.abs(cy.getElementById('ab').data('bow'))>0")
+    try:
+        session.wait(RANGE_CY + "return cy.getElementById('c').position('y')===0&&Math.abs(cy.getElementById('ab').data('bow'))>0")
+    except AssertionError as error:
+        snapshot = session.js(RANGE_CY + "return {position:cy.getElementById('c').position(),bow:cy.getElementById('ab').data('bow'),events:window.__routingDragEvents};")
+        raise AssertionError("Native obstacle drag failed: " + json.dumps(snapshot)) from error
     mark("routing", "routing_node_shape")
     assert saved() == baseline, "Worker routing during drag must not persist the preview"
     def curve_gap():
@@ -1272,10 +1406,10 @@ def run_rust_compute_review(session):
     session.command("DELETE", "/actions")
     session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[2].y===0")
     dragged = saved()
-    session.click(session.button("Undo"))
+    session.activate(session.button("Undo"))
     session.wait(RANGE_CY + "return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[2].y===180&&cy.getElementById('ab').data('bow')===0")
     assert saved() == baseline
-    session.click(session.button("Redo"))
+    session.activate(session.button("Redo"))
     session.wait(RANGE_CY + "return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[2].y===0&&Math.abs(cy.getElementById('ab').data('bow'))>0")
     assert saved() == dragged
     committed_gap = curve_gap()
@@ -1302,7 +1436,7 @@ def run_rust_compute_review(session):
     assert projected_gap >= 4, ("The projected route must clear the measured wide capsule", projected_gap)
     projected_route = session.js(RANGE_CY + "return {distances:cy.getElementById('ab').data('controlPointDistances'),weights:cy.getElementById('ab').data('controlPointWeights')};")
     session.screenshot("rust-projected-wide-obstacle-64")
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
     mark("routing", "routing_projected_obstacles")
     assert session.js(RANGE_CY + "return {distances:cy.getElementById('ab').data('controlPointDistances'),weights:cy.getElementById('ab').data('controlPointWeights')};") == projected_route
@@ -1354,7 +1488,7 @@ def run_promo_recording(session):
     # SafariDriver owns an isolated automation window. Do not touch the user's
     # normal browsing data, clipboard, downloads or other applications.
     session.js("localStorage.clear();localStorage.setItem('graph-editor-theme','dark');")
-    session.command("POST", "/refresh", {})
+    session.refresh()
     session.wait("return !!document.querySelector('[data-canvas-ready=true]')", timeout=30)
     # Select only this driver's own automation window before native gestures.
     handle = session.command("GET", "/window")
@@ -1467,6 +1601,12 @@ def main():
     OUTPUT.mkdir(exist_ok=True)
     driver = subprocess.Popen(["/usr/bin/safaridriver", "-p", "4447"], stdout=(OUTPUT / "driver.log").open("w"), stderr=subprocess.STDOUT)
     session = None
+    summary = None
+    if not sys.argv[1:] and not (OUTPUT / "promo-request.json").exists():
+        summary = {"status": "running", "runId": time.time_ns(), "capabilities": None,
+                   "results": [], "completedStages": [],
+                   "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}
+        (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
     try:
         for _ in range(50):
             try:
@@ -1477,7 +1617,13 @@ def main():
             except (urllib.error.URLError, ConnectionError):
                 time.sleep(0.1)
         session = Session()
+        # Wait for the automation window's first real document before asking
+        # Safari's window manager to resize it.
+        session.navigate("/")
+        session.wait("return document.readyState==='complete'")
         (OUTPUT / "capabilities.json").write_text(json.dumps(session.capabilities, indent=2))
+        if summary is not None:
+            summary["capabilities"] = session.capabilities
         promo_request = OUTPUT / "promo-request.json"
         if promo_request.exists():
             assert not sys.argv[1:], "The fixed promo scenario requires the no-argument runner"
@@ -1491,20 +1637,35 @@ def main():
         if sys.argv[1:] == ["--self-loops"]:
             run_self_loop_review(session)
             return
-        design_results = run_design_guidelines_review(session)
-        compute_results = run_rust_compute_review(session)
-        multi_results = run_multi_selection_review(session)
-        (OUTPUT / "multi-selection-results.json").write_text(json.dumps({"status": "passed", "results": multi_results}, indent=2))
-        menu_results = run_range_menu_review(session)
-        (OUTPUT / "range-menu-review.json").write_text(json.dumps({"status": "passed", "results": menu_results}, indent=2))
-        results = run_range_selection(session)
-        (OUTPUT / "range-selection-results.json").write_text(json.dumps({"status": "passed", "results": results}, indent=2))
-        results += run_edge_routing_regression(session) + run_editor_review(session)
-        results = design_results + compute_results + multi_results + menu_results + results
-        (OUTPUT / "results.json").write_text(json.dumps({"status": "passed", "capabilities": session.capabilities, "results": results, "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}, indent=2))
+        def record(stage, results):
+            summary["results"].extend(results)
+            summary["completedStages"].append({"name": stage, "cases": len(results)})
+            (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+        (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+        stages = [
+            ("editor-workflow", run_editor_review, None),
+            ("edge-routing", run_edge_routing_regression, None),
+            ("range-selection", run_range_selection, "range-selection-results.json"),
+            ("rust-compute", run_rust_compute_review, None),
+            ("range-menu", run_range_menu_review, "range-menu-review.json"),
+            ("design-guidelines", run_design_guidelines_review, None),
+            ("multi-selection", run_multi_selection_review, "multi-selection-results.json"),
+        ]
+        for index, (name, review, report) in enumerate(stages):
+            if index:
+                session.restart()
+            results = review(session)
+            if report:
+                (OUTPUT / report).write_text(json.dumps({"status": "passed", "results": results}, indent=2))
+            record(name, results)
+        summary["status"] = "awaiting_cleanup"
+        (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
     except Exception as error:
+        if summary is not None:
+            summary.update({"status": "failed_or_blocked", "error": str(error)})
+            (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))
-        if session:
+        if session and not isinstance(error, DriverTimeoutError):
             try:
                 (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {visibility:document.visibilityState,focused:document.hasFocus(),ready:document.querySelector('[data-canvas-ready]')?.getAttribute('data-canvas-ready'),compute:performance.getEntriesByType('mark').filter(e=>e.name.startsWith('graph-compute:')).map(e=>e.name),trace:window.__focusTrace,active:document.activeElement.tagName,input:document.querySelector('textarea')?.value,panels:[...document.querySelectorAll('[data-editor-panel]')].map(e=>({panel:e.dataset.editorPanel,state:e.dataset.panelState})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.textContent,label:e.getAttribute('aria-label'),expanded:e.getAttribute('aria-expanded')}))}"), indent=2))
                 (OUTPUT / "range-failure-state.json").write_text(json.dumps(session.js("return {events:window.__rangeEvents, nodes:[...document.querySelectorAll('.ge-select-node-hitbox')].map(e=>({label:e.getAttribute('aria-label'),inert:e.closest('[inert]')?.outerHTML.slice(0,400)})), modes:[...document.querySelectorAll('[data-graph-shortcut-target][aria-pressed]')].map(e=>({label:e.getAttribute('aria-label'),pressed:e.getAttribute('aria-pressed')}))}"), indent=2))
@@ -1513,9 +1674,20 @@ def main():
                 pass
         raise
     finally:
+        active_error = sys.exc_info()[0] is not None
+        cleanup = {"runId": summary["runId"] if summary else None,
+                   "sessionCreated": session is not None, "sessionClosed": None, "driverStopped": False}
         try:
             if session:
                 session.close()
+                cleanup["sessionClosed"] = True
+        except Exception as error:
+            cleanup["error"] = str(error)
+            if summary is not None:
+                summary.update({"status": "failed_or_blocked", "cleanupError": str(error)})
+                (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+            if not active_error:
+                raise
         finally:
             driver.terminate()
             try:
@@ -1523,6 +1695,12 @@ def main():
             except subprocess.TimeoutExpired:
                 driver.kill()
                 driver.wait(timeout=5)
+            cleanup["driverStopped"] = driver.poll() is not None
+            (OUTPUT / "cleanup.json").write_text(json.dumps(cleanup, indent=2))
+            if summary is not None and summary["status"] == "awaiting_cleanup":
+                assert cleanup["sessionClosed"] and cleanup["driverStopped"], cleanup
+                summary["status"] = "passed"
+                (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":
