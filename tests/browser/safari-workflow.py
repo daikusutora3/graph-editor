@@ -91,16 +91,23 @@ class Session:
     def click(self, element):
         self.command("POST", f"/element/{element}/click", {})
 
+    def focus_window(self):
+        handle = self.command("GET", "/window")
+        self.command("POST", "/window", {"handle": handle})
+
     def open_panel(self, label, panel):
-        # SafariDriver can swallow the first click after refreshing an
-        # unfocused window. Retry only an idempotent panel-opening action,
-        # and only after checking that it is still closed.
+        # SafariDriver can swallow mouse clicks in an unfocused automation
+        # window. Focus the real control, then activate it with native Enter.
+        # Retry only an opening action after checking that it is still closed.
         script = "return !!document.querySelector(arguments[0])".replace(
             "arguments[0]", json.dumps(f"[data-editor-panel={panel}]"))
         for attempt in range(2):
             if self.js(script):
                 return
-            self.click(self.button(label))
+            self.focus_window()
+            self.js("arguments[0].focus();", {ELEMENT: self.button(label)})
+            self.command("POST", "/actions", {"actions": [{"type": "key", "id": "panel-keyboard", "actions": [
+                {"type": "keyDown", "value": "\ue007"}, {"type": "keyUp", "value": "\ue007"}]}]})
             try:
                 self.wait(script, timeout=3)
                 return
@@ -114,6 +121,209 @@ class Session:
 
     def close(self):
         self.command("DELETE", "", check=False)
+
+
+def run_design_guidelines_review(session):
+    """Rendered expert review of the design changes before compute regressions."""
+    messages = {
+        "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像",
+               "input": "グラフのデータ", "format": "形式"},
+        "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "image": "PNG image",
+               "input": "Graph data", "format": "Format"},
+        "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "image": "PNG 图像",
+                    "input": "图数据", "format": "格式"},
+    }
+    results = []
+    current_case = None
+    report = OUTPUT / "design-guidelines-results.json"
+
+    def save(status, error=None):
+        report.write_text(json.dumps({
+            "status": status, "review": "Expert review in isolated installed Safari",
+            "results": results, "currentCase": current_case, "error": error,
+            "focusAppearanceStatus": "passed" if results and all(r["outputKeyboardFocus"]["appearanceChecked"] for r in results) else "incomplete-or-window-inactive",
+            "limits": ["Window widths are requested sizes; each result records the actual viewport",
+                       "DOM associations and native keyboard behavior checked; no screen-reader or first-use participant test",
+                       "Focus appearance is asserted only while Safari reports its test document focused; inactive cases are recorded",
+                       "No file download, clipboard permission or system accessibility setting changes"],
+        }, indent=2, ensure_ascii=False))
+
+    def key(value):
+        session.focus_window()
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "design-keyboard", "actions": [
+            {"type": "keyDown", "value": value}, {"type": "keyUp", "value": value}]}]})
+
+    def replace_input(text):
+        element = session.element("[data-editor-panel=starter] textarea")
+        session.command("POST", f"/element/{element}/clear", {})
+        session.command("POST", f"/element/{element}/value", {"text": text})
+        session.wait("return document.querySelector('[data-editor-panel=starter] textarea')?.value===" + json.dumps(text))
+
+    def close_panel(panel):
+        close = session.element(f"[data-editor-panel={panel}] [data-panel-close=true]")
+        session.js("arguments[0].focus();", {ELEMENT: close})
+        key("\ue007")
+        session.wait("return !document.querySelector('[data-editor-panel=" + panel + "]')")
+
+    def panel_geometry(panel):
+        session.wait("const p=document.querySelector(arguments[0]);return p&&p.getAnimations().every(a=>a.playState!=='running');".replace(
+            "arguments[0]", json.dumps(f"[data-editor-panel={panel}]")))
+        geometry = session.js("""const p=document.querySelector(arguments[0]); const r=p.getBoundingClientRect();
+            return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,
+                viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:document.documentElement.scrollWidth};""",
+            f"[data-editor-panel={panel}]")
+        assert geometry["left"] >= -1 and geometry["right"] <= geometry["viewportWidth"] + 1, geometry
+        assert geometry["top"] >= -1 and geometry["bottom"] <= geometry["viewportHeight"] + 1, geometry
+        assert geometry["documentWidth"] <= geometry["viewportWidth"] + 1, geometry
+        return geometry
+
+    save("running")
+    try:
+        for locale, m in messages.items():
+            for width in (600, 1440):
+                for theme in ("light", "dark"):
+                    current_case = {"locale": locale, "theme": theme, "requestedWindowWidth": width}
+                    save("running")
+                    session.command("POST", "/window/rect", {"width": width, "height": 1000}, check=False)
+                    session.navigate(m["path"])
+                    # This session is isolated from the user's normal Safari data.
+                    session.js("localStorage.clear();localStorage.setItem('graph-editor-theme',arguments[0]);", theme)
+                    session.command("POST", "/refresh", {})
+                    session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+                    session.wait("return document.documentElement.dataset.theme===" + json.dumps(theme))
+                    dimensions = session.js("return {width:innerWidth,height:innerHeight,devicePixelRatio,layout:document.querySelector('[data-layout]')?.dataset.layout}")
+                    prefix = f"design-{locale}-{theme}-{width}"
+                    screenshots = []
+
+                    def capture(stage):
+                        name = f"{prefix}-{stage}"
+                        session.screenshot(name)
+                        screenshots.append(name + ".png")
+
+                    session.open_panel(m["load"], "starter")
+                    session.wait("return document.querySelector('[data-editor-panel=starter]')?.contains(document.activeElement)")
+                    labels = session.js("""const p=document.querySelector('[data-editor-panel=starter]');
+                        return ['textarea','select'].map(selector=>{const e=p.querySelector(selector);
+                            const labels=[...e.labels].map(l=>({text:l.textContent.trim(),visible:!!l.getClientRects().length}));
+                            const descriptions=(e.getAttribute('aria-describedby')||'').split(/\\s+/).filter(Boolean)
+                                .map(id=>({id,text:document.getElementById(id)?.textContent.trim()||null}));
+                            return {control:selector,id:e.id,labels,descriptions};});""")
+                    assert any(label["text"] == m["input"] and label["visible"] for label in labels[0]["labels"]), labels
+                    assert any(label["text"] == m["format"] and label["visible"] for label in labels[1]["labels"]), labels
+                    assert labels[0]["descriptions"] and all(d["text"] for d in labels[0]["descriptions"]), labels
+                    session.click(session.element("[data-editor-panel=starter] label[for=" + json.dumps(labels[0]["id"]) + "]"))
+                    assert session.js("return document.activeElement===document.querySelector('[data-editor-panel=starter] textarea')"), "Visible data label focuses its textarea"
+
+                    replace_input('{"version":2}')
+                    session.wait("return document.querySelector('[data-editor-panel=starter] textarea')?.getAttribute('aria-invalid')==='true'")
+                    invalid = session.js("""const p=document.querySelector('[data-editor-panel=starter]');const e=p.querySelector('textarea');
+                        const ids=e.getAttribute('aria-describedby').split(/\\s+/);const issue=document.getElementById(ids.at(-1));
+                        const probe=document.createElement('span');probe.style.borderColor='var(--danger)';p.append(probe);
+                        const danger=getComputedStyle(probe).borderColor;probe.remove();
+                        return {invalid:e.getAttribute('aria-invalid'),border:getComputedStyle(e).borderColor,danger,
+                            descriptions:ids.map(id=>({id,text:document.getElementById(id)?.textContent.trim()})),
+                            issueRole:issue?.getAttribute('role'),applyDisabled:[...p.querySelectorAll('button')].at(-1).disabled};""")
+                    assert invalid["applyDisabled"] and invalid["issueRole"] == "alert", invalid
+                    assert invalid["border"] == invalid["danger"], invalid
+                    assert len(invalid["descriptions"]) == 2 and all(d["text"] for d in invalid["descriptions"]), invalid
+                    invalid_geometry = panel_geometry("starter")
+                    capture("invalid")
+
+                    # Real malformed contest edge rows exercise the same partial-input
+                    # diagnostics as starter-input-ui, with five distinct line errors.
+                    session.click(session.element('[data-editor-panel=starter] option[value="contest-edge-list"]'))
+                    session.wait("return document.querySelector('[data-editor-panel=starter] select')?.value==='contest-edge-list'")
+                    replace_input("4 6\n1 2\n1\n2\n3\n4\n5")
+                    session.wait("return document.querySelectorAll('[data-editor-panel=starter] details li').length===2")
+                    summary = session.element("[data-editor-panel=starter] details summary")
+                    session.js("arguments[0].focus();", {ELEMENT: summary})
+                    key("\ue007")
+                    session.wait("return document.querySelector('[data-editor-panel=starter] details')?.open")
+                    warnings = session.js("""const p=document.querySelector('[data-editor-panel=starter]');const e=p.querySelector('textarea');
+                        const id=e.getAttribute('aria-describedby').split(/\\s+/).at(-1);const box=document.getElementById(id);
+                        return {invalid:e.getAttribute('aria-invalid'),applyDisabled:[...p.querySelectorAll('button')].at(-1).disabled,
+                            role:box.getAttribute('role'),primaryCount:[...box.children].filter(e=>e.tagName==='DIV').length,
+                            expanded:p.querySelector('details').open,remaining:[...p.querySelectorAll('details li')].map(e=>({text:e.textContent.trim(),visible:!!e.getClientRects().length})),
+                            summary:p.querySelector('summary').textContent.trim()};""")
+                    assert warnings["invalid"] is None and not warnings["applyDisabled"] and warnings["role"] == "status", warnings
+                    assert warnings["primaryCount"] == 3 and warnings["expanded"] and len(warnings["remaining"]) == 2, warnings
+                    assert all(item["text"] and item["visible"] for item in warnings["remaining"]), warnings
+                    warning_geometry = panel_geometry("starter")
+                    capture("diagnostics")
+
+                    replace_input("4 4\n0 1\n1 2\n1 3\n2 3")
+                    session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&!p.querySelector('details')&&![...p.querySelectorAll('button')].at(-1).disabled")
+                    apply_button = session.button(m["apply"])
+                    session.js("arguments[0].focus();", {ELEMENT: apply_button})
+                    key("\ue007")
+                    session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===4&&!document.querySelector('[data-editor-panel=starter]')")
+
+                    session.open_panel(m["export"], "export")
+                    session.wait("return !!document.querySelector('[data-editor-panel=export] pre')?.textContent.trim()")
+                    export_format = session.element("[data-editor-panel=export] select")
+                    session.js("arguments[0].focus();", {ELEMENT: export_format})
+                    key("\ue004")
+                    session.wait("return document.activeElement===document.querySelector('[data-editor-panel=export] pre')")
+                    output = session.js("""const e=document.activeElement;const s=getComputedStyle(e);
+                        return {tag:e.tagName,role:e.getAttribute('role'),label:e.getAttribute('aria-label'),tabIndex:e.tabIndex,
+                            documentFocused:document.hasFocus(),outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth,text:e.textContent.trim()};""")
+                    assert output["role"] == "region" and output["label"] and output["tabIndex"] == 0, output
+                    output["appearanceChecked"] = output["documentFocused"]
+                    if output["appearanceChecked"]:
+                        assert output["outlineStyle"] != "none" and float(output["outlineWidth"].removesuffix("px")) >= 2, output
+                    export_geometry = panel_geometry("export")
+                    capture("export-focus")
+                    close_panel("export")
+
+                    settings_panel = "menu" if dimensions["layout"] == "mobile" else "settings"
+                    settings_button = session.element(f'[data-editor-panel-trigger="{settings_panel}"]')
+                    session.js("arguments[0].focus();", {ELEMENT: settings_button})
+                    key("\ue007")
+                    session.wait("return !!document.querySelector(arguments[0])".replace(
+                        "arguments[0]", json.dumps(f"[data-editor-panel={settings_panel}]")))
+                    settings_geometry = panel_geometry(settings_panel)
+                    checkboxes = session.js("""return [...document.querySelectorAll(arguments[0]+' [role=checkbox]')].map(e=>({
+                        label:(e.getAttribute('aria-labelledby')||'').split(/\\s+/).map(id=>document.getElementById(id)?.textContent.trim()||'').join(' '),
+                        checked:e.getAttribute('aria-checked'),height:e.getBoundingClientRect().height}));""", f"[data-editor-panel={settings_panel}]")
+                    assert len(checkboxes) >= 2 and all(c["label"] and c["checked"] in ("true", "false") and c["height"] >= 44 for c in checkboxes), checkboxes
+                    checkbox = session.element(f"[data-editor-panel={settings_panel}] [role=checkbox]")
+                    session.js("arguments[0].focus();", {ELEMENT: checkbox})
+                    key(" ")
+                    session.wait("return document.querySelector(arguments[0]).getAttribute('aria-checked')!==".replace(
+                        "arguments[0]", json.dumps(f"[data-editor-panel={settings_panel}] [role=checkbox]")) + json.dumps(checkboxes[0]["checked"]))
+                    capture("settings")
+                    close_panel(settings_panel)
+
+                    session.open_panel(m["image"], "png")
+                    session.wait("return !!document.querySelector('[data-editor-panel=png] img')")
+                    ranges = session.js("""return [...document.querySelectorAll('[data-editor-panel=png] input[type=range]')].map(e=>({
+                        id:e.id,label:[...e.labels].map(l=>l.textContent.trim()).join(' '),value:e.value,
+                        valueText:e.getAttribute('aria-valuetext'),output:document.querySelector('output[for="'+e.id+'"]')?.textContent.trim()}));""")
+                    assert len(ranges) == 2 and all(r["label"] and r["valueText"] == r["value"] + " px" and "px" in (r["output"] or "") for r in ranges), ranges
+                    slider = session.element("[data-editor-panel=png] input[type=range]")
+                    session.js("arguments[0].focus();", {ELEMENT: slider})
+                    key("\ue014")
+                    session.wait("const e=document.querySelector('[data-editor-panel=png] input[type=range]');return e.value!==" + json.dumps(ranges[0]["value"]) + "&&e.getAttribute('aria-valuetext')===e.value+' px'")
+                    session.wait("return !!document.querySelector('[data-editor-panel=png] img')")
+                    png_geometry = panel_geometry("png")
+                    capture("png")
+                    results.append({**current_case, "viewport": dimensions, "labels": labels, "invalidInput": invalid,
+                        "diagnostics": warnings, "outputKeyboardFocus": output, "checkboxes": checkboxes, "sliders": ranges,
+                        "geometry": {"invalid": invalid_geometry, "diagnostics": warning_geometry, "export": export_geometry,
+                                     "settings": settings_geometry, "png": png_geometry}, "screenshots": screenshots,
+                        "checks": ["visible input and format labels", "label click focuses data input", "help and error associations",
+                                   "blocking error disables apply", "danger border", "five diagnostics remain reachable",
+                                   "Enter expands native diagnostic disclosure", "Tab reaches output; appearance checked when window focused",
+                                   "named checkbox rows and Space toggling", "named PNG ranges with px values and arrow-key updates",
+                                   "panel bounds and page overflow"]})
+                    save("running")
+                    print(f"{prefix} {dimensions}: design and accessibility review passed", flush=True)
+        current_case = None
+        save("passed")
+        return results
+    except Exception as error:
+        save("failed_or_blocked", str(error))
+        raise
 
 
 def run_editor_review(session):
@@ -591,7 +801,7 @@ def run_range_menu_review(session):
             time.sleep(0.6)
 
         hover(trigger)
-        session.wait("const t=document.querySelector('[data-range-selection-trigger]');const s=getComputedStyle(t,'::after');return s.display!=='none' && Number(s.opacity)===1")
+        session.wait("const t=document.querySelector('[data-range-selection-trigger]');return [...document.querySelectorAll('.ge-tooltip')].some(e=>!e.hidden&&e.textContent===t.dataset.tooltip)")
         session.click(trigger)
         session.wait("return !!document.querySelector('[data-range-selection-controls]')")
         toolbar = session.js("return document.querySelector('[data-range-selection-trigger]').closest('[role=toolbar]')")
@@ -599,10 +809,9 @@ def run_range_menu_review(session):
         hover(neighbor[ELEMENT] if neighbor else trigger)
         layout = session.js("""const menu=document.querySelector('[data-range-selection-controls]');const footer=menu.lastElementChild;
 const text=document.createRange();text.selectNodeContents(footer);const rect=menu.getBoundingClientRect();
-const toolbar=document.querySelector('[data-range-selection-trigger]').closest('[role=toolbar]');
 return {hint:footer.textContent,lines:text.getClientRects().length,footerWidth:footer.clientWidth,textWidth:footer.scrollWidth,
     x:rect.x,y:rect.y,right:rect.right,bottom:rect.bottom,viewportWidth:innerWidth,viewportHeight:innerHeight,
-    tooltipsHidden:[...toolbar.querySelectorAll('[data-tooltip]')].every(e=>getComputedStyle(e,'::after').display==='none')};""")
+    tooltipsHidden:[...document.querySelectorAll('.ge-tooltip')].every(e=>e.hidden)};""")
         assert layout["lines"] == 1 and layout["textWidth"] <= layout["footerWidth"] + 1, layout
         assert layout["tooltipsHidden"], layout
         assert layout["x"] >= 0 and layout["right"] <= layout["viewportWidth"] + 1, layout
@@ -611,7 +820,7 @@ return {hint:footer.textContent,lines:text.getClientRects().length,footerWidth:f
         range_key(session, "\ue00c")
         session.wait("return !document.querySelector('[data-range-selection-controls]')")
         hover(trigger)
-        session.wait("const t=document.querySelector('[data-range-selection-trigger]');const s=getComputedStyle(t,'::after');return s.display!=='none' && Number(s.opacity)===1")
+        session.wait("const t=document.querySelector('[data-range-selection-trigger]');return [...document.querySelectorAll('.ge-tooltip')].some(e=>!e.hidden&&e.textContent===t.dataset.tooltip)")
         session.command("DELETE", "/actions")
         results.append({"locale": locale, "requestedWindowWidth": width, **layout, "closedTooltipRestored": True})
         print(f"safari-range-menu-{locale}-{width}: single-line hint and tooltip open/close passed", flush=True)
@@ -1282,6 +1491,7 @@ def main():
         if sys.argv[1:] == ["--self-loops"]:
             run_self_loop_review(session)
             return
+        design_results = run_design_guidelines_review(session)
         compute_results = run_rust_compute_review(session)
         multi_results = run_multi_selection_review(session)
         (OUTPUT / "multi-selection-results.json").write_text(json.dumps({"status": "passed", "results": multi_results}, indent=2))
@@ -1290,7 +1500,7 @@ def main():
         results = run_range_selection(session)
         (OUTPUT / "range-selection-results.json").write_text(json.dumps({"status": "passed", "results": results}, indent=2))
         results += run_edge_routing_regression(session) + run_editor_review(session)
-        results = compute_results + multi_results + menu_results + results
+        results = design_results + compute_results + multi_results + menu_results + results
         (OUTPUT / "results.json").write_text(json.dumps({"status": "passed", "capabilities": session.capabilities, "results": results, "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}, indent=2))
     except Exception as error:
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))
