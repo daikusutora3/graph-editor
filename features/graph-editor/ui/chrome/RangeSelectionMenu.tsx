@@ -130,6 +130,12 @@ export function RangeSelectionMenu({
             if (!event.currentTarget.contains(event.relatedTarget)) close();
           }}
           onKeyDown={(event) => {
+            if (event.key === "Tab") {
+              // Safari may move Tab focus to browser chrome without a DOM
+              // blur. Dismiss the menu and preserve native Tab navigation.
+              close();
+              return;
+            }
             if (event.key === "Escape") {
               event.preventDefault();
               event.stopPropagation();
