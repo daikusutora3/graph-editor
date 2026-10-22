@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { controlIcon } from "./control-styles";
 
 const fieldBase =
-  "ge-focus h-8 w-full min-w-0 rounded-lg touch:h-11 border border-[var(--line)] bg-[var(--fill)] px-2.5 text-control font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]";
+  "ge-focus h-8 w-full min-w-0 rounded-lg touch:h-11 border border-[var(--control-border)] bg-[var(--fill)] px-2.5 text-control font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]";
 
 export function Select({
   children,

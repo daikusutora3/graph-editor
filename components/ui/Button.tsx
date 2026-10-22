@@ -30,7 +30,7 @@ const variantClass: Record<ButtonVariant, string> = {
   ghost: "bg-transparent text-[var(--text-2)] hover:bg-[var(--fill)]",
   secondary: raisedControl,
   choice:
-    "border-[var(--line)] bg-[var(--panel-solid)] text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
+    "border-[var(--control-border)] bg-[var(--panel-solid)] text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
   primary:
     "bg-[var(--primary)] text-[var(--primary-text)] hover:opacity-90 active:translate-y-px",
   danger: "bg-transparent text-[var(--danger)] hover:bg-[var(--danger-fill)]",

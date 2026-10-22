@@ -41,3 +41,25 @@ export function getStarterInputStatus({
 export function canApplyStarterInput(status: StarterInputStatus) {
   return status === "ready" || status === "warning";
 }
+
+export function isStarterApplyShortcut(
+  event: Pick<
+    KeyboardEvent,
+    | "key"
+    | "metaKey"
+    | "ctrlKey"
+    | "altKey"
+    | "isComposing"
+    | "keyCode"
+    | "defaultPrevented"
+  >,
+) {
+  return (
+    event.key === "Enter" &&
+    (event.metaKey || event.ctrlKey) &&
+    !event.altKey &&
+    !event.isComposing &&
+    event.keyCode !== 229 &&
+    !event.defaultPrevented
+  );
+}

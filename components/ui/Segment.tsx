@@ -55,7 +55,7 @@ export function Segment<T extends string>({
               size === "md" ? "min-h-9" : "min-h-[30px]",
               "touch:min-h-11",
               selected
-                ? "border-[var(--accent)] bg-[var(--panel-solid)] text-[var(--accent-text)]"
+                ? "border-[var(--control-accent)] bg-[var(--panel-solid)] text-[var(--accent-text)]"
                 : "border-transparent text-[var(--muted)] hover:text-[var(--text)]",
             )}
           >

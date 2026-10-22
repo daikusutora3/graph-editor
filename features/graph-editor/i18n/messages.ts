@@ -98,6 +98,8 @@ type Messages = {
     dialogLabel: string;
     methodLabel: string;
     paste: string;
+    inputLabel: string;
+    moreIssues: (count: number) => string;
     sample: string;
     loadingSamples: string;
     samplesLoadFailed: string;
@@ -669,6 +671,8 @@ const ja: Messages = {
     dialogLabel: "グラフ作成スターター",
     methodLabel: "開始方法",
     paste: "貼り付け",
+    inputLabel: "グラフのデータ",
+    moreIssues: (count: number) => `残り${count}件の確認事項を表示`,
     sample: "サンプル",
     loadingSamples: "サンプルを読み込み中",
     samplesLoadFailed:
@@ -1189,6 +1193,8 @@ const en: Messages = {
     dialogLabel: "Graph starter",
     methodLabel: "Start method",
     paste: "Paste",
+    inputLabel: "Graph data",
+    moreIssues: (count: number) => `Show ${count} more items to review`,
     sample: "Samples",
     loadingSamples: "Loading samples",
     samplesLoadFailed:
@@ -1708,6 +1714,8 @@ const zhHans: Messages = {
     dialogLabel: "图创建面板",
     methodLabel: "开始方式",
     paste: "粘贴",
+    inputLabel: "图数据",
+    moreIssues: (count: number) => `显示其余 ${count} 项待确认内容`,
     sample: "示例",
     loadingSamples: "正在加载示例",
     samplesLoadFailed:

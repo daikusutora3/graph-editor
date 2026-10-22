@@ -93,11 +93,13 @@ export function ExportPanelBody({
         </div>
         <pre
           ref={lineLayout.ref}
+          role="region"
+          tabIndex={0}
           aria-busy={pending || lineLayout.pending}
           aria-label={messages.exportPanel.exportedAria(
             messages.exportPanel.formats[exportFormat],
           )}
-          className="m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono text-control leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
+          className="ge-focus ge-focus-inset m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono text-control leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
         >
           {lineLayout.pending ? (
             <span className="text-[var(--muted)]">

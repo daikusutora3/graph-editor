@@ -5,7 +5,6 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 import { focusRing } from "./control-styles";
-import { SectionLabel } from "./Text";
 
 /**
  * Range control with an optional set of presets. Tick marks retain their true
@@ -49,7 +48,12 @@ export function Slider({
       )}
     >
       <div className="flex min-w-0 items-center justify-between gap-2">
-        <SectionLabel>{label}</SectionLabel>
+        <label
+          htmlFor={name}
+          className="min-w-0 text-meta font-medium [overflow-wrap:anywhere] text-[var(--muted)]"
+        >
+          {label}
+        </label>
         <output
           htmlFor={name}
           className={cn(
@@ -92,7 +96,7 @@ export function Slider({
           max={max}
           step={step}
           value={current}
-          aria-label={label}
+          aria-valuetext={formatValue(current, unit)}
           onChange={(event) => onChange(event.currentTarget.valueAsNumber)}
           className="ge-range"
         />
@@ -118,6 +122,7 @@ export function Slider({
               <button
                 key={preset}
                 type="button"
+                aria-label={`${label}: ${formatValue(preset, unit)}`}
                 aria-pressed={current === preset}
                 onClick={() => onChange(preset)}
                 className={cn(
@@ -152,6 +157,10 @@ export function Slider({
       ) : null}
     </div>
   );
+}
+
+function formatValue(value: number, unit: string) {
+  return unit ? `${value} ${unit}` : String(value);
 }
 
 function toRatio(value: number, min: number, max: number) {
