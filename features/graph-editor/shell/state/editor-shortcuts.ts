@@ -2,8 +2,12 @@ import type { EditorPanel } from "./editor-layout";
 import type { EditorMode } from "./editor-state";
 
 type EditorShortcutEvent = {
+  altKey: boolean;
   ctrlKey: boolean;
+  defaultPrevented?: boolean;
+  isComposing: boolean;
   key: string;
+  keyCode?: number;
   metaKey: boolean;
   shiftKey: boolean;
 };
@@ -47,6 +51,17 @@ const PANEL_KEY_TO_PANEL: Record<string, EditorPanel> = {
 export function resolveGraphEditorShortcut(
   event: EditorShortcutEvent,
 ): GraphEditorShortcut | null {
+  // Preserve system/assistive shortcuts and IME confirmation keystrokes.
+  // Some browsers report the final composing event only as keyCode 229.
+  if (
+    event.altKey ||
+    event.defaultPrevented ||
+    event.isComposing ||
+    event.keyCode === 229
+  ) {
+    return null;
+  }
+
   const key = event.key.toLowerCase();
 
   if (event.metaKey || event.ctrlKey) {

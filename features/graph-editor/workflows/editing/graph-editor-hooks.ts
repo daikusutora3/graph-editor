@@ -54,7 +54,10 @@ export function useGraphEditorShortcuts() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isEditorShortcutBlockedTarget(event.target)) {
+      if (
+        event.defaultPrevented ||
+        isEditorShortcutBlockedTarget(event.target)
+      ) {
         return;
       }
 

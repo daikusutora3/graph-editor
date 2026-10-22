@@ -325,6 +325,32 @@ function verifyShortcutResolver() {
       null,
     "unknown modified keys should not resolve a shortcut",
   );
+
+  for (const key of ["n", "l", "c", "Delete", "Enter", "ArrowRight"]) {
+    for (const guard of [
+      { altKey: true },
+      { isComposing: true },
+      { keyCode: 229 },
+      { defaultPrevented: true },
+    ]) {
+      expect(
+        resolveGraphEditorShortcut(shortcutEvent({ key, ...guard })) === null,
+        `${key} should leave system, composition and already handled events untouched`,
+      );
+    }
+  }
+  expect(
+    resolveGraphEditorShortcut(
+      shortcutEvent({ key: "c", altKey: true, ctrlKey: true }),
+    ) === null,
+    "Alt+Ctrl+C should not consume an assistive shortcut or AltGr combination",
+  );
+  expect(
+    resolveGraphEditorShortcut(
+      shortcutEvent({ key: "z", metaKey: true, isComposing: true }),
+    ) === null,
+    "composition should preserve modified keystrokes as well as character keys",
+  );
 }
 
 function verifyShortcutPlatformLabels() {
@@ -852,15 +878,32 @@ function graphFixture(): GraphModel {
 }
 
 function shortcutEvent({
+  altKey = false,
   ctrlKey = false,
+  defaultPrevented = false,
+  isComposing = false,
   key,
+  keyCode = 0,
   metaKey = false,
   shiftKey = false,
 }: {
+  altKey?: boolean;
   ctrlKey?: boolean;
+  defaultPrevented?: boolean;
+  isComposing?: boolean;
   key: string;
+  keyCode?: number;
   metaKey?: boolean;
   shiftKey?: boolean;
 }) {
-  return { ctrlKey, key, metaKey, shiftKey };
+  return {
+    altKey,
+    ctrlKey,
+    defaultPrevented,
+    isComposing,
+    key,
+    keyCode,
+    metaKey,
+    shiftKey,
+  };
 }
