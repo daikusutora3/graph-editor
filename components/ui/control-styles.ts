@@ -3,17 +3,17 @@
  * Keep visual constants here so every primitive reads from one place.
  */
 export const focusRing =
-  "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)]";
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]";
 
 export const panelSurface = "border border-[var(--line)] bg-[var(--panel)]";
 
 export const solidSurface =
   "border border-[var(--line)] bg-[var(--panel-solid)]";
 
-/** Secondary control: white face and hairline border.
+/** Secondary control: a distinct face and visible control boundary.
  * Used for clickable choices and secondary actions across panels. */
 export const raisedControl =
-  "border border-[var(--line)] bg-[var(--panel-solid)] text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-text)] active:translate-y-px";
+  "border border-[var(--control-border)] bg-[var(--panel-solid)] text-[var(--text)] transition-colors hover:border-[var(--control-accent)] hover:text-[var(--accent-text)] active:translate-y-px";
 
 /** Disabled control: no face, no border, faded label. Never a grey fill so
  * disabled states are not confused with secondary buttons or inputs. */

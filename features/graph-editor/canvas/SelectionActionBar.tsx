@@ -409,7 +409,8 @@ function ColorSwatch({
       data-tooltip-side="top"
       onClick={onPick}
       className={cn(
-        "group grid shrink-0 place-items-center rounded-full bg-transparent p-0 focus-visible:outline-none",
+        "group grid shrink-0 place-items-center rounded-full bg-transparent p-0",
+        focusRing,
         large ? "h-11 w-full min-w-0" : "size-[30px]",
       )}
     >
@@ -419,7 +420,7 @@ function ColorSwatch({
           "block size-[22px] rounded-full transition-shadow",
           active
             ? "shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent)]"
-            : "shadow-[0_0_0_1px_var(--hair)] group-hover:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--fill-2)] group-focus-visible:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--accent-ring)]",
+            : "shadow-[0_0_0_1px_var(--hair)] group-hover:shadow-[0_0_0_2px_var(--panel-solid),0_0_0_3.5px_var(--fill-2)]",
         )}
         style={{ background: fill, border: `1.5px solid ${stroke}` }}
       />

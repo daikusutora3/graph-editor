@@ -17,6 +17,7 @@
 ## 見た目の変更場所
 
 - 色・面・文字色は `app/globals.css` の意味別トークンを使う。明暗テーマごとの色を各パネルに書かない。
+- 装飾の区切りには `--line`、入力や操作の境界には `--control-border`、選択を示す境界には `--control-accent` を使う。フォーカスは `focusRing` または `ge-focus` で `--focus` の輪郭を示す。薄い影だけをフォーカスの手掛かりにしない。
 - 操作のフォーカス、面、アイコンの線幅は `components/ui/control-styles.ts` で管理する。Lucideの線幅は1.75、サイズは使用場所に合わせる。ブランド画像は固有の形を維持する。
 - ボタンのサイズ・選択状態・無効状態は共通部品のプロパティで指定する。`className` は配置に使い、各パネルで枠・背景・線幅を上書きしない。
 - 通常のツールバーは一行を維持し、パネルの長い操作は `Button wrap` を使う。長い選択肢は `Segment wrap` を使う。スマホの操作領域は44px以上を保つ。
@@ -25,6 +26,19 @@
 - tooltipは `data-tooltip` と `data-tooltip-side` で指定し、`TooltipLayer` が画面内に配置する。上下の余裕に応じて表示側を切り替え、左右は画面端から8px以上空ける。パネルごとに表示処理を追加しない。
 
 設定・PNG・書き出し・配置・読み込み・アプリメニューに共通部品を適用しています。ツールバー、選択パネル、サンプル一覧も同じ操作部品を使います。ガイドの本文用部品（`ContentSection`、`Card`、`Callout`など）も `components/ui` に置き、同じ色トークンを使います。
+
+## アクセシビリティの設計根拠
+
+[デジタル庁のアクセシビリティ指針](https://design.digital.go.jp/dads/guidance/accessibility/)、[カラーの要件](https://design.digital.go.jp/dads/foundations/color/accessibility/)、[入力のラベルとサポートテキスト](https://design.digital.go.jp/dads/components/input-text/usage/)を基準に、通常の文字は4.5:1以上、操作の境界とフォーカスは3:1以上を確保します。装飾の区切りと無効な操作は同じ基準の検証対象には含めません。
+
+[Apple HIGのレイアウト](https://developer.apple.com/design/human-interface-guidelines/layout)と[ボタン](https://developer.apple.com/design/human-interface-guidelines/buttons)も参照し、関連する操作をまとめ、表示ラベルと操作対象を結び付け、狭い画面でも内容を確認できる構造を保ちます。ネイティブアプリ固有の素材や外観をそのまま移すのではなく、このウェブアプリに適用できる操作原則を採用しています。
+
+- 入力には表示ラベルを付け、説明・エラーを `aria-describedby` で関連付ける。適用を妨げるエラーは `aria-invalid` と文字の説明で示し、適用可能な警告と区別する。省略した診断は展開してすべて確認できるようにする。
+- スライダーの表示ラベルは入力に関連付ける。値とプリセットの読み上げ名には単位と対象を含める。チェック項目の補足は名前から分けて説明として関連付ける。
+- IMEの変換中、Altを含む操作、処理済みのキーイベントを編集ショートカットで奪わない。読み込み欄の適用操作も同じ原則に従う。
+- 通常のUI文字サイズは `rem` を基準とし、ショートカット一覧はラベルの折り返しに応じて行を伸ばす。
+
+`tests/verification/design-contrast.ts` は明暗テーマの実際の色トークンを検証します。半透明の重なりや実際のフォーカス表示は、この検証だけでは確認できません。Safariの固定ローカル検証は `design-guidelines-results.json` に実際のビューポート、確認内容、スクリーンショットを記録します。これらは専門家による実装・操作レビューであり、スクリーンリーダーの実機試験や初回利用者の観察、アプリ全体の適合認証を意味しません。
 
 ## 確認
 

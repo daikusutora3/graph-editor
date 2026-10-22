@@ -27,13 +27,16 @@
   --hair: #2a2a30;
   --fill: #2a2a30;
   --fill-2: #3f3f46;
+  --control-border: #8b8b95;
+  --control-accent: #82aaff;
+  --focus: #93b4ff;
   --scrim: rgb(0 0 0 / 0.5);
 
   /* text */
   --text: #f4f4f5;
   --text-2: #d4d4d8;
   --muted: #a1a1aa;
-  --faint: #8b8b95;
+  --faint: #a1a1aa;
   --disabled: #52525b;
 
   /* actions */
@@ -107,12 +110,15 @@
   --hair: #eef0f2;
   --fill: #f3f4f6;
   --fill-2: #e5e7eb;
+  --control-border: #7c8493;
+  --control-accent: #2563eb;
+  --focus: #1d4ed8;
   --scrim: rgb(17 24 39 / 0.28);
 
   --text: #111827;
   --text-2: #374151;
-  --muted: #6b7280;
-  --faint: #6b7280;
+  --muted: #596170;
+  --faint: #596170;
   --disabled: #c4c7cd;
 
   --primary: #111827;
@@ -146,10 +152,6 @@
   --canvas-edge-blue: #2563eb;
   --canvas-edge-green: #16a34a;
   --canvas-edge-pink: #e11d48;
-}
-
-:root[data-theme="light"] [data-reading] {
-  --muted: #646b78;
 }
 
 :root[data-locale="zh-Hans"] {
@@ -210,9 +212,9 @@
   --font-mono: var(--font-mono);
   --font-sans: var(--font-ui);
   /* Type scale used by controls and metadata (see ui/primitives). */
-  --text-control: 13px;
+  --text-control: 0.8125rem;
   --text-control--line-height: 1.25rem;
-  --text-meta: 11px;
+  --text-meta: 0.6875rem;
   --text-meta--line-height: 1rem;
   /* Icon sizes inside buttons and rows. */
   --spacing-icon-sm: 15px;
@@ -371,9 +373,18 @@
  * Form controls that need pseudo-elements
  * ------------------------------------------------------------------------- */
 .ge-focus:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-ring);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-color: var(--control-accent);
+}
+
+.ge-focus[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+/* Scrollable output reaches the panel edge; keep its full focus outline inside. */
+.ge-focus-inset:focus-visible {
+  outline-offset: -2px;
 }
 
 .ge-slider {
@@ -409,7 +420,7 @@
   width: 16px;
   height: 16px;
   margin-top: 8px;
-  border: 2px solid var(--accent);
+  border: 2px solid var(--control-accent);
   border-radius: 999px;
   background: var(--panel-solid);
   box-sizing: border-box;
@@ -423,18 +434,20 @@
 .ge-range::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--accent);
+  border: 2px solid var(--control-accent);
   border-radius: 999px;
   background: var(--panel-solid);
   box-sizing: border-box;
 }
 
 .ge-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px var(--accent-ring);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .ge-range:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px var(--accent-ring);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 [data-layout="mobile"] .ge-range,
@@ -489,8 +502,8 @@
 
 .ge-select-node-hitbox:focus-visible,
 .ge-select-edge-hitbox:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--accent-ring);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .ge-edit-feedback-node {

@@ -12,7 +12,7 @@ import type {
   GraphContextMenuTarget,
   RenderedPoint,
 } from "./graph-canvas-types";
-import { Kbd } from "@/components/ui/controls";
+import { Kbd, focusRing } from "@/components/ui/controls";
 import { resolveSelectionActions } from "./selection-actions";
 
 export type { GraphContextMenuTarget } from "./graph-canvas-types";
@@ -288,7 +288,8 @@ function MenuButton({
         role="menuitem"
         onClick={onClick}
         className={cn(
-          "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--accent-ring)] focus-visible:outline-none touch:min-h-11",
+          "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors touch:min-h-11",
+          focusRing,
           danger
             ? "text-[var(--danger)] hover:bg-[var(--danger-fill)]"
             : "text-[var(--text-2)] hover:bg-[var(--fill)]",

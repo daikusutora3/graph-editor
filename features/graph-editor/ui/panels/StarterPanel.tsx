@@ -12,6 +12,7 @@ import {
   Suspense,
   type ReactNode,
   type RefObject,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -49,6 +50,7 @@ import type { useGraphStarterState } from "../../workflows/starter/graph-starter
 import {
   canApplyStarterInput,
   getStarterInputStatus,
+  isStarterApplyShortcut,
 } from "../../workflows/starter/starter-input-status";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/sample-gallery-layout";
 import { SampleGraphPreview } from "../samples/SampleGraphPreview";
@@ -82,6 +84,10 @@ export function StarterPasteBody({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const { locale, messages } = useI18n();
+  const inputId = useId();
+  const formatId = useId();
+  const helpId = useId();
+  const issuesId = useId();
   const { analysis, importFormat, inputText, preview, visibleIssues } = starter;
   const previewModel = preview?.model;
   const inputStatus = getStarterInputStatus(starter);
@@ -92,7 +98,9 @@ export function StarterPasteBody({
     analysis?.status === "invalid" ||
     analysis?.status === "limit";
   const issueSeverity =
-    analysis?.status === "invalid" || analysis?.status === "limit"
+    analysis?.status === "invalid" ||
+    analysis?.status === "limit" ||
+    preview?.status === "failure"
       ? "error"
       : "warning";
   // Empty input is already announced by the preview pane; keep the header quiet.
@@ -114,12 +122,29 @@ export function StarterPasteBody({
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <p className="m-0 min-w-0 flex-1 basis-[220px] text-xs leading-relaxed font-semibold text-[var(--muted)]">
-          {messages.chrome.starterHelp}
-        </p>
+        <div className="min-w-0 flex-1 basis-[220px]">
+          <label
+            htmlFor={inputId}
+            className="text-control font-semibold text-[var(--text)]"
+          >
+            {messages.starter.inputLabel}
+          </label>
+          <p
+            id={helpId}
+            className="mt-1 text-xs leading-relaxed text-[var(--muted)]"
+          >
+            {messages.chrome.starterHelp}
+          </p>
+        </div>
         <div className="flex max-w-full flex-wrap items-center gap-2">
+          <label
+            htmlFor={formatId}
+            className="text-xs font-semibold text-[var(--text-2)]"
+          >
+            {messages.starter.formatLabel}
+          </label>
           <Select
-            aria-label={messages.starter.formatLabel}
+            id={formatId}
             value={importFormat}
             containerClassName="w-[10.5rem]"
             onChange={(event) =>
@@ -139,7 +164,9 @@ export function StarterPasteBody({
             className={cn(
               "font-mono text-meta font-semibold whitespace-nowrap",
               hasIssues && inputText.trim()
-                ? "text-[var(--danger)]"
+                ? issueSeverity === "error"
+                  ? "text-[var(--danger)]"
+                  : "text-[var(--warning-text)]"
                 : "text-[var(--muted)]",
             )}
           >
@@ -173,22 +200,28 @@ export function StarterPasteBody({
       <div className="ge-paste-grid grid min-h-[352px] flex-1 grid-cols-1 gap-3 sm:min-h-[220px] sm:grid-cols-[minmax(0,1fr)_176px]">
         <textarea
           ref={textareaRef}
+          id={inputId}
           name="graph-input"
           value={inputText}
-          aria-label={`${messages.starter.paste}: ${messages.chrome.starterHelp}`}
+          aria-describedby={`${helpId}${visibleIssues.length > 0 ? ` ${issuesId}` : ""}`}
+          aria-invalid={
+            issueSeverity === "error" && Boolean(inputText.trim())
+              ? true
+              : undefined
+          }
           placeholder={IMPORT_FORMAT_EXAMPLES[importFormat]}
           autoComplete="off"
           spellCheck={false}
           onChange={(event) => starter.setInput(event.target.value)}
           onKeyDown={(event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+            if (isStarterApplyShortcut(event.nativeEvent)) {
               event.preventDefault();
               if (canApply) {
                 starter.applyText();
               }
             }
           }}
-          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3.5 font-mono text-control leading-[1.5] text-[var(--text)] outline-none placeholder:text-[var(--muted)] @min-[480px]/editor:px-4 @min-[480px]/editor:text-sm @min-[480px]/editor:leading-[1.6]"
+          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--control-border)] bg-[var(--fill)] px-3 py-3.5 font-mono text-control leading-[1.5] text-[var(--text)] outline-none placeholder:text-[var(--muted)] @min-[480px]/editor:px-4 @min-[480px]/editor:text-sm @min-[480px]/editor:leading-[1.6]"
         />
         <div
           aria-label={messages.starter.preview}
@@ -222,6 +255,7 @@ export function StarterPasteBody({
       ) : null}
       {visibleIssues.length > 0 ? (
         <div
+          id={issuesId}
           role={issueSeverity === "error" ? "alert" : "status"}
           aria-live={issueSeverity === "error" ? "assertive" : "polite"}
           className={cn(
@@ -244,7 +278,18 @@ export function StarterPasteBody({
             </div>
           ))}
           {visibleIssues.length > 3 ? (
-            <div>+{visibleIssues.length - 3}</div>
+            <details className="mt-1">
+              <summary className="ge-focus min-h-11 cursor-pointer rounded-md py-3 underline underline-offset-4">
+                {messages.starter.moreIssues(visibleIssues.length - 3)}
+              </summary>
+              <ul className="flex list-disc flex-col gap-1.5 pl-5 leading-relaxed">
+                {visibleIssues.slice(3).map((issue) => (
+                  <li key={formatImportWarning(issue, locale)}>
+                    {formatImportWarning(issue, locale)}
+                  </li>
+                ))}
+              </ul>
+            </details>
           ) : null}
         </div>
       ) : null}
