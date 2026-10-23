@@ -18,6 +18,12 @@ import {
 } from "react";
 
 import { graphModelToCytoscapeElements } from "../adapters/cytoscape/cytoscape-adapter";
+import { readGraphViewportPan } from "../adapters/cytoscape/cytoscape-coordinates";
+import {
+  measureNodeWidth,
+  withMeasuredNodeGeometry,
+} from "../adapters/browser/node-geometry";
+import { readCanvasPalette } from "../adapters/cytoscape/graph-canvas-viewport";
 import { updateEdgeCommand } from "../core/graph/graph-intents";
 
 import type { NodeId } from "../core/graph/model";
@@ -58,6 +64,9 @@ import { useRangeSelectionPreview } from "./graph-canvas-range-selection-preview
 import { useGraphCanvasViewportActions } from "./graph-canvas-viewport-actions";
 import { useEdgeRoutingMeta } from "./use-edge-routing-meta";
 import { useGraphEditingActions } from "./use-graph-editing-actions";
+import { findNodeCreationPosition } from "./graph-canvas-node-creation";
+import { NodeCreationAction } from "../ui/chrome/NodeCreationAction";
+import { readEditorChromeInsets } from "../adapters/browser/editor-chrome-insets";
 import { useRangeSelectionKey } from "./use-range-selection-key";
 import {
   rangeSelectionFilterFromModifiers,
@@ -186,6 +195,41 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     setEdgeDraft,
     showEditFeedback,
   });
+  const addNodeInView = useCallback(
+    (actionHeight: number) => {
+      const cy = cyRef.current;
+      if (!cy || cy.destroyed() || mode !== "node") return null;
+      const palette = readCanvasPalette();
+      const position = findNodeCreationPosition(
+        withMeasuredNodeGeometry(graph, palette),
+        {
+          width: cy.width(),
+          height: cy.height(),
+          pan: readGraphViewportPan(cy),
+          zoom: cy.zoom(),
+        },
+        chrome,
+        {
+          nodeSize: palette.nodeSize,
+          actionHeight,
+          viewportInsets: containerRef.current
+            ? readEditorChromeInsets(containerRef.current)
+            : undefined,
+          newNodeWidth: measureNodeWidth(
+            graph.settings.showNodeLabels
+              ? String(graph.nodes.length + graph.settings.indexBase)
+              : "",
+            palette,
+          ),
+        },
+      );
+      if (!position) return null;
+      const node = addNodeAtGraphPosition(position);
+      if (node) setSelection({ nodeIds: [node.id], edgeIds: [] });
+      return node;
+    },
+    [addNodeAtGraphPosition, chrome, graph, mode, setSelection],
+  );
 
   const {
     renderedPointFromPointer,
@@ -313,6 +357,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     }
   }, [edgeLabelHitboxes, openEdgeInlineEdit]);
   const editSelection = useCallback(() => {
+    if (mode !== "select") return false;
     const current = selectionRef.current;
 
     if (current.nodeIds.length === 1 && current.edgeIds.length === 0) {
@@ -326,7 +371,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     }
 
     return false;
-  }, [editSelectedEdge, editSelectedNode]);
+  }, [editSelectedEdge, editSelectedNode, mode]);
 
   useEffect(() => {
     registerGraphCanvasApi({
@@ -587,6 +632,12 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
           }}
         />
         <ZoomBadge visible={layout === "mobile"} zoomPercent={zoomPercent} />
+        {mode === "node" && !panelOpen ? (
+          <NodeCreationAction
+            mobile={layout === "mobile"}
+            onAddNode={addNodeInView}
+          />
+        ) : null}
         {/* Announces what is selected to assistive tech; visually hidden. */}
         <div role="status" aria-live="polite" className="sr-only">
           {selectionSummary}

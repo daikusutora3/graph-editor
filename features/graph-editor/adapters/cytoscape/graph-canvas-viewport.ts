@@ -28,6 +28,7 @@ type RenderedViewport = {
   x2: number;
   y2: number;
 };
+type MeasuredViewportInsets = { top: number; bottom: number };
 
 export function readZoomPercent(cy: Core) {
   return Math.round(cy.zoom() * 100);
@@ -129,6 +130,7 @@ export function syncCytoscapeSelection(
 export function fitGraphToAvailableViewport(
   cy: Core,
   chrome: GraphCanvasChrome,
+  measuredInsets?: MeasuredViewportInsets,
 ) {
   const container = cy.container();
 
@@ -141,7 +143,7 @@ export function fitGraphToAvailableViewport(
   const elements = cy.elements();
 
   if (elements.length === 0) {
-    centerGraphOrigin(cy, chrome);
+    centerGraphOrigin(cy, chrome, measuredInsets);
     return;
   }
 
@@ -151,7 +153,13 @@ export function fitGraphToAvailableViewport(
     return;
   }
 
-  const insets = graphViewportInsets(rect, chrome);
+  const insets = graphViewportInsets(rect, chrome, measuredInsets);
+  if (
+    measuredInsets &&
+    (rect.width - insets.left - insets.right <= CANVAS_FIT_PADDING * 2 ||
+      rect.height - insets.top - insets.bottom <= CANVAS_FIT_PADDING * 2)
+  )
+    return;
   const availableWidth = Math.max(
     1,
     rect.width - insets.left - insets.right - CANVAS_FIT_PADDING * 2,
@@ -186,7 +194,11 @@ export function fitGraphToAvailableViewport(
   });
 }
 
-export function centerGraphOrigin(cy: Core, chrome: GraphCanvasChrome) {
+export function centerGraphOrigin(
+  cy: Core,
+  chrome: GraphCanvasChrome,
+  measuredInsets?: MeasuredViewportInsets,
+) {
   const container = cy.container();
 
   if (!container) {
@@ -199,7 +211,13 @@ export function centerGraphOrigin(cy: Core, chrome: GraphCanvasChrome) {
     return;
   }
 
-  const insets = graphViewportInsets(rect, chrome);
+  const insets = graphViewportInsets(rect, chrome, measuredInsets);
+  if (
+    measuredInsets &&
+    (rect.width <= insets.left + insets.right ||
+      rect.height <= insets.top + insets.bottom)
+  )
+    return;
   const availableWidth = Math.max(1, rect.width - insets.left - insets.right);
   const availableHeight = Math.max(1, rect.height - insets.top - insets.bottom);
 
@@ -308,9 +326,10 @@ function applyViewport(
   cy.pan(pan);
 }
 
-function graphViewportInsets(
+export function graphViewportInsets(
   rect: { width: number; height: number },
   chrome: GraphCanvasChrome,
+  measuredInsets?: MeasuredViewportInsets,
 ) {
   const base = CHROME_INSETS[chrome.layout];
   const maxHorizontal = Math.max(0, rect.width - CANVAS_FIT_PADDING * 2);
@@ -327,8 +346,8 @@ function graphViewportInsets(
   return {
     left: base.left * horizontalScale,
     right: base.right * horizontalScale,
-    top: base.top * verticalScale,
-    bottom: base.bottom * verticalScale,
+    top: Math.max(base.top * verticalScale, measuredInsets?.top ?? 0),
+    bottom: Math.max(base.bottom * verticalScale, measuredInsets?.bottom ?? 0),
   };
 }
 

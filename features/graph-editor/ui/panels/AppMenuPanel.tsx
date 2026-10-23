@@ -55,12 +55,6 @@ export function AppMenuPanel({
       role="menu"
       onKeyDown={menuFocusKeyDown}
     >
-      <MenuLink href={APP_REPOSITORY_URL} label={messages.appMenu.github}>
-        <GitHubLogo className="size-4" aria-hidden="true" />
-      </MenuLink>
-      <MenuLink href={APP_ISSUES_URL} label={messages.appMenu.reportIssue}>
-        <CircleDot className="size-4" aria-hidden="true" />
-      </MenuLink>
       <MenuLink href={appGuidePaths[locale]} label={messages.appMenu.guide}>
         <BookOpen className="size-4" aria-hidden="true" />
       </MenuLink>
@@ -70,10 +64,6 @@ export function AppMenuPanel({
       >
         <Newspaper className="size-4" aria-hidden="true" />
       </MenuLink>
-      <MenuLink href={shareUrl} label={messages.appMenu.shareOnX}>
-        <XLogo className="size-4" aria-hidden="true" />
-      </MenuLink>
-      <Hairline className="my-1" />
       <ActionRow
         role="menuitem"
         className="px-3"
@@ -85,6 +75,16 @@ export function AppMenuPanel({
       >
         {messages.chrome.shortcuts}
       </ActionRow>
+      <Hairline className="my-1" />
+      <MenuLink href={APP_REPOSITORY_URL} label={messages.appMenu.github}>
+        <GitHubLogo className="size-4" aria-hidden="true" />
+      </MenuLink>
+      <MenuLink href={APP_ISSUES_URL} label={messages.appMenu.reportIssue}>
+        <CircleDot className="size-4" aria-hidden="true" />
+      </MenuLink>
+      <MenuLink href={shareUrl} label={messages.appMenu.shareOnX}>
+        <XLogo className="size-4" aria-hidden="true" />
+      </MenuLink>
     </div>
   );
 }

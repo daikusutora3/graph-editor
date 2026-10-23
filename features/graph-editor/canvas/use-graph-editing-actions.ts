@@ -3,11 +3,12 @@
 import { nanoid } from "nanoid";
 import { useCallback } from "react";
 
-import { addEdgeCommand, addNodeCommand } from "../core/graph/graph-intents";
+import { addEdgeCommand } from "../core/graph/graph-intents";
 import type { GraphIntent, GraphModel, NodeId } from "../core/graph/model";
 import type { EdgeDraft } from "../core/view/types";
 import type { CommandResult } from "../shell/state/history-atoms";
 import { resolveEdgeCreation } from "./graph-canvas-edge-creation";
+import { createGraphNodeAtPosition } from "./graph-canvas-node-creation";
 
 type Position = { x: number; y: number };
 
@@ -27,16 +28,9 @@ export function useGraphEditingActions({
 }) {
   const addNodeAtGraphPosition = useCallback(
     (position: Position) => {
-      const nodeId = nanoid();
-
-      const outcome = executeCommand(
-        addNodeCommand({
-          id: nodeId,
-          x: position.x,
-          y: position.y,
-        }),
-      );
-      if (outcome.status === "applied") showEditFeedback([nodeId]);
+      const node = createGraphNodeAtPosition(executeCommand, position);
+      if (node) showEditFeedback([node.id]);
+      return node;
     },
     [executeCommand, showEditFeedback],
   );

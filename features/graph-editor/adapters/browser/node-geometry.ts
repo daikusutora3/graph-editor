@@ -37,15 +37,16 @@ export function clearNodeMeasurements() {
   widths.clear();
 }
 /** Transient geometry; never commit this model to history or storage. */
-export function withMeasuredNodeGeometry(model: GraphModel): GraphModel {
-  const palette =
-    typeof document === "undefined"
-      ? {
-          nodeSize: NODE_SIZE_PX,
-          nodeFontSize: NODE_FONT_PX,
-          fontFamily: "sans-serif",
-        }
-      : readCanvasPalette();
+export function withMeasuredNodeGeometry(
+  model: GraphModel,
+  palette = typeof document === "undefined"
+    ? {
+        nodeSize: NODE_SIZE_PX,
+        nodeFontSize: NODE_FONT_PX,
+        fontFamily: "sans-serif",
+      }
+    : readCanvasPalette(),
+): GraphModel {
   return {
     ...model,
     nodes: model.nodes.map((node) => ({

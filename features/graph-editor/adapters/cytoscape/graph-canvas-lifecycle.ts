@@ -30,6 +30,8 @@ import { afterCytoscapeRender } from "./graph-canvas-render-request";
 import { resizeCytoscapeCanvas } from "./graph-canvas-resize";
 import { readGraphViewportPan } from "./cytoscape-coordinates";
 import { startVisibleTimeout } from "../browser/visible-timeout";
+import { observeCanvasTypography } from "../browser/canvas-typography";
+import { readEditorChromeInsets } from "../browser/editor-chrome-insets";
 
 import type { CanvasFitRequest } from "../../canvas/GraphCanvasProvider";
 
@@ -198,7 +200,7 @@ export function useGraphCanvasLifecycle({
       updateRenderedHitboxesRef.current(cy);
     };
 
-    document.fonts?.addEventListener("loadingdone", updateCanvasTheme);
+    const stopTypography = observeCanvasTypography(updateCanvasTheme);
     const observer = new MutationObserver(updateCanvasTheme);
     observer.observe(document.documentElement, {
       attributeFilter: ["data-theme"],
@@ -207,7 +209,7 @@ export function useGraphCanvasLifecycle({
 
     return () => {
       observer.disconnect();
-      document.fonts?.removeEventListener("loadingdone", updateCanvasTheme);
+      stopTypography();
     };
   }, [cyRef]);
 
@@ -242,11 +244,15 @@ export function useGraphCanvasLifecycle({
     const request = ++requestRef.current;
     const fitToGraph = () => {
       cy.resize();
+      const container = cy.container();
+      const insets = container
+        ? readEditorChromeInsets(container, { includeCanvasControls: true })
+        : undefined;
 
       if (cy.elements().length > 0) {
-        fitGraphToAvailableViewport(cy, chromeRef.current);
+        fitGraphToAvailableViewport(cy, chromeRef.current, insets);
       } else {
-        centerGraphOrigin(cy, chromeRef.current);
+        centerGraphOrigin(cy, chromeRef.current, insets);
       }
 
       updateRenderedHitboxesRef.current(cy);

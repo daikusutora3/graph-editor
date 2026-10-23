@@ -11,6 +11,7 @@ import {
   controlIcon,
   disabledControl,
   focusRing,
+  pressFeedback,
   raisedControl,
 } from "./control-styles";
 
@@ -31,8 +32,7 @@ const variantClass: Record<ButtonVariant, string> = {
   secondary: raisedControl,
   choice:
     "border-[var(--control-border)] bg-[var(--panel-solid)] text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
-  primary:
-    "bg-[var(--primary)] text-[var(--primary-text)] hover:opacity-90 active:translate-y-px",
+  primary: "bg-[var(--primary)] text-[var(--primary-text)] hover:opacity-90",
   danger: "bg-transparent text-[var(--danger)] hover:bg-[var(--danger-fill)]",
   success: "bg-[var(--success)] text-[var(--success-text)]",
   warning: "bg-[var(--warning)] text-[var(--warning-text)]",
@@ -103,6 +103,7 @@ export function Button({
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-lg border font-semibold transition-colors disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:text-[var(--faint)] disabled:shadow-none disabled:hover:bg-transparent",
         focusRing,
+        variant !== "disabled" && pressFeedback,
         controlIcon,
         layout === "tile"
           ? "min-h-20 min-w-0 flex-col gap-1 px-1 py-2 text-center text-control [overflow-wrap:anywhere] whitespace-normal"
@@ -157,6 +158,7 @@ export function IconButton({
       className={cn(
         "grid shrink-0 place-items-center transition-colors disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
         focusRing,
+        variant !== "disabled" && pressFeedback,
         "touch:size-11 touch:rounded-lg",
         controlIcon,
         size === "sm" && "size-[30px] rounded-md",

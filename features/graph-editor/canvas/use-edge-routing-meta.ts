@@ -16,10 +16,8 @@ import {
 import { computeRoutingInWorker } from "../compute/worker-client";
 
 import type { GraphModel } from "../core/graph/model";
-import {
-  withMeasuredNodeGeometry,
-  clearNodeMeasurements,
-} from "../adapters/browser/node-geometry";
+import { withMeasuredNodeGeometry } from "../adapters/browser/node-geometry";
+import { observeCanvasTypography } from "../adapters/browser/canvas-typography";
 import {
   edgeRoutingProgress,
   computeEdgeRouting,
@@ -46,14 +44,10 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   // Edges stay straight unless the setting is on; then parallel edges fan
   // out and edges bend just enough to clear nodes sitting on their path.
   const [fontRevision, setFontRevision] = useState(0);
-  useEffect(() => {
-    const onFonts = () => {
-      clearNodeMeasurements();
-      setFontRevision((value) => value + 1);
-    };
-    document.fonts?.addEventListener("loadingdone", onFonts);
-    return () => document.fonts?.removeEventListener("loadingdone", onFonts);
-  }, []);
+  useEffect(
+    () => observeCanvasTypography(() => setFontRevision((value) => value + 1)),
+    [],
+  );
   const mode = graph.settings.autoEdgeRouting;
   const edgeRoutingOptions = useMemo(
     () => ({

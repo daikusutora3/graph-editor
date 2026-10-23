@@ -125,8 +125,7 @@ export function EditorChrome() {
     value: CopyState;
   } | null>(null);
   const copyAttemptRef = useRef(0);
-  const copyResetRef = useRef<number | null>(null);
-  const [clearArmed, setClearArmed] = useTimedState(false, 3000);
+  const [clearArmed, setClearArmed] = useState(false);
   const [toast, setToast] = useTimedState<string | null>(null, 4000);
   const [starterView, setStarterView] = useState<StarterView>("paste");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -170,18 +169,11 @@ export function EditorChrome() {
   useEffect(() => {
     copyAttemptRef.current += 1;
     setCopyFeedback(null);
-    if (copyResetRef.current !== null) {
-      window.clearTimeout(copyResetRef.current);
-      copyResetRef.current = null;
-    }
   }, [exportFormat, exportVisible, graph]);
 
   useEffect(
     () => () => {
       copyAttemptRef.current += 1;
-      if (copyResetRef.current !== null) {
-        window.clearTimeout(copyResetRef.current);
-      }
     },
     [],
   );
@@ -273,14 +265,6 @@ export function EditorChrome() {
       format: exportFormat,
       value: copied ? "copied" : "blocked",
     });
-
-    if (copyResetRef.current !== null) {
-      window.clearTimeout(copyResetRef.current);
-    }
-
-    copyResetRef.current = window.setTimeout(() => {
-      if (attempt === copyAttemptRef.current) setCopyFeedback(null);
-    }, 1500);
   }, [exportFormat, exportText]);
 
   const saveExportTxt = useCallback(() => {
@@ -348,6 +332,7 @@ export function EditorChrome() {
               clearArmed={clearArmed}
               graph={graph}
               mobile={mobile}
+              onCancelClear={() => setClearArmed(false)}
               onClear={handleClear}
               onReverseAllEdges={() => reverseAllDirectedEdges()}
               onUpdateSettings={updateGraphSettings}
@@ -369,6 +354,7 @@ export function EditorChrome() {
               clearArmed={clearArmed}
               graph={graph}
               mobile={mobile}
+              onCancelClear={() => setClearArmed(false)}
               onClear={handleClear}
               onReverseAllEdges={() => reverseAllDirectedEdges()}
               onUpdateSettings={updateGraphSettings}
@@ -522,7 +508,7 @@ export function EditorChrome() {
         />
       )}
 
-      <CanvasHint mobile={mobile} visible={!visiblePanel} />
+      <CanvasHint mobile={mobile} visible={!visiblePanel && !toast} />
       <Toast message={toast} mobile={mobile} />
 
       {renderPanel()}

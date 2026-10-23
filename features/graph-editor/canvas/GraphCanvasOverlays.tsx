@@ -5,7 +5,7 @@ import type { CSSProperties, MutableRefObject, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
-import { IconButton, focusRing } from "@/components/ui/controls";
+import { IconButton, focusRing, pressFeedback } from "@/components/ui/controls";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { InlineEditTarget, RenderedPoint } from "./graph-canvas-types";
 import { clampInlineEditCenterX } from "./graph-canvas-inline-edit";
@@ -39,11 +39,13 @@ export function ZoomControls({
 
   return (
     <div
-      className="ge-panel pointer-events-auto relative z-40 flex h-12 items-center gap-0.5 rounded-xl px-1 backdrop-blur-[12px] touch:h-[52px] touch:gap-1 touch:rounded-[14px]"
+      data-canvas-zoom-controls
+      className="ge-panel pointer-events-auto relative z-40 flex min-h-[3.375rem] items-center gap-0.5 rounded-xl px-1 backdrop-blur-[12px] touch:gap-1 touch:rounded-[14px]"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
       <IconButton
+        className="size-11"
         disabled={zoomOutDisabled}
         label={messages.canvas.zoomOut}
         size="lg"
@@ -60,13 +62,15 @@ export function ZoomControls({
         disabled={disabled}
         onClick={onResetZoom}
         className={[
-          "grid h-10 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono text-control font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent touch:h-11 touch:min-w-14 touch:rounded-lg",
+          "grid h-11 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono text-control font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent touch:min-w-14 touch:rounded-lg",
           focusRing,
+          pressFeedback,
         ].join(" ")}
       >
         {zoomPercent}%
       </button>
       <IconButton
+        className="size-11"
         disabled={zoomInDisabled}
         label={messages.canvas.zoomIn}
         size="lg"
@@ -77,6 +81,7 @@ export function ZoomControls({
       </IconButton>
       <span aria-hidden="true" className="mx-1 h-6 w-px bg-[var(--line)]" />
       <IconButton
+        className="size-11"
         disabled={disabled}
         label={messages.canvas.fitGraphTitle}
         size="lg"
@@ -94,7 +99,7 @@ export function FitToViewButton({ onFitView }: { onFitView: () => void }) {
 
   return (
     <IconButton
-      className="ge-panel ge-pop pointer-events-auto rounded-[14px] backdrop-blur-[12px]"
+      className="ge-panel ge-pop pointer-events-auto size-11 rounded-[14px] backdrop-blur-[12px]"
       label={messages.canvas.fitGraphTitle}
       tooltipSide="top"
       onClick={onFitView}
@@ -132,7 +137,7 @@ export function ZoomBadge({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[68px] z-[60] flex justify-center">
+    <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--ge-top-chrome-bottom,64px)+8px)] z-[60] flex justify-center">
       <span
         role="status"
         aria-live="polite"

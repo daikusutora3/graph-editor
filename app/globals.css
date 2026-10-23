@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
-/* Touch density: the editor shell sets data-layout="mobile" below 768px and
- * every interactive target grows to at least 44px under it. */
+/* Mobile density: primary controls grow to at least 44px. The narrow range
+ * menu caret is pointer-only and is omitted on touch devices. */
 @custom-variant touch (&:where([data-layout="mobile"] *));
 
 [data-layout="mobile"] {
-  --ge-mobile-toolbar-height: 54px;
+  --ge-mobile-toolbar-height: 3.375rem;
   --ge-mobile-controls-bottom: calc(var(--ge-mobile-toolbar-height) + 28px);
 }
 
@@ -366,7 +366,7 @@
   white-space: normal;
   overflow: hidden;
   overflow-wrap: anywhere;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* ---------------------------------------------------------------------------

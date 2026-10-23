@@ -54,11 +54,20 @@ export function TooltipLayer() {
     let focused: HTMLElement | null = null;
     let dismissed: HTMLElement | null = null;
     let keyboardFocus = false;
+    let tooltipHovered = false;
     let timer: number | undefined;
+    let hideTimer: number | undefined;
+
+    const cancelHide = () => {
+      window.clearTimeout(hideTimer);
+      hideTimer = undefined;
+    };
 
     const hide = () => {
+      cancelHide();
       window.clearTimeout(timer);
       timer = undefined;
+      tooltipHovered = false;
       resizeObserver.disconnect();
       mutationObserver.disconnect();
       if (anchor) {
@@ -111,10 +120,27 @@ export function TooltipLayer() {
     const mutationObserver = new MutationObserver(position);
 
     const sync = () => {
-      const next = hovered && canShow(hovered) ? hovered : focused;
+      const next =
+        hovered && canShow(hovered)
+          ? hovered
+          : tooltipHovered && anchor && canShow(anchor)
+            ? anchor
+            : focused && canShow(focused)
+              ? focused
+              : null;
       if (next && next === dismissed) return;
       dismissed = null;
-      if (next === anchor) return;
+      if (next === anchor) {
+        cancelHide();
+        return;
+      }
+      // The tooltip is separated from its trigger by a small gap. Keep an
+      // already visible hint while the pointer crosses it, without delaying
+      // cancellation of a hint that has not appeared yet.
+      if (!next && anchor && !tooltip.hidden) {
+        hideTimer ??= window.setTimeout(hide, 150);
+        return;
+      }
       hide();
       if (!next || !canShow(next)) return;
       anchor = next;
@@ -158,12 +184,23 @@ export function TooltipLayer() {
       ) {
         return;
       }
-      hovered = triggerFrom(event.target);
+      tooltipHovered = event.target === tooltip;
+      hovered = tooltipHovered ? null : triggerFrom(event.target);
       sync();
     };
     const onPointerOut = (event: PointerEvent) => {
-      if (triggerFrom(event.relatedTarget) === hovered) return;
-      hovered = null;
+      if (event.pointerType === "touch") return;
+      if (event.target === tooltip) {
+        tooltipHovered = false;
+        hovered = triggerFrom(event.relatedTarget);
+        sync();
+        return;
+      }
+      if (triggerFrom(event.relatedTarget) === triggerFrom(event.target)) {
+        return;
+      }
+      tooltipHovered = event.relatedTarget === tooltip;
+      hovered = tooltipHovered ? null : triggerFrom(event.relatedTarget);
       sync();
     };
     const onFocusIn = (event: FocusEvent) => {
@@ -172,17 +209,20 @@ export function TooltipLayer() {
         trigger && (keyboardFocus || trigger.matches(":focus-visible"))
           ? trigger
           : null;
-      if (focused) hovered = null;
+      if (focused) {
+        hovered = null;
+        tooltipHovered = false;
+      }
       sync();
     };
     const onFocusOut = () => {
       focused = null;
+      // Keyboard navigation should not wait for the pointer crossing delay.
+      if (!hovered && !tooltipHovered) hide();
       sync();
     };
     const dismiss = () => {
-      dismissed = anchor;
-      hovered = null;
-      focused = null;
+      dismissed = anchor ?? dismissed;
       hide();
     };
     const onKeyDown = (event: KeyboardEvent) => {

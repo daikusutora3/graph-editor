@@ -21,11 +21,18 @@ import { useI18n } from "../../i18n/I18nProvider";
 import type { EditorPanel } from "../../shell/state/editor-layout";
 import type { EditorMode } from "../../shell/state/editor-state";
 import { BrandLogo } from "../brand/BrandLogo";
-import { Button, IconButton, Kbd, focusRing } from "@/components/ui/controls";
+import {
+  Button,
+  IconButton,
+  Kbd,
+  focusRing,
+  pressFeedback,
+} from "@/components/ui/controls";
 import type { ThemeMode } from "../theme/theme";
 import { editorModes } from "./editor-chrome-state";
 import { RangeSelectionMenu } from "./RangeSelectionMenu";
 import { useShortcutPlatform } from "../hooks/shortcut-platform";
+import { useEditorChromeBounds } from "./editor-chrome-bounds";
 
 type ToolbarSharedProps = {
   canRedo: boolean;
@@ -46,7 +53,7 @@ type ThemeProps = {
 };
 
 /** Every bar in the top row shares this height so they read as one group. */
-const TOP_BAR_HEIGHT = "h-[52px]";
+const TOP_BAR_HEIGHT = "min-h-[3.375rem] py-1";
 
 const floating =
   "ge-panel pointer-events-auto flex items-center rounded-[14px] backdrop-blur-[16px]";
@@ -63,8 +70,11 @@ export function DesktopTopRow({
   ...props
 }: ToolbarSharedProps &
   ThemeProps & { onOpenStarter: () => void; wide: boolean }) {
+  const boundsRef = useEditorChromeBounds("top");
   return (
     <div
+      ref={boundsRef}
+      data-editor-chrome-top
       className={cn(
         "pointer-events-none absolute inset-x-4 top-4 z-[70] grid items-start gap-3",
         // Symmetric columns keep the toolbar centred when there is room; compact
@@ -91,8 +101,13 @@ export function MobileTopRow({
   ...props
 }: Pick<ToolbarSharedProps, "panel" | "onTogglePanel"> &
   ThemeProps & { onOpenStarter: () => void }) {
+  const boundsRef = useEditorChromeBounds("top");
   return (
-    <div className="pointer-events-none absolute inset-x-3 top-3 z-[70] flex items-start justify-between gap-3">
+    <div
+      ref={boundsRef}
+      data-editor-chrome-top
+      className="pointer-events-none absolute inset-x-[12px] top-3 z-[70] flex flex-wrap items-start justify-between gap-3"
+    >
       <BrandPill
         mobile
         open={props.panel === "app"}
@@ -130,6 +145,7 @@ function BrandPill({
       className={cn(
         floating,
         focusRing,
+        pressFeedback,
         "gap-2 justify-self-start pr-3 pl-2.5 text-[var(--text)] transition-colors hover:border-[var(--faint)]",
         TOP_BAR_HEIGHT,
         open && "border-[var(--accent)]",
@@ -171,7 +187,7 @@ function DesktopToolbar({
   const { messages } = useI18n();
   const showRangeMenu = useShortcutPlatform() !== "touch";
   const modeButtonClass = cn(
-    "h-10 text-control",
+    "h-11 min-w-11 text-control",
     wide ? "gap-2 pr-2.5 pl-3" : "gap-1.5 px-2.5",
   );
 
@@ -183,7 +199,7 @@ function DesktopToolbar({
       className={cn(
         floating,
         TOP_BAR_HEIGHT,
-        "gap-0.5 justify-self-center px-1.5 backdrop-blur-[24px]",
+        "max-w-full flex-wrap gap-0.5 justify-self-center px-1.5 backdrop-blur-[24px]",
       )}
     >
       {editorModes.map(({ mode: itemMode, keyHint, icon: Icon }) => (
@@ -213,6 +229,7 @@ function DesktopToolbar({
       ))}
       <Divider />
       <IconButton
+        className="size-11"
         data-graph-shortcut-target="true"
         disabled={!canUndo}
         label={messages.toolbar.undo.label}
@@ -222,6 +239,7 @@ function DesktopToolbar({
         <Undo2 className="size-4" aria-hidden="true" />
       </IconButton>
       <IconButton
+        className="size-11"
         data-graph-shortcut-target="true"
         disabled={!canRedo}
         label={messages.toolbar.redo.label}
@@ -328,7 +346,11 @@ function MobileTopRail({
   return (
     <div
       data-editor-chrome-control="true"
-      className={cn(floating, TOP_BAR_HEIGHT, "gap-0.5 px-1")}
+      className={cn(
+        floating,
+        TOP_BAR_HEIGHT,
+        "max-w-full flex-wrap gap-0.5 px-1",
+      )}
     >
       <ThemeButton theme={theme} iconSize={17} onClick={onToggleTheme} />
       {[
@@ -366,7 +388,7 @@ function MobileTopRail({
           onClick={onClick}
         >
           <Icon className="size-4" aria-hidden="true" />
-          <span className="text-[10px] leading-none">{text}</span>
+          <span className="text-meta leading-none">{text}</span>
         </Button>
       ))}
     </div>
@@ -384,66 +406,82 @@ export function MobileBottomBar({
   onUndo,
 }: ToolbarSharedProps) {
   const { messages } = useI18n();
+  const boundsRef = useEditorChromeBounds("bottom");
   const showRangeMenu = useShortcutPlatform() !== "touch";
 
   return (
     <div
+      ref={boundsRef}
+      data-editor-chrome-bottom
       role="toolbar"
       aria-label={messages.chrome.toolbar}
       data-editor-chrome-control="true"
       className={cn(
         floating,
-        "absolute bottom-4 left-1/2 z-[70] h-[var(--ge-mobile-toolbar-height,54px)] w-max max-w-[calc(100%-1rem)] -translate-x-1/2 gap-0 rounded-2xl p-1 backdrop-blur-[24px]",
+        "absolute bottom-4 left-1/2 z-[70] min-h-[3.375rem] w-max max-w-[calc(100%-1rem)] -translate-x-1/2 flex-wrap justify-center gap-x-0 gap-y-1 rounded-2xl p-1 backdrop-blur-[24px]",
       )}
     >
-      {editorModes.map(({ mode: itemMode, icon: Icon }) => (
-        <div key={itemMode} className="flex shrink-0 items-center rounded-xl">
-          <MobileBarButton
-            active={mode === itemMode}
-            label={messages.toolbar.modes[itemMode].label}
-            pressed={mode === itemMode}
-            joined={itemMode === "select" && showRangeMenu}
-            onClick={() => onModeChange(itemMode)}
-          >
-            <Icon
-              className="size-icon-lg"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-          </MobileBarButton>
-          {itemMode === "select" ? (
-            <RangeSelectionMenu above onOpen={() => onModeChange("select")} />
-          ) : null}
-        </div>
-      ))}
+      <div className="flex max-w-full flex-wrap items-center justify-center">
+        {editorModes.map(({ mode: itemMode, icon: Icon }) => (
+          <div key={itemMode} className="flex shrink-0 items-center rounded-xl">
+            <MobileBarButton
+              active={mode === itemMode}
+              caption={messages.toolbar.modes[itemMode].label}
+              label={messages.toolbar.modes[itemMode].label}
+              pressed={mode === itemMode}
+              joined={itemMode === "select" && showRangeMenu}
+              onClick={() => onModeChange(itemMode)}
+            >
+              <Icon
+                className="size-icon-lg"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+            </MobileBarButton>
+            {itemMode === "select" ? (
+              <RangeSelectionMenu above onOpen={() => onModeChange("select")} />
+            ) : null}
+          </div>
+        ))}
+      </div>
       <Divider tall />
-      <MobileBarButton
-        disabled={!canUndo}
-        label={messages.toolbar.undo.label}
-        onClick={onUndo}
-      >
-        <Undo2 className="size-icon-lg" strokeWidth={1.75} aria-hidden="true" />
-      </MobileBarButton>
-      <MobileBarButton
-        disabled={!canRedo}
-        label={messages.toolbar.redo.label}
-        onClick={onRedo}
-      >
-        <Redo2 className="size-icon-lg" strokeWidth={1.75} aria-hidden="true" />
-      </MobileBarButton>
-      <MobileBarButton
-        active={panel === "menu"}
-        expanded={panel === "menu"}
-        label={messages.chrome.menu}
-        panelTrigger="menu"
-        onClick={() => onTogglePanel("menu")}
-      >
-        <SlidersHorizontal
-          className="size-icon-lg"
-          strokeWidth={1.75}
-          aria-hidden="true"
-        />
-      </MobileBarButton>
+      <div className="flex max-w-full flex-wrap items-center justify-center">
+        <MobileBarButton
+          disabled={!canUndo}
+          label={messages.toolbar.undo.label}
+          onClick={onUndo}
+        >
+          <Undo2
+            className="size-icon-lg"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          />
+        </MobileBarButton>
+        <MobileBarButton
+          disabled={!canRedo}
+          label={messages.toolbar.redo.label}
+          onClick={onRedo}
+        >
+          <Redo2
+            className="size-icon-lg"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          />
+        </MobileBarButton>
+        <MobileBarButton
+          active={panel === "menu"}
+          expanded={panel === "menu"}
+          label={messages.chrome.menu}
+          panelTrigger="menu"
+          onClick={() => onTogglePanel("menu")}
+        >
+          <SlidersHorizontal
+            className="size-icon-lg"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          />
+        </MobileBarButton>
+      </div>
     </div>
   );
 }
@@ -464,6 +502,7 @@ function ThemeButton({
 
   return (
     <IconButton
+      className="size-11"
       data-graph-shortcut-target="true"
       label={
         theme === "dark"
@@ -506,8 +545,8 @@ function RailButton({
       tooltip={label}
       tooltipSide="bottom-end"
       className={cn(
-        "h-10 gap-[7px] text-control",
-        wide ? "pr-3 pl-2.5" : "w-10 px-0",
+        "h-11 min-w-11 gap-[7px] text-control",
+        wide ? "pr-3 pl-2.5" : "w-11 px-0",
       )}
       onClick={onClick}
     >
@@ -519,6 +558,7 @@ function RailButton({
 
 function MobileBarButton({
   active = false,
+  caption,
   children,
   disabled,
   expanded,
@@ -529,6 +569,7 @@ function MobileBarButton({
   onClick,
 }: {
   active?: boolean;
+  caption?: string;
   children: ReactNode;
   disabled?: boolean;
   expanded?: boolean;
@@ -551,11 +592,13 @@ function MobileBarButton({
       disabled={disabled}
       className={cn(
         "size-11 rounded-xl p-0 touch:p-0",
+        caption && "flex-col gap-0.5",
         joined && "rounded-r-none",
       )}
       onClick={onClick}
     >
       {children}
+      {caption ? <span className="text-xs leading-none">{caption}</span> : null}
     </Button>
   );
 }

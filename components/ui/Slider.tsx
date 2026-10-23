@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { focusRing } from "./control-styles";
+import { focusRing, pressFeedback } from "./control-styles";
 
 /**
  * Range control with an optional set of presets. Tick marks retain their true
@@ -128,6 +128,7 @@ export function Slider({
                 className={cn(
                   "h-8 rounded-md font-mono text-xs font-semibold transition-colors touch:h-11 touch:text-control",
                   focusRing,
+                  pressFeedback,
                   compact
                     ? "min-w-0 px-1"
                     : "absolute top-0 left-[var(--ge-preset-x)] translate-x-[var(--ge-preset-shift)] px-2 touch:static touch:min-w-0 touch:translate-x-0 touch:px-1",

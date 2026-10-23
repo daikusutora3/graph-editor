@@ -13,6 +13,7 @@ export {
   disabledControl,
   focusRing,
   panelSurface,
+  pressFeedback,
   raisedControl,
   rowControl,
   solidSurface,

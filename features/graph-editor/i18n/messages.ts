@@ -944,7 +944,7 @@ const ja: Messages = {
     pngSaved: "保存しました",
     pngFailed: "失敗",
     starterTitle: "グラフを読み込む",
-    starterHelp: "グラフのテキストを貼り付け。形式は自動判定か右で選択",
+    starterHelp: "グラフのテキストを貼り付け、形式を自動判定または指定します。",
     starterWaiting: "入力待ち",
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
@@ -1466,7 +1466,8 @@ const en: Messages = {
     pngSaved: "Saved",
     pngFailed: "Failed",
     starterTitle: "Load a graph",
-    starterHelp: "Paste graph text. Format is detected or picked on the right",
+    starterHelp:
+      "Paste graph text, then use automatic detection or choose a format.",
     starterWaiting: "Waiting for input",
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,
@@ -1980,7 +1981,7 @@ const zhHans: Messages = {
     pngSaved: "已保存",
     pngFailed: "失败",
     starterTitle: "加载图",
-    starterHelp: "粘贴图的文本。格式自动识别或在右侧选择",
+    starterHelp: "粘贴图的文本，自动识别或指定格式。",
     starterWaiting: "等待输入",
     starterMeta: (nodeCount: number, edgeCount: number) =>
       `N=${nodeCount} M=${edgeCount}`,

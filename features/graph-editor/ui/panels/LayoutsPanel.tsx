@@ -1,7 +1,7 @@
 "use client";
 
 import { GitCompareArrows } from "lucide-react";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 
 import {
   ChoiceButton,
@@ -11,7 +11,11 @@ import {
 
 import type { GraphModel } from "../../core/graph/model";
 import { useI18n } from "../../i18n/I18nProvider";
-import { manualLayoutDisabledReasonCode, type LayoutKind } from "../../layouts";
+import {
+  manualLayoutDisabledReasonCode,
+  type LayoutDisabledReason,
+  type LayoutKind,
+} from "../../layouts";
 
 /** Order matches the design: primary strategies first, then geometric ones. */
 export const layoutPanelOrder: readonly LayoutKind[] = [
@@ -44,6 +48,7 @@ export function LayoutsPanel({
   onToggleOffsetEdges: () => void;
 }) {
   const { messages } = useI18n();
+  const reasonsId = useId();
   const disabledReasons = useMemo(
     () =>
       new Map(
@@ -54,6 +59,14 @@ export function LayoutsPanel({
       ),
     [graph],
   );
+  const disabledReasonGroups = useMemo(() => {
+    const groups = new Map<LayoutDisabledReason, LayoutKind[]>();
+    for (const kind of layoutPanelOrder) {
+      const reason = disabledReasons.get(kind);
+      if (reason) groups.set(reason, [...(groups.get(reason) ?? []), kind]);
+    }
+    return [...groups];
+  }, [disabledReasons]);
   return (
     <ControlGroup label={showTitle ? messages.chrome.layouts : undefined}>
       <div className="grid grid-cols-3 gap-1.5">
@@ -66,10 +79,9 @@ export function LayoutsPanel({
               key={kind}
               aria-label={`${layout.label}: ${layout.subtitle}`}
               aria-disabled={reason ? true : undefined}
+              aria-describedby={reason ? `${reasonsId}-${reason}` : undefined}
               variant={reason ? "disabled" : "choice"}
-              data-tooltip={
-                reason ? messages.layouts.disabled[reason] : layout.tooltip
-              }
+              data-tooltip={reason ? undefined : layout.tooltip}
               data-tooltip-side={
                 index % 3 === 0
                   ? "bottom-start"
@@ -88,6 +100,23 @@ export function LayoutsPanel({
           );
         })}
       </div>
+      {disabledReasonGroups.length > 0 ? (
+        <ul className="flex flex-col gap-1 text-xs leading-relaxed text-[var(--muted)]">
+          {disabledReasonGroups.map(([reason, kinds]) => (
+            <li key={reason} id={`${reasonsId}-${reason}`}>
+              {kinds.length < layoutPanelOrder.length ? (
+                <span className="font-semibold">
+                  {kinds
+                    .map((kind) => messages.layouts[kind].label)
+                    .join(" / ")}
+                  {": "}
+                </span>
+              ) : null}
+              {messages.layouts.disabled[reason]}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {pending ? (
         <p
           role="status"

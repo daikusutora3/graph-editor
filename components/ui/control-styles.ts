@@ -10,10 +10,15 @@ export const panelSurface = "border border-[var(--line)] bg-[var(--panel)]";
 export const solidSurface =
   "border border-[var(--line)] bg-[var(--panel-solid)]";
 
+/** Press feedback tints the existing surface without moving the target or
+ * replacing its selected color, boundary or elevation. */
+export const pressFeedback =
+  "enabled:not-aria-disabled:active:[background-image:linear-gradient(color-mix(in_srgb,currentColor_10%,transparent),color-mix(in_srgb,currentColor_10%,transparent))] motion-reduce:transition-none";
+
 /** Secondary control: a distinct face and visible control boundary.
  * Used for clickable choices and secondary actions across panels. */
 export const raisedControl =
-  "border border-[var(--control-border)] bg-[var(--panel-solid)] text-[var(--text)] transition-colors hover:border-[var(--control-accent)] hover:text-[var(--accent-text)] active:translate-y-px";
+  "border border-[var(--control-border)] bg-[var(--panel-solid)] text-[var(--text)] transition-colors hover:border-[var(--control-accent)] hover:text-[var(--accent-text)]";
 
 /** Disabled control: no face, no border, faded label. Never a grey fill so
  * disabled states are not confused with secondary buttons or inputs. */

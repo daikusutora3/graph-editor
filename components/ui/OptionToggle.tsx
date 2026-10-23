@@ -5,7 +5,7 @@ import { type ReactNode, useId } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { controlIcon, focusRing } from "./control-styles";
+import { controlIcon, focusRing, pressFeedback } from "./control-styles";
 
 /**
  * Boolean option with a full-row click target and a consistent trailing checkbox.
@@ -42,6 +42,7 @@ export function OptionToggle({
         disabled && "cursor-default opacity-50",
         "flex min-h-11 w-full items-center gap-3 rounded-lg px-1 text-left text-control font-medium text-[var(--text-2)] transition-colors enabled:hover:bg-[var(--fill)]",
         focusRing,
+        pressFeedback,
         controlIcon,
       )}
     >

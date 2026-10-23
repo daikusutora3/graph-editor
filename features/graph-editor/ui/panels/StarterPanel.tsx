@@ -3,8 +3,8 @@ import {
   BookOpen,
   CircleAlert,
   FileInput,
-  FolderOpen,
   ArrowUpRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   Component,
@@ -26,6 +26,7 @@ import { focusRing } from "@/components/ui/styles";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { integrityCopy } from "../../i18n/integrity-copy";
+import { inputGuidanceCopy } from "../../i18n/input-guidance-copy";
 import { formatImportWarning } from "../../i18n/import-warning-messages";
 import type {
   ImportAnalysis,
@@ -34,18 +35,6 @@ import type {
 } from "../../io/import-types";
 import type { ImportFormat } from "../../io/import-utils";
 
-/** One short valid example per format, shown while the paste area is empty. */
-const IMPORT_FORMAT_EXAMPLES: Record<ImportFormat, string> = {
-  auto: "4 4\n1 2\n2 3\n2 4\n3 4",
-  "contest-edge-list": "4 4\n1 2\n2 3\n2 4\n3 4",
-  "tree-edge-list": "4\n1 2\n1 3\n3 4",
-  "parent-list": "4\n1 1 3",
-  "weighted-parent-list": "4\n1 5\n1 3\n3 2",
-  "edge-pairs": "1 2\n2 3\n2 4\n3 4",
-  "adjacency-list": "1: 2 3\n2: 4\n3: 4",
-  "adjacency-matrix": "0 1 1\n1 0 1\n1 1 0",
-  json: '{ "version": 1, "nodes": [...], "edges": [...], "settings": {...} }',
-};
 import type { useGraphStarterState } from "../../workflows/starter/graph-starter-state";
 import {
   canApplyStarterInput,
@@ -84,6 +73,7 @@ export function StarterPasteBody({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const { locale, messages } = useI18n();
+  const guidance = inputGuidanceCopy[locale];
   const inputId = useId();
   const formatId = useId();
   const helpId = useId();
@@ -174,6 +164,49 @@ export function StarterPasteBody({
           </span>
         </div>
       </div>
+      <details
+        data-import-example
+        className="group rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3"
+      >
+        <summary className="ge-focus flex min-h-11 cursor-pointer items-center gap-2 rounded-md text-control font-semibold text-[var(--text-2)]">
+          <ChevronDown
+            aria-hidden="true"
+            className="size-3.5 shrink-0 text-[var(--muted)] transition-transform group-open:rotate-180"
+          />
+          {guidance.example}
+          <span className="min-w-0 text-xs font-normal text-[var(--muted)]">
+            {
+              messages.starter.formats[
+                importFormat === "auto" ? "contest-edge-list" : importFormat
+              ]
+            }
+          </span>
+        </summary>
+        <div className="flex flex-col items-start gap-2 pb-3">
+          <p className="text-xs leading-relaxed text-[var(--muted)]">
+            {guidance.exampleHelp}
+          </p>
+          <pre
+            tabIndex={0}
+            aria-label={guidance.example}
+            className="ge-focus ge-focus-inset max-h-48 w-full overflow-auto rounded-md bg-[var(--fill)] p-3 font-mono text-control leading-relaxed text-[var(--text)]"
+          >
+            {starter.inputExample}
+          </pre>
+          {!inputText.trim() ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                starter.setInput(starter.inputExample);
+                textareaRef.current?.focus();
+              }}
+            >
+              {guidance.exampleAction}
+            </Button>
+          ) : null}
+        </div>
+      </details>
       <a
         href={`${appGuidePaths[locale]}#${importFormat === "adjacency-matrix" ? "adjacency-matrix" : ["auto", "contest-edge-list", "edge-pairs"].includes(importFormat) ? "edge-list" : "guide-import"}`}
         target="_blank"
@@ -209,7 +242,6 @@ export function StarterPasteBody({
               ? true
               : undefined
           }
-          placeholder={IMPORT_FORMAT_EXAMPLES[importFormat]}
           autoComplete="off"
           spellCheck={false}
           onChange={(event) => starter.setInput(event.target.value)}
@@ -256,8 +288,7 @@ export function StarterPasteBody({
       {visibleIssues.length > 0 ? (
         <div
           id={issuesId}
-          role={issueSeverity === "error" ? "alert" : "status"}
-          aria-live={issueSeverity === "error" ? "assertive" : "polite"}
+          data-import-issues
           className={cn(
             "flex flex-col gap-1 text-xs font-medium",
             issueSeverity === "error"
@@ -278,7 +309,7 @@ export function StarterPasteBody({
             </div>
           ))}
           {visibleIssues.length > 3 ? (
-            <details className="mt-1">
+            <details data-import-diagnostics className="mt-1">
               <summary className="ge-focus min-h-11 cursor-pointer rounded-md py-3 underline underline-offset-4">
                 {messages.starter.moreIssues(visibleIssues.length - 3)}
               </summary>
@@ -321,7 +352,7 @@ export function StarterPasteFooter({
   useLayoutEffect(() => starter.cancelFileRead, [starter.cancelFileRead]);
 
   return (
-    <div className="grid w-full min-w-0 grid-cols-2 items-center gap-2 @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap">
+    <div className="grid w-full min-w-0 grid-cols-2 items-stretch gap-2 @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap">
       <Button size="lg" variant="secondary" wrap onClick={onUseSample}>
         <span className="min-w-0 whitespace-normal">
           {messages.chrome.starterUseSample}
@@ -333,7 +364,6 @@ export function StarterPasteFooter({
         wrap
         onClick={() => fileInputRef.current?.click()}
       >
-        <FolderOpen className="size-icon-sm" aria-hidden="true" />
         <span className="min-w-0 whitespace-normal">
           {messages.chrome.starterOpenFile}
         </span>

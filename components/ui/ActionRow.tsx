@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { focusRing, rowControl } from "./control-styles";
+import { focusRing, pressFeedback, rowControl } from "./control-styles";
 
 export function ActionRow({
   active = false,
@@ -27,6 +27,7 @@ export function ActionRow({
       className={cn(
         rowControl,
         focusRing,
+        pressFeedback,
         "px-1 disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent",
         tone === "danger" && active
           ? "text-[var(--danger)]"
