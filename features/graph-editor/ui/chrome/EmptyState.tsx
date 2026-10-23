@@ -98,15 +98,15 @@ function EmptyCard({
         pressFeedback,
       )}
     >
-      <span className="pointer-events-none flex h-24 w-24 shrink-0 items-center justify-center border-r border-[var(--line)] bg-[var(--fill)] p-2.5 text-[var(--text-2)] sm:h-32 sm:w-full sm:border-r-0 sm:border-b sm:p-3 [@media(max-height:480px)]:h-20">
+      <span className="pointer-events-none flex h-24 w-24 shrink-0 items-center justify-center border-r border-[var(--line)] bg-[var(--fill)] p-2.5 text-[var(--text-2)] sm:h-32 sm:w-full sm:border-r-0 sm:border-b sm:p-3 @max-[399px]/editor:h-[72px] @max-[399px]/editor:w-[72px] [@media(max-height:480px)]:h-20">
         <EmptyStateIllustration method={method} />
       </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-4 sm:px-4">
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-4 sm:px-4 @max-[399px]/editor:px-2">
         <span className="flex items-center justify-between gap-2 text-control font-semibold text-[var(--text)] sm:text-sm">
           <span>{title}</span>
           <ArrowRight
             aria-hidden="true"
-            className="size-3.5 shrink-0 text-[var(--muted)] transition-colors group-hover:text-[var(--accent)]"
+            className="size-3.5 shrink-0 text-[var(--muted)] transition-colors group-hover:text-[var(--accent)] @max-[399px]/editor:hidden"
           />
         </span>
         <span className="text-xs leading-relaxed text-[var(--muted)]">
