@@ -170,11 +170,23 @@ def run_design_guidelines_review(session):
     """Rendered expert review of the design changes in each locale and theme."""
     messages = {
         "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像",
-               "input": "グラフのデータ", "format": "形式"},
+               "input": "グラフのデータ", "format": "形式", "example": "入力例", "useExample": "この例を入力",
+               "fixedCanvas": "倍率＋枠指定", "modes": ["選択", "頂点", "辺"],
+               "addNode": "中央付近に頂点を追加", "undo": "戻す", "redo": "進む", "transparent": "透過",
+               "guide": "使い方ガイド", "articles": "記事", "shortcuts": "キーボードショートカット",
+               "samples": "サンプルを使う", "clearSearch": "検索をクリア", "clearFilters": "絞り込みをクリア"},
         "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "image": "PNG image",
-               "input": "Graph data", "format": "Format"},
+               "input": "Graph data", "format": "Format", "example": "Input example", "useExample": "Use this example",
+               "fixedCanvas": "Fixed canvas", "modes": ["Select", "Node", "Edge"],
+               "addNode": "Add node near center", "undo": "Undo", "redo": "Redo", "transparent": "Clear",
+               "guide": "User guide", "articles": "Articles", "shortcuts": "Keyboard shortcuts",
+               "samples": "Use a sample", "clearSearch": "Clear search", "clearFilters": "Clear filters"},
         "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "image": "PNG 图像",
-                    "input": "图数据", "format": "格式"},
+                    "input": "图数据", "format": "格式", "example": "输入示例", "useExample": "填入此示例",
+                    "fixedCanvas": "指定画布", "modes": ["选择", "顶点", "边"],
+                    "addNode": "在中央附近添加顶点", "undo": "撤销", "redo": "重做", "transparent": "透明",
+                    "guide": "使用指南", "articles": "文章", "shortcuts": "键盘快捷键",
+                    "samples": "使用示例", "clearSearch": "清除搜索", "clearFilters": "清除筛选"},
     }
     results = []
     current_case = None
@@ -197,9 +209,19 @@ def run_design_guidelines_review(session):
 
     def replace_input(text):
         element = session.element("[data-editor-panel=starter] textarea")
-        session.command("POST", f"/element/{element}/clear", {})
-        session.command("POST", f"/element/{element}/value", {"text": text})
+        clear_input(element)
+        if text:
+            session.command("POST", f"/element/{element}/value", {"text": text})
         session.wait("return document.querySelector('[data-editor-panel=starter] textarea')?.value===" + json.dumps(text))
+
+    def clear_input(element):
+        # SafariDriver's clear endpoint can change the DOM value without the
+        # input event a controlled React field needs. Exercise actual editing.
+        session.js("arguments[0].focus();", {ELEMENT: element})
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "design-text-keyboard", "actions": [
+            {"type": "keyDown", "value": "\ue03d"}, {"type": "keyDown", "value": "a"},
+            {"type": "keyUp", "value": "a"}, {"type": "keyUp", "value": "\ue03d"},
+            {"type": "keyDown", "value": "\ue003"}, {"type": "keyUp", "value": "\ue003"}]}]})
 
     def close_panel(panel):
         close = session.element(f"[data-editor-panel={panel}] [data-panel-close=true]")
@@ -234,6 +256,7 @@ def run_design_guidelines_review(session):
                     session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
                     session.wait("return document.documentElement.dataset.theme===" + json.dumps(theme))
                     dimensions = session.js("return {width:innerWidth,height:innerHeight,devicePixelRatio,layout:document.querySelector('[data-layout]')?.dataset.layout}")
+                    session.focus_window()
                     prefix = f"design-{locale}-{theme}-{width}"
                     screenshots = []
 
@@ -241,6 +264,96 @@ def run_design_guidelines_review(session):
                         name = f"{prefix}-{stage}"
                         session.screenshot(name)
                         screenshots.append(name + ".png")
+
+                    mobile_mode_labels = None
+                    if dimensions["layout"] == "mobile":
+                        mobile_mode_labels = session.js("""return arguments[0].map(label=>{
+                            const e=[...document.querySelectorAll('[role=toolbar] button[aria-pressed]')]
+                                .find(button=>button.getAttribute('aria-label')===label);
+                            const caption=e?.querySelector('span');const r=e?.getBoundingClientRect();
+                            const c=caption?.getBoundingClientRect();
+                            return {label,text:caption?.textContent.trim(),visible:!!c?.width&&!!c?.height,
+                                height:r?.height,captionWithinButton:!!r&&!!c&&c.top>=r.top&&c.bottom<=r.bottom};
+                        });""", m["modes"])
+                        assert all(item["text"] == item["label"] and item["visible"] and item["height"] >= 44
+                                   and item["captionWithinButton"] for item in mobile_mode_labels), mobile_mode_labels
+                        capture("mobile-mode-labels")
+
+                    session.activate(session.element('[data-editor-panel-trigger="app"]'))
+                    session.wait("return !!document.querySelector('[data-editor-panel=app] [role=menu]')")
+                    help_menu = session.js("""return [...document.querySelectorAll('[data-editor-panel=app] [role=menuitem]')]
+                        .map(e=>({text:e.textContent.trim(),href:e.getAttribute('href'),tag:e.tagName}));""")
+                    assert len(help_menu) >= 6, help_menu
+                    assert all(help_menu[index]["text"].startswith(m[label])
+                               for index, label in enumerate(("guide", "articles", "shortcuts"))), help_menu
+                    assert help_menu[0]["href"] == {"ja": "/guide", "en": "/en/guide", "zh-hans": "/zh-hans/guide"}[locale], help_menu
+                    assert help_menu[3]["href"] == "https://github.com/daikusutora3/graph-editor", help_menu
+                    capture("help-menu")
+                    close_panel("app")
+
+                    session.open_panel(m["load"], "starter")
+                    session.activate(session.button(m["samples"]))
+                    session.wait("return !!document.querySelector('input[name=sample-search]')")
+                    sample_controls = session.js("""return ['input[name=sample-search]','[data-editor-panel=starter] select'].map(selector=>{
+                        const e=document.querySelector(selector);return {labels:[...e.labels].map(label=>({
+                            text:label.textContent.trim(),visible:!!label.getClientRects().length})),placeholder:e.getAttribute('placeholder')};});""")
+                    assert all(any(label["text"] and label["visible"] for label in control["labels"])
+                               for control in sample_controls), sample_controls
+                    assert sample_controls[0]["placeholder"] is None, sample_controls
+                    search = session.element('input[name=sample-search]')
+                    session.command("POST", f"/element/{search}/value", {"text": "no-such-sample-ui-review"})
+                    session.wait("return !!document.querySelector('input[name=sample-search]')?.value")
+                    session.activate(session.button(m["clearSearch"]))
+                    session.wait("const e=document.querySelector('input[name=sample-search]');return e.value===''&&document.activeElement===e")
+                    session.command("POST", f"/element/{search}/value", {"text": "no-such-sample-ui-review"})
+                    session.activate(session.button(m["clearFilters"]))
+                    session.wait("const e=document.querySelector('input[name=sample-search]');return e.value===''&&document.activeElement===e&&document.querySelector('[data-editor-panel=starter] select').value==='all'")
+                    capture("sample-search-focus")
+                    close_panel("starter")
+
+                    session.activate(session.button(m["modes"][1]))
+                    add_node = session.button(m["addNode"])
+                    session.js("arguments[0].focus();", {ELEMENT: add_node})
+                    key("\ue007")
+                    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===1")
+                    assert session.js("return document.activeElement===arguments[0]", {ELEMENT: add_node}), "Enter retains focus for repeated node creation"
+                    key(" ")
+                    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===2")
+                    assert session.js("return document.activeElement===arguments[0]", {ELEMENT: add_node}), "Space retains focus for repeated node creation"
+                    created_nodes = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes")
+                    node_action = session.js("""const e=arguments[0];return {
+                        label:e.textContent.trim(),description:document.getElementById(e.getAttribute('aria-describedby'))?.textContent.trim(),
+                        status:e.closest('[data-editor-chrome-control]').querySelector('[role=status]')?.textContent.trim()};""", {ELEMENT: add_node})
+                    assert node_action["label"] == m["addNode"] and node_action["description"] and node_action["status"], node_action
+                    assert len({node["id"] for node in created_nodes}) == 2, created_nodes
+                    session.activate(session.button(m["undo"]))
+                    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===1")
+                    session.activate(session.button(m["redo"]))
+                    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===2")
+                    assert session.js("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes") == created_nodes, "Redo restores the same nodes and coordinates"
+                    node_action["createdCount"] = 2
+                    node_action["undoRedo"] = "passed"
+                    capture("keyboard-nodes")
+
+                    session.activate(session.button(m["modes"][2]))
+                    session.wait("return document.querySelectorAll('button[data-edge-node-hitbox=true]').length===2")
+                    edge_hitboxes = session.js("return [...document.querySelectorAll('button[data-edge-node-hitbox=true]')];")
+                    source_hitbox = edge_hitboxes[0][ELEMENT]
+                    target_hitbox = edge_hitboxes[1][ELEMENT]
+                    source_label = session.js("return arguments[0].getAttribute('aria-label')", {ELEMENT: source_hitbox})
+                    session.js("arguments[0].focus();", {ELEMENT: source_hitbox})
+                    key("\ue007")
+                    session.wait("return document.querySelector('button[data-edge-node-hitbox=true]')?.getAttribute('aria-label')!==" + json.dumps(source_label) + "&&!document.querySelector('.ge-inline-edit-form')")
+                    assert session.js("return document.activeElement===arguments[0]", {ELEMENT: source_hitbox}), "Choosing the edge source retains native button focus"
+                    session.js("arguments[0].focus();", {ELEMENT: target_hitbox})
+                    key(" ")
+                    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.edges.length===1")
+                    keyboard_edge = session.js("""const g=JSON.parse(localStorage.getItem('graph-editor-graph'));return {
+                        edge:g.edges[0],nodeCount:g.nodes.length,inlineEditorOpen:!!document.querySelector('.ge-inline-edit-form'),
+                        targetFocus:document.activeElement===arguments[0]};""", {ELEMENT: target_hitbox})
+                    assert keyboard_edge["nodeCount"] == 2 and keyboard_edge["targetFocus"] and not keyboard_edge["inlineEditorOpen"], keyboard_edge
+                    assert keyboard_edge["edge"]["source"] == created_nodes[0]["id"] and keyboard_edge["edge"]["target"] == created_nodes[1]["id"], keyboard_edge
+                    capture("keyboard-edge")
 
                     session.open_panel(m["load"], "starter")
                     session.wait("return document.querySelector('[data-editor-panel=starter]')?.contains(document.activeElement)")
@@ -256,6 +369,31 @@ def run_design_guidelines_review(session):
                     session.click(session.element("[data-editor-panel=starter] label[for=" + json.dumps(labels[0]["id"]) + "]"))
                     assert session.js("return document.activeElement===document.querySelector('[data-editor-panel=starter] textarea')"), "Visible data label focuses its textarea"
 
+                    example_summary = session.element("[data-editor-panel=starter] [data-import-example] summary")
+                    session.js("arguments[0].focus();", {ELEMENT: example_summary})
+                    key("\ue007")
+                    session.wait("return document.querySelector('[data-import-example]')?.open")
+                    input_example = session.js("""const box=document.querySelector('[data-import-example]');
+                        return {label:box.querySelector('pre').getAttribute('aria-label'),text:box.querySelector('pre').textContent,
+                            useButton:box.querySelector('button')?.textContent.trim()};""")
+                    assert input_example["label"] == m["example"] and input_example["useButton"] == m["useExample"], input_example
+                    session.activate(session.element("[data-import-example] button"))
+                    session.wait("return document.querySelector('[data-editor-panel=starter] textarea')?.value===" + json.dumps(input_example["text"]))
+                    assert session.js("return document.querySelector('[data-import-example]')?.open&&!document.querySelector('[data-import-example] button')&&document.activeElement===document.querySelector('[data-editor-panel=starter] textarea')"), "Using an example preserves its reference and focuses the editor"
+
+                    replace_input("")
+                    session.wait("return !!document.querySelector('[data-import-example] button')")
+                    session.click(session.element('[data-editor-panel=starter] option[value="json"]'))
+                    session.wait("return document.querySelector('[data-editor-panel=starter] select')?.value==='json'")
+                    json_example = session.js("return document.querySelector('[data-import-example] pre')?.textContent")
+                    parsed_example = json.loads(json_example)
+                    assert parsed_example["version"] == 1 and len(parsed_example["nodes"]) == 2 and len(parsed_example["edges"]) == 1, parsed_example
+                    session.activate(session.element("[data-import-example] button"))
+                    session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p.querySelector('textarea').value===" + json.dumps(json_example) + "&&!p.querySelector('textarea').getAttribute('aria-invalid')&&![...p.querySelectorAll('button')].at(-1).disabled")
+                    input_example["jsonValid"] = True
+                    input_example["jsonNodeCount"] = len(parsed_example["nodes"])
+                    capture("input-example")
+
                     replace_input('{"version":2}')
                     session.wait("return document.querySelector('[data-editor-panel=starter] textarea')?.getAttribute('aria-invalid')==='true'")
                     invalid = session.js("""const p=document.querySelector('[data-editor-panel=starter]');const e=p.querySelector('textarea');
@@ -264,8 +402,12 @@ def run_design_guidelines_review(session):
                         const danger=getComputedStyle(probe).borderColor;probe.remove();
                         return {invalid:e.getAttribute('aria-invalid'),border:getComputedStyle(e).borderColor,danger,
                             descriptions:ids.map(id=>({id,text:document.getElementById(id)?.textContent.trim()})),
-                            issueRole:issue?.getAttribute('role'),applyDisabled:[...p.querySelectorAll('button')].at(-1).disabled};""")
-                    assert invalid["applyDisabled"] and invalid["issueRole"] == "alert", invalid
+                            issueRole:issue?.getAttribute('role'),issueLive:issue?.getAttribute('aria-live'),
+                            exampleOpen:p.querySelector('[data-import-example]').open,
+                            exampleUseButton:!!p.querySelector('[data-import-example] button'),
+                            applyDisabled:[...p.querySelectorAll('button')].at(-1).disabled};""")
+                    assert invalid["applyDisabled"] and invalid["issueRole"] is None and invalid["issueLive"] is None, invalid
+                    assert invalid["exampleOpen"] and not invalid["exampleUseButton"], invalid
                     assert invalid["border"] == invalid["danger"], invalid
                     assert len(invalid["descriptions"]) == 2 and all(d["text"] for d in invalid["descriptions"]), invalid
                     invalid_geometry = panel_geometry("starter")
@@ -276,25 +418,25 @@ def run_design_guidelines_review(session):
                     session.click(session.element('[data-editor-panel=starter] option[value="contest-edge-list"]'))
                     session.wait("return document.querySelector('[data-editor-panel=starter] select')?.value==='contest-edge-list'")
                     replace_input("4 6\n1 2\n1\n2\n3\n4\n5")
-                    session.wait("return document.querySelectorAll('[data-editor-panel=starter] details li').length===2")
-                    summary = session.element("[data-editor-panel=starter] details summary")
+                    session.wait("return document.querySelectorAll('[data-editor-panel=starter] [data-import-diagnostics] li').length===2")
+                    summary = session.element("[data-editor-panel=starter] [data-import-diagnostics] summary")
                     session.js("arguments[0].focus();", {ELEMENT: summary})
                     key("\ue007")
-                    session.wait("return document.querySelector('[data-editor-panel=starter] details')?.open")
+                    session.wait("return document.querySelector('[data-editor-panel=starter] [data-import-diagnostics]')?.open")
                     warnings = session.js("""const p=document.querySelector('[data-editor-panel=starter]');const e=p.querySelector('textarea');
                         const id=e.getAttribute('aria-describedby').split(/\\s+/).at(-1);const box=document.getElementById(id);
                         return {invalid:e.getAttribute('aria-invalid'),applyDisabled:[...p.querySelectorAll('button')].at(-1).disabled,
-                            role:box.getAttribute('role'),primaryCount:[...box.children].filter(e=>e.tagName==='DIV').length,
-                            expanded:p.querySelector('details').open,remaining:[...p.querySelectorAll('details li')].map(e=>({text:e.textContent.trim(),visible:!!e.getClientRects().length})),
-                            summary:p.querySelector('summary').textContent.trim()};""")
-                    assert warnings["invalid"] is None and not warnings["applyDisabled"] and warnings["role"] == "status", warnings
+                            role:box.getAttribute('role'),live:box.getAttribute('aria-live'),primaryCount:[...box.children].filter(e=>e.tagName==='DIV').length,
+                            expanded:p.querySelector('[data-import-diagnostics]').open,remaining:[...p.querySelectorAll('[data-import-diagnostics] li')].map(e=>({text:e.textContent.trim(),visible:!!e.getClientRects().length})),
+                            summary:p.querySelector('[data-import-diagnostics] summary').textContent.trim()};""")
+                    assert warnings["invalid"] is None and not warnings["applyDisabled"] and warnings["role"] is None and warnings["live"] is None, warnings
                     assert warnings["primaryCount"] == 3 and warnings["expanded"] and len(warnings["remaining"]) == 2, warnings
                     assert all(item["text"] and item["visible"] for item in warnings["remaining"]), warnings
                     warning_geometry = panel_geometry("starter")
                     capture("diagnostics")
 
                     replace_input("4 4\n0 1\n1 2\n1 3\n2 3")
-                    session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&!p.querySelector('details')&&![...p.querySelectorAll('button')].at(-1).disabled")
+                    session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&!p.querySelector('[data-import-diagnostics]')&&p.querySelector('[data-import-example]').open&&![...p.querySelectorAll('button')].at(-1).disabled")
                     apply_button = session.button(m["apply"])
                     session.js("arguments[0].focus();", {ELEMENT: apply_button})
                     key("\ue007")
@@ -334,7 +476,68 @@ def run_design_guidelines_review(session):
                     session.wait("return document.querySelector(arguments[0]).getAttribute('aria-checked')!==".replace(
                         "arguments[0]", json.dumps(f"[data-editor-panel={settings_panel}] [role=checkbox]")) + json.dumps(checkboxes[0]["checked"]))
                     capture("settings")
+                    before_clear = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
+                    session.activate(session.element('[data-clear-trigger]'))
+                    session.wait("return !!document.querySelector('[data-clear-confirmation]')&&document.activeElement===document.querySelector('[data-clear-cancel]')")
+                    clear_confirmation = session.js("""const box=document.querySelector('[data-clear-confirmation]');
+                        return {title:document.getElementById(box.getAttribute('aria-labelledby')).textContent.trim(),
+                            description:document.getElementById(box.getAttribute('aria-describedby')).textContent.trim(),
+                            cancel:document.querySelector('[data-clear-cancel]').textContent.trim(),
+                            confirm:document.querySelector('[data-clear-confirm]').textContent.trim()};""")
+                    assert all(clear_confirmation.values()), clear_confirmation
+                    if not results:
+                        time.sleep(3.2)
+                        assert session.js("return !!document.querySelector('[data-clear-confirmation]')"), "Confirmation has no three-second time limit"
+                    capture("clear-confirmation")
+                    key("\ue007")
+                    session.wait("return !document.querySelector('[data-clear-confirmation]')&&document.activeElement===document.querySelector('[data-clear-trigger]')")
+                    assert session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))") == before_clear, "Enter on initial Cancel preserves graph"
+                    clear_confirmation["cancelRestoresFocusAndGraph"] = True
                     close_panel(settings_panel)
+
+                    # Clearing returns to Select. Re-enter node mode while its
+                    # toast is visible, then restore the exact graph with Undo.
+                    session.activate(session.button(m["modes"][1]))
+                    session.activate(session.element(f'[data-editor-panel-trigger="{settings_panel}"]'))
+                    session.wait("return !!document.querySelector('[data-clear-trigger]')")
+                    session.activate(session.element('[data-clear-trigger]'))
+                    session.wait("return !!document.querySelector('[data-clear-confirm]')")
+                    press_feedback = None
+                    if not results:
+                        cancel = session.element('[data-clear-cancel]')
+                        session.focus_window()
+                        session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "press-review", "parameters": {"pointerType": "mouse"}, "actions": [
+                            {"type": "pointerMove", "origin": {ELEMENT: cancel}, "x": 0, "y": 0},
+                            {"type": "pointerDown", "button": 0}]}]})
+                        try:
+                            press_feedback = session.js("""const e=document.querySelector('[data-clear-cancel]');const s=getComputedStyle(e);
+                                return {active:e.matches(':active'),background:s.backgroundImage,transform:s.transform};""")
+                            assert press_feedback["active"] and "linear-gradient" in press_feedback["background"], press_feedback
+                            assert press_feedback["transform"] == "none", press_feedback
+                            capture("button-press")
+                        finally:
+                            session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "press-review", "parameters": {"pointerType": "mouse"}, "actions": [{"type": "pointerUp", "button": 0}]}]})
+                        session.wait("return !document.querySelector('[data-clear-confirmation]')")
+                        session.activate(session.element('[data-clear-trigger]'))
+                        session.wait("return !!document.querySelector('[data-clear-confirm]')")
+                    session.activate(session.element('[data-clear-confirm]'))
+                    session.wait("return !document.querySelector('[data-editor-panel]')&&JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===0")
+                    toast_geometry = None
+                    if dimensions["layout"] == "mobile":
+                        session.activate(session.button(m["modes"][1]))
+                        session.wait("return !!document.querySelector('[data-node-creation-action] button')")
+                        toast_geometry = session.js("""const toast=document.querySelector('[data-editor-toast]');
+                            const action=[...document.querySelectorAll('button')].find(e=>e.textContent.trim()===arguments[0]);
+                            const t=toast?.getBoundingClientRect();const a=action?.getBoundingClientRect();
+                            return {toastBottom:t?.bottom,actionTop:a?.top,toastText:toast?.textContent.trim(),
+                                contentWidth:toast?.scrollWidth,viewportWidth:innerWidth};""", m["addNode"])
+                        assert toast_geometry["toastText"] and toast_geometry["toastBottom"] <= toast_geometry["actionTop"], toast_geometry
+                        assert toast_geometry["contentWidth"] <= toast_geometry["viewportWidth"], toast_geometry
+                        capture("clear-toast")
+                    session.activate(session.button(m["undo"]))
+                    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===4")
+                    assert session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))") == before_clear, "Undo restores every node, edge and setting after clear"
+                    clear_confirmation["undoRestoresGraph"] = True
 
                     session.open_panel(m["image"], "png")
                     session.wait("return !!document.querySelector('[data-editor-panel=png] img')")
@@ -349,14 +552,122 @@ def run_design_guidelines_review(session):
                     session.wait("return !!document.querySelector('[data-editor-panel=png] img')")
                     png_geometry = panel_geometry("png")
                     capture("png")
+
+                    session.activate(session.button(m["fixedCanvas"]))
+                    session.wait("return document.querySelectorAll('[data-editor-panel=png] input[type=number]').length===2")
+                    canvas_dimensions = session.js("""return [...document.querySelectorAll('[data-editor-panel=png] input[type=number]')].map(e=>({
+                        id:e.id,value:e.value,label:[...e.labels].map(l=>l.textContent.trim()).join(' '),
+                        inputMode:e.inputMode,description:(e.getAttribute('aria-describedby')||'').split(/\\s+/)
+                            .map(id=>document.getElementById(id)?.textContent.trim()).join(' ')}));""")
+                    assert all(item["label"] and item["inputMode"] == "numeric" and "1–3840 px" in item["description"]
+                               for item in canvas_dimensions), canvas_dimensions
+                    width_input = session.element('[data-editor-panel=png] input[id=' + json.dumps(canvas_dimensions[0]["id"]) + ']')
+                    height_input = session.element('[data-editor-panel=png] input[id=' + json.dumps(canvas_dimensions[1]["id"]) + ']')
+                    clear_input(width_input)
+                    session.wait("return document.querySelectorAll('[data-editor-panel=png] input[type=number]')[0].value===''")
+                    key("\ue004")
+                    session.wait("return document.querySelectorAll('[data-editor-panel=png] input[type=number]')[0].value===" + json.dumps(canvas_dimensions[0]["value"]))
+                    clear_input(width_input)
+                    session.wait("return document.querySelectorAll('[data-editor-panel=png] input[type=number]')[0].value===''")
+                    session.command("POST", f"/element/{width_input}/value", {"text": "1280"})
+                    key("\ue004")
+                    session.wait("return document.querySelector('[data-editor-panel=png] img')?.naturalWidth===1280")
+                    clear_input(height_input)
+                    session.wait("return document.querySelectorAll('[data-editor-panel=png] input[type=number]')[1].value===''")
+                    session.command("POST", f"/element/{height_input}/value", {"text": "720"})
+                    key("\ue007")
+                    session.wait("const img=document.querySelector('[data-editor-panel=png] img');return img?.naturalWidth===1280&&img?.naturalHeight===720")
+                    committed_dimensions = session.js("""const p=document.querySelector('[data-editor-panel=png]');const img=p.querySelector('img');
+                        return {values:[...p.querySelectorAll('input[type=number]')].map(e=>e.value),
+                            width:img.naturalWidth,height:img.naturalHeight,focusedHeight:document.activeElement===p.querySelectorAll('input[type=number]')[1]};""")
+                    assert committed_dimensions["values"] == ["1280", "720"] and committed_dimensions["focusedHeight"], committed_dimensions
+
+                    # A real pointer action must commit the draft during blur
+                    # before its own setting change. Do not insert Tab/Enter.
+                    session.focus_window()
+                    clear_input(width_input)
+                    session.command("POST", f"/element/{width_input}/value", {"text": "1440"})
+                    session.wait("return document.querySelectorAll('[data-editor-panel=png] input[type=number]')[0].value==='1440'")
+                    background_button = session.button(m["transparent"])
+                    session.js("""window.__pngCommitEvents=[];const input=arguments[0],button=arguments[1];
+                        input.addEventListener('blur',()=>window.__pngCommitEvents.push({type:'blur',value:input.value}),{once:true});
+                        button.addEventListener('click',()=>window.__pngCommitEvents.push({type:'click',value:input.value}),{once:true});""",
+                        {ELEMENT: width_input}, {ELEMENT: background_button})
+                    session.click(background_button)
+                    session.wait("const p=document.querySelector('[data-editor-panel=png]');const img=p.querySelector('img');const b=[...p.querySelectorAll('[role=radio]')].find(e=>e.textContent.trim()===" + json.dumps(m["transparent"]) + ");return b?.getAttribute('aria-checked')==='true'&&img?.naturalWidth===1440&&img?.naturalHeight===720")
+                    click_commit = session.js("""const p=document.querySelector('[data-editor-panel=png]');const img=p.querySelector('img');return {
+                        events:window.__pngCommitEvents,values:[...p.querySelectorAll('input[type=number]')].map(e=>e.value),
+                        width:img.naturalWidth,height:img.naturalHeight};""")
+                    assert [event["type"] for event in click_commit["events"]] == ["blur", "click"], click_commit
+                    assert click_commit["values"] == ["1440", "720"], click_commit
+                    fixed_geometry = panel_geometry("png")
+                    capture("png-dimensions")
+                    long_export_gutter = None
+                    if not results:
+                        close_panel("png")
+                        session.open_panel(m["load"], "starter")
+                        session.click(session.element('[data-editor-panel=starter] option[value="contest-edge-list"]'))
+                        session.wait("return document.querySelector('[data-editor-panel=starter] select')?.value==='contest-edge-list'")
+                        replace_input("1000 0")
+                        session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&!p.querySelector('textarea').getAttribute('aria-invalid')&&![...p.querySelectorAll('button')].at(-1).disabled")
+                        session.activate(session.button(m["apply"]))
+                        session.wait("const g=JSON.parse(localStorage.getItem('graph-editor-graph')||'null');return g?.nodes.length===1000&&g?.edges.length===0&&!document.querySelector('[data-editor-panel=starter]')")
+                        session.open_panel(m["export"], "export")
+                        session.click(session.element('[data-editor-panel=export] option[value="adjacency-list"]'))
+                        session.wait("const p=document.querySelector('[data-editor-panel=export]');return p.querySelector('select').value==='adjacency-list'&&p.querySelector('pre').textContent.trim().split('\\n').length>=1000")
+                        previous_font_size = session.js("return document.documentElement.style.fontSize")
+                        try:
+                            session.js("document.documentElement.style.fontSize='24px';")
+                            session.wait("return getComputedStyle(document.documentElement).fontSize==='24px'")
+                            session.js("""const pre=document.querySelector('[data-editor-panel=export] pre');
+                                pre.previousElementSibling.lastElementChild.scrollIntoView({block:'end',inline:'nearest',behavior:'instant'});""")
+                            long_export_gutter = session.wait("""const panel=document.querySelector('[data-editor-panel=export]'),pre=panel.querySelector('pre');
+                                const gutter=pre.previousElementSibling,chunk=gutter.lastElementChild,text=chunk?.firstChild;
+                                if(!text||text.nodeType!==Node.TEXT_NODE)return false;
+                                const digits=text.textContent.match(/\\d{4,}(?=\\s*$)/)?.[0];if(!digits)return false;
+                                const range=document.createRange(),start=text.textContent.lastIndexOf(digits);
+                                range.setStart(text,start);range.setEnd(text,start+digits.length);
+                                const r=range.getBoundingClientRect();if(!r.width||!r.height)return false;
+                                const box=e=>{const b=e.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,width:b.width,height:b.height};};
+                                const owner=pre.closest('.ge-scrollbar');return {lineNumber:digits,lineCount:pre.textContent.trim().split('\\n').length,
+                                    text:{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height},
+                                    gutter:box(gutter),grid:box(pre.parentElement),panel:box(panel),scrollOwner:box(owner),scrollTop:owner.scrollTop,
+                                    viewportWidth:innerWidth,fontSize:getComputedStyle(document.documentElement).fontSize,
+                                    limits:['One Japanese/light editor case with 1000 isolated nodes in adjacency-list format and 24 px root text; no file download or clipboard operation']};""")
+                            number_bounds = long_export_gutter["text"]
+                            gutter_bounds = long_export_gutter["gutter"]
+                            grid_bounds = long_export_gutter["grid"]
+                            panel_bounds = long_export_gutter["panel"]
+                            owner_bounds = long_export_gutter["scrollOwner"]
+                            assert long_export_gutter["lineCount"] >= 1000 and len(long_export_gutter["lineNumber"]) >= 4, long_export_gutter
+                            assert number_bounds["left"] >= gutter_bounds["left"] - 1 and number_bounds["right"] <= gutter_bounds["right"] + 1, long_export_gutter
+                            assert grid_bounds["left"] >= panel_bounds["left"] - 1 and grid_bounds["right"] <= panel_bounds["right"] + 1, long_export_gutter
+                            assert panel_bounds["left"] >= -1 and panel_bounds["right"] <= long_export_gutter["viewportWidth"] + 1, long_export_gutter
+                            assert number_bounds["top"] >= owner_bounds["top"] - 1 and number_bounds["bottom"] <= owner_bounds["bottom"] + 1 and long_export_gutter["scrollTop"] > 0, long_export_gutter
+                            capture("long-export-gutter")
+                        finally:
+                            session.js("document.documentElement.style.fontSize=arguments[0];", previous_font_size)
                     results.append({**current_case, "viewport": dimensions, "labels": labels, "invalidInput": invalid,
+                        "clearConfirmation": clear_confirmation, "toastGeometry": toast_geometry, "pressFeedback": press_feedback,
+                        "sampleControls": sample_controls, "sampleResetFocus": "passed",
                         "diagnostics": warnings, "outputKeyboardFocus": output, "checkboxes": checkboxes, "sliders": ranges,
+                        "inputExample": input_example, "mobileModeLabels": mobile_mode_labels, "helpMenu": help_menu,
+                        "nodeCreation": node_action, "keyboardEdge": keyboard_edge,
+                        "pngDimensionFields": canvas_dimensions, "pngCommittedDimensions": committed_dimensions,
+                        "pngClickCommit": click_commit,
+                        "longExportGutter": long_export_gutter,
                         "geometry": {"invalid": invalid_geometry, "diagnostics": warning_geometry, "export": export_geometry,
-                                     "settings": settings_geometry, "png": png_geometry}, "screenshots": screenshots,
+                                     "settings": settings_geometry, "png": png_geometry, "fixedCanvas": fixed_geometry}, "screenshots": screenshots,
                         "checks": ["visible input and format labels", "label click focuses data input", "help and error associations",
                                    "blocking error disables apply", "danger border", "five diagnostics remain reachable",
+                                   "Enter opens persistent input example; using it focuses textarea", "example stays open while typing and cannot overwrite nonempty input",
+                                   "selected JSON example is complete and accepted", "diagnostics remain associated without live interruption",
                                    "Enter expands native diagnostic disclosure", "Tab reaches output; appearance checked when window focused",
                                    "named checkbox rows and Space toggling", "named PNG ranges with px values and arrow-key updates",
+                                   "fixed PNG dimensions can be cleared and typed; blur and Enter commit preview size", "empty PNG dimension restores previous value on blur",
+                                   "native background click commits dimension blur before click without Tab or Enter", "Enter and Space add separate nodes with retained focus and undo/redo",
+                                   "Enter chooses edge source and Space connects target without opening a label editor",
+                                   "localized mobile mode captions remain inside 44 px buttons", "help precedes project and sharing links without navigation",
                                    "panel bounds and page overflow"]})
                     save("running")
                     print(f"{prefix} {dimensions}: design and accessibility review passed", flush=True)
@@ -366,6 +677,251 @@ def run_design_guidelines_review(session):
     except Exception as error:
         save("failed_or_blocked", str(error))
         raise
+
+
+def run_responsive_text_review(session):
+    """Constrain the local editor and enlarge root text in isolated Safari."""
+    messages = {
+        "ja": {"path": "/", "node": "頂点", "edge": "辺", "add": "中央付近に頂点を追加", "fit": "グラフを表示領域に戻す"},
+        "en": {"path": "/en", "node": "Node", "edge": "Edge", "add": "Add node near center", "fit": "Fit graph to view"},
+        "zh-hans": {"path": "/zh-hans", "node": "顶点", "edge": "边", "add": "在中央附近添加顶点", "fit": "适应视图"},
+    }
+    results = []
+    current_case = None
+    original_styles = None
+    report = OUTPUT / "responsive-text-results.json"
+
+    def save(status, error=None):
+        report.write_text(json.dumps({
+            "status": status, "review": "Expert responsive and text-resize review in isolated installed Safari",
+            "results": results, "currentCase": current_case, "error": error,
+            "limits": ["The editor is constrained to an exact CSS box inside a desktop Safari window; this is a viewport simulation",
+                       "24 px root text simulates text enlargement; no operating-system or browser accessibility setting is changed",
+                       "Every primary toolbar control has a 44 px minimum; the separate range-menu trigger is a pointer-only exception with a 24 px minimum",
+                       "The range-menu trigger is absent on actual touch platforms; this desktop Safari session retains it",
+                       "Node body size, rendered circles, hitbox centers and chrome bounds are measured from the current rendered state",
+                       "The optional insufficient-space guard is reported only if its action remains visible and unobscured"],
+        }, indent=2, ensure_ascii=False))
+
+    def key(value):
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "responsive-keyboard", "actions": [
+            {"type": "keyDown", "value": value}, {"type": "keyUp", "value": value}]}]})
+
+    def overlaps(a, b):
+        return min(a["right"], b["right"]) - max(a["left"], b["left"]) > 1 and min(a["bottom"], b["bottom"]) - max(a["top"], b["top"]) > 1
+
+    def contains(outer, inner):
+        return (inner["left"] >= outer["left"] - 1 and inner["right"] <= outer["right"] + 1
+                and inner["top"] >= outer["top"] - 1 and inner["bottom"] <= outer["bottom"] + 1)
+
+    def inspect_chrome():
+        return session.js("""const box=e=>{const r=e.getBoundingClientRect();return {
+            left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+            const main=document.querySelector('main'),root=document.querySelector('[data-layout]');
+            const top=root.querySelector('[data-editor-chrome-top]'),bottom=root.querySelector('[data-editor-chrome-bottom]');
+            const rows=[top,bottom].filter(Boolean);const visible=e=>!!e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden';
+            return {main:box(main),root:box(root),fontSize:getComputedStyle(document.documentElement).fontSize,
+                layout:root.dataset.layout,window:{width:innerWidth,height:innerHeight,devicePixelRatio},
+                nodeSizeToken:getComputedStyle(root).getPropertyValue('--canvas-node-size').trim(),
+                measuredInsets:{top:root.style.getPropertyValue('--ge-top-chrome-bottom'),bottom:root.style.getPropertyValue('--ge-mobile-controls-bottom')},
+                rows:rows.map((row,index)=>({name:index?'bottom':'top',bounds:box(row)})),
+                surfaces:rows.flatMap((row,index)=>[...(row.matches('.ge-panel')?[row]:row.querySelectorAll('.ge-panel'))]
+                    .filter(visible).map(e=>({row:index?'bottom':'top',bounds:box(e)}))),
+                controls:rows.flatMap((row,index)=>[...row.querySelectorAll('button')].filter(visible).map(e=>{
+                    const text=[];const walker=document.createTreeWalker(e,NodeFilter.SHOW_TEXT);let node;
+                    while(node=walker.nextNode()){
+                        if(!node.textContent.trim()||node.parentElement.closest('svg,.sr-only'))continue;
+                        const range=document.createRange();range.selectNodeContents(node);
+                        for(const r of range.getClientRects())if(r.width&&r.height)text.push({text:node.textContent.trim(),
+                            left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height});
+                    }
+                    return {row:index?'bottom':'top',label:e.getAttribute('aria-label')||e.textContent.trim(),bounds:box(e),text,
+                        pointerOnlyRangeMenu:e.hasAttribute('data-range-selection-trigger'),disabled:e.disabled};
+                }))};""")
+
+    def assert_chrome(geometry, font_size, width, height):
+        expected_layout = "mobile" if width < 768 else "desktop"
+        assert geometry["layout"] == expected_layout and geometry["fontSize"] == f"{font_size}px", geometry
+        for name in ("main", "root"):
+            assert abs(geometry[name]["width"] - width) <= 1 and abs(geometry[name]["height"] - height) <= 1, geometry
+        row_bounds = {row["name"]: row["bounds"] for row in geometry["rows"]}
+        if expected_layout == "mobile":
+            assert "bottom" in row_bounds and not overlaps(row_bounds["top"], row_bounds["bottom"]), geometry
+        else:
+            assert "bottom" not in row_bounds, geometry
+        for control in geometry["controls"]:
+            bounds = control["bounds"]
+            minimum_width = 24 if control["pointerOnlyRangeMenu"] else 44
+            assert bounds["width"] >= minimum_width - 1 and bounds["height"] >= 44 - 1, control
+            assert contains(geometry["root"], bounds) and contains(row_bounds[control["row"]], bounds), control
+            assert all(contains(bounds, text) for text in control["text"]), control
+        for index, surface in enumerate(geometry["surfaces"]):
+            assert contains(geometry["root"], surface["bounds"]), surface
+            assert all(not overlaps(surface["bounds"], other["bounds"]) for other in geometry["surfaces"][index + 1:]), geometry["surfaces"]
+
+    def restore_styles():
+        nonlocal original_styles
+        if original_styles is not None:
+            session.js("""const main=document.querySelector('main');main.style.width=arguments[0].width;
+                main.style.height=arguments[0].height;document.documentElement.style.fontSize=arguments[0].fontSize;""", original_styles)
+            original_styles = None
+
+    save("running")
+    try:
+        for locale, m in messages.items():
+            for theme in ("light", "dark"):
+                for font_size, width, height in ((16, 320, 390), (24, 320, 900), (24, 1280, 900)):
+                    window_width = 600 if width < 768 else 1440
+                    expected_layout = "mobile" if width < 768 else "desktop"
+                    current_case = {"locale": locale, "theme": theme, "rootFontPx": font_size,
+                                    "requestedEditorWidth": width, "requestedEditorHeight": height,
+                                    "requestedWindowWidth": window_width, "requestedWindowHeight": 1000}
+                    save("running")
+                    session.command("POST", "/window/rect", {"width": window_width, "height": 1000}, check=False)
+                    session.navigate(m["path"])
+                    session.js("localStorage.clear();localStorage.setItem('graph-editor-theme',arguments[0]);", theme)
+                    session.refresh()
+                    session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+                    original_styles = session.js("const main=document.querySelector('main');return {width:main.style.width,height:main.style.height,fontSize:document.documentElement.style.fontSize};")
+                    session.js("const main=document.querySelector('main');document.documentElement.style.fontSize=arguments[0]+'px';main.style.width=arguments[1]+'px';main.style.height=arguments[2]+'px';", font_size, width, height)
+                    session.wait("""const root=document.querySelector('[data-layout]');const r=root.getBoundingClientRect();
+                        const top=root.querySelector('[data-editor-chrome-top]')?.getBoundingClientRect();
+                        const bottom=root.querySelector('[data-editor-chrome-bottom]')?.getBoundingClientRect();
+                        return root.dataset.layout===""" + json.dumps(expected_layout) + "&&Math.abs(r.width-" + str(width) + """ )<1&&top
+                            &&Math.abs(parseFloat(root.style.getPropertyValue('--ge-top-chrome-bottom'))-(top.bottom-r.top))<1
+                            &&(root.dataset.layout!=='mobile'||bottom&&Math.abs(parseFloat(root.style.getPropertyValue('--ge-mobile-controls-bottom'))-(r.bottom-bottom.top+12))<1);""")
+                    session.focus_window()
+                    geometry = inspect_chrome()
+                    assert_chrome(geometry, font_size, width, height)
+                    empty_state = session.js("""const box=e=>{const r=e.getBoundingClientRect();return {
+                        left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+                        const empty=document.querySelector('[data-editor-empty-state]');
+                        const scroll=empty.querySelector('.overflow-y-auto');
+                        const title=empty.querySelector('button > span:last-child > span:first-child');
+                        const titleText=document.createRange();titleText.selectNodeContents(title.firstElementChild);
+                        const titleLines=[...titleText.getClientRects()].filter(r=>r.width&&r.height).length;
+                        return {scroll:box(scroll),firstCard:box(empty.querySelector('button')),titleFontSize:getComputedStyle(title).fontSize,
+                            titleLines,
+                            cardCount:empty.querySelectorAll('button').length};""")
+                    rows = {row["name"]: row["bounds"] for row in geometry["rows"]}
+                    assert empty_state["cardCount"] == 3 and contains(geometry["root"], empty_state["scroll"]), empty_state
+                    assert float(empty_state["titleFontSize"].removesuffix("px")) >= font_size * 0.8125 - 0.5, empty_state
+                    assert empty_state["titleLines"] <= 2, empty_state
+                    assert empty_state["scroll"]["top"] >= rows["top"]["bottom"] + 6, empty_state
+                    if "bottom" in rows:
+                        assert empty_state["scroll"]["bottom"] <= rows["bottom"]["top"] - 6, empty_state
+                    visible_card_height = min(empty_state["scroll"]["bottom"], empty_state["firstCard"]["bottom"]) - max(empty_state["scroll"]["top"], empty_state["firstCard"]["top"])
+                    assert visible_card_height >= 44, empty_state
+                    empty_state["firstCardVisibleHeight"] = visible_card_height
+                    prefix = f"responsive-{locale}-{theme}-root{font_size}-{width}x{height}"
+                    screenshots = []
+
+                    def capture(stage):
+                        name = f"{prefix}-{stage}"
+                        session.screenshot(name)
+                        screenshots.append(name + ".png")
+
+                    capture("chrome")
+                    session.activate(session.button(m["node"]))
+                    add_node = session.button(m["add"])
+                    action_bounds = session.js("const r=document.querySelector('[data-node-creation-action] button').getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};")
+                    assert contains(geometry["root"], action_bounds) and all(not overlaps(action_bounds, row["bounds"]) for row in geometry["rows"]), action_bounds
+                    session.js("arguments[0].focus();", {ELEMENT: add_node})
+                    for count, activation in enumerate(("\ue007", " ", "\ue007"), start=1):
+                        key(activation)
+                        session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===" + str(count))
+                        assert session.js("return document.activeElement===arguments[0]", {ELEMENT: add_node}), "Repeated responsive creation retains action focus"
+                    capture("node-action")
+                    session.activate(session.button(m["edge"]))
+                    session.wait("return document.querySelectorAll('button[data-edge-node-hitbox=true]').length===3")
+                    nodes = session.js(RANGE_CY + """const c=container.getBoundingClientRect();const targets=[...document.querySelectorAll('button[data-edge-node-hitbox=true]')];
+                        return cy.nodes().map((node,index)=>{const r=targets[index].getBoundingClientRect();const p=node.renderedPosition();return {
+                            label:node.data('displayLabel'),x:r.left+r.width/2,y:r.top+r.height/2,
+                            rendererX:p.x+c.left,rendererY:p.y+c.top,bodyWidth:node.width(),bodyHeight:node.height(),
+                            renderedWidth:node.renderedWidth(),renderedHeight:node.renderedHeight(),
+                            outerWidth:node.outerWidth()*cy.zoom(),outerHeight:node.outerHeight()*cy.zoom(),zoom:cy.zoom()};});""")
+                    for index, node in enumerate(nodes):
+                        assert abs(node["bodyHeight"] - 3 * font_size) <= 1 and abs(node["renderedHeight"] - 3 * font_size) <= 1, node
+                        assert abs(node["bodyWidth"] - node["bodyHeight"]) <= 1, node
+                        assert abs(node["x"] - node["rendererX"]) <= 1 and abs(node["y"] - node["rendererY"]) <= 1, node
+                        radius = node["outerHeight"] / 2
+                        circle_bounds = {"left": node["x"] - radius, "right": node["x"] + radius,
+                                         "top": node["y"] - radius, "bottom": node["y"] + radius}
+                        assert contains(geometry["root"], circle_bounds), node
+                        for rect in [row["bounds"] for row in geometry["rows"]] + [action_bounds]:
+                            nearest_x = max(rect["left"], min(node["x"], rect["right"]))
+                            nearest_y = max(rect["top"], min(node["y"], rect["bottom"]))
+                            assert ((node["x"] - nearest_x) ** 2 + (node["y"] - nearest_y) ** 2) ** 0.5 >= radius - 1, {"node": node, "chrome": rect}
+                        for other in nodes[index + 1:]:
+                            distance = ((node["x"] - other["x"]) ** 2 + (node["y"] - other["y"]) ** 2) ** 0.5
+                            assert distance >= radius + other["outerHeight"] / 2 - 1, {"node": node, "other": other, "distance": distance}
+                    capture("node-circles")
+                    # Mobile only shows its rescue button after the graph has
+                    # left the view. Exercise its native shortcut while visible.
+                    if expected_layout == "mobile":
+                        key("!")
+                    else:
+                        session.activate(session.button(m["fit"]))
+                    fit_bounds = session.wait(RANGE_CY + """const b=cy.elements().renderedBoundingBox({includeOverlays:false});
+                        const c=container.getBoundingClientRect(),root=document.querySelector('[data-layout]');
+                        const top=root.querySelector('[data-editor-chrome-top]').getBoundingClientRect();
+                        const bottom=root.querySelector('[data-editor-chrome-bottom]')?.getBoundingClientRect();
+                        const zoom=root.querySelector('[data-canvas-zoom-controls]')?.getBoundingClientRect();
+                        const bounds={left:c.left+b.x1,right:c.left+b.x2,top:c.top+b.y1,bottom:c.top+b.y2};
+                        if(bounds.top<top.bottom-1||bottom&&bounds.bottom>bottom.top+1
+                            ||zoom&&bounds.bottom>zoom.top+1
+                            ||bounds.left<c.left-1||bounds.right>c.right+1)return false;
+                        return {bounds,zoom:cy.zoom(),topChromeBottom:top.bottom,bottomChromeTop:bottom?.top??null,zoomControlsTop:zoom?.top??null};""")
+                    fit_bounds["activation"] = "native ! shortcut" if expected_layout == "mobile" else "native Fit button"
+                    capture("fit-to-view")
+                    insufficient_space = {"status": "not_applicable", "reason": "Optional guard scenario uses a short mobile editor with 24 px root text"}
+                    if font_size == 24 and width < 768:
+                        session.activate(session.button(m["node"]))
+                        session.js("document.querySelector('main').style.height='390px';")
+                        session.wait("""const root=document.querySelector('[data-layout]');const r=root.getBoundingClientRect();
+                            const top=root.querySelector('[data-editor-chrome-top]').getBoundingClientRect();
+                            const bottom=root.querySelector('[data-editor-chrome-bottom]').getBoundingClientRect();
+                            return Math.abs(r.height-390)<1&&Math.abs(parseFloat(root.style.getPropertyValue('--ge-top-chrome-bottom'))-(top.bottom-r.top))<1
+                                &&Math.abs(parseFloat(root.style.getPropertyValue('--ge-mobile-controls-bottom'))-(r.bottom-bottom.top+12))<1;""")
+                        short_geometry = inspect_chrome()
+                        short_action = session.js("""const e=document.querySelector('[data-node-creation-action] button'),r=e.getBoundingClientRect();
+                            const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+                            return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,
+                                centerReachable:!!hit&&(hit===e||e.contains(hit))};""")
+                        reachable = (contains(short_geometry["root"], short_action) and short_action["centerReachable"]
+                                     and all(not overlaps(short_action, row["bounds"]) for row in short_geometry["rows"]))
+                        insufficient_space = {"status": "skipped_unreachable", "editorHeight": 390,
+                            "action": short_action, "rows": short_geometry["rows"],
+                            "reason": "The optional short enlarged-text action is not unobscured; no guard behavior is claimed"}
+                        if reachable:
+                            short_add = session.button(m["add"])
+                            session.js("arguments[0].focus();", {ELEMENT: short_add})
+                            key("\ue007")
+                            session.wait("""const e=document.querySelector('[data-node-creation-action] [role=status]');return e&&!e.classList.contains('sr-only')&&e.textContent.trim()
+                                &&JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.length===3;""")
+                            insufficient_space.update({"status": "passed", "reason": None,
+                                "message": session.js("return document.querySelector('[data-node-creation-action] [role=status]').textContent.trim()")})
+                        capture("optional-short-text")
+                    results.append({**current_case, "geometry": geometry, "emptyStateGeometry": empty_state, "nodeActionBounds": action_bounds,
+                        "nodes": nodes, "fitToView": fit_bounds, "screenshots": screenshots,
+                        "insufficientSpaceGuard": insufficient_space,
+                        "checks": ["exact local editor box and root font size", "ResizeObserver mobile/desktop layout and published chrome insets",
+                                   "all visible toolbar labels remain inside their controls", "primary controls at least 44 px; pointer-only range trigger at least 24 px",
+                                   "available top/bottom surfaces remain in bounds without overlap", "Enter and Space add three distinct nodes with retained focus",
+                                   "first-use scroll area clears measured chrome; first card has at least 44 px visible",
+                                   "Fit keeps rendered graph bounds inside the measured top/bottom chrome",
+                                   "actual 48 px / 72 px node bodies and DOM hitbox centers agree", "rendered node circles avoid each other and toolbar/action bounds"]})
+                    save("running")
+                    restore_styles()
+                    print(f"{prefix}: responsive text and node placement passed", flush=True)
+        current_case = None
+        save("passed")
+        return results
+    except Exception as error:
+        save("failed_or_blocked", str(error))
+        raise
+    finally:
+        restore_styles()
 
 
 def run_editor_review(session):
@@ -938,8 +1494,18 @@ return {hint:footer.textContent,lines:text.getClientRects().length,footerWidth:f
         session.wait("return document.activeElement!==document.querySelector('[data-range-selection-trigger]')")
         hover(trigger)
         wait_tooltip()
+        tooltip = session.element('.ge-tooltip:not([hidden])')
+        tooltip_id = session.js("return arguments[0].id", {ELEMENT: tooltip})
+        session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+            {"type": "pointerMove", "duration": 100, "origin": {ELEMENT: tooltip}, "x": 0, "y": 0},
+            {"type": "pause", "duration": 400}]}]})
+        session.wait("const t=document.querySelector('[data-range-selection-trigger]'),tip=document.getElementById(" + json.dumps(tooltip_id) + ");return tip&&!tip.hidden&&tip.textContent===t.dataset.tooltip&&(t.getAttribute('aria-describedby')||'').split(/\\s+/).includes(tip.id)")
+        session.screenshot(f"safari-tooltip-hover-{locale}-{width}")
+        range_key(session, "\ue00c")
+        session.wait("const t=document.querySelector('[data-range-selection-trigger]');return [...document.querySelectorAll('.ge-tooltip')].every(e=>e.hidden)&&!(t.getAttribute('aria-describedby')||'').split(/\\s+/).includes(" + json.dumps(tooltip_id) + ")")
         session.command("DELETE", "/actions")
         results.append({"locale": locale, "requestedWindowWidth": width, **layout, "closedTooltipRestored": True,
+                        "tooltipHoverRetained": True, "tooltipEscapeAndDescriptionCleanup": True,
                         "windowBlurHoverRetries": hover_retries})
         print(f"safari-range-menu-{locale}-{width}: single-line hint and tooltip open/close passed", flush=True)
     return results
@@ -1013,11 +1579,39 @@ def run_multi_selection_review(session):
     results = []
     selected_ids = ["a", "b"]
     for variant in ("ctrl", "meta", "range"):
+        if results:
+            session.restart()
         session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
         session.navigate("/en")
-        session.js("localStorage.clear(); localStorage.setItem('graph-editor-graph',arguments[0]); localStorage.setItem('graph-editor-theme','light');", json.dumps(RANGE_FIXTURE))
+        # Start a new document after clearing storage; replacing an identical
+        # live model would be a no-op and would not establish persistence.
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+        session.js("localStorage.clear();localStorage.setItem('graph-editor-theme','light');")
+        session.wait("return localStorage.getItem('graph-editor-graph')===null")
         session.refresh()
-        session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length === 4")
+        session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+        session.wait(RANGE_CY + "return cy.nodes().length===0&&cy.edges().length===0&&localStorage.getItem('graph-editor-graph')===null&&!!document.querySelector('[data-editor-empty-state]');")
+        session.js(RANGE_CY + """
+            window.__multiStorageEvents=[];window.__multiStorageErrors=[];
+            window.__multiStorageBefore={saved:localStorage.getItem('graph-editor-graph'),liveNodes:cy.nodes().map(n=>n.id()),liveEdges:cy.edges().map(e=>e.id()),url:location.href};
+            window.addEventListener('graph-editor:storage-state',()=>window.__multiStorageEvents.push({time:performance.now(),saved:localStorage.getItem('graph-editor-graph'),notice:document.querySelector('[data-storage-notice]')?.dataset.storageNotice??null}));
+            window.addEventListener('error',e=>window.__multiStorageErrors.push({type:'error',message:e.message,file:e.filename,line:e.lineno}));
+            window.addEventListener('unhandledrejection',e=>window.__multiStorageErrors.push({type:'rejection',message:String(e.reason)}));
+        """)
+        (OUTPUT / f"multi-selection-{variant}-before.json").write_text(json.dumps(session.js("return window.__multiStorageBefore"), indent=2))
+        session.open_panel("Load a graph", "starter")
+        textarea = session.element('[data-editor-panel=starter] textarea')
+        session.command("POST", f"/element/{textarea}/value", {"text": json.dumps(RANGE_FIXTURE)})
+        session.wait("return [...document.querySelectorAll('[data-editor-panel=starter] button')].some(e=>e.textContent.trim()==='Apply to graph'&&!e.disabled)")
+        try:
+            session.activate(session.button("Apply to graph"))
+            session.wait("return !!document.querySelector('[data-canvas-ready=true]') && document.querySelectorAll('.ge-select-node-hitbox').length === 4")
+            session.focus_window()
+            session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')||'null')?.nodes.map(n=>n.id).join(',')==='a,b,c,d'")
+        finally:
+            diagnostic = session.js(RANGE_CY + "return {variant:arguments[0],before:window.__multiStorageBefore,saved:localStorage.getItem('graph-editor-graph'),liveNodes:cy.nodes().map(n=>({id:n.id(),label:n.data('displayLabel')})),storageEvents:window.__multiStorageEvents,errors:window.__multiStorageErrors,notice:document.querySelector('[data-storage-notice]')?.dataset.storageNotice??null,locks:!!navigator.locks,visibility:document.visibilityState,focused:document.hasFocus(),url:location.href};", variant)
+            (OUTPUT / "multi-selection-fixture.json").write_text(json.dumps(diagnostic, indent=2))
+            (OUTPUT / f"multi-selection-{variant}-fixture.json").write_text(json.dumps(diagnostic, indent=2))
         session.js(RANGE_CY + "cy.zoom(1); cy.pan({x:container.clientWidth/2,y:400});")
         session.js("window.__multiKeys=[];for(const type of ['keydown','keyup'])window.addEventListener(type,e=>window.__multiKeys.push({type,key:e.key,shift:e.shiftKey,ctrl:e.ctrlKey,meta:e.metaKey,target:e.target.tagName,prevented:e.defaultPrevented}),true);")
         baseline = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
@@ -1643,13 +2237,14 @@ def main():
             (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
         (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
         stages = [
+            ("multi-selection", run_multi_selection_review, "multi-selection-results.json"),
+            ("range-menu", run_range_menu_review, "range-menu-review.json"),
+            ("responsive-text", run_responsive_text_review, None),
+            ("design-guidelines", run_design_guidelines_review, None),
             ("editor-workflow", run_editor_review, None),
             ("edge-routing", run_edge_routing_regression, None),
             ("range-selection", run_range_selection, "range-selection-results.json"),
             ("rust-compute", run_rust_compute_review, None),
-            ("range-menu", run_range_menu_review, "range-menu-review.json"),
-            ("design-guidelines", run_design_guidelines_review, None),
-            ("multi-selection", run_multi_selection_review, "multi-selection-results.json"),
         ]
         for index, (name, review, report) in enumerate(stages):
             if index:

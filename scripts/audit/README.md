@@ -36,6 +36,27 @@ Undo and setting toggles are not replayed on a timeout. Only read-only WebDriver
 requests may be retried after transport failures. A hover check may repeat
 pointer entry once when a recorded window blur interrupted tooltip display.
 
+The design-guidelines stage checks all three locales in both themes at two
+requested Safari window widths. It exercises persistent input examples,
+validation associations and disclosures, sample-search focus, keyboard graph
+creation, explicit clear/cancel and Undo, output focus, button press feedback,
+and PNG dimension drafts committed by Tab, Enter, and a real pointer blur.
+Controlled fields are emptied with native Select All and Backspace so their
+React input handlers observe the edit.
+
+The responsive-text stage constrains the editor to exact CSS boxes inside the
+Safari window: 320×390 with 16px root text, and 320×900 or 1280×900 with 24px
+root text. It measures toolbar bounds, text containment, rendered node sizes,
+native keyboard creation, hitbox alignment, and node/chrome overlap in all
+three locales and both themes. It also fits the graph back inside the measured
+toolbar bounds and checks that the first start card remains visible. The
+range-menu suite moves the real pointer onto a tooltip, waits there, and checks
+Escape dismissal and description cleanup. The browser viewport and constrained editor
+box are recorded separately. A further 320×390 enlarged-text creation guard
+is tested only if its action is visible and unobscured; skipped coverage is
+reported explicitly. This simulates a smaller editor and larger text, rather
+than a physical mobile viewport or a changed system accessibility setting.
+
 Results and screenshots are saved under `/tmp/graph-editor-safari-review`.
 Use `results.json` from a completed run for the full-suite result. A `passed`
 status is saved only after session cleanup succeeds; `cleanup.json` carries the
@@ -46,6 +67,15 @@ the DOM alone does not establish that an active focus outline was displayed.
 This is an expert review on installed desktop Safari, not a physical-device,
 screen-reader, native-download, or first-time-participant test. Any native
 keyboard limitations and use of DOM keyboard events are recorded per case.
+
+The 2026-10-24 UI review verified application commit `fe217bd` with 82
+verification suites, type checks, lint, formatting, the production build, and
+release checks. Safari completed 67 cases across the other seven stages on
+that application source. The three multi-selection cases remain incomplete:
+fixture import emitted a saved event containing the expected graph, while a
+later WebDriver storage read returned null. The runner retains the failure,
+before/after diagnostics, and successful session cleanup; this is not a
+passing 70-case run. The cause of that storage discrepancy is unconfirmed.
 
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 
