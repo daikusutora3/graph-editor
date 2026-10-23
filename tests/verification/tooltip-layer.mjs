@@ -330,7 +330,15 @@ function mount() {
   layer.hover(hovered);
   layer.advance(350);
   assert.equal(layer.tooltip.textContent, "Hint being read with the pointer");
-  layer.dispatch("pointerout", hovered, { relatedTarget: layer.tooltip });
+  layer.dispatch("pointerout", hovered, { relatedTarget: layer.body });
+  layer.hover(layer.body);
+  layer.advance(100);
+  assert.equal(
+    layer.tooltip.textContent,
+    "Hint being read with the pointer",
+    "the pointer can cross the body gap despite another focused control",
+  );
+  assert.equal(layer.tooltip.hidden, false);
   layer.hover(layer.tooltip);
   layer.advance(1000);
   assert.equal(
@@ -349,6 +357,38 @@ function mount() {
     "a new keyboard focus supersedes the retained pointer tooltip",
   );
   assert.equal(hovered.getAttribute("aria-describedby"), null);
+  layer.unmount();
+}
+
+{
+  const layer = mount();
+  const focused = layer.trigger("Previously focused neighbour");
+  const hovered = layer.trigger("Dismiss this pointer hint");
+  layer.key("Tab");
+  layer.focus(focused);
+  layer.advance(0);
+  layer.hover(hovered);
+  layer.advance(350);
+  layer.dispatch("pointerout", hovered, { relatedTarget: layer.body });
+  layer.advance(100);
+  layer.hover(layer.tooltip);
+  layer.key("Escape");
+  layer.dispatch("pointerout", layer.tooltip, { relatedTarget: layer.body });
+  layer.hover(layer.body);
+  layer.advance(500);
+  assert(
+    layer.tooltip.hidden,
+    "Escape stays dismissed after hiding the tooltip emits pointerout",
+  );
+  assert.equal(focused.getAttribute("aria-describedby"), null);
+  assert.equal(hovered.getAttribute("aria-describedby"), null);
+  layer.hover(focused);
+  layer.advance(350);
+  assert.equal(
+    layer.tooltip.textContent,
+    "Previously focused neighbour",
+    "a fresh pointer entry can show the neighbour after dismissal",
+  );
   layer.unmount();
 }
 
