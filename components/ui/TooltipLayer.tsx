@@ -137,8 +137,11 @@ export function TooltipLayer() {
       // The tooltip is separated from its trigger by a small gap. Keep an
       // already visible hint while the pointer crosses it, without delaying
       // cancellation of a hint that has not appeared yet.
-      if (!next && anchor && !tooltip.hidden) {
-        hideTimer ??= window.setTimeout(hide, 150);
+      if (!hovered && !tooltipHovered && anchor && !tooltip.hidden) {
+        hideTimer ??= window.setTimeout(() => {
+          hide();
+          sync();
+        }, 150);
         return;
       }
       hide();
@@ -212,6 +215,9 @@ export function TooltipLayer() {
       if (focused) {
         hovered = null;
         tooltipHovered = false;
+        // A new keyboard destination takes effect immediately, even while a
+        // pointer hint was waiting for its gap-crossing grace period.
+        if (anchor && anchor !== focused) hide();
       }
       sync();
     };
@@ -223,6 +229,9 @@ export function TooltipLayer() {
     };
     const dismiss = () => {
       dismissed = anchor ?? dismissed;
+      // Hiding a hovered tooltip can itself emit pointerout. A previously
+      // focused neighbour must not immediately reopen its own tooltip.
+      focused = null;
       hide();
     };
     const onKeyDown = (event: KeyboardEvent) => {
