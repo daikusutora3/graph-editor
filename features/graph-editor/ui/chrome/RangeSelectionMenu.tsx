@@ -92,7 +92,8 @@ export function RangeSelectionMenu({
           // This menu is hidden on touch devices; a narrow window should keep
           // its pointer target compact instead of squeezing the Select button.
           "w-6 rounded-l-none touch:w-6 touch:rounded-l-none",
-          above ? "h-11 rounded-r-xl touch:h-11 touch:rounded-r-xl" : "h-10",
+          "h-11",
+          above && "rounded-r-xl touch:rounded-r-xl",
         )}
         onClick={() => {
           onOpen();

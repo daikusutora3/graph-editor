@@ -29,6 +29,7 @@ mock.module(feature("compute/rust-kernel.ts"), () => ({
 let measurements = [],
   clearedMeasurements = 0,
   fontVersion = 0;
+let rootFontSize = 16;
 const measuredModel = (model) => ({
   ...model,
   nodes: model.nodes.map((node) => ({
@@ -92,14 +93,53 @@ mock.module(feature("compute/worker-client.ts"), () => ({
     ),
 }));
 const fonts = new Set(),
-  frames = new Map();
+  frames = new Map(),
+  probes = new Set(),
+  typographyMutations = [],
+  typographyResizes = [];
 let nextFrame = 0;
 Object.assign(globalThis, {
   document: {
+    documentElement: {},
+    body: { append: (probe) => probes.add(probe) },
+    createElement: () => {
+      const probe = {
+        style: {},
+        setAttribute() {},
+        remove: () => probes.delete(probe),
+      };
+      return probe;
+    },
     fonts: {
       addEventListener: (_event, callback) => fonts.add(callback),
       removeEventListener: (_event, callback) => fonts.delete(callback),
     },
+  },
+  window: { addEventListener() {}, removeEventListener() {} },
+  getComputedStyle: () => ({
+    fontSize: `${rootFontSize}px`,
+    fontFamily: "system-ui",
+    getPropertyValue: () => "",
+  }),
+  MutationObserver: class {
+    constructor(callback) {
+      this.callback = callback;
+      typographyMutations.push(this);
+    }
+    observe() {}
+    disconnect() {
+      this.disconnected = true;
+    }
+  },
+  ResizeObserver: class {
+    constructor(callback) {
+      this.callback = callback;
+      typographyResizes.push(this);
+    }
+    observe() {}
+    disconnect() {
+      this.disconnected = true;
+    }
   },
   requestAnimationFrame: (callback) => {
     const id = ++nextFrame;
@@ -196,8 +236,10 @@ function harness(renderHook) {
 function fixture(nodeCount = 3, settings = {}) {
   assert.equal(frames.size, 0);
   assert.equal(fonts.size, 0);
+  assert.equal(probes.size, 0);
   kernelReady = false;
   fontVersion = 0;
+  rootFontSize = 16;
   measurements = [];
   clearedMeasurements = 0;
   cacheKeyCalls = 0;
@@ -344,6 +386,58 @@ function runFrame() {
 }
 {
   const { hook } = fixture();
+  const original = requests[0];
+  rootFontSize = 24;
+  fontVersion = 100;
+  typographyMutations
+    .filter((observer) => !observer.disconnected)
+    .forEach((observer) => observer.callback());
+  typographyResizes
+    .filter((observer) => !observer.disconnected)
+    .forEach((observer) => observer.callback());
+  await hook.flush();
+  assert(
+    original.signal.aborted,
+    "runtime root font styles cancel the stale routing owner",
+  );
+  assert.equal(
+    requests.length,
+    2,
+    "attribute and rem resize deliveries share one font revision",
+  );
+  assert.equal(clearedMeasurements, 1);
+  assert.equal(
+    requests[1].model.nodes[0].measuredWidth,
+    original.model.nodes[0].measuredWidth + 100,
+  );
+  const previous = requests[1];
+  rootFontSize = 20;
+  fontVersion = 80;
+  typographyResizes
+    .filter((observer) => !observer.disconnected)
+    .forEach((observer) => observer.callback());
+  await hook.flush();
+  assert(
+    previous.signal.aborted,
+    "computed preferred-font changes also replace stale routing work",
+  );
+  assert.equal(requests.length, 3);
+  assert.equal(clearedMeasurements, 2);
+  assert.equal(
+    requests[2].model.nodes[0].measuredWidth,
+    original.model.nodes[0].measuredWidth + 80,
+  );
+  hook.unmount();
+  const cleared = clearedMeasurements;
+  typographyResizes.forEach((observer) => observer.callback());
+  assert.equal(
+    clearedMeasurements,
+    cleared,
+    "late font deliveries cannot invalidate an unmounted hook",
+  );
+}
+{
+  const { hook } = fixture();
   requests[0].resolve(null);
   await hook.flush();
   // Advance exactly one generator yield per fake frame.
@@ -414,6 +508,9 @@ function runFrame() {
   hook.unmount();
 }
 assert.equal(fonts.size, 0);
+assert.equal(probes.size, 0);
+assert(typographyMutations.every((observer) => observer.disconnected));
+assert(typographyResizes.every((observer) => observer.disconnected));
 assert.equal(frames.size, 0);
 console.log(
   "Routing hook lifecycle passed (shared geometry, stable Worker owner, font/drag invalidation and fallback upgrade)",

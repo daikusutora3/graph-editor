@@ -7,6 +7,10 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import { graphModelToCytoscapeElements } from "../../features/graph-editor/adapters/cytoscape/cytoscape-adapter";
 import { defaultEdgeRoutingMeta } from "../../features/graph-editor/core/layout/edge-routing";
 import { resizeCytoscapeCanvas } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-resize";
+import {
+  fitGraphToAvailableViewport,
+  centerGraphOrigin,
+} from "../../features/graph-editor/adapters/cytoscape/graph-canvas-viewport";
 
 // Run the installed canvas-sizing implementation: assigning a canvas size
 // clears its pixel backing store. Browser review covers the final raster.
@@ -65,17 +69,37 @@ const canvasWindow = {
   },
   clearTimeout: (id) => timeouts.delete(id),
 };
+let rootFontSize = 16;
+const typographyProbes = new Set();
 Object.assign(globalThis, {
   window: canvasWindow,
   document: {
     hidden: false,
     documentElement: {},
-    createElement: () => ({ getContext: () => null }),
+    body: { append: (probe) => typographyProbes.add(probe) },
+    createElement: () => {
+      const element = {
+        style: {},
+        setAttribute() {},
+        getContext: () => null,
+        remove: () => typographyProbes.delete(element),
+      };
+      return element;
+    },
     addEventListener() {},
     removeEventListener() {},
     fonts: { addEventListener() {}, removeEventListener() {} },
   },
-  getComputedStyle: () => ({ getPropertyValue: () => "", fontSize: "16px" }),
+  getComputedStyle: () => ({
+    getPropertyValue: (name) =>
+      name === "--canvas-node-size"
+        ? "3rem"
+        : name === "--canvas-node-font"
+          ? "1rem"
+          : "",
+    fontSize: `${rootFontSize}px`,
+    fontFamily: "system-ui",
+  }),
   requestAnimationFrame: (callback) => {
     const id = ++nextFrame;
     frames.set(id, callback);
@@ -88,16 +112,28 @@ globalThis.ResizeObserver = class {
   constructor(callback) {
     this.callback = callback;
     this.disconnected = false;
+    this.targets = [];
     resizeObservers.push(this);
   }
-  observe() {}
+  observe(target) {
+    this.targets.push(target);
+  }
   disconnect() {
     this.disconnected = true;
   }
 };
+const mutationObservers = [];
 globalThis.MutationObserver = class {
-  observe() {}
-  disconnect() {}
+  constructor(callback) {
+    this.callback = callback;
+    mutationObservers.push(this);
+  }
+  observe(_target, options) {
+    this.options = options;
+  }
+  disconnect() {
+    this.disconnected = true;
+  }
 };
 
 function fixture() {
@@ -105,6 +141,7 @@ function fixture() {
   const size = { width: 1280, height: 800 };
   const container = {
     childNodes: [],
+    closest: () => null,
     ownerDocument: { defaultView: canvasWindow },
     getBoundingClientRect: () => ({ ...size }),
   };
@@ -269,6 +306,110 @@ assert.equal(
   "batch completion retains its normal deferred paint",
 );
 batchedCanvas.cy.destroy();
+
+// Real Cytoscape bounds at enlarged text must fit between wrapped controls.
+{
+  const tall = {
+    ...createEmptyGraphModel(),
+    nodes: [0, 300, 600].map((y, order) => ({
+      id: `tall-${order}`,
+      label: String(order),
+      order,
+      x: 0,
+      y,
+    })),
+    edges: [],
+  };
+  const { cy, renderer } = createCalculationCanvas(tall);
+  cy.nodes().style({ width: 72, height: 72 });
+  renderer.flushRenderedStyleQueue();
+  cy.container = () => ({
+    childNodes: [],
+    getBoundingClientRect: () => ({ width: 320, height: 900 }),
+  });
+  const positions = cy.nodes().map((node) => ({ ...node.position() }));
+  for (const bottom of [176, 269]) {
+    fitGraphToAvailableViewport(cy, { layout: "mobile" }, { top: 196, bottom });
+    const bounds = cy.elements().renderedBoundingBox({ includeLabels: true });
+    assert(bounds.y1 >= 196 + 48 - 1e-5, "fit clears actual top rows");
+    assert(
+      bounds.y2 <= 900 - bottom - 48 + 1e-5,
+      "fit clears actual bottom toolbar and visible action",
+    );
+    assert(bounds.x1 >= 12 + 48 - 1e-5 && bounds.x2 <= 320 - 12 - 48 + 1e-5);
+  }
+  assert.deepEqual(
+    cy.nodes().map((node) => ({ ...node.position() })),
+    positions,
+    "fit preserves graph coordinates",
+  );
+  const camera = { zoom: cy.zoom(), pan: { ...cy.pan() } };
+  fitGraphToAvailableViewport(
+    cy,
+    { layout: "mobile" },
+    { top: 700, bottom: 300 },
+  );
+  assert.deepEqual(
+    { zoom: cy.zoom(), pan: { ...cy.pan() } },
+    camera,
+    "unavailable measured space preserves the camera",
+  );
+  cy.elements().remove();
+  centerGraphOrigin(cy, { layout: "mobile" }, { top: 196, bottom: 176 });
+  assert.deepEqual(
+    cy.pan(),
+    { x: 160, y: 460 },
+    "empty origin uses measured viewport center",
+  );
+  cy.destroy();
+}
+
+{
+  const spread = {
+    ...createEmptyGraphModel(),
+    nodes: [
+      [0, 0],
+      [2000, 0],
+      [0, 900],
+      [2000, 900],
+    ].map(([x, y], order) => ({
+      id: `corner-${order}`,
+      label: String(order),
+      order,
+      x,
+      y,
+    })),
+    edges: [],
+  };
+  const { cy, renderer } = createCalculationCanvas(spread);
+  cy.nodes().style({ width: 72, height: 72 });
+  renderer.flushRenderedStyleQueue();
+  cy.container = () => ({
+    childNodes: [],
+    getBoundingClientRect: () => ({ width: 1920, height: 1080 }),
+  });
+  fitGraphToAvailableViewport(
+    cy,
+    { layout: "desktop" },
+    { top: 104, bottom: 0 },
+  );
+  assert(
+    cy.elements().renderedBoundingBox().y2 > 963,
+    "default bottom clearance can overlap the enlarged zoom surface",
+  );
+  fitGraphToAvailableViewport(
+    cy,
+    { layout: "desktop" },
+    { top: 104, bottom: 117 },
+  );
+  const fitted = cy.elements().renderedBoundingBox();
+  assert(
+    fitted.y2 <= 963 - 48 + 1e-5,
+    "measured desktop zoom surface keeps48px fit padding",
+  );
+  assert(fitted.y1 >= 104 + 48 - 1e-5);
+  cy.destroy();
+}
 
 let currentHarness;
 mock.module("react", () => ({
@@ -484,6 +625,43 @@ function lifecycleFixture(canvas) {
     "duplicate same-DPR events do not clear or repaint pixels",
   );
   const initialPaints = main.paints;
+  const fontHitboxes = test.hitboxRefreshes;
+  rootFontSize = 24;
+  mutationObservers
+    .filter(
+      (entry) =>
+        !entry.disconnected && entry.options.attributeFilter.includes("style"),
+    )
+    .forEach((entry) => entry.callback());
+  assert.equal(
+    main.cy.getElementById("a").height(),
+    72,
+    "runtime root style enlargement refreshes native Cytoscape node height",
+  );
+  assert.equal(
+    main.cy.getElementById("a").width(),
+    72,
+    "native short-label pill width follows the fresh font palette",
+  );
+  assert(
+    test.hitboxRefreshes > fontHitboxes,
+    "font style refresh also updates pointer overlays",
+  );
+  assert.equal(main.cy.zoom(), before.zoom);
+  assert.deepEqual(main.cy.pan(), before.pan);
+  rootFontSize = 16;
+  resizeObservers
+    .filter(
+      (entry) =>
+        !entry.disconnected &&
+        entry.targets.some((target) => typographyProbes.has(target)),
+    )
+    .forEach((entry) => entry.callback());
+  assert.equal(
+    main.cy.getElementById("a").height(),
+    48,
+    "computed rem changes restore native node size without a theme toggle",
+  );
   for (const width of [800, 468, 320, 468, 1280]) {
     main.size.width = width;
     observer.callback();
@@ -608,6 +786,8 @@ assert.equal(
   "all render acknowledgement frames are canceled or completed",
 );
 assert.equal(timeouts.size, 0, "all initial display deadlines are released");
+assert.equal(typographyProbes.size, 0, "all font metric probes are removed");
+assert(mutationObservers.every((entry) => entry.disconnected));
 assert.ok(
   resizeObservers.every((entry) => entry.disconnected),
   "all resize observers disconnect",

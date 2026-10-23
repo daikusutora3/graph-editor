@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-import { focusRing } from "./control-styles";
+import { focusRing, pressFeedback } from "./control-styles";
 import { rovingFocusKeyDown } from "./use-roving-focus";
 
 export type SegmentOption<T extends string> = { label: string; value: T };
@@ -52,6 +52,7 @@ export function Segment<T extends string>({
               "flex min-w-0 items-center justify-center rounded-lg border px-0.5 py-1 text-control font-semibold transition-colors disabled:cursor-default disabled:opacity-50",
               "focus-visible:relative focus-visible:z-10",
               focusRing,
+              pressFeedback,
               size === "md" ? "min-h-9" : "min-h-[30px]",
               "touch:min-h-11",
               selected

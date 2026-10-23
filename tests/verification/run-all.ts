@@ -70,6 +70,10 @@ const suites = [
     name: "sample-gallery-boundary",
     path: "tests/verification/sample-gallery-boundary.mjs",
   },
+  {
+    name: "sample-gallery-controls",
+    path: "tests/verification/sample-gallery-controls.mjs",
+  },
   { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
   { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
   { name: "design-contrast", path: "tests/verification/design-contrast.ts" },
@@ -80,6 +84,30 @@ const suites = [
   {
     name: "ui-control-accessibility",
     path: "tests/verification/ui-control-accessibility.tsx",
+  },
+  {
+    name: "png-dimension-input",
+    path: "tests/verification/png-dimension-input.mjs",
+  },
+  {
+    name: "mobile-toolbar-menu",
+    path: "tests/verification/mobile-toolbar-menu.tsx",
+  },
+  {
+    name: "chrome-bounds",
+    path: "tests/verification/chrome-bounds.mjs",
+  },
+  {
+    name: "node-creation",
+    path: "tests/verification/node-creation.tsx",
+  },
+  {
+    name: "edge-native-activation",
+    path: "tests/verification/edge-native-activation.mjs",
+  },
+  {
+    name: "clear-confirmation",
+    path: "tests/verification/clear-confirmation.mjs",
   },
   { name: "panel-dismissal", path: "tests/verification/panel-dismissal.mjs" },
   { name: "tooltip-position", path: "tests/verification/tooltip-position.ts" },

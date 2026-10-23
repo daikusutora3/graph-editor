@@ -298,6 +298,179 @@ function mount() {
 
 {
   const layer = mount();
+  const trigger = layer.trigger("Hoverable hint");
+  layer.hover(trigger);
+  layer.advance(350);
+  layer.dispatch("pointerout", trigger, { relatedTarget: layer.tooltip });
+  layer.hover(layer.tooltip);
+  layer.advance(1000);
+  assert.equal(layer.tooltip.hidden, false, "the tooltip itself retains hover");
+  assert.equal(trigger.getAttribute("aria-describedby"), "test-tooltip");
+  layer.dispatch("pointerout", layer.tooltip, { relatedTarget: layer.body });
+  layer.advance(149);
+  assert.equal(
+    layer.tooltip.hidden,
+    false,
+    "leaving a hint has a short grace period",
+  );
+  layer.advance(1);
+  assert(layer.tooltip.hidden, "the hint closes after leaving both surfaces");
+  assert.equal(trigger.getAttribute("aria-describedby"), null);
+  layer.unmount();
+}
+
+{
+  const layer = mount();
+  const focused = layer.trigger("Previously focused hint");
+  const hovered = layer.trigger("Hint being read with the pointer");
+  const nextFocused = layer.trigger("Next keyboard hint");
+  layer.key("Tab");
+  layer.focus(focused);
+  layer.advance(0);
+  layer.hover(hovered);
+  layer.advance(350);
+  assert.equal(layer.tooltip.textContent, "Hint being read with the pointer");
+  layer.dispatch("pointerout", hovered, { relatedTarget: layer.tooltip });
+  layer.hover(layer.tooltip);
+  layer.advance(1000);
+  assert.equal(
+    layer.tooltip.textContent,
+    "Hint being read with the pointer",
+    "hovering the tooltip retains its anchor despite another focused control",
+  );
+  assert.equal(hovered.getAttribute("aria-describedby"), "test-tooltip");
+  assert.equal(focused.getAttribute("aria-describedby"), null);
+  layer.dispatch("focusout", focused, { relatedTarget: nextFocused });
+  layer.focus(nextFocused);
+  layer.advance(0);
+  assert.equal(
+    layer.tooltip.textContent,
+    "Next keyboard hint",
+    "a new keyboard focus supersedes the retained pointer tooltip",
+  );
+  assert.equal(hovered.getAttribute("aria-describedby"), null);
+  layer.unmount();
+}
+
+{
+  const layer = mount();
+  const trigger = layer.trigger("Cross the gap");
+  layer.hover(trigger);
+  layer.advance(350);
+  layer.dispatch("pointerout", trigger, { relatedTarget: layer.body });
+  layer.hover(layer.body);
+  layer.advance(140);
+  layer.hover(layer.tooltip);
+  layer.advance(1000);
+  assert.equal(
+    layer.tooltip.hidden,
+    false,
+    "crossing the gap cancels dismissal",
+  );
+  layer.dispatch("pointerout", layer.tooltip, { relatedTarget: trigger });
+  layer.hover(trigger);
+  assert.equal(
+    layer.timers.size,
+    0,
+    "returning to the trigger needs no new delay",
+  );
+  assert.equal(layer.tooltip.hidden, false);
+  layer.key("Escape");
+  assert(layer.tooltip.hidden, "Escape also dismisses a pointer hint");
+  layer.hover(trigger);
+  layer.advance(350);
+  assert(layer.tooltip.hidden, "hovering the same trigger cannot undo Escape");
+  layer.dispatch("pointerout", trigger, { relatedTarget: layer.body });
+  layer.hover(trigger);
+  layer.advance(350);
+  assert.equal(
+    layer.tooltip.hidden,
+    false,
+    "leaving and returning starts a fresh hover",
+  );
+  layer.dispatch("pointerout", trigger, { relatedTarget: layer.tooltip });
+  layer.hover(layer.tooltip);
+  layer.key("Escape");
+  layer.key("Escape");
+  assert(layer.tooltip.hidden, "Escape dismisses a hovered tooltip itself");
+  assert.equal(trigger.getAttribute("aria-describedby"), null);
+  layer.unmount();
+}
+
+{
+  const layer = mount();
+  const trigger = layer.trigger("Click dismisses the hint");
+  layer.hover(trigger);
+  layer.advance(350);
+  layer.dispatch("pointerdown", trigger);
+  layer.focus(trigger);
+  layer.hover(trigger);
+  layer.advance(350);
+  assert(
+    layer.tooltip.hidden,
+    "pointer focus does not reopen a dismissed hint",
+  );
+  layer.dispatch("pointerout", trigger, { relatedTarget: layer.body });
+  layer.hover(trigger);
+  layer.advance(350);
+  assert.equal(
+    layer.tooltip.hidden,
+    false,
+    "fresh hover after a click can show the hint",
+  );
+  layer.unmount();
+}
+
+{
+  const layer = mount();
+  const trigger = layer.trigger("Pending hint");
+  layer.hover(trigger);
+  layer.advance(200);
+  layer.dispatch("pointerout", trigger, { relatedTarget: layer.body });
+  layer.advance(200);
+  assert(
+    layer.tooltip.hidden,
+    "leaving before the reveal cancels the pending hint",
+  );
+  assert.equal(layer.timers.size, 0);
+  layer.hover(trigger);
+  layer.advance(350);
+  layer.dispatch("pointerout", trigger, { relatedTarget: layer.body });
+  layer.unmount();
+  layer.advance(150);
+  assert(layer.tooltip.hidden, "unmount cancels a pending bridge delay");
+}
+
+{
+  const layer = mount();
+  const first = layer.trigger("Focused hint");
+  const second = layer.trigger("Next focused hint");
+  layer.key("Tab");
+  layer.focus(first);
+  layer.advance(0);
+  layer.hover(first);
+  layer.dispatch("pointerout", first, { relatedTarget: layer.body });
+  layer.advance(500);
+  assert.equal(
+    layer.tooltip.hidden,
+    false,
+    "keyboard focus survives pointer departure",
+  );
+  layer.hover(layer.tooltip);
+  layer.dispatch("focusout", first, { relatedTarget: second });
+  layer.focus(second);
+  layer.advance(0);
+  assert.equal(
+    layer.tooltip.textContent,
+    "Next focused hint",
+    "new keyboard focus replaces a hovered tooltip",
+  );
+  assert.equal(first.getAttribute("aria-describedby"), null);
+  layer.unmount();
+}
+
+{
+  const layer = mount();
   const expanded = layer.trigger("Open popover trigger");
   expanded.setAttribute("aria-expanded", "true");
   layer.hover(expanded);

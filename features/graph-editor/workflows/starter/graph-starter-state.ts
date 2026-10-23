@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { evaluateGraphInput } from "../../io/import-graph";
+import { getImportExample } from "../../io/import-examples";
 import { initializeRustKernel } from "../../compute/rust-kernel";
 import type { ImportFormat, ImportOptions } from "../../io/import-utils";
 import type { ImportEvaluation } from "../../io/import-types";
@@ -193,6 +194,7 @@ export function useGraphStarterState({
   };
 
   return {
+    inputExample: getImportExample(importFormat, graphSettings.indexBase),
     applyText,
     analysis,
     close,

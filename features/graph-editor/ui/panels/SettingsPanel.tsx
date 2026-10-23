@@ -1,26 +1,31 @@
 "use client";
 
 import { ArrowLeftRight, Trash2 } from "lucide-react";
+import { useId, useLayoutEffect, useRef } from "react";
 
 import type { GraphModel, GraphSettings } from "../../core/graph/model";
 import { useAtomValue } from "jotai";
 
 import { useI18n } from "../../i18n/I18nProvider";
+import { clearConfirmationCopy } from "../../i18n/clear-confirmation-copy";
 import { graphIsEmptyAtom } from "../../shell/state/graph-atoms";
 import type { Locale } from "../../i18n/locale";
 import {
   ActionRow,
+  Button,
   ControlGroup,
   ControlRow,
   Hairline,
   Segment,
   OptionToggle,
+  PanelActions,
 } from "@/components/ui/controls";
 
 export function SettingsPanel({
   clearArmed,
   graph,
   mobile,
+  onCancelClear,
   onClear,
   onReverseAllEdges,
   onUpdateSettings,
@@ -28,6 +33,7 @@ export function SettingsPanel({
   clearArmed: boolean;
   graph: GraphModel;
   mobile: boolean;
+  onCancelClear: () => void;
   onClear: () => void;
   onReverseAllEdges: () => void;
   onUpdateSettings: (patch: Partial<GraphSettings>) => void;
@@ -142,27 +148,112 @@ export function SettingsPanel({
         />
       </ControlGroup>
 
-      <div>
-        <Hairline className="mb-1.5" />
+      <ClearGraphControl
+        clearArmed={clearArmed}
+        isGraphEmpty={isGraphEmpty}
+        onCancelClear={onCancelClear}
+        onClear={onClear}
+      />
+    </>
+  );
+}
+
+export function ClearGraphControl({
+  clearArmed,
+  isGraphEmpty,
+  onCancelClear,
+  onClear,
+}: {
+  clearArmed: boolean;
+  isGraphEmpty: boolean;
+  onCancelClear: () => void;
+  onClear: () => void;
+}) {
+  const { locale, messages } = useI18n();
+  const copy = clearConfirmationCopy[locale];
+  const id = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const restoreTriggerRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (clearArmed) {
+      // A repeated Enter must reach Cancel rather than the destructive action.
+      rootRef.current
+        ?.querySelector<HTMLButtonElement>("[data-clear-cancel]")
+        ?.focus();
+    } else if (restoreTriggerRef.current) {
+      rootRef.current
+        ?.querySelector<HTMLButtonElement>("[data-clear-trigger]")
+        ?.focus({ preventScroll: true });
+    }
+    restoreTriggerRef.current = false;
+  }, [clearArmed]);
+
+  return (
+    <div ref={rootRef}>
+      <Hairline className="mb-1.5" />
+      {clearArmed ? (
+        <div
+          data-clear-confirmation
+          role="group"
+          aria-labelledby={`${id}-title`}
+          aria-describedby={`${id}-description`}
+          className="flex flex-col gap-3 rounded-lg border border-[var(--line)] bg-[var(--bg)] p-3"
+        >
+          <div className="flex flex-col gap-1">
+            <h3
+              id={`${id}-title`}
+              className="text-control font-semibold text-[var(--text)]"
+            >
+              {copy.title}
+            </h3>
+            <p
+              id={`${id}-description`}
+              className="text-xs leading-relaxed text-[var(--text-2)]"
+            >
+              {copy.description}
+            </p>
+          </div>
+          <PanelActions>
+            <Button
+              data-clear-cancel
+              aria-describedby={`${id}-description`}
+              variant="secondary"
+              size="lg"
+              wrap
+              onClick={() => {
+                restoreTriggerRef.current = true;
+                onCancelClear();
+              }}
+            >
+              {copy.cancel}
+            </Button>
+            <Button
+              data-clear-confirm
+              aria-describedby={`${id}-description`}
+              disabled={isGraphEmpty}
+              variant="danger"
+              size="lg"
+              wrap
+              onClick={onClear}
+            >
+              <Trash2 className="size-icon-sm" aria-hidden="true" />
+              {copy.confirm}
+            </Button>
+          </PanelActions>
+        </div>
+      ) : (
         <ActionRow
-          active={clearArmed}
+          data-clear-trigger
           disabled={isGraphEmpty}
           icon={<Trash2 className="size-icon-sm" aria-hidden="true" />}
           tone="danger"
-          aria-label={
-            clearArmed ? messages.chrome.clearArmed : messages.chrome.clear
-          }
           onClick={onClear}
-          trailing={
-            clearArmed
-              ? messages.chrome.clearArmedHint
-              : messages.chrome.clearHint
-          }
         >
-          {clearArmed ? messages.chrome.clearArmed : messages.chrome.clear}
+          {messages.chrome.clear}
         </ActionRow>
-      </div>
-    </>
+      )}
+    </div>
   );
 }
 

@@ -78,6 +78,12 @@ export const EdgeNodeHitboxes = memo(function EdgeNodeHitboxes({
             style={{ left: node.x, top: node.y }}
             onPointerEnter={() => onPointerEnter(node)}
             onPointerLeave={() => onPointerLeave(node.id)}
+            onKeyDown={(event) => {
+              // Let the native button activate without the editor's Enter
+              // shortcut cancelling the click to edit an older selection.
+              if (event.key === "Enter" || event.key === " ")
+                event.stopPropagation();
+            }}
             onClick={(event) => {
               event.stopPropagation();
               onConnect(node.id, event.shiftKey);

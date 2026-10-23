@@ -14,6 +14,7 @@ import {
 } from "../adapters/cytoscape/graph-canvas-viewport";
 
 import type { GraphCanvasChrome } from "./graph-canvas-types";
+import { readEditorChromeInsets } from "../adapters/browser/editor-chrome-insets";
 
 type GraphCanvasViewportActionsOptions = {
   canZoom: boolean;
@@ -46,7 +47,14 @@ export function useGraphCanvasViewportActions({
     }
 
     cy.resize();
-    fitGraphToAvailableViewport(cy, chrome);
+    const container = cy.container();
+    fitGraphToAvailableViewport(
+      cy,
+      chrome,
+      container
+        ? readEditorChromeInsets(container, { includeCanvasControls: true })
+        : undefined,
+    );
     syncViewportAfterZoom(cy);
   }, [chrome, cyRef, syncViewportAfterZoom]);
 

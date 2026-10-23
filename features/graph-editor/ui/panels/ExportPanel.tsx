@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/controls";
 
 import { integrityCopy } from "../../i18n/integrity-copy";
+import { inputGuidanceCopy } from "../../i18n/input-guidance-copy";
 import {
   GRAPH_EXPORT_FORMATS,
   type GraphExportFormat,
@@ -84,10 +85,10 @@ export function ExportPanelBody({
           {integrityCopy[locale].textNote}
         </p>
       )}
-      <div className="grid min-h-[200px] grid-cols-[28px_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
+      <div className="grid min-h-[200px] grid-cols-[max-content_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
         <div
           aria-hidden="true"
-          className="pr-2 text-right font-mono text-control leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
+          className="min-w-7 pr-2 text-right font-mono text-control leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
         >
           <ExportText lines={lineNumbers} />
         </div>
@@ -185,42 +186,63 @@ export function ExportPanelFooter({
   onCopy: () => void;
   onSaveTxt: () => void;
 }) {
-  const { messages } = useI18n();
+  const { messages, locale } = useI18n();
+  const guidance = inputGuidanceCopy[locale];
+  const statusId = useId();
 
   return (
-    <PanelActions>
-      <Button
-        disabled={disabled}
-        size="lg"
-        wrap
-        variant={disabled ? "disabled" : "secondary"}
-        onClick={onSaveTxt}
-      >
-        <Download className="size-icon-sm shrink-0" aria-hidden="true" />
-        {messages.chrome.saveAs(extension)}
-      </Button>
-      <Button
-        disabled={disabled}
-        size="lg"
-        wrap
-        variant={
-          disabled
-            ? "disabled"
-            : copyState === "copied"
-              ? "success"
-              : copyState === "blocked"
-                ? "warning"
-                : "primary"
+    <div className="flex w-full min-w-0 flex-col gap-2">
+      <PanelActions>
+        <Button
+          disabled={disabled}
+          size="lg"
+          wrap
+          variant={disabled ? "disabled" : "secondary"}
+          onClick={onSaveTxt}
+        >
+          <Download className="size-icon-sm shrink-0" aria-hidden="true" />
+          {messages.chrome.saveAs(extension)}
+        </Button>
+        <Button
+          disabled={disabled}
+          size="lg"
+          wrap
+          variant={
+            disabled
+              ? "disabled"
+              : copyState === "copied"
+                ? "success"
+                : copyState === "blocked"
+                  ? "warning"
+                  : "primary"
+          }
+          onClick={onCopy}
+          aria-describedby={copyState === "blocked" ? statusId : undefined}
+        >
+          <ClipboardCopy className="size-icon-sm shrink-0" aria-hidden="true" />
+          {copyState === "copied"
+            ? messages.chrome.copied
+            : copyState === "blocked"
+              ? messages.chrome.copyFailed
+              : messages.chrome.copy}
+        </Button>
+      </PanelActions>
+      <p
+        id={statusId}
+        role="status"
+        aria-atomic="true"
+        className={
+          copyState === "idle"
+            ? "sr-only"
+            : "text-xs leading-relaxed text-[var(--text-2)]"
         }
-        onClick={onCopy}
       >
-        <ClipboardCopy className="size-icon-sm shrink-0" aria-hidden="true" />
-        {copyState === "copied"
-          ? messages.chrome.copied
-          : copyState === "blocked"
-            ? messages.chrome.copyFailed
-            : messages.chrome.copy}
-      </Button>
-    </PanelActions>
+        {copyState === "blocked"
+          ? guidance.copyFailure
+          : copyState === "copied"
+            ? guidance.copySuccess
+            : ""}
+      </p>
+    </div>
   );
 }

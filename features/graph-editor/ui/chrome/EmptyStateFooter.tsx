@@ -111,7 +111,7 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
               target="_blank"
               rel="noopener noreferrer"
               className={cn(
-                "group/link flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-[13px] text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
+                "group/link flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-control text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
                 focusRing,
               )}
             >

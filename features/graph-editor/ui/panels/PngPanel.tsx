@@ -1,7 +1,6 @@
 "use client";
 
 import { ClipboardCopy, Download } from "lucide-react";
-import { useId } from "react";
 
 import {
   Button,
@@ -11,7 +10,6 @@ import {
   SectionLabel,
   Segment,
   Slider,
-  TextInput,
 } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +28,7 @@ import {
   type ScreenshotPreview,
 } from "../io/graph-io-types";
 import type { ThemeMode } from "../theme/theme";
+import { PngDimensionInput } from "./PngDimensionInput";
 
 const LONG_EDGE_STEP = 20;
 const PADDING_STEP = 4;
@@ -74,7 +73,6 @@ export function PngPanelBody({
   onScopeChange,
 }: PngPanelBodyProps) {
   const { messages } = useI18n();
-  const dimensionsId = useId();
   const segmentSize = mobile ? "md" : "sm";
   const transparent = background === "transparent";
   const ready = preview.state === "ready" && preview.width && preview.height;
@@ -184,27 +182,12 @@ export function PngPanelBody({
                 ],
               ] as const
             ).map(([dimension, label, value, onChange]) => (
-              <ControlRow
+              <PngDimensionInput
                 key={dimension}
-                htmlFor={`${dimensionsId}-${dimension}`}
                 label={label}
-                layout="stacked"
-              >
-                <TextInput
-                  id={`${dimensionsId}-${dimension}`}
-                  type="number"
-                  min={1}
-                  max={MAX_LONG_EDGE_PX}
-                  value={value}
-                  aria-label={label}
-                  onChange={(event) => {
-                    const next = Number(event.target.value);
-                    if (Number.isFinite(next) && next > 0) {
-                      onChange(Math.min(MAX_LONG_EDGE_PX, Math.round(next)));
-                    }
-                  }}
-                />
-              </ControlRow>
+                value={value}
+                onChange={onChange}
+              />
             ))}
           </div>
         ) : null}

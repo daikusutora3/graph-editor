@@ -99,7 +99,14 @@ export function CanvasHint({
   }
 
   return (
-    <HintPill position={mobile ? "top-[68px]" : "top-[84px]"} text={text} />
+    <HintPill
+      position={
+        mobile
+          ? "top-[calc(var(--ge-top-chrome-bottom,64px)+8px)]"
+          : "top-[calc(var(--ge-top-chrome-bottom,68px)+16px)]"
+      }
+      text={text}
+    />
   );
 }
 
@@ -219,7 +226,7 @@ export function Toast({
       key={message}
       position={
         mobile
-          ? "bottom-[calc(var(--ge-mobile-controls-bottom,92px)+4px)]"
+          ? "top-[calc(var(--ge-top-chrome-bottom,64px)+16px)]"
           : "bottom-[76px]"
       }
       text={message}
@@ -239,6 +246,7 @@ function HintPill({
 }) {
   return (
     <div
+      data-editor-toast={tone === "toast" ? true : undefined}
       className={cn(
         "pointer-events-none absolute inset-x-3 z-[60] flex justify-center",
         position,
@@ -251,12 +259,10 @@ function HintPill({
           "ge-pop inline-flex max-w-full items-center gap-2 rounded-full px-3 text-xs font-semibold",
           tone === "hint"
             ? "min-h-[30px] bg-[var(--primary)] py-1.5 text-center leading-relaxed text-[var(--primary-text)]"
-            : "ge-panel h-9 text-[var(--text)] backdrop-blur-[12px]",
+            : "ge-panel min-h-9 py-2 text-center leading-relaxed text-[var(--text)] backdrop-blur-[12px]",
         )}
       >
-        <span className={tone === "hint" ? "whitespace-normal" : "truncate"}>
-          {text}
-        </span>
+        <span className="whitespace-normal">{text}</span>
       </span>
     </div>
   );

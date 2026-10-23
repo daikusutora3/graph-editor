@@ -8,6 +8,11 @@ import { I18nProvider } from "../../features/graph-editor/i18n/I18nProvider";
 import { SUPPORTED_LOCALES } from "../../features/graph-editor/i18n/locale";
 import { messagesByLocale } from "../../features/graph-editor/i18n/messages";
 import { evaluateGraphInput } from "../../features/graph-editor/io/import-graph";
+import {
+  getImportExample,
+  IMPORT_FORMAT_EXAMPLES,
+} from "../../features/graph-editor/io/import-examples";
+import type { ImportFormat } from "../../features/graph-editor/io/import-utils";
 import type { ImportOptions } from "../../features/graph-editor/io/import-utils";
 import {
   StarterPasteBody,
@@ -27,6 +32,10 @@ type StarterState = ReturnType<typeof useGraphStarterState>;
 function starter(inputText: string, options: ImportOptions = {}): StarterState {
   const { analysis, result } = evaluateGraphInput(inputText, options);
   return {
+    inputExample: getImportExample(
+      options.format ?? "auto",
+      options.indexBase ?? 0,
+    ),
     inputText,
     analysis,
     preview: result,
@@ -45,6 +54,32 @@ function starter(inputText: string, options: ImportOptions = {}): StarterState {
     setInput: () => {},
     setTab: () => {},
   };
+}
+
+for (const indexBase of [0, 1] as const) {
+  for (const format of Object.keys(IMPORT_FORMAT_EXAMPLES) as ImportFormat[]) {
+    const example = getImportExample(format, indexBase);
+    const { analysis, result } = evaluateGraphInput(example, {
+      format,
+      indexBase,
+    });
+    assert.equal(
+      analysis.status,
+      "detected",
+      `${format}: example is unambiguous`,
+    );
+    assert.equal(
+      result.status,
+      "success",
+      `${format}: example can be imported`,
+    );
+    assert.equal(
+      result.warnings.length,
+      0,
+      `${format}: example needs no repairs`,
+    );
+    assert(result.model.nodes.length > 0 && result.model.edges.length > 0);
+  }
 }
 
 const valid = starter("4 4\n1 2\n2 3\n2 4\n3 4", { indexBase: 1 });
@@ -150,6 +185,22 @@ for (const [value, status] of cases) {
           value.preview?.status === "failure"),
       "blocking errors mark the field invalid; warnings remain applicable",
     );
+    assert(
+      !input?.includes("placeholder="),
+      "input examples remain available outside the field",
+    );
+    assert(
+      body.includes("data-import-example"),
+      "format examples are always reachable",
+    );
+    const diagnostics = body.match(/<div\b[^>]*data-import-issues[^>]*>/)?.[0];
+    if (diagnostics) {
+      assert(
+        !diagnostics.includes("role="),
+        "typing diagnostics never interrupt text entry",
+      );
+      assert(!diagnostics.includes("aria-live="));
+    }
     assert.equal(
       descriptions.length,
       value.visibleIssues.length > 0 ? 2 : 1,

@@ -39,10 +39,12 @@ import { graphSettingsAtom } from "../../shell/state/graph-atoms";
 import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
 import {
   Button,
+  ControlRow,
   SectionLabel,
   Select,
   TextInput,
   focusRing,
+  pressFeedback,
 } from "@/components/ui/controls";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 import { SAMPLE_GALLERY_GRID_CLASS } from "./sample-gallery-layout";
@@ -59,6 +61,8 @@ export function SampleGalleryPane({
   const { messages } = useI18n();
   const applyGraphModel = useApplyGraphModel();
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const searchId = useId();
+  const categoryId = useId();
   useLayoutEffect(() => focusAfterContentSwitch(searchRef.current), []);
   const [sampleQuery, setSampleQuery] = useState("");
   const [category, setCategory] = useState<SampleGraphGroupKey | "all">("all");
@@ -95,8 +99,14 @@ export function SampleGalleryPane({
     (count, group) => count + group.samples.length,
     0,
   );
-  const clearFilters = () => {
+  const clearSearch = () => {
+    // The reset button disappears with its query. Keep keyboard focus in
+    // the dialog before React removes the button that was just activated.
+    searchRef.current?.focus();
     setSampleQuery("");
+  };
+  const clearFilters = () => {
+    clearSearch();
     setCategory("all");
   };
   const applyModel = useCallback(
@@ -123,52 +133,61 @@ export function SampleGalleryPane({
   return (
     <div className="ge-fade-in flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-col gap-2 px-4 pt-3.5 pb-3">
-        <div className="flex items-center gap-3">
-          <label className="ge-focus flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--control-border)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--control-accent)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)] touch:h-11">
-            <Search className="size-3.5 shrink-0" aria-hidden="true" />
-            <input
-              ref={searchRef}
-              type="search"
-              name="sample-search"
-              value={sampleQuery}
-              autoComplete="off"
-              onChange={(event) => setSampleQuery(event.target.value)}
-              placeholder={messages.samples.searchPlaceholder}
-              aria-label={messages.samples.searchAria}
-              className="h-full min-w-0 flex-1 bg-transparent text-control font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)] [&::-webkit-search-cancel-button]:appearance-none"
-            />
-            {sampleQuery ? (
-              <button
-                type="button"
-                aria-label={messages.samples.clearSearch}
-                onClick={() => setSampleQuery("")}
-                className={`-mr-2 grid size-8 shrink-0 place-items-center rounded-md touch:size-11 ${focusRing}`}
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            ) : null}
-          </label>
-          <output
-            className="font-mono text-xs font-semibold text-[var(--muted)] tabular-nums"
-            aria-live="polite"
+        <div className="flex min-w-0 flex-col gap-1">
+          <label
+            htmlFor={searchId}
+            className="text-control font-medium text-[var(--muted)]"
           >
-            {filteredSampleCount}/{sampleGraphCount}
-          </output>
+            {messages.samples.searchAria}
+          </label>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--control-border)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--control-accent)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)] touch:h-11">
+              <Search className="size-3.5 shrink-0" aria-hidden="true" />
+              <input
+                ref={searchRef}
+                id={searchId}
+                type="search"
+                name="sample-search"
+                value={sampleQuery}
+                autoComplete="off"
+                onChange={(event) => setSampleQuery(event.target.value)}
+                className="h-full min-w-0 flex-1 bg-transparent text-control font-semibold text-[var(--text)] outline-none [&::-webkit-search-cancel-button]:appearance-none"
+              />
+              {sampleQuery ? (
+                <button
+                  type="button"
+                  aria-label={messages.samples.clearSearch}
+                  onClick={clearSearch}
+                  className={`-mr-2 grid size-8 shrink-0 place-items-center rounded-md touch:size-11 ${focusRing} ${pressFeedback}`}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+            <output
+              className="font-mono text-xs font-semibold text-[var(--muted)] tabular-nums"
+              aria-live="polite"
+            >
+              {filteredSampleCount}/{sampleGraphCount}
+            </output>
+          </div>
         </div>
-        <Select
-          aria-label={messages.samples.category}
-          value={category}
-          onChange={(event) =>
-            setCategory(event.target.value as SampleGraphGroupKey | "all")
-          }
-        >
-          <option value="all">{messages.samples.allCategories}</option>
-          {sampleGraphGroups.map((group) => (
-            <option key={group.key} value={group.key}>
-              {messages.samples.group[group.key].label}
-            </option>
-          ))}
-        </Select>
+        <ControlRow htmlFor={categoryId} label={messages.samples.category}>
+          <Select
+            id={categoryId}
+            value={category}
+            onChange={(event) =>
+              setCategory(event.target.value as SampleGraphGroupKey | "all")
+            }
+          >
+            <option value="all">{messages.samples.allCategories}</option>
+            {sampleGraphGroups.map((group) => (
+              <option key={group.key} value={group.key}>
+                {messages.samples.group[group.key].label}
+              </option>
+            ))}
+          </Select>
+        </ControlRow>
       </div>
       <div
         data-sample-scroll
