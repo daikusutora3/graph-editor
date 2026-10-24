@@ -73,7 +73,7 @@ for (const path of [
   "out/zh-hans/guide.html",
   ...articleRoutes.map((route) => `out${route}.html`),
   "out/_redirects",
-  // Search Console ownership; deleting it revokes the property.
+
   "out/googleca089be2699caf14.html",
   "out/manifest.webmanifest",
   "out/robots.txt",
@@ -239,8 +239,7 @@ for (const locale of Object.keys(localeHtmlPaths) as AppLocale[]) {
     html.includes(`"inLanguage":"${locale}"`),
     `${localeHtmlPaths[locale]} should include the localized JSON-LD language`,
   );
-  // featureList is generated from the same copy the intro renders, so it can
-  // never drift from the page text.
+
   expect(
     html.includes(
       `"featureList":${JSON.stringify(appLocaleMetadata[locale].features)}`,

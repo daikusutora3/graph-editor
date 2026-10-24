@@ -4,7 +4,6 @@ export type PreviewCurvePoints =
   | readonly [EdgeCurvePoint, EdgeCurvePoint, EdgeCurvePoint]
   | readonly [EdgeCurvePoint, EdgeCurvePoint, EdgeCurvePoint, EdgeCurvePoint];
 
-/** Exact axis extrema of the quadratic or cubic Bezier used by the SVG path. */
 export function previewCurveBounds(points: PreviewCurvePoints) {
   const first = points[0];
   const last = points[points.length - 1];
@@ -33,7 +32,7 @@ export function previewCurveBounds(points: PreviewCurvePoints) {
         const discriminant = b * b - 4 * a * c;
         if (discriminant >= 0) {
           const root = Math.sqrt(discriminant);
-          // Avoid subtracting nearly equal values for one of the two roots.
+
           const q = -0.5 * (b + (b < 0 ? -root : root));
           includeParameter(q / a);
           if (q !== 0) includeParameter(c / q);
@@ -45,8 +44,7 @@ export function previewCurveBounds(points: PreviewCurvePoints) {
 
   function includeParameter(parameter: number) {
     if (!(parameter > 0 && parameter < 1)) return;
-    // De Casteljau's interpolation keeps the original arithmetic order without
-    // allocating point arrays for every step of every preview edge.
+
     const inverse = 1 - parameter;
     const aX = inverse * points[0].x + parameter * points[1].x;
     const aY = inverse * points[0].y + parameter * points[1].y;

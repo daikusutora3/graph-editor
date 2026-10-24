@@ -2,7 +2,6 @@ import type { ArticleContent } from "@/lib/article-content";
 
 type Example = ArticleContent["example"];
 
-/** Render the same vertex and edge data used by the isolated editor example. */
 export function ArticleDiagram({
   example,
   decorative = false,
@@ -23,7 +22,6 @@ export function ArticleDiagram({
   );
 }
 
-/** Shared vector drawing: thumbnails and results keep identical connections. */
 export function ArticleGraphDrawing({ example }: { example: Example }) {
   const nodes = new Map(example.nodes.map((node) => [String(node[0]), node]));
   return (
@@ -41,7 +39,7 @@ export function ArticleGraphDrawing({ example }: { example: Example }) {
         const [, x1, y1] = from;
         const [, x2, y2] = to;
         const length = Math.hypot(x2 - x1, y2 - y1);
-        // Place the weight beside the edge, rather than on its stroke.
+
         const x = (x1 + x2) / 2 - ((y2 - y1) / length) * 15;
         const y = (y1 + y2) / 2 + ((x2 - x1) / length) * 15;
         return (

@@ -2,7 +2,6 @@
 
 import { useLayoutEffect, type RefObject } from "react";
 
-/** Mobile keyboards can resize the visual viewport without changing dvh. */
 export function useVisualViewport(ref: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const element = ref.current;
@@ -13,7 +12,6 @@ export function useVisualViewport(ref: RefObject<HTMLElement | null>) {
     const update = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        // Keep browser zoom in control of the document when pinching.
         const mobile = window.innerWidth < 768 && viewport.scale === 1;
         element.dataset.keyboardOpen = String(
           mobile && window.innerHeight - viewport.height > 150,

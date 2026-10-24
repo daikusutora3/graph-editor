@@ -35,8 +35,6 @@ assert.equal(
 );
 assert.equal(detectBrowserLocale(["constructor"]), DEFAULT_LOCALE);
 
-// Run the actual preference effect and cross-tab storage callback. The
-// metadata layout effect is outside this value-validation regression.
 let localeState;
 const effects = [];
 const listeners = new Map();

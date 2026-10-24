@@ -77,7 +77,6 @@ for (const filter of ["all", "nodes", "edges"] as const) {
   }
 }
 
-// --- edge creation state machine -------------------------------------------
 const pickSource = resolveEdgeCreation({
   model: graph,
   draft: { sourceNodeId: null },
@@ -151,7 +150,6 @@ expect(
   "hover candidate errors should mirror the creation rules",
 );
 
-// --- selection actions -----------------------------------------------------
 const edgeActions = resolveSelectionActions(
   graph,
   { nodeIds: [], edgeIds: ["bc"] },
@@ -223,7 +221,6 @@ expect(
   "selection descriptions should name nodes and edges",
 );
 
-// --- inline edit validation ------------------------------------------------
 expect(
   normalizeEdgeWeightInput("INF", "number").value === "INF" &&
     !normalizeEdgeWeightInput("容量 ∞", "number").error &&
@@ -232,7 +229,6 @@ expect(
   "weight input should accept text and default empty to 1",
 );
 
-// --- locale detection ------------------------------------------------------
 expect(
   detectBrowserLocale(["fr-FR", "zh-CN", "en"]) === "zh-Hans" &&
     detectBrowserLocale(["en-GB"]) === "en" &&

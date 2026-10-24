@@ -171,7 +171,6 @@ function* createLayoutPositionsTask(
 
   if (kind === "spread") return positions;
 
-  // Force layouts space circles themselves; wide pills still need the pass.
   if (
     kind === "force" &&
     model.nodes.every((node) => estimateNodeWidth(node.label) <= NODE_SIZE_PX)

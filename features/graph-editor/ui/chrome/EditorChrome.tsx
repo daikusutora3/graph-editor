@@ -205,8 +205,6 @@ export function EditorChrome() {
         setToast(integrity.unresolved(result.overlap.remainingPairs));
       if (kind !== "spread") requestFit(result.graph);
 
-      // A bottom sheet hides most of the canvas, so on mobile the result
-      // would be invisible until the sheet is dismissed.
       if (mobile) {
         close();
       }

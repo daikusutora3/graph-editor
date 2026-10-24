@@ -17,9 +17,6 @@ type GeometryCollection = {
   dirtyBoundingBoxCache: () => void;
 };
 
-/** Real Cytoscape projections and bbox cache; only font measurement is stubbed.
- * No DOM or canvas raster is involved. Native screenshots cover that separately.
- */
 export function createCalculationCanvas(
   graph: GraphModel,
   edgeRoutingMeta?: ReadonlyMap<string, EdgeRoutingMeta>,
@@ -27,8 +24,7 @@ export function createCalculationCanvas(
   const cy = cytoscape({
     headless: true,
     styleEnabled: true,
-    // Headless has a 1px viewport; automatic fit would collapse zoom to 1e-50
-    // and make node movement invisible in rendered geometry assertions.
+
     layout: { name: "preset", fit: false },
     elements: definitions(graph, edgeRoutingMeta),
     style: [
@@ -55,7 +51,7 @@ export function createCalculationCanvas(
       },
     ],
   });
-  // Use the installed renderer's exact projection/cache implementation.
+
   const Base = cytoscape("renderer", "base") as {
     prototype: CalculationRenderer;
   };
@@ -87,7 +83,7 @@ export function createCalculationCanvas(
   const internals = cy as unknown as {
     _private: { renderer: CalculationRenderer };
   };
-  // Test-only replacement runs the installed projections without a DOM canvas.
+
   // eslint-disable-next-line no-underscore-dangle
   internals._private.renderer = renderer;
   renderer.registerCalculationListeners();

@@ -16,7 +16,6 @@ function availableForFocus(element: HTMLElement) {
   return visibility !== "hidden" && visibility !== "collapse";
 }
 
-/** Native Tab order: each roving radio group contributes only its selected item. */
 export function tabbableElements(root: HTMLElement | null) {
   return root
     ? [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
@@ -25,7 +24,6 @@ export function tabbableElements(root: HTMLElement | null) {
     : [];
 }
 
-/** Menu arrows move focus; activation remains with Enter, Space or a click. */
 export function menuFocusKeyDown(event: KeyboardEvent<HTMLElement>) {
   if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
     return;

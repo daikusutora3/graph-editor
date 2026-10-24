@@ -25,7 +25,7 @@ try {
     const card = page.locator(`[data-sample-kind="${sample.kind}"]`);
     await card.scrollIntoViewIfNeeded();
     const parameters = getSampleParameters(sample.kind);
-    // Empty and nonnumeric edits must never silently apply an unintended graph.
+
     if (parameters.length) {
       const input = card.locator("input").first();
       await input.fill("");

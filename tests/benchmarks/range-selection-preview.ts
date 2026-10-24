@@ -12,8 +12,6 @@ import {
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import { readRangeSelectionPreviewReference } from "../fixtures/range-selection-preview-reference";
 
-// Browser geometry calculation only; this excludes Cytoscape paint and class
-// application. The frozen previous implementation uses the exact same canvas.
 export async function runRangeSelectionPreviewBenchmark() {
   const host = document.createElement("div");
   host.style.width = "1200px";
@@ -42,7 +40,6 @@ export async function runRangeSelectionPreviewBenchmark() {
     layout: { name: "preset", fit: false },
   });
   try {
-    // Exercise actual segment getters as well as bezier curves and loops.
     cy.edges().slice(1, 5).style({
       "curve-style": "segments",
       "segment-distances": "40",
@@ -89,7 +86,6 @@ export async function runRangeSelectionPreviewBenchmark() {
           readRangeSelectionPreviewReference(cy, box, filter),
         );
         for (let index = 0; index < 35; index++) {
-          // Alternate order to avoid assigning all warm-up benefit to one path.
           const samples =
             index % 2
               ? ([

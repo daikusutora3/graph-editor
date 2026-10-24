@@ -2,7 +2,6 @@ import { getRustKernelReady, runRustKernel } from "./rust-kernel";
 
 type Point = { x: number; y: number };
 
-/** One call crosses the Wasm boundary for the complete numerical relaxation. */
 export function tryRustForceLayout(
   positions: readonly Point[],
   edges: ReadonlyArray<readonly [number, number]>,

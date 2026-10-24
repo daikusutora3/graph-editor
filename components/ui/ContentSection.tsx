@@ -11,7 +11,7 @@ const sectionVariants = {
 type ContentSectionProps = {
   id?: string;
   headingId?: string;
-  /** Older published links can keep pointing to the same heading. */
+
   anchorId?: string;
   title: ReactNode;
   description?: ReactNode;

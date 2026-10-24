@@ -10,8 +10,6 @@ import type { GraphNode } from "../../features/graph-editor/core/graph/model";
 import { nodeGeometryWidth } from "../../features/graph-editor/core/graph/node-size";
 import { projectedEdgeObstacles } from "../../features/graph-editor/core/layout/edge-routing";
 
-// Run alone. Includes cache validation, packing/copying and result construction.
-// Each backend uses the actual production entry; only JS suppresses the kernel.
 await initializeRustKernelFromBytes(readFileSync(`public${RUST_KERNEL_URL}`));
 const edge = { id: "edge", source: "source", target: "target" };
 let seed = 13732;
@@ -82,8 +80,7 @@ function measurePair(javascript: () => unknown, wasm: () => unknown) {
   let referenceSignature: string | undefined;
   for (let pass = 0; pass < 12; pass++) {
     const signatures: string[] = [];
-    // Alternate order each pass, warm both for 250 calls, then retain seven
-    // paired samples. Gate=false rows intentionally make no Rust speedup claim.
+
     for (const backend of pass % 2 === 0 ? [0, 1] : [1, 0]) {
       const run = backend === 0 ? javascript : wasm;
       let result: unknown;

@@ -82,8 +82,7 @@ export function importStructuredEdgeList(
 
   const dataLines = lines.slice(1);
   const dataRows = source.rows.slice(1);
-  // Check all supplied weight fields before accepting a partial import. An
-  // invalid endpoint, extra column or extra row must not hide a text limit.
+
   if (settings.weighted) {
     for (const [index, parts] of dataRows.entries()) {
       if (parts[2] === undefined) continue;

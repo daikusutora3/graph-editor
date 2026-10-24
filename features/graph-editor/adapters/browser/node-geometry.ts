@@ -36,7 +36,7 @@ export function measureNodeWidth(
 export function clearNodeMeasurements() {
   widths.clear();
 }
-/** Transient geometry; never commit this model to history or storage. */
+
 export function withMeasuredNodeGeometry(
   model: GraphModel,
   palette = typeof document === "undefined"

@@ -5,8 +5,6 @@ import { chromium, type ViewportSize } from "playwright";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
-// Run against the current static build. Timing is reported, not asserted, so
-// machine load cannot turn the behavioral regression checks into flaky tests.
 const base = process.env.BASE_URL ?? "http://127.0.0.1:3335/en";
 const large: GraphModel = {
   ...createEmptyGraphModel({
@@ -42,8 +40,7 @@ const small: GraphModel = {
   ],
 };
 const largeText = JSON.stringify(large);
-// Captured from the original production preview. This covers every path,
-// circle, arrow, style and order; only React's generated marker ID is normalized.
+
 const largeSvgHash =
   "dc08fec1c79f0a0354de49ae2e612bf5f40d89779f9dbc2099504d619a9fd6d9";
 const browser = await chromium.launch({
@@ -114,7 +111,6 @@ async function verifyPreview(viewport: ViewportSize, lifecycle: boolean) {
     assert.equal(await preview.locator("svg > path").count(), 5_000);
     assert.equal(await preview.locator("marker").count(), 1);
     if (lifecycle) {
-      // Replace pending work and its format, then verify the current input wins.
       await input.fill(`${largeText}\n`);
       await page.waitForTimeout(155);
       await format.selectOption("contest-edge-list");

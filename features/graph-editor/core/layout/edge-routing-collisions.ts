@@ -16,9 +16,6 @@ import {
 } from "./edge-route-geometry";
 import type { RoutingWork } from "./edge-routing-shared";
 
-/** Dense curved routes benefit from numeric batching. A small deterministic
- * sample chooses only the backend; both implementations still check every
- * node with the same bounds, distance threshold, exclusion and work count. */
 export function shouldUseRustCurveNodeCollisions(
   curve: EdgeCurveGeometry,
   source: GraphNode,
@@ -32,8 +29,7 @@ export function shouldUseRustCurveNodeCollisions(
     curve.controlPointWeights.length,
   );
   if (controls === 0) return false;
-  // Small straight scans are already only a few microseconds; keep them in JS
-  // instead of adding Wasm transfer for an insignificant absolute saving.
+
   if (
     nodes.length < 256 &&
     curve.controlPointDistancesPx.every((distance) => distance === 0)

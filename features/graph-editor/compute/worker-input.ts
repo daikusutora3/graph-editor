@@ -1,7 +1,6 @@
 import { hasGraphCoordinatePositions } from "../core/graph/graph-coordinates";
 import type { ComputeJob } from "./worker-protocol";
 
-/** The client and Worker reject the same unsupported coordinate range. */
 export function hasComputeJobCoordinates(job: ComputeJob) {
   try {
     if (

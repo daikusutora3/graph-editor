@@ -42,7 +42,6 @@ export function useGraphImageExport({
   );
 }
 
-/** One owner for the renderer's temporary selection and draft-source state. */
 export function createGraphImageExporter({
   cyRef,
   selectionRef,
@@ -51,8 +50,6 @@ export function createGraphImageExporter({
 }: GraphImageExportOptions) {
   let tail = Promise.resolve();
   return (detail: GraphCanvasExportOptions): Promise<Blob> => {
-    // A queued request belongs to the canvas on which it was requested. Never
-    // silently export a replacement canvas after unmount/retry.
     const cy = cyRef.current;
     const result = tail.then(() => render(cy, detail));
     tail = result.then(
@@ -98,8 +95,7 @@ export function createGraphImageExporter({
       if (cyRef.current !== cy || cy.destroyed()) {
         throw new Error("Graph canvas is not ready");
       }
-      // Editing or a mode change may run while fonts/the frame are pending.
-      // Apply the requested selection policy immediately before rendering.
+
       withCytoscapeBatch(cy, () => {
         if (detail.includeSelection)
           syncCytoscapeSelection(cy, selectionRef.current);
@@ -109,8 +105,6 @@ export function createGraphImageExporter({
         }
       });
 
-      // PNG encoding cannot be interrupted. Keep the renderer owner until it
-      // settles, even when the preview caller has already stopped waiting.
       const blob = await cy.png({
         output: "blob-promise",
         full: detail.scope !== "viewport",

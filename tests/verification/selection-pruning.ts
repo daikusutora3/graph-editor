@@ -74,7 +74,6 @@ for (const selection of [
   assert.notEqual(next.edgeIds, selection.edgeIds);
 }
 
-// Public callers can mutate a graph in place; every selected kind is rescanned.
 const mutable = { ...graph, nodes: [...graph.nodes], edges: [...graph.edges] };
 const selected = { nodeIds: ["n0"], edgeIds: ["e0"] };
 assert.equal(pruneSelectionForGraph(selected, mutable), selected);

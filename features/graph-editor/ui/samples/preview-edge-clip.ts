@@ -9,7 +9,6 @@ type PreviewTargetPill = {
   height: number;
 };
 
-/** Cut at the last entry into the target without changing the original curve. */
 export function clipPreviewEdgeAtTarget(
   segments: readonly QuadraticCurveSegment[],
   target: PreviewTargetPill,
@@ -22,8 +21,7 @@ export function clipPreviewEdgeAtTarget(
     const dy = Math.max(0, Math.abs(point.y - target.centre.y) - spanY);
     return dx * dx + dy * dy <= radius * radius;
   };
-  // The final endpoint is the target centre. Search backward so a curve that
-  // leaves and reenters the pill keeps its final visible approach to the node.
+
   for (let index = segments.length - 1; index >= 0; index--) {
     const segment = segments[index];
     let high = 1;
@@ -46,8 +44,7 @@ export function clipPreviewEdgeAtTarget(
       ];
     }
   }
-  // A short straight edge can be entirely covered by overlapping nodes. Keep
-  // it beneath the node instead of inventing an outward or reversed segment.
+
   return segments;
 }
 

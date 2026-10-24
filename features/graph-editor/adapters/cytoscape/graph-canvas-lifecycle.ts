@@ -123,7 +123,7 @@ export function useGraphCanvasLifecycle({
     try {
       cy = cytoscape({
         container: containerRef.current,
-        // The first sync projects domain positions before Canvas sees them.
+
         elements: [],
         style: createGraphCanvasStylesheet(
           readCanvasPalette(),
@@ -154,7 +154,7 @@ export function useGraphCanvasLifecycle({
       cy.destroy();
       cyRef.current = null;
     };
-    // Cytoscape is created once; mode/elements/arrowScale are synced by later effects.
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerRef, cyRef]);
 
@@ -290,8 +290,6 @@ export function useGraphCanvasLifecycle({
           )
         : null;
 
-    // Refresh after the batch and before fit/hitbox reads. Initialization needs
-    // one full projection; subsequent requests touch only changed neighbours.
     refreshCytoscapeGeometry(
       initialGeometryRef.current ? cy.elements() : synced.changedElements,
     );
@@ -388,13 +386,11 @@ export function useGraphCanvasLifecycle({
     };
     const updateResolution = () => {
       if (cy.destroyed()) return;
-      // A monitor change can alter density without changing CSS dimensions or
-      // delivering ResizeObserver. Repaint the backing stores immediately too.
+
       resizeCytoscapeCanvas(cy);
       flushRenderedHitboxesRef.current(cy);
       updateExportSnapshots();
-      // The previous density query stays false after the first change. Rebind
-      // at the new density so later monitor or browser zoom changes also notify.
+
       watchResolution();
     };
 
@@ -422,8 +418,7 @@ export function useGraphCanvasLifecycle({
 
 function readViewportSignature(cy: Core) {
   const pan = readGraphViewportPan(cy);
-  // Stable primitive values avoid notifying on unchanged resize events and
-  // retain zoom precision beyond the rounded percentage used by the controls.
+
   return JSON.stringify([
     cy.zoom(),
     pan.x,

@@ -5,13 +5,11 @@ import { cn } from "@/lib/utils";
 import styles from "./Disclosure.module.css";
 
 type DisclosureProps = Omit<ComponentPropsWithoutRef<"details">, "title"> & {
-  /** Keep the summary free of nested links or buttons. */
   title: ReactNode;
   children: ReactNode;
   variant?: "panel" | "row" | "compact";
 };
 
-/** Native disclosure: works with the keyboard and without client JavaScript. */
 export function Disclosure({
   title,
   children,

@@ -9,7 +9,6 @@ import type { GraphNode } from "../../core/graph/model";
 import { useI18n } from "../../i18n/I18nProvider";
 import { nodeCreationCopy } from "../../i18n/node-creation-copy";
 
-/** A native action makes empty-canvas creation available without a pointer. */
 export function NodeCreationAction({
   mobile,
   onAddNode,
@@ -41,8 +40,6 @@ export function NodeCreationAction({
         data-graph-shortcut-target="true"
         className="ge-panel min-h-11 max-w-full rounded-xl px-3.5 backdrop-blur-[16px]"
         onKeyDown={(event) => {
-          // Keep native button activation on Enter/Space, while allowing
-          // editor shortcuts such as Undo when this action retains focus.
           if (event.key === "Enter" || event.key === " ")
             event.stopPropagation();
         }}

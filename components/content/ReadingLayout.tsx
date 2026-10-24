@@ -59,7 +59,6 @@ export function ReadingBody({
   );
 }
 
-/** One server-rendered page shell for guide, article list and article details. */
 export function ReadingPage({
   locale,
   section,

@@ -39,8 +39,7 @@ export function useRenderedHitboxes({
     [],
   );
   const [isGraphOutOfView, setIsGraphOutOfView] = useState(false);
-  // Pan is a pure translation of every hitbox, so panning moves the whole
-  // layer with one CSS transform instead of rebuilding thousands of nodes.
+
   const hitboxLayerRef = useRef<HTMLDivElement | null>(null);
   const basePanRef = useRef({ x: 0, y: 0, originX: 0, originY: 0 });
   const [hitboxPan, setHitboxPan] = useState({
@@ -56,7 +55,6 @@ export function useRenderedHitboxes({
 
   const updateRenderedHitboxesNow = useCallback(
     (cy: Core) => {
-      // Origin rebasing compensates local pan without translating the scene.
       const pan = cy.pan();
       const origin = readCytoscapeCoordinateOrigin(cy);
       const nextPan = {
@@ -73,13 +71,10 @@ export function useRenderedHitboxes({
         readerRef.current.reader.read(graph, mode === "select");
       const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
 
-      // The reader preserves array/entry identity for unchanged geometry.
       setNodeHitboxes(nextNodeHitboxes);
-      // The hidden selection overlay retains its DOM between mode changes.
-      // Leave its snapshot dormant until select mode needs live geometry again.
+
       if (nextEdgeLabelHitboxes) setEdgeLabelHitboxes(nextEdgeLabelHitboxes);
-      // A pan can be cancelled by opposite node movement, leaving all rendered
-      // coordinates identical. Even then the layer's old translation must end.
+
       setHitboxPan((current) =>
         current.x === nextPan.x &&
         current.y === nextPan.y &&
@@ -96,8 +91,6 @@ export function useRenderedHitboxes({
   );
 
   useLayoutEffect(() => {
-    // Fresh hitboxes are already in the new pan frame; drop the transform in
-    // the same commit so nothing jumps.
     basePanRef.current = hitboxPan;
 
     if (hitboxLayerRef.current) {
@@ -137,10 +130,6 @@ export function useRenderedHitboxes({
         return;
       }
 
-      // Two frames: Cytoscape recomputes edge geometry (control points,
-      // midpoints) during its own render frame, so reading rendered
-      // positions one frame later avoids picking up stale midpoints right
-      // after a routing change.
       hitboxFrameRef.current = window.requestAnimationFrame(() => {
         hitboxFrameRef.current = window.requestAnimationFrame(() => {
           hitboxFrameRef.current = null;

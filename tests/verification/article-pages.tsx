@@ -314,8 +314,6 @@ for (const locale of locales) {
   }
 }
 
-// Exercise the route components too: locale route parameters must map to the
-// same localized content and metadata that direct server rendering produces.
 assert(
   renderToStaticMarkup(<JapaneseArticles />).includes(
     escaped(articleCopy.ja.heading),

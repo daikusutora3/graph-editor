@@ -166,7 +166,6 @@ export function useGraphCanvasFitRequest() {
   return request;
 }
 
-/** Subscribe only while a visible PNG preview needs the current zoom. */
 export function useGraphCanvasZoomPercent(enabled = true) {
   const store = useContext(GraphCanvasZoomContext);
   if (!store) {
@@ -181,7 +180,6 @@ export function useGraphCanvasZoomPercent(enabled = true) {
   );
 }
 
-/** Viewport exports also depend on pan, exact zoom and canvas dimensions. */
 export function useGraphCanvasViewportSignature(enabled = true) {
   const store = useContext(GraphCanvasViewportContext);
   if (!store) {
@@ -196,7 +194,6 @@ export function useGraphCanvasViewportSignature(enabled = true) {
   );
 }
 
-/** Natural exports depend on precise zoom and screen pixel density. */
 export function useGraphCanvasExportScaleSignature(enabled = true) {
   const store = useContext(GraphCanvasExportScaleContext);
   if (!store) {

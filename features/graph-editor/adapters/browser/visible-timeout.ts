@@ -10,7 +10,6 @@ type TimeoutClock = {
   clearTimeout: (id: number) => void;
 };
 
-/** A suspended background tab must not consume the canvas's display deadline. */
 export function startVisibleTimeout(
   callback: () => void,
   delay: number,

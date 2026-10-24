@@ -3,7 +3,6 @@ import { describeImportWarning } from "../io/import-warning-text";
 import type { Locale } from "./locale";
 import { messagesByLocale } from "./messages";
 
-/** Renders a structured import warning in the given locale. */
 export function formatImportWarning(warning: ImportWarning, locale: Locale) {
   return (formatters[locale] ?? formatters.en)(warning);
 }

@@ -51,8 +51,6 @@ const PANEL_KEY_TO_PANEL: Record<string, EditorPanel> = {
 export function resolveGraphEditorShortcut(
   event: EditorShortcutEvent,
 ): GraphEditorShortcut | null {
-  // Preserve system/assistive shortcuts and IME confirmation keystrokes.
-  // Some browsers report the final composing event only as keyCode 229.
   if (
     event.altKey ||
     event.defaultPrevented ||

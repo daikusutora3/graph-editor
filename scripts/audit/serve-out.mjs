@@ -1,5 +1,3 @@
-// Serves the static export with the generated _headers (CSP, XFO) applied.
-// Usage: bun run build && bun scripts/audit/serve-out.mjs   (PORT=3123)
 import { startStaticPreviewServer } from "./static-preview-server.ts";
 import { fileURLToPath } from "node:url";
 

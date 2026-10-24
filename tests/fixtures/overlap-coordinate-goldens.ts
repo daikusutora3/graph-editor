@@ -1,8 +1,3 @@
-/** Coordinates captured from the original all-pairs resolver at bd47f31^.
- * Keep status and node order exact; callers compare non-grid coordinates within
- * 1e-7px because Math.hypot is implementation-approximated across JS hosts.
- * This data oracle avoids maintaining a second copy of the relaxation algorithm.
- */
 export type OverlapCoordinateGolden = {
   status: "unchanged" | "resolved" | "unresolved";
   remainingPairs: number;

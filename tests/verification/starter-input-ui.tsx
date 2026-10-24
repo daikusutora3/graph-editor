@@ -289,8 +289,6 @@ for (const key of [
   );
 }
 
-// Simulate the focus state seen when an async gallery replaces a removed
-// switch button. A later explicit focus wins, even if the load is still pending.
 const panel = { dataset: { panelState: "open" } } as unknown as HTMLElement;
 const body = {} as HTMLElement;
 const documentElement = {} as HTMLElement;

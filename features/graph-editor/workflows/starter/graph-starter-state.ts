@@ -32,7 +32,7 @@ export type StarterTab = "paste" | "sample";
 
 type GraphStarterStateOptions = {
   open: boolean;
-  /** Keep enabled through the paste panel's closing animation. */
+
   previewEnabled?: boolean;
   onClose: () => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -82,8 +82,6 @@ export function useGraphStarterState({
     transition: true,
   });
   useEffect(() => {
-    // A fresh empty canvas has not loaded the kernel yet. Start its download
-    // during the input debounce for large pastes; parsing keeps the JS fallback.
     if (open && tab === "paste" && inputText.length >= 16_384)
       void initializeRustKernel().catch(() => {});
   }, [inputText, open, tab]);
@@ -104,8 +102,7 @@ export function useGraphStarterState({
       evaluation: evaluateGraphInput(debouncedInputText, importOptions),
     };
   }, [debouncedInputText, importOptions, previewParseKey]);
-  // A debounced evaluation describes the previous input until parsing catches
-  // up. Keep its cached result for Apply, but do not present it as current.
+
   const previewPending =
     previewEnabled &&
     Boolean(inputText.trim()) &&
@@ -131,8 +128,6 @@ export function useGraphStarterState({
   };
 
   useLayoutEffect(() => {
-    // Invalidate before asynchronous completion can touch a closed/reopened
-    // starter, including the closing animation while its footer still exists.
     cancelFileRead();
     if (!open) {
       return cancelFileRead;

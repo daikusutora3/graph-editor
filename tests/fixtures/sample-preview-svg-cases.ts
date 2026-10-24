@@ -1,7 +1,6 @@
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
-/** Representative preview settings, loops, dangling edges and chunk boundaries. */
 export function samplePreviewSvgCases() {
   const cases: Array<{
     name: string;

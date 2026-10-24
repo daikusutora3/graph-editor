@@ -88,8 +88,7 @@ for (const [index, [name, graph]] of fixtures.entries()) {
       Math.abs(point.y - reference.y),
     );
     maximumError = Math.max(maximumError, error);
-    // JS engines and Rust can differ in the last bits of hypot. The tolerance
-    // is far below the resolver's collision threshold, while grid output is exact.
+
     expect(error < 1e-6, `${name}/${node.id}: coordinates agree with JS`);
     if (graph.settings.snapToGrid && actual.status !== "unchanged") {
       expect(

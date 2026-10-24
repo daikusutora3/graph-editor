@@ -27,9 +27,6 @@ import {
 import { readCanvasPalette } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-viewport";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 
-// Bundle this entry for a browser and call runCanvasHitboxBenchmark().
-// React's development Profiler measures reconciliation on real DOM updates.
-// It does not measure Cytoscape rendering or end-to-end pointer latency.
 export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
   const host = document.createElement("div");
   document.body.append(host);
@@ -157,7 +154,6 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
   ];
   rangeSelectionActive = false;
 
-  // A skipped render must still dispatch the callback from the latest commit.
   render();
   const nodeButton = host.querySelector<HTMLButtonElement>("button")!;
   nodeButton.click();
@@ -189,7 +185,7 @@ export function runCanvasHitboxBenchmark(nodeCount = 1_000, edgeCount = 5_000) {
       clientY: 0,
     }),
   );
-  // Changing parent callbacks during a bend must not reset its shared session.
+
   render();
   observedRevision = -1;
   edgePath.dispatchEvent(

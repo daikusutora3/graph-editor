@@ -155,8 +155,7 @@ function verifyRebase() {
     const distant = translate(normal, 1e9 - 120);
     const input = definitions(distant);
     withCytoscapeBatch(cy, () => syncCytoscapeElements(cy, input));
-    // The graph moved in domain space; compare the old positions under the new
-    // origin without allowing fit to hide an incorrect camera conversion.
+
     for (const node of normal.nodes) {
       getCytoscapeElement(cy, node.id).position(toCytoscapePosition(cy, node));
     }

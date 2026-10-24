@@ -1,6 +1,5 @@
 import type { ImportFormat } from "./import-utils";
 
-/** Complete, importable examples; never use schema abbreviations as data. */
 export const IMPORT_FORMAT_EXAMPLES: Record<ImportFormat, string> = {
   auto: "4 4\n0 1\n1 2\n1 3\n2 3",
   "contest-edge-list": "4 4\n0 1\n1 2\n1 3\n2 3",
@@ -25,13 +24,11 @@ export const IMPORT_FORMAT_EXAMPLES: Record<ImportFormat, string> = {
   ),
 };
 
-/** Parent and tree formats must use the same numbering as the current graph. */
 export function getImportExample(format: ImportFormat, indexBase: 0 | 1) {
   if (indexBase === 0 || format === "json" || format === "adjacency-matrix")
     return IMPORT_FORMAT_EXAMPLES[format];
   if (format === "weighted-parent-list") return "4\n1 5\n1 3\n3 2";
   return IMPORT_FORMAT_EXAMPLES[format].replace(/\d+/g, (number, offset) => {
-    // The first line of these formats is a count, not a vertex number.
     const firstLine = IMPORT_FORMAT_EXAMPLES[format].indexOf("\n");
     if (
       ["auto", "contest-edge-list", "tree-edge-list", "parent-list"].includes(

@@ -1,6 +1,5 @@
 type Rect = { top: number; bottom: number; height: number };
 
-/** Canvas-local extents; layout helpers only receive numeric measurements. */
 export function measureEditorChromeInsets(
   viewport: Rect,
   top?: Rect,

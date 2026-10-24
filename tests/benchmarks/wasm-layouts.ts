@@ -11,8 +11,6 @@ import { createManualLayoutCommand } from "../../features/graph-editor/layouts/m
 import { ensureNodeClearance } from "../../features/graph-editor/layouts/layout-geometry";
 import { resolveNodeOverlaps } from "../../features/graph-editor/layouts/resolve-node-overlaps";
 
-// Bun CPU timings include graph marshalling, the Rust call and normalization.
-// They exclude download/initialization and browser Worker messaging/rendering.
 const iterations = 7;
 const graphs = [100, 200, 300].map((count) => fixture(count));
 const wide = fixture(1000);

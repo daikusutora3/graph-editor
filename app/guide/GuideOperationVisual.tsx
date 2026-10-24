@@ -39,7 +39,6 @@ const treeEdges = [
   [2, 4],
 ] as const;
 
-/** Schematic operations, rather than screenshots of a particular toolbar width. */
 export function GuideOperationVisual({
   id,
   locale,

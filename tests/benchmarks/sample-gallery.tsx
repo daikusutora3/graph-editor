@@ -11,7 +11,6 @@ import {
 } from "../../features/graph-editor/shell/state/graph-atoms";
 import { SampleGalleryPane } from "../../features/graph-editor/ui/samples/SampleGalleryPane";
 
-// The runner instruments card invocations in its in-memory build only.
 const renderCounts = new Map<string, number>();
 Object.assign(globalThis, {
   IS_REACT_ACT_ENVIRONMENT: true,
@@ -41,8 +40,6 @@ export async function runSampleGalleryBenchmark(requireIsolation = true) {
     },
   });
 
-  // Model a gallery whose cards have all been visited. Avoid viewport-dependent
-  // observer timing, while retaining real DOM, React and preview rendering.
   const originalObserver = globalThis.IntersectionObserver;
   globalThis.IntersectionObserver = class {
     constructor(private callback: IntersectionObserverCallback) {}
@@ -124,7 +121,7 @@ export async function runSampleGalleryBenchmark(requireIsolation = true) {
     for (let index = 0; index < 15; index++) {
       renderCounts.clear();
       duration = 0;
-      // Each edit must settle before the next measurement starts.
+
       // oxlint-disable-next-line no-await-in-loop
       await setField(field("path", "Nodes"), String(10 + (index % 2)));
       if (requireIsolation)
@@ -143,7 +140,6 @@ export async function runSampleGalleryBenchmark(requireIsolation = true) {
       "Preview follows input",
     );
 
-    // Graph edits must not reset local generation options or rerender cards.
     renderCounts.clear();
     await act(async () => {
       store.set(

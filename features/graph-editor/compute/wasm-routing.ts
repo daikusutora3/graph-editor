@@ -24,8 +24,6 @@ type NodeSnapshot = {
 };
 const snapshots = new WeakMap<GraphNode[], NodeSnapshot>();
 
-/** Ordered IDs, coordinates and measured dimensions determine the numeric input.
- * Public helpers may mutate their node array between candidates. */
 function nodeSnapshot(nodes: GraphNode[]) {
   const cached = snapshots.get(nodes);
   if (
@@ -104,8 +102,6 @@ export type ProjectedObstacleCluster = {
   startWeight: number;
 };
 
-/** Capsule projection and stable clustering. Host-derived chord/direction norms
- * retain the reference's Math.hypot values before the 24-step pill searches. */
 export function projectRustEdgeObstacles(
   edge: GraphEdge,
   source: GraphNode,
@@ -128,7 +124,7 @@ export function projectRustEdgeObstacles(
   const snapshot = nodeSnapshot(nodes);
   if (!snapshot.collisionBounded || snapshot.indexes.size !== nodes.length)
     return null;
-  // Small all-circle projections have no pill search to amortize the ABI.
+
   if (nodes.length < 256 && !snapshot.hasWidePills) return null;
   const unitX = dx / length;
   const unitY = dy / length;
@@ -184,8 +180,7 @@ export function scoreRustCurveNodeAndShape(
   )
     return null;
   const snapshot = nodeSnapshot(nodes);
-  // Models validate unique IDs. Preserve the public helper's exclusion rules
-  // for callers that supply a temporary invalid array with duplicate IDs.
+
   if (!snapshot.collisionBounded || snapshot.indexes.size !== nodes.length)
     return null;
   const result = runRustKernel(
@@ -208,8 +203,6 @@ export function scoreRustCurveNodeAndShape(
     : null;
 }
 
-/** Dedicated final-route check: retain its tighter pruning and exact work
- * accounting instead of paying for candidate penetration/length scoring. */
 const boundedCollisionCoordinate = isGraphCoordinate;
 
 export function canRustCountCurveNodeCollisions(
@@ -311,9 +304,7 @@ export function scoreRustLoopObstacles(
     )
   )
     return null;
-  // A Wasm call pays for copying every input/output even when almost all nodes
-  // fail the cheap bounds check. Sample only to choose the backend: Rust/JS
-  // still run the complete bounds test and use every obstacle for the result.
+
   if (pillNodes) {
     if (nodes.length < 16) return null;
   } else {
@@ -353,7 +344,6 @@ export function scoreRustLoopObstacles(
       pillNodes ? 1 : 0,
     ],
   );
-  // The first collision slot is a batch-wide sentinel for a strict threshold
-  // tie. Keep JS's Math.hypot result and its original generator work trace.
+
   return result?.[2] === -1 ? null : result;
 }

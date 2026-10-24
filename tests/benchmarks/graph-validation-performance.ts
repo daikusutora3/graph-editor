@@ -11,7 +11,6 @@ import { isGraphText } from "../../features/graph-editor/core/graph/graph-limits
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { prepareGraphTransaction } from "../../features/graph-editor/core/graph/graph-transaction";
 
-// Run before/after sequentially, without concurrent builds or benchmarks.
 const ITERATIONS = 15;
 type Metric = {
   name: string;

@@ -60,7 +60,6 @@ function fixture() {
 }
 
 async function microtasks() {
-  // Let successive queue continuations run; parallel promises drain one turn.
   // eslint-disable-next-line no-await-in-loop
   for (let i = 0; i < 8; i++) await Promise.resolve();
 }
@@ -72,7 +71,6 @@ async function paint() {
   await microtasks();
 }
 
-// Preview/copy/save may arrive together, with different selection policies.
 {
   const f = fixture();
   try {
@@ -175,7 +173,6 @@ async function paint() {
 await verifyPrePaintChanges(false);
 await verifyPrePaintChanges(true);
 
-// A Core replacement while awaiting a frame belongs to a different renderer.
 {
   const f = fixture();
   const replacement = cytoscape({
@@ -221,7 +218,6 @@ await verifyPrePaintChanges(true);
   }
 }
 
-// Renderer restoration can fail independently of the PNG encoding operation.
 {
   const f = fixture();
   const originalStartBatch = f.cy.startBatch.bind(f.cy);
@@ -262,7 +258,7 @@ await verifyPrePaintChanges(true);
     f.cy.destroy();
   }
 }
-// Superseded previews do not render, while explicit copy/save stays queued.
+
 {
   const f = fixture();
   try {
@@ -292,7 +288,7 @@ await verifyPrePaintChanges(true);
     f.cy.destroy();
   }
 }
-// Canceling an already-running encoder must not release the renderer owner.
+
 {
   const f = fixture();
   try {
@@ -327,7 +323,7 @@ await verifyPrePaintChanges(true);
     f.cy.destroy();
   }
 }
-// An unresolved font load should not keep obsolete work at the queue head.
+
 {
   const f = fixture();
   const originalFontsReady = document.fonts.ready;
@@ -396,8 +392,7 @@ async function verifyPrePaintChanges(includeSelection: boolean) {
     f.edgeSourceNodeIdRef.current = "b";
     f.cy.nodes(".edge-source").removeClass("edge-source");
     f.cy.getElementById("b").addClass("edge-source");
-    // Native input and the mode effect may change renderer paint while the
-    // ordinary React selection effect is suppressed by this export owner.
+
     f.cy.getElementById("a").select();
     finishFonts!();
     await microtasks();

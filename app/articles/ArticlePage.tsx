@@ -43,7 +43,6 @@ import {
   toIsoDate,
 } from "@/lib/content-dates";
 
-/** Reading stays on the server; guide context and copying are small client controls. */
 export function ArticlePage({
   locale,
   article,

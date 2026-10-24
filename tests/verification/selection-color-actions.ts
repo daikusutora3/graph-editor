@@ -197,8 +197,6 @@ assert.equal(
 assert.equal(rejected.store.get(historyAtom).length, 0);
 assert(rejected.store.get(commandErrorAtom));
 
-// Count actual top-level serialization calls at the supported graph limits.
-// This is operation-count evidence, not a latency or browser-render benchmark.
 const large: GraphModel = {
   ...createEmptyGraphModel({ autoEdgeRouting: false }),
   nodes: Array.from({ length: 1000 }, (_, index) => ({
@@ -221,7 +219,6 @@ const largeSelection = {
 const previous = harness(large);
 const optimized = harness(large);
 const previousCounts = countSerialization(() => {
-  // Frozen previous mixed palette behavior: two independent actions.
   previous.actions.onSetNodeColor(largeSelection.nodeIds, "green");
   previous.actions.onSetEdgeColor(largeSelection.edgeIds, "green");
 });

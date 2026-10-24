@@ -7,7 +7,6 @@ export type GraphStorageContext =
   | { kind: "original"; key: typeof GRAPH_STORAGE_KEY }
   | { kind: "example"; key: string; slug: ArticleSlug };
 
-/** URL detection is shared by initial loading, writes and external events. */
 export function getGraphStorageContext(): GraphStorageContext {
   const slug =
     typeof window === "undefined"

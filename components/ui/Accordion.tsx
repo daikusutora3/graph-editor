@@ -10,12 +10,10 @@ type AccordionItem = {
 };
 
 type AccordionProps = Omit<ComponentPropsWithoutRef<"div">, "children"> & {
-  /** A nonempty name unique to this accordion on the page. */
   name: string;
   items: readonly AccordionItem[];
 };
 
-/** One shared surface; native details grouping keeps at most one item open. */
 export function Accordion({
   name,
   items,

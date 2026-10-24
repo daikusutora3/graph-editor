@@ -188,7 +188,7 @@ export const applyManualLayoutAtom = atom(
               );
               return { ...command, overlap: step.value };
             }
-            // Every slice resumes the same calculation after processing input.
+
             // eslint-disable-next-line no-await-in-loop
             await new Promise<void>((resolve) => setTimeout(resolve, 0));
           }
@@ -235,7 +235,6 @@ export const reverseAllDirectedEdgesAtom = atom(null, (get, set) => {
   return true;
 });
 
-/** Resolve the exact storage snapshot displayed by the notice. */
 export const resolveStorageConflictAtom = atom(
   null,
   (get, set, raw: string | null, fresh = false) => {

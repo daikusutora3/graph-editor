@@ -43,8 +43,6 @@ export function canRustBatchInteractiveReroutes(
   );
 }
 
-/** A snapshot per task, without live Wasm allocations across generator yields.
- * Small drags retain JS; each bounded batch copies the moved geometry once. */
 export function createRustInteractiveRerouteBatch(
   movedNodes: Array<GraphNode & { measuredWidth: number }>,
   totalEdges: number,

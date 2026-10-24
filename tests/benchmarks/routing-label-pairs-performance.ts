@@ -13,10 +13,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/edge-routing";
 
-// Compare complete immutable routing tasks, including exact output and yields.
-// --reference accepts a saved original module. --module can select a candidate
-// bundle built the same way. Both must share the instrumented Rust kernel.
-// Paired runs alternate order.
 const PASSES = 15;
 const WARMUPS = 5;
 const modulePath = argument("--module");

@@ -31,8 +31,7 @@ if (process.versions.node !== expectedNode) {
 const args = process.argv.slice(2);
 const checkOnly = args.length === 1 && args[0] === "--check";
 const localBun = resolve(root, ".local-bin/bun");
-// A lifecycle check must inspect the Bun that invoked it, even when a correct
-// repository-local binary is available. The launcher chooses that local binary.
+
 const bun = checkOnly
   ? process.env.npm_execpath || "bun"
   : existsSync(localBun)

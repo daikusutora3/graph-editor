@@ -36,8 +36,6 @@ try {
   await page.goto(process.env.BASE_URL ?? "http://127.0.0.1:3123/en");
   await page.locator('[data-canvas-ready="true"]').waitFor();
 
-  // Establish a zoom snapshot with the edge outside the hitbox SVG viewport.
-  // A subsequent pan only translates the overlay layer, without rebuilding it.
   await page.evaluate(() => {
     const container = [...document.querySelectorAll("div")].find(
       (element) => "_cyreg" in element,
@@ -99,8 +97,6 @@ try {
     "edge interaction returns after range-selection modifiers are released",
   );
 
-  // Hit areas keep their screen-space sizes as graph geometry zooms. Verify
-  // both desktop and mobile, including the pill's wider area at maximum zoom.
   /* eslint-disable no-await-in-loop -- Viewport and zoom changes must settle in order. */
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -182,8 +178,6 @@ try {
   });
   assert.ok(focusRingWidth.includes("3px"), "keyboard focus remains visible");
 
-  // Opening a panel must switch its graph subscriptions back on. Settings,
-  // history and exported text continue to reflect edits made with chrome idle.
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page
     .getByRole("radio", { name: "Weights: Weighted", exact: true })
@@ -284,8 +278,7 @@ try {
   const rangePage = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
   });
-  // Load the frozen pre-optimization reader before navigation, using the
-  // test browser's script API without changing production CSP.
+
   await rangePage.addInitScript({
     content: `const edgeControlPathInBoxReference = ${edgeControlPathInBoxReference.toString()}; window.frozenRangePreview = ${readRangeSelectionPreviewReference.toString()};`,
   });
@@ -477,8 +470,7 @@ try {
     );
     assert.deepEqual(
       committed.edges,
-      // Native selection checks the rendered curve. The conservative preview
-      // also requires its control points to be contained by the box.
+
       filter === "nodes" ? [] : ["curve", "loop", "straight"],
       `${filter} range release completes native edge selection and filtering`,
     );

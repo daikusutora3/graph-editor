@@ -1,4 +1,3 @@
-/** Restore focus lost with a removed control, without taking a later choice. */
 export function focusAfterContentSwitch(target: HTMLElement | null) {
   if (!target?.isConnected) return;
 

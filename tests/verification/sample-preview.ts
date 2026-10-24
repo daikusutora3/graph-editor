@@ -114,8 +114,6 @@ assert(
   "chained quadratic bounds include bends on both sides of the chord",
 );
 
-// Sample the rendered SVG rather than mirroring the bounds helper. These cases
-// exercise the actual fit scale, clipped arrow endpoints and shared C loops.
 for (const directed of [false, true]) {
   for (const variant of ["editor", "sample"] as const) {
     for (const bowPx of [-180, -50, -48, -0.5, 0, 0.5, 48, 50, 180]) {
@@ -164,8 +162,7 @@ for (const directed of [false, true]) {
   }
 }
 verifyRenderedFit(createModel(true, 50, 0, 180), "editor", true);
-// Tangential entries on overlapping nodes can put the marker's base outside
-// centreline bounds. Include the actual gallery size and a narrow editor frame.
+
 for (const variant of ["editor", "sample"] as const)
   for (const focus of [false, true])
     for (const [width, height] of [
@@ -266,8 +263,7 @@ function verifyPreparedGeometry() {
   for (const { name, ...props } of cases) {
     const golden = (samplePreviewSvg as Record<string, string>)[name];
     if (!golden) continue;
-    // Attribute precision below one millionth of a screen pixel is irrelevant
-    // to paint. Normalize it so Math.sin host rounding cannot break CI.
+
     const actual = renderToStaticMarkup(
       createElement(SampleGraphPreview, props),
     ).replace(/[-+]?\d+\.\d+(?:e[-+]?\d+)?/gi, (number) =>
@@ -720,7 +716,6 @@ function readQuadraticPath(path: string): QuadraticCurveSegment[] {
   return segments;
 }
 
-/** Check the SVG's polynomial against the original curve at mapped parameters. */
 function verifyCurvePrefix(
   actual: readonly QuadraticCurveSegment[],
   original: readonly QuadraticCurveSegment[],
@@ -832,8 +827,7 @@ function verifyPreviewPaintMatchesCanvas() {
     edgeFontSize: 12,
     labelPadding: 5,
   } satisfies GraphCanvasPalette;
-  // Compare actual SVG output against the independent canvas stylesheet. The
-  // assertion deliberately does not import the shared stroke constants.
+
   const stylesheet = createGraphCanvasStylesheet(palette) as Array<{
     selector: string;
     style: Record<string, unknown>;

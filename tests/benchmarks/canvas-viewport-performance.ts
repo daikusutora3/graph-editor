@@ -7,9 +7,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 
 /* eslint-disable no-await-in-loop -- Each viewport update must settle before measuring the next one. */
 
-// Build and serve out/ first. Run separately from builds and other timings.
-// BASE_URL=http://127.0.0.1:3123/en bun tests/benchmarks/canvas-viewport-performance.ts
-// --output /tmp/canvas-viewport.json records frame gaps and browser long tasks.
 const browser = await chromium.launch();
 const reports: unknown[] = [];
 try {

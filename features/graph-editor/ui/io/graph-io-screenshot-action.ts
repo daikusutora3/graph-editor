@@ -7,7 +7,6 @@ type ActionTicket = {
   inputKey: string;
 };
 
-/** Explicit actions finish independently of preview lifetime or settings edits. */
 export function useScreenshotAction<State extends string>(
   inputKey: string,
   mountedRef: MutableRefObject<boolean>,
@@ -24,8 +23,6 @@ export function useScreenshotAction<State extends string>(
   >(null);
 
   useEffect(() => {
-    // Graph/theme/viewport changes also invalidate completed feedback. Keep
-    // identical Strict Mode effect replay from inventing a settings revision.
     if (owner.current.inputKey === inputKey) return;
     owner.current.inputKey = inputKey;
     owner.current.revision += 1;

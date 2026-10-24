@@ -11,7 +11,7 @@ mock.module("react", () => ({
   useRef: () => ({ current: section }),
   useState: (initial) => [initial, () => {}],
   useEffect: (effect) => effects.push(effect),
-  // Positioning is independent of the dismissal listener under test.
+
   useLayoutEffect() {},
 }));
 mock.module(feature("i18n/I18nProvider.tsx"), () => ({
@@ -113,7 +113,7 @@ function pointerDown(target, stopAtTarget = false) {
   )) {
     entry.callback(event);
   }
-  // Canvas handlers may stop bubbling; document capture has already run.
+
   if (stopAtTarget) event.stopPropagation();
   if (!event.propagationStopped) {
     for (const entry of registrations.filter(

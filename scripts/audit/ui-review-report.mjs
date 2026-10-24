@@ -1,4 +1,3 @@
-// Keep original pixels, measured geometry, annotations and comparisons together.
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";

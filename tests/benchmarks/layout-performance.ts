@@ -11,9 +11,6 @@ import {
   type LayoutKind,
 } from "../../features/graph-editor/layouts/manual-layouts";
 
-// Run without concurrent benchmarks. An optional original module can provide
-// the baseline without replacing files in the shared checkout.
-// bun tests/benchmarks/layout-performance.ts --output /tmp/layout-after.json
 const ITERATIONS = 5;
 const SLICE_MS = 4;
 type Metric = {
@@ -49,8 +46,7 @@ for (const [name, nodeCount, longLabels, kind] of [
 ] as const) {
   const graph = fixture(nodeCount, longLabels);
   measure(name, () => command(graph, kind));
-  // The live editor slices force/spread. Other task samples below measure the
-  // clearance generator in isolation; their editor commands stay synchronous.
+
   if (!reference) measureSliced(`${name} sliced`, graph, kind);
 }
 

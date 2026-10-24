@@ -7,7 +7,6 @@ import type { GraphModel } from "@/features/graph-editor/core/graph/model";
 import type { ImportFormat } from "@/features/graph-editor/io/import-utils";
 import { guideExamples } from "./guide-examples";
 
-/** Small, trusted examples shared by articles and the editor entry point. */
 export const articleSlugs = [
   "edge-list",
   "adjacency-matrix",
@@ -92,7 +91,6 @@ export function getArticleExample(value: string | null | undefined) {
   return value && isArticleSlug(value) ? articleExamples[value] : null;
 }
 
-/** No import parsing or article prose is needed to open these fixed examples. */
 export function createArticleExampleGraph(slug: ArticleSlug): GraphModel {
   const example = articleExamples[slug];
   return {

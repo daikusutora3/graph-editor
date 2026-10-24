@@ -1,5 +1,3 @@
-/** The same IEEE-754 operations in JS and Rust keep iterative force layouts
- * deterministic. Scaling also avoids squaring large finite coordinates. */
 export function stableHypot(x: number, y: number) {
   const ax = Math.abs(x);
   const ay = Math.abs(y);

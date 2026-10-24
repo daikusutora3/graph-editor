@@ -141,8 +141,6 @@ function createPastedEdges(
     nodeIdMap.get(id) ?? (existingNodeIds.has(id) ? id : undefined);
 
   return edges.flatMap((edge) => {
-    // Mixed selections duplicate their selected nodes and retain references to
-    // unselected endpoints, including an independently selected edge.
     const source = resolveEndpoint(edge.source);
     const target = resolveEndpoint(edge.target);
     return source && target ? [cloneEdge(edge, source, target)] : [];

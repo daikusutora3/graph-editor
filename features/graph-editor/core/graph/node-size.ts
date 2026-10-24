@@ -1,15 +1,7 @@
-/**
- * Default node geometry shared by rendering, routing and layouts. Browser
- * measurements supply the displayed size when the root font size changes.
- */
 export const NODE_SIZE_PX = 48;
 export const NODE_FONT_PX = 16;
 export const NODE_LABEL_PADDING_PX = 14;
 
-/**
- * Rough label width without a DOM: CJK glyphs are 1em, others 0.68em. The
- * Latin factor errs wide so layouts and routing never under-reserve space.
- */
 export function estimateLabelWidth(label: string, fontPx = NODE_FONT_PX) {
   let width = 0;
 
@@ -20,7 +12,6 @@ export function estimateLabelWidth(label: string, fontPx = NODE_FONT_PX) {
   return width;
 }
 
-/** Node width in graph px for a label, matching the renderer's pill sizing. */
 export function estimateNodeWidth(label: string) {
   if (!label) {
     return NODE_SIZE_PX;
@@ -32,10 +23,6 @@ export function estimateNodeWidth(label: string) {
   );
 }
 
-/**
- * Distance from a pill's centre to its boundary along a direction. The pill is
- * a stadium: the segment [-a, a] on the x axis thickened by `halfHeight`.
- */
 export function pillExtentTowards(
   halfWidth: number,
   halfHeight: number,
@@ -51,7 +38,6 @@ export function pillExtentTowards(
     return halfHeight;
   }
 
-  // dist(p, segment) = hypot(max(|px| - a, 0), py) = halfHeight; solve for t.
   let low = halfHeight;
   let high = halfWidth;
 
@@ -71,7 +57,6 @@ export function pillExtentTowards(
   return (low + high) / 2;
 }
 
-/** Measured width is transient input supplied by the browser adapter. */
 export function nodeGeometryWidth(node: {
   label: string;
   measuredWidth?: number;
@@ -79,7 +64,6 @@ export function nodeGeometryWidth(node: {
   return node.measuredWidth ?? estimateNodeWidth(node.label);
 }
 
-/** Browser measurements are transient and survive structured cloning to workers. */
 export function nodeGeometryHeight(node: {
   label: string;
   measuredHeight?: number;
@@ -87,7 +71,6 @@ export function nodeGeometryHeight(node: {
   return node.measuredHeight ?? NODE_SIZE_PX;
 }
 
-/** Existing clearances include the default 24px radius; preserve their gap. */
 export function nodeGeometryClearance(
   node: { label: string; measuredHeight?: number },
   base: number,

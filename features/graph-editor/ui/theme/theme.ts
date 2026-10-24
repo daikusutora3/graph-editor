@@ -87,7 +87,5 @@ function readStoredTheme(): ThemeMode | null {
 function writeStoredTheme(theme: ThemeMode) {
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-  } catch {
-    // Theme application should not depend on storage availability.
-  }
+  } catch {}
 }

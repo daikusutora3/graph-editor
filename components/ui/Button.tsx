@@ -52,8 +52,6 @@ const wrapSizeClass: Record<ButtonSize, string> = {
 };
 
 type TooltipProps = {
-  /** Visible on hover/focus. Replaces the native `title` so pointer users
-   * get it instantly and keyboard users get it on focus. */
   tooltip?: string;
   tooltipSide?: TooltipSide;
 };
@@ -66,9 +64,9 @@ export type ButtonProps = Omit<
     active?: boolean;
     size?: ButtonSize;
     variant?: ButtonVariant;
-    /** Multiline panel actions grow in height without widening the panel. */
+
     wrap?: boolean;
-    /** Tiles keep icon, label and supporting text together in compact grids. */
+
     layout?: "inline" | "compact" | "tile";
     type?: "button" | "submit";
   };
@@ -131,7 +129,6 @@ export function Button({
   );
 }
 
-/** Same size names as Button: sm = 30px, md = 36px, lg = 40px. */
 export type IconButtonProps = Omit<ButtonProps, "size" | "wrap" | "layout"> & {
   label: string;
   size?: "sm" | "md" | "lg";

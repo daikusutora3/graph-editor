@@ -7,9 +7,6 @@ import { cn } from "@/lib/utils";
 
 import { controlIcon, focusRing, pressFeedback } from "./control-styles";
 
-/**
- * Boolean option with a full-row click target and a consistent trailing checkbox.
- */
 export function OptionToggle({
   checked,
   description,

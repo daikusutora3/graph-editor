@@ -16,7 +16,7 @@ type Position = { x: number; y: number };
 type NodeCreationViewport = {
   width: number;
   height: number;
-  /** Camera pan in graph coordinates, including any renderer rebase. */
+
   pan: Position;
   zoom: number;
 };
@@ -27,7 +27,6 @@ type NodeCreationMetrics = {
   viewportInsets?: { top: number; bottom: number };
 };
 
-/** Use the same validated, undoable command for pointer and button placement. */
 export function createGraphNodeAtPosition(
   executeCommand: (command: GraphIntent) => CommandResult,
   position: Position,
@@ -39,11 +38,6 @@ export function createGraphNodeAtPosition(
     : null;
 }
 
-/**
- * Find a visible space close to the center, without moving the camera. Work
- * from the latest graph rather than the renderer, which may be one paint
- * behind when the user activates the button several times in succession.
- */
 export function findNodeCreationPosition(
   graph: GraphModel,
   viewport: NodeCreationViewport,
@@ -83,14 +77,12 @@ export function findNodeCreationPosition(
   const insets = {
     ...baseInsets,
     top: Math.max(baseInsets.top, metrics?.viewportInsets?.top ?? 0),
-    // The mobile creation action sits above the bottom toolbar. Keep new
-    // nodes above that extra row as the search expands away from center.
+
     bottom:
       Math.max(baseInsets.bottom, metrics?.viewportInsets?.bottom ?? 0) +
       (chrome.layout === "mobile" ? actionHeight + 12 : 0),
   };
-  // The next automatic label is no longer than this count, even after
-  // deletions. Reserve its pill width as well as a little visual clearance.
+
   const halfWidth = (newNodeWidth * zoom) / 2;
   const halfHeight = (nodeSize * zoom) / 2;
   const gap = 12;
@@ -111,9 +103,7 @@ export function findNodeCreationPosition(
   };
   const step = Math.max(72, halfWidth * 2 + gap);
   const candidates: Position[] = [];
-  // Include half-step and edge-aligned positions: a short mobile view may
-  // fit several rows even when no whole step fits on both sides of center.
-  // Each axis has at most 65 samples, bounding the search to 4,225 points.
+
   for (const y of candidateAxis(center.y, bounds.top, bounds.bottom, step / 2))
     for (const x of candidateAxis(
       center.x,
@@ -150,9 +140,6 @@ export function findNodeCreationPosition(
     fallback ??= position;
     if (
       nodes.every((node) => {
-        // Both nodes are horizontal pills. The distance between their
-        // center segments includes their round ends, unlike an axis-aligned
-        // box test that rejects useful diagonal spaces on small screens.
         const dx = Math.max(
           0,
           Math.abs(candidate.x - node.x) -
@@ -164,8 +151,7 @@ export function findNodeCreationPosition(
     )
       return position;
   }
-  // A crowded canvas can still be edited; the existing overlap layout can
-  // make more room. Never place an invisible node beyond coordinate limits.
+
   return fallback;
 }
 

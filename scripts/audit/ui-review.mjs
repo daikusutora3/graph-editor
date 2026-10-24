@@ -1,4 +1,3 @@
-// Capture real editor states in isolated contexts; retain before/after evidence.
 import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { messagesByLocale } from "../../features/graph-editor/i18n/messages.ts";

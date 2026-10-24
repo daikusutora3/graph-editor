@@ -61,7 +61,7 @@ export function makeScreenshotInputKey({
     paddingPx,
     scope,
     theme,
-    // Fixed-size full exports use graph bounds, independently of canvas zoom.
+
     zoomPercent: scope === "full" ? undefined : zoomPercent,
     viewportSignature: scope === "viewport" ? viewportSignature : undefined,
     exportScaleSignature:

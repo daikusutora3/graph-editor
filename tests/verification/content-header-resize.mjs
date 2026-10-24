@@ -78,8 +78,6 @@ assert.equal(observed, header);
 assert.equal(properties.get("--reading-header-height"), "60px");
 assert.equal(scrolls, 0);
 
-// The sidebar breakpoint changes the document before dispatching resize.
-// Its induced scroll must not erase the destination visible before resizing.
 headerWidth = 1024;
 top = -160;
 listeners.get("scroll")();
@@ -89,7 +87,6 @@ assert.equal(top, 84);
 notifyObserver();
 assert.equal(scrolls, 1, "the observer must not scroll the same target twice");
 
-// Reading past an old fragment must not jump back to it on the next resize.
 top = -300;
 listeners.get("scroll")();
 headerWidth = 1023;
@@ -97,7 +94,6 @@ top = -120;
 listeners.get("resize")();
 assert.equal(scrolls, 1, "manual reading position is preserved");
 
-// A wider header can cover a newly selected destination.
 top = 90;
 listeners.get("hashchange")();
 headerWidth = 767;
@@ -108,7 +104,6 @@ assert.equal(properties.get("--reading-header-height"), "109px");
 assert.equal(top, 133);
 assert.equal(scrolls, 2);
 
-// Missing fragments and destinations below the viewport must not be restored.
 window.location.hash = "#missing";
 listeners.get("hashchange")();
 headerWidth = 768;

@@ -1,7 +1,3 @@
-// UI audit: target sizes, text contrast, chrome overlaps and off-screen panels
-// across viewport widths and every panel. Usage:
-//   bun scripts/audit/ui-audit.mjs            (dev server on :3000)
-//   THEME=dark BASE_URL=http://localhost:3000 bun scripts/audit/ui-audit.mjs
 import { chromium, devices } from "playwright";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
@@ -79,7 +75,7 @@ for (const input of ["pointer", "touch"]) {
     const page = await ctx.newPage();
     await page.goto(BASE_URL, { waitUntil: "networkidle" });
     await page.waitForTimeout(1500);
-    // load a sample so selection / layouts have content
+
     const sample = page.getByRole("button", { name: /cycle/i });
     await sample.first().click();
     await page.locator('[data-canvas-ready="true"]').waitFor();

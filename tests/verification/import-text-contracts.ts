@@ -206,8 +206,6 @@ for (const unit of ["x", "界", "😀", "e\u0301", "\ud800"]) {
   }
 }
 
-// Valid adjacency syntax includes parentheses and separators beyond the field
-// budget. Validate the decoded field, including reused rows, without truncation.
 for (const length of [256, 257]) {
   const text = "😀".repeat(length);
   const input = `a: b(${text})\na: b(${text})`;
@@ -229,7 +227,6 @@ for (const length of [256, 257]) {
   if (length === 256) assert.equal(first?.model.edges.length, 2);
 }
 
-// A malformed later field rejects an otherwise valid prefix atomically.
 const partial = evaluateGraphInput(`a b valid\nb c ${"x".repeat(257)}`, {
   format: "edge-pairs",
 });
@@ -237,7 +234,6 @@ assert.equal(partial.result.status, "failure");
 assert.deepEqual(partial.result.model.edges, []);
 assert.equal(partial.result.warnings[0]?.code, "text-too-long");
 
-// Partial-import warnings must not mask a weight limit in an ignored row.
 for (const input of [
   `2 2\n0 1 good\n0 9 ${"x".repeat(257)}`,
   `2 1\n0 1 good\n0 1 ${"x".repeat(257)}`,
@@ -274,7 +270,7 @@ for (const input of [
   );
   assert.equal(validPartial.result.model.edges.length, 1);
 }
-// Issue #49: complete AtCoder game_h samples must not turn N M K into an edge.
+
 const labeledSamples = [
   {
     input: "3 6 2\n1 2 a\n2 3 b\n3 1 c\n2 1 d\n3 2 e\n1 3 f",

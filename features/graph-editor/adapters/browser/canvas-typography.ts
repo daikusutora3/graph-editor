@@ -15,7 +15,6 @@ function readTypographySignature() {
   ]);
 }
 
-/** Observe computed rem changes as well as explicit root/font updates. */
 export function observeCanvasTypography(onChange: () => void) {
   let active = true;
   let signature = readTypographySignature();
@@ -24,8 +23,7 @@ export function observeCanvasTypography(onChange: () => void) {
     const next = readTypographySignature();
     if (!fontLoaded && next === signature) return;
     signature = next;
-    // Loading a font can change glyph widths without changing CSS values.
-    // Clear before consumers reapply Canvas styles or prepare routing work.
+
     clearNodeMeasurements();
     onChange();
   };
@@ -38,8 +36,6 @@ export function observeCanvasTypography(onChange: () => void) {
     attributeFilter: ["style", "class", "data-locale", "data-theme"],
   });
 
-  // Browser text preferences and responsive CSS can change the computed root
-  // font without mutating an attribute. A noninteractive rem probe catches it.
   const probe = document.createElement("span");
   probe.setAttribute("aria-hidden", "true");
   probe.inert = true;

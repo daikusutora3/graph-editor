@@ -2,7 +2,6 @@ import type { EdgeRoutingMeta } from "../core/layout/edge-routing";
 
 export type RoutingDelta = Map<string, EdgeRoutingMeta | null>;
 
-/** Null retains a route from this request's baseline, preserving result order. */
 export function createRoutingDelta(
   result: Map<string, EdgeRoutingMeta>,
   previous: ReadonlyMap<string, EdgeRoutingMeta>,
@@ -14,7 +13,7 @@ export function createRoutingDelta(
     if (unchanged) retained++;
     delta.set(id, unchanged ? null : meta);
   }
-  // A full result is cheaper when most routes changed. No cross-job state.
+
   return retained > result.size / 2 ? delta : null;
 }
 

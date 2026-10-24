@@ -6,11 +6,6 @@ import { cn } from "@/lib/utils";
 
 import { focusRing, pressFeedback } from "./control-styles";
 
-/**
- * Range control with an optional set of presets. Tick marks retain their true
- * position along the track. Mobile preset buttons use a separate even row so
- * their touch targets stay apart when nearby values share a short track.
- */
 export function Slider({
   compact = false,
   label,

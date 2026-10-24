@@ -6,7 +6,7 @@ export const insetFocusRing =
   "focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--muted)]";
 export const panelSurface =
   "min-w-0 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]";
-/** Reading surfaces share a scale distinct from compact navigation labels. */
+
 export const bodyText =
   "text-base leading-[1.85] text-[var(--text-2)] [overflow-wrap:break-word] sm:text-[17px]";
 export const figureCaption = "text-sm leading-7 text-[var(--text-2)]";

@@ -5,7 +5,6 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-// bun tests/benchmarks/run-export-matrix.mjs --output /tmp/export-matrix.json
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const temporary = mkdtempSync(join(tmpdir(), "graph-editor-matrix-"));
 let browser;

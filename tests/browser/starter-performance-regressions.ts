@@ -5,8 +5,6 @@ import { fileURLToPath } from "node:url";
 import { chromium, type ViewportSize } from "playwright";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
-// Run against the current static build in fresh browser contexts. The network
-// assertions identify the actual gallery chunk instead of hardcoding its hash.
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const output = process.env.STATIC_OUT_DIR ?? join(repository, "out");
 const chunkDirectory = join(output, "_next/static/chunks");
@@ -84,8 +82,7 @@ async function verifyStarter(name: string, viewport: ViewportSize) {
 
     await button("Load a graph").click();
     await input.waitFor();
-    // Use an explicit format so preview/apply assertions do not depend on the
-    // auto-detector's relative strengths for structurally ambiguous inputs.
+
     await format.selectOption("contest-edge-list");
     await input.fill(text);
     await waitPreview();
@@ -139,8 +136,7 @@ async function verifyStarter(name: string, viewport: ViewportSize) {
     await format.selectOption("contest-edge-list");
     await input.fill(text);
     await waitPreview();
-    // Observe the close at the next paint, before the 180 ms exit timer. This
-    // confirms that the still-visible paste preview remains intact.
+
     const closing = await panel.evaluate(
       (element) =>
         new Promise<{
@@ -195,7 +191,7 @@ async function verifyStarter(name: string, viewport: ViewportSize) {
       `${name}: reopen resets retained input`,
     );
     assert.equal(await format.inputValue(), "auto");
-    await page.waitForTimeout(50); // Let the panel's deferred focus timer settle.
+    await page.waitForTimeout(50);
     await page.waitForFunction(() => {
       const currentPanel = document.querySelector(
         '[data-editor-panel="starter"]',

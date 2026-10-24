@@ -6,7 +6,6 @@ import {
   tabbableElements,
 } from "../../features/graph-editor/ui/primitives/focus-navigation";
 
-// DOM doubles keep these focus contracts runnable without launching a browser.
 const documentState = {
   activeElement: null as HTMLElement | null,
   defaultView: {

@@ -6,8 +6,6 @@ import * as React from "react";
 import { renderToReadableStream } from "react-dom/server";
 import { createStore } from "jotai/vanilla";
 
-// Isolate module caches and test mocks so a failed module never contaminates
-// the healthy-load scenario or another verification suite.
 const scenario = process.argv
   .find((argument) => argument.startsWith("--scenario="))
   ?.slice(11);
@@ -27,9 +25,6 @@ if (!scenario) {
 }
 assert(["reject", "success"].includes(scenario));
 
-// Execute the actual chrome render and its mount effects. Hold the optional
-// module load until the fallback commits, matching effects running while a
-// browser's chunk request is still pending. Browser resources are doubles.
 const originalUseState = React.useState;
 const originalLazy = React.lazy;
 const effects = [];
@@ -46,8 +41,7 @@ mock.module("react", () => ({
       return load();
     }),
 }));
-// Tooltip DOM lifecycle is covered independently; this suite doubles only the
-// browser resources used by sample loading.
+
 mock.module(
   new URL("../../components/ui/TooltipLayer.tsx", import.meta.url).pathname,
   () => ({ TooltipLayer: () => null }),
@@ -101,8 +95,7 @@ Object.assign(globalThis, {
 
 const panelPath = feature("ui/panels/StarterPanel.tsx");
 const panelExports = await import(panelPath);
-// Count the old eager request while retaining its real import promise. This
-// is absent once chrome uses only the lazy component's request.
+
 const originalPrefetch = panelExports.loadSampleGalleryPane;
 if (originalPrefetch) {
   mock.module(panelPath, () => ({

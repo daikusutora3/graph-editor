@@ -557,8 +557,6 @@ function verifyInteractiveRoutingRechecksDepartedObstacles() {
       "a departed obstacle should clear the status without changing the manual straight route",
     );
 
-    // A completed stale pass can seed the next drag pass, so the previous
-    // obstacle position need not equal the model's initial position.
     const initialClearGraph = {
       ...graph,
       nodes: graph.nodes.map((node) =>
@@ -770,8 +768,7 @@ function verifySelectionAndArrowStyles() {
       "arrow-scale"
     ],
   );
-  // Selected edges widen from 2.5px to 3.5px, so the arrowhead scale is
-  // reduced by the same ratio to keep the rendered arrowhead size.
+
   const expectedSelectedArrowScale = 1.5 * (2.5 / 3.5);
   expect(
     Math.abs(selectedArrowScale - expectedSelectedArrowScale) <
@@ -901,7 +898,6 @@ function selfLoopRoutingFixture(): GraphModel {
   };
 }
 
-// The CSS tokens and the TS node geometry must describe the same node.
 {
   const css = readFileSync(
     new URL("../../app/globals.css", import.meta.url),

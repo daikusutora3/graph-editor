@@ -142,8 +142,6 @@ export function ExportPanelBody({
   );
 }
 
-// Keep every character in the DOM for selection and copying. Large exports
-// only lay out the visible groups; unsupported browsers retain the full view.
 const ExportText = memo(function ExportText({
   lines,
   wide = false,

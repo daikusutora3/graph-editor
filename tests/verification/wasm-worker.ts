@@ -1133,7 +1133,6 @@ async function verifyClient(scenario: string) {
         });
       }
       expect(
-        // Retry attempts must finish before advancing the fake cooldown clock.
         // eslint-disable-next-line no-await-in-loop
         (await failed) === null && active.terminated,
         "transient failures resolve pending work and stop the failed Worker",
@@ -1167,7 +1166,7 @@ async function verifyClient(scenario: string) {
       (await retried) !== null && workers.length === 2,
       "a later request restores a successful Worker after the cooldown",
     );
-    // Success resets the failure budget, so a new fault waits one second.
+
     const fault = computeOverlapsInWorker(model);
     replacement.onerror!();
     expect((await fault) === null, "a later transport fault also settles work");
@@ -1443,8 +1442,7 @@ async function verifyClient(scenario: string) {
     ComputeRequest,
     { id: number }
   >;
-  // Owner-side events already queued before terminate must remain confined to
-  // their original Worker even when another Worker has since been created.
+
   active.emit({
     id: replacementRequest.id,
     error: "late transport error",

@@ -22,7 +22,7 @@ function isCoordinateArray(
   coordinate: CoordinateCheck,
 ): value is number[] {
   if (!Array.isArray(value) || value.length === 0) return false;
-  // Iteration also rejects holes; Array.every() would silently skip them.
+
   for (const number of value) if (!coordinate(number)) return false;
   return true;
 }
@@ -54,7 +54,6 @@ function isRoutingResult(value: unknown, coordinate: CoordinateCheck) {
   return true;
 }
 
-/** Only results produced by the requested job may cross the Worker boundary. */
 export function isComputeResult(
   kind: ComputeJob["kind"],
   value: unknown,
@@ -62,7 +61,6 @@ export function isComputeResult(
   return isResult(kind, value, isGraphCoordinate);
 }
 
-/** Distinguish finite domain overflow from malformed output/ABI faults. */
 export function isComputeResultOutsideCoordinateRange(
   kind: ComputeJob["kind"],
   value: unknown,

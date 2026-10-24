@@ -2,22 +2,6 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-/**
- * Fills the CSP script hashes in out/_headers after `next build`.
- *
- * The static export inlines React Server Component payloads as small
- * <script> blocks whose content changes every build, so a nonce is impossible
- * and a hand-written hash list would rot. Hashing every inline script in the
- * exported HTML keeps `script-src` strict without 'unsafe-inline'.
- *
- * Cloudflare caps each `_headers` line at 2,000 characters, which a single
- * site-wide hash list exceeds, so every page gets its own rule carrying only
- * the hashes it needs. Exactly one rule sets the policy for any path: the
- * production asset server was observed to emit both a `/*` policy and the
- * page policy for `/` even with a `! Content-Security-Policy` detach, and two
- * policies must both pass, which blocked the page's scripts. Unknown paths
- * (served as 404.html) therefore carry the other security headers only.
- */
 const OUT_DIR = "out";
 const PLACEHOLDER = "__INLINE_SCRIPT_HASHES__";
 
@@ -38,7 +22,6 @@ function walkHtmlFiles(dir: string): string[] {
   });
 }
 
-/** Maps an exported HTML file to the clean URL Cloudflare serves it at. */
 export function routeForHtmlFile(relativePath: string) {
   const posixPath = relativePath
     .split(sep)
@@ -52,10 +35,6 @@ export function routeForHtmlFile(relativePath: string) {
   return `/${posixPath.replace(/\/index$/, "")}`;
 }
 
-/**
- * Hashes of the executable inline scripts of every exported page, keyed by
- * route. JSON-LD blocks are skipped because browsers never execute them.
- */
 export function collectPageScriptHashes(outDir = OUT_DIR): PageScriptHashes[] {
   const pages: PageScriptHashes[] = [];
   const scriptPattern = /<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g;
@@ -91,7 +70,6 @@ export function collectPageScriptHashes(outDir = OUT_DIR): PageScriptHashes[] {
   return pages.sort((a, b) => a.route.localeCompare(b.route));
 }
 
-/** Every distinct inline script hash across the export. */
 export function collectInlineScriptHashes(outDir = OUT_DIR) {
   return [
     ...new Set(collectPageScriptHashes(outDir).flatMap((page) => page.hashes)),
@@ -144,7 +122,6 @@ export type HeaderRule = {
   unset: string[];
 };
 
-/** Parses a Cloudflare `_headers` file into ordered rules. */
 export function parseHeaderRules(text: string): HeaderRule[] {
   const rules: HeaderRule[] = [];
 
@@ -186,10 +163,6 @@ export function parseHeaderRules(text: string): HeaderRule[] {
   return rules;
 }
 
-/**
- * Applies the rules to a request path the way Cloudflare does: matching rules
- * run in order, detached headers are removed, repeated headers join with ", ".
- */
 export function resolveHeaders(rules: HeaderRule[], path: string) {
   const headers = new Map<string, string>();
 

@@ -25,9 +25,7 @@ type Pending = {
   owner: Worker;
   restoreRouting?: (delta: RoutingDelta) => Map<string, EdgeRoutingMeta>;
 };
-// Heavy synchronous Rust calls cannot receive an abort message until they
-// finish. Isolate them so interactive routing retains a warm, responsive lane.
-// Keep at most two warm Workers; abort and pagehide release their ownership.
+
 const workers: Record<WorkerLane, Worker | null> = {
   interactive: null,
   heavy: null,
@@ -49,9 +47,7 @@ function completeRequest(
   pending.delete(id);
   try {
     request.cleanup();
-  } catch {
-    // Host cleanup must not leave this or concurrent requests unresolved.
-  }
+  } catch {}
   request.complete(result);
 }
 
@@ -59,8 +55,6 @@ function recordCompletion(
   kind: ComputeJob["kind"],
   kernels: [string, number][],
 ) {
-  // Performance diagnostics are optional. A browser instrumentation failure
-  // must not discard a completed result or consume the Worker retry budget.
   try {
     const prefix = `graph-compute:${kind}`;
     const completed = `${prefix}:worker`;
@@ -79,9 +73,7 @@ function recordCompletion(
       for (const [name, calls] of kernels)
         performance.mark(`${wasm}:${name}`, { detail: { calls } });
     }
-  } catch {
-    // The request has already completed; diagnostics do not own its lifetime.
-  }
+  } catch {}
 }
 
 function failWorker(permanent = false) {
@@ -112,9 +104,7 @@ function releaseWorker(lane: WorkerLane) {
   workers[lane] = null;
   try {
     active?.terminate();
-  } catch {
-    // Host disposal must not strand pending work or retain stale ownership.
-  }
+  } catch {}
 }
 
 function getWorker(lane: WorkerLane) {
@@ -149,8 +139,7 @@ function getWorker(lane: WorkerLane) {
           if (!request || request.owner !== created) return;
           if ("error" in response) {
             completeRequest(response.id, request, null);
-            // Unsupported input/result coordinates are specific to this job;
-            // they do not invalidate healthy lanes or consume transport retries.
+
             if (response.failure !== "input")
               failWorker(response.failure === "permanent");
             return;
@@ -179,8 +168,7 @@ function getWorker(lane: WorkerLane) {
           const kernels = Object.entries(response.kernels).filter(
             ([, calls]) => Number.isInteger(calls) && calls > 0,
           );
-          // Keep the timeout and abort listener until all response processing
-          // that can invalidate the result has succeeded.
+
           completeRequest(response.id, request, result);
           consecutiveFailures = 0;
           retryAfter = 0;
@@ -237,8 +225,6 @@ function cancelHeavyWorker(active: Worker) {
     return;
   }
   for (const [id, request] of retained) {
-    // A send failure can have settled the whole batch. Keep each request's
-    // original ID, timeout and abort listener when replaying concurrent work.
     if (pending.get(id) === request) sendRequest(id, request, replacement);
   }
 }
@@ -252,14 +238,10 @@ function run(
   const lane = jobLane(job);
   const active = getWorker(lane);
   if (!active) return Promise.resolve(null);
-  // A cancelled heavy owner can replay concurrent jobs. Match the initial
-  // postMessage snapshot even if a caller later mutates the supplied model.
+
   let snapshot = job;
   if (lane === "heavy") {
     try {
-      // Overlap resolution uses node geometry and display/snap settings only.
-      // Omit unused topology from both this replay snapshot and postMessage's
-      // second clone. Keep the caller's model and the no-edge path unchanged.
       snapshot = structuredClone(
         job.kind === "overlap" && job.model.edges?.length
           ? { ...job, model: { ...job.model, edges: [] } }
@@ -270,8 +252,7 @@ function run(
       return Promise.resolve(null);
     }
   }
-  // Each reply restores against its own immutable request snapshot. Cancellation
-  // and Worker restart require no retained remote graph or routing state.
+
   const previous =
     job.kind === "routing" && job.interaction && job.options.previousMeta
       ? new Map(job.options.previousMeta)
@@ -287,7 +268,6 @@ function run(
         return;
       }
       try {
-        // Web Worker messages do not accept a window targetOrigin.
         // eslint-disable-next-line unicorn/require-post-message-target-origin
         request.owner.postMessage({ cancel: id });
       } catch (error) {

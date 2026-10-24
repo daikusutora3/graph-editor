@@ -10,9 +10,6 @@ import type { NumericImportMatrix } from "../io/import-types";
 const encoder = new TextEncoder();
 const headerLength = 8;
 
-/** Large ASCII integer matrices are scanned from text in one kernel call.
- * Other Number syntax and Unicode separators retain the JS reader. Bytes use
- * the existing allocation ABI; no JS numeric dense matrix is prepared/copied. */
 export function readRustNumericMatrix(
   lines: ParsedLine[],
 ): NumericImportMatrix | null {
@@ -21,8 +18,7 @@ export function readRustNumericMatrix(
     return null;
   if (lines.some((line) => line.text.includes("\n"))) return null;
   const text = lines.map((line) => line.text).join("\n");
-  // Reject other syntax before scanning/copying a potentially long integer
-  // prefix in Wasm. This also retains inexpensive decimal/Unicode fallback.
+
   if (
     text.includes(".") ||
     text.includes("e") ||
@@ -30,8 +26,7 @@ export function readRustNumericMatrix(
     /[^0-9+,\- \t\r\n\v\f]/.test(text)
   )
     return null;
-  // Write directly into the existing ABI allocation shape; no intermediate
-  // byte buffer or converted JS numeric rows are allocated for the Rust path.
+
   const data = new Float64Array(Math.ceil(text.length / 8));
   const { read, written } = encoder.encodeInto(
     text,

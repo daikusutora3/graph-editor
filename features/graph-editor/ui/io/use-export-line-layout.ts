@@ -10,8 +10,6 @@ type LineLayout = {
   fontRevision: number;
 };
 
-// Keep bidi, combining characters and other shaping-sensitive scripts on the
-// normal text path. The editor uses a monospace font for exported source.
 function needsLineLayout(text: string) {
   return (
     text.length > 32_768 &&
@@ -20,7 +18,6 @@ function needsLineLayout(text: string) {
   );
 }
 
-/** Bound font measurement before mounting an exceptionally long source line. */
 export function useExportLineLayout(text: string) {
   const ref = useRef<HTMLPreElement | null>(null);
   const [layout, setLayout] = useState<LineLayout | null>(null);
@@ -57,7 +54,7 @@ export function useExportLineLayout(text: string) {
         setFallbackText(text);
         return;
       }
-      // Numeric font variants can make the computed shorthand empty.
+
       context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       context.fontKerning = style.fontKerning as CanvasFontKerning;
       const textRendering: Record<string, CanvasTextRendering> = {
@@ -79,9 +76,6 @@ export function useExportLineLayout(text: string) {
         if (!active) return;
         const deadline = performance.now() + 4;
         do {
-          // Keep ordinary JSON labels together, so a boundary cannot split
-          // shaping within a quoted value. IDs can be arbitrarily long;
-          // cap their chunks too so one measurement stays bounded.
           let end = offset;
           do {
             const character = text[end]!;

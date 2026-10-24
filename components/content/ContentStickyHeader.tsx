@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-/** Measure the header so anchor targets stay visible at every viewport width. */
 export function ContentStickyHeader({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -16,8 +15,6 @@ export function ContentStickyHeader({ children }: { children: ReactNode }) {
       return target && page.contains(target) ? target : null;
     };
     const rememberVisibleTarget = () => {
-      // A resize may dispatch a layout-induced scroll before its resize event.
-      // Keep the pre-resize destination until the new width is reconciled.
       if (header.getBoundingClientRect().width !== headerWidth) return;
       const target = getTarget();
       const top = target?.getBoundingClientRect().top;
@@ -39,8 +36,7 @@ export function ContentStickyHeader({ children }: { children: ReactNode }) {
         "--reading-header-height",
         `${Math.ceil(bounds.height)}px`,
       );
-      // Reveal a destination covered by a resized header without moving
-      // back to an anchor already read past.
+
       const target = getTarget();
       if (!target) {
         visibleTarget = null;

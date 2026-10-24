@@ -1,6 +1,5 @@
 import type { AppLocale } from "./site-metadata";
 
-/** Short labels used by both reading pages and the editor; no article prose. */
 export const contentNavigationCopy = {
   ja: {
     guide: "ガイド",

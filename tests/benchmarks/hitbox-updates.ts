@@ -15,9 +15,6 @@ import type {
   EdgeLabelHitbox,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 
-// Compare the entire eb9e11e reader + React-state reconciliation pipeline with
-// the indexed, identity-preserving reader. This is CPU geometry preparation,
-// not React commit, DOM layout, canvas raster or end-to-end pointer latency.
 const iterations = 60;
 const warmup = 10;
 const results = [];

@@ -6,7 +6,6 @@ import type {
   ComputeResponse,
 } from "../../features/graph-editor/compute/worker-protocol";
 
-/** Production TS and compiled Rust in real Bun Workers, with file-backed fetch. */
 export function installRealComputeWorkers() {
   const NativeWorker = globalThis.Worker;
   const previousWindow = globalThis.window;
@@ -20,8 +19,7 @@ export function installRealComputeWorkers() {
     "../../features/graph-editor/compute/graph-compute.worker.ts",
     import.meta.url,
   );
-  // Long lifecycle runs must not retain every terminated native Worker through
-  // this fixture. Keep only live owners and retain creation counts separately.
+
   const transports = new Set<Transport>();
   let created = 0;
   let initialized = 0;
@@ -34,8 +32,6 @@ export function installRealComputeWorkers() {
     const nativePostMessage = globalThis.postMessage.bind(globalThis);
     let actualMemory = null;
     globalThis.postMessage = (message, ...options) => {
-      // Probe the actual current buffer before the result settles on the host.
-      // Calling the captured transport avoids recursively probing our probes.
       if (!message.probe && actualMemory)
         nativePostMessage({ probe: "memory", bytes: actualMemory.buffer.byteLength });
       nativePostMessage(message, ...options);
@@ -113,8 +109,6 @@ export function installRealComputeWorkers() {
     }
     postMessage(value: ComputeRequest) {
       if (this.ready) this.native.postMessage(value);
-      // Bun data-URL Workers need an explicit startup queue around top-level
-      // await; browsers preserve messages submitted during module loading.
       else this.queued.push(structuredClone(value));
     }
     terminate() {

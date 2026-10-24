@@ -13,7 +13,6 @@ const CYCLE_POINTS = [
   [25, 24],
 ] as const;
 
-/** Decorative diagrams stay independent of graph layout and routing work. */
 export function EmptyStateIllustration({
   method,
   tone = "accent",

@@ -109,7 +109,6 @@ export function FitToViewButton({ onFitView }: { onFitView: () => void }) {
   );
 }
 
-/** Transient zoom readout for touch devices, where there is no zoom pill. */
 export function ZoomBadge({
   visible,
   zoomPercent,
@@ -248,8 +247,6 @@ export function InlineEditForm({
       const canvasBounds = canvas.getBoundingClientRect();
       if (!bounds.width || !canvasBounds.width) return;
 
-      // Recover the graph anchor even after an earlier clamp, including the
-      // hitbox layer's pan translation. Shorter input returns to that anchor.
       const currentLeft = parseFloat(form.style.left);
       const centerX =
         bounds.left +

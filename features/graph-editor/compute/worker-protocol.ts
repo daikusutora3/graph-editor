@@ -29,11 +29,7 @@ export type ComputeJob =
     };
 export type RoutingInteraction = {
   movedNodeIds: ReadonlySet<NodeId>;
-} & (
-  | { previousNodes: GraphNode[] }
-  // Existing callers may supply the full selection snapshot directly.
-  | { nodes: GraphNode[] }
-);
+} & ({ previousNodes: GraphNode[] } | { nodes: GraphNode[] });
 export type ComputeValue =
   GraphIntent | OverlapResult | Map<string, EdgeRoutingMeta>;
 export type ComputeRequest =

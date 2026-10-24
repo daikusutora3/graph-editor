@@ -76,7 +76,7 @@ for (const coordinate of [0, -0, 0.125, 1e8, inside, limit, -inside, -limit]) {
   const before = JSON.stringify(graph);
   assert(isGraphCoordinate(coordinate));
   assert(hasGraphCoordinatePositions(graph.nodes));
-  // JSON canonicalizes signed zero; both import paths preserve its document.
+
   assert.deepEqual(
     parseGraphModelJson(serializeGraphModel(graph)),
     JSON.parse(before),

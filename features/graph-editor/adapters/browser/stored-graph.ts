@@ -95,8 +95,7 @@ export function scheduleStoredGraphWrite(
 ) {
   if (typeof window === "undefined") return;
   if (!initialized) readStoredGraph();
-  // A model from a mounted old editor is not a model for the new URL.
-  // The new editor must read its own context before it can schedule writes.
+
   if (activeContext?.key !== getGraphStorageContext().key) {
     cancelScheduledStoredGraphWrite();
     return;
@@ -129,7 +128,7 @@ export function cancelScheduledStoredGraphWrite() {
 export async function flushStoredGraphWrite() {
   if (typeof window === "undefined" || pendingRaw === null) return;
   const context = activeContext;
-  // A navigation must never redirect an old edit to another document's store.
+
   if (!context || !contextIsCurrent(context)) {
     cancelScheduledStoredGraphWrite();
     return;
@@ -148,8 +147,6 @@ export async function flushStoredGraphWrite() {
   const raw = pendingRaw;
   try {
     const write = () => {
-      // A visibility flush and an explicit retry can queue the same edit.
-      // The first successful callback consumes it; later owners must not write.
       if (
         request !== generation ||
         pendingRaw !== raw ||
@@ -176,9 +173,7 @@ export async function flushStoredGraphWrite() {
   }
 }
 
-/** Notifications never replace the current graph or its undo history. */
 export function observeExternalStorage(raw: string | null) {
-  // Example tabs do not subscribe to the original graph's shared storage.
   if (getGraphStorageContext().kind === "example") return;
   if (raw !== baseline) {
     generation += 1;
@@ -186,7 +181,6 @@ export function observeExternalStorage(raw: string | null) {
   }
 }
 
-/** Accept only the exact document the user reviewed; a later write is a new conflict. */
 export function acceptStorageBaseline(raw: string | null) {
   cancelScheduledStoredGraphWrite();
   activeContext = getGraphStorageContext();

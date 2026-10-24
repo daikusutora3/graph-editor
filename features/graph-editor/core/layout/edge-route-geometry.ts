@@ -18,18 +18,10 @@ export type QuadraticCurveSegment = {
   end: EdgeCurvePoint;
 };
 
-/** Manual and automatic bends share these limits so every curve is draggable. */
 export { MAX_BOW_PX } from "../graph/edge-routing-overrides";
 const MIN_BOW_WEIGHT = 0.05;
 const MAX_BOW_WEIGHT = 0.95;
 
-/**
- * Finds the single quadratic control point, placed straight above `point` in
- * the chord frame, so that the curve p0 → control → p2 passes through `point`.
- * With B(u) = (1-u)²p0 + 2u(1-u)C + u²p2 the along-axis equation
- * u²(1-2w) + 2uw - w = 0 gives the parameter u under the point, and the
- * offset there is 2u(1-u)·d, hence d = perpendicular / (2u(1-u)).
- */
 export function quadraticControlThroughPoint(
   p0: EdgeCurvePoint,
   p2: EdgeCurvePoint,
@@ -55,7 +47,6 @@ export function quadraticControlThroughPoint(
   };
 }
 
-/** Expresses an absolute control point as (distance, weight) on the p0 → p2 chord. */
 export function curveFromControlPoint(
   p0: EdgeCurvePoint,
   p2: EdgeCurvePoint,
@@ -75,7 +66,6 @@ export function curveFromControlPoint(
   };
 }
 
-/** Single-control curve through a point given by chord weight and offset. */
 export function curveThroughChordOffset(
   p0: EdgeCurvePoint,
   p2: EdgeCurvePoint,
@@ -287,7 +277,6 @@ export function minimumCurveDistanceToNode(
   return createCurveNodeDistance(source, target, curve)(node);
 }
 
-/** Subdivide a candidate once, then reuse exactly the same segments for each obstacle. */
 export function createCurveNodeDistance(
   source: GraphNode,
   target: GraphNode,
@@ -352,7 +341,6 @@ function segmentDistance(
   c: EdgeCurvePoint,
   d: EdgeCurvePoint,
 ) {
-  // The capsule's center segment is horizontal. Include interior intersections.
   if (a.y !== b.y) {
     const t = (c.y - a.y) / (b.y - a.y);
     const x = a.x + t * (b.x - a.x);
@@ -412,7 +400,6 @@ function round(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-/** Prefer committed routing, otherwise begin at the curve currently on screen. */
 export function nudgeEdgeBend(
   manual: EdgeRoutingOverride | undefined,
   rendered: EdgeCurveGeometry | undefined,

@@ -1,7 +1,6 @@
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
-/** Labels and reversed siblings exercise final lane-distinctness checks. */
 export function parallelRoutingFixture(edgeCount: number): GraphModel {
   return {
     ...createEmptyGraphModel({ autoEdgeRouting: true, allowMultiEdges: true }),
@@ -21,7 +20,6 @@ export function parallelRoutingFixture(edgeCount: number): GraphModel {
   };
 }
 
-/** One fixed off-centre sibling also exercises manual-lane reconciliation. */
 export function manualParallelRoutingFixture(edgeCount: number): GraphModel {
   const graph = parallelRoutingFixture(edgeCount);
   return {

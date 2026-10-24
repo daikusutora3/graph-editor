@@ -5,7 +5,6 @@ import { serializeGraphModel } from "../../features/graph-editor/core/graph/grap
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import * as tikz from "../../features/graph-editor/io/export-tikz";
 
-// Run alone; compares uninterrupted work to the same output in 4 ms slices.
 const createTask = (
   tikz as unknown as {
     createTikzExportTask?: (model: GraphModel) => Generator<void, string>;
@@ -39,7 +38,7 @@ for (const [name, count, loops, longLabels] of [
       target: `n${loops ? i % count : (i + 1) % count}`,
     })),
   };
-  serializeGraphModel(model); // Every benchmark fixture must be accepted input.
+  serializeGraphModel(model);
   const times: number[] = [],
     slices: number[] = [],
     totals: number[] = [];

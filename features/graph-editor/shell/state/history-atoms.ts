@@ -37,8 +37,7 @@ export const canUndoAtom = atom((get) => get(historyAtom).length > 0);
 export const canRedoAtom = atom((get) => get(futureAtom).length > 0);
 
 const MAX_HISTORY_ENTRIES = 150;
-// A count alone lets repeated near-limit imports retain hundreds of megabytes.
-// Estimate patch text, objects and reference arrays without serializing again.
+
 const MAX_HISTORY_RETAINED_BYTES = 32 * 1024 * 1024;
 const historyCostCache = new WeakMap<GraphTransaction, number>();
 
@@ -164,7 +163,7 @@ function appendHistory(
   let start = nextHistory.length;
   while (start > 0 && nextHistory.length - start < MAX_HISTORY_ENTRIES) {
     const cost = estimateTransactionBytes(nextHistory[start - 1]!);
-    // Keep the newest operation undoable even if it alone exceeds the budget.
+
     if (
       start < nextHistory.length &&
       retainedBytes + cost > MAX_HISTORY_RETAINED_BYTES

@@ -29,8 +29,6 @@ function contrast(first: string, second: string) {
   return (values[1]! + 0.05) / (values[0]! + 0.05);
 }
 
-// Verify the actual semantic tokens, rather than a duplicate palette. This is
-// deliberately a palette check; translucent surfaces and overlays need visual QA.
 for (const theme of ["light", "dark"]) {
   const palette = tokens(`:root[data-theme="${theme}"]`);
   function requireContrast(

@@ -150,9 +150,6 @@ for (let index = 0; index < 60; index++) {
   check(curve, fixture.source, fixture.target, fixture.edge, nodes);
 }
 
-// Curve-piece AABB rejection must retain near-threshold geometry even after
-// large translations. Include circular/wide spines, far pieces, and multiple
-// control points while staying inside the final-route Rust coordinate gate.
 const rawBeforeRejectionCases = rawCases;
 for (const translation of [0, 1e8, GRAPH_MAX_ABS_COORDINATE - 1000]) {
   const source = { ...fixture.source, x: translation - 220, y: -translation };
@@ -256,8 +253,6 @@ expect(
   "nonfinite node geometry retains JS",
 );
 
-// Math.hypot is implementation-approximated. These ties must follow this
-// host's JS decision, which can differ by one ULP between macOS and Linux.
 for (const [tx, ty, x, y] of [
   [39.76905130695133, 113.2184726895089, -8.420092518901559, 66.55149917149228],
   [

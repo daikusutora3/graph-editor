@@ -12,7 +12,6 @@ import { createGraphNodeAtPosition } from "./graph-canvas-node-creation";
 
 type Position = { x: number; y: number };
 
-/** Node placement and edge drawing, shared by canvas taps and hitboxes. */
 export function useGraphEditingActions({
   edgeDraft,
   executeCommand,

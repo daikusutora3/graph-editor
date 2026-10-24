@@ -177,7 +177,6 @@ export function ClearGraphControl({
 
   useLayoutEffect(() => {
     if (clearArmed) {
-      // A repeated Enter must reach Cancel rather than the destructive action.
       rootRef.current
         ?.querySelector<HTMLButtonElement>("[data-clear-cancel]")
         ?.focus();

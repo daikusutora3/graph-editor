@@ -15,7 +15,6 @@ const kernelNames = [
 export type RustKernelName = (typeof kernelNames)[number];
 export type RustKernelCalls = Partial<Record<RustKernelName, number>>;
 
-/** An incompatible immutable module cannot recover by downloading it again. */
 export class RustKernelCompatibilityError extends Error {}
 
 type KernelExports = WebAssembly.Exports & {
@@ -35,8 +34,6 @@ export function getRustKernelReady() {
   return kernel !== null && suppressionDepth === 0;
 }
 
-/** Select yielding JS work only during this synchronous callback. Never wrap
- * an await: other routing and export work must retain the loaded Rust kernel. */
 export function withRustKernelSuppressed<T>(callback: () => T): T {
   suppressionDepth++;
   try {
@@ -46,8 +43,6 @@ export function withRustKernelSuppressed<T>(callback: () => T): T {
   }
 }
 
-/** Measure only this synchronous slice; concurrent Worker jobs keep separate
- * collectors while they yield. Never retain a collector across an await. */
 export function withRustKernelDiagnostics<T>(
   calls: RustKernelCalls,
   callback: () => T,
@@ -112,9 +107,6 @@ export function initializeRustKernel(): Promise<void> {
   return loading;
 }
 
-/** A single ABI call per batch, including copies and releasing all allocations.
- * Reads recreate views after allocation because Wasm memory growth detaches
- * earlier views. Missing Wasm retains the existing resumable JS implementation. */
 export function runRustKernel(
   name: string,
   inputs: readonly Float64Array[],
@@ -158,7 +150,6 @@ export function runRustKernel(
   }
 }
 
-/** Only verification/benchmark runners switch between reference and Wasm. */
 export function resetRustKernelForTests() {
   kernel = null;
   loading = null;

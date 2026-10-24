@@ -1,5 +1,3 @@
-// PNGs exported through the app: white background, 1280px long edge, 24px padding.
-// Edge list and matrix use circle layout; weighted tree uses tree layout.
 export const guideExamples = [
   {
     id: "edge-list",

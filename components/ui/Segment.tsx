@@ -7,10 +7,6 @@ import { rovingFocusKeyDown } from "./use-roving-focus";
 
 export type SegmentOption<T extends string> = { label: string; value: T };
 
-/**
- * Mutually exclusive choices share a quiet surface and one keyboard tab stop.
- * Long translated options can wrap without changing the radio interaction.
- */
 export function Segment<T extends string>({
   disabled = false,
   label,

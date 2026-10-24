@@ -18,7 +18,6 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { GitHubLogo, XLogo } from "../brand/social-logos";
 import { focusRing } from "@/components/ui/controls";
 
-// Preserve the original author's profile destinations.
 const AUTHOR_LINKS = [
   {
     label: "YouTube",
@@ -98,7 +97,7 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
         <div
           className={cn(
             "absolute inset-x-0 bottom-full z-10 mb-2 flex flex-col gap-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1",
-            // Leave the toolbar, 54px footer and the popup's 8px gap uncovered.
+
             mobile
               ? "max-h-[max(48px,calc(var(--ge-viewport-height,100dvh)-var(--ge-mobile-controls-bottom,92px)-190px))]"
               : "max-h-[max(48px,calc(var(--ge-viewport-height,100dvh)-270px))]",

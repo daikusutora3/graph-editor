@@ -1,7 +1,6 @@
 import { ArticleThumbnail } from "./ArticleThumbnail";
 import type { ArticleContent } from "@/lib/article-content";
 
-/** Reuse the article list illustration as the opening visual. */
 export function ArticleCover({ article }: { article: ArticleContent }) {
   return (
     <div

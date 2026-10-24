@@ -12,9 +12,6 @@ import {
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
-// Keep timing runs separate from builds and other benchmarks. The optional
-// original adapter supplies a baseline without changing the shared checkout.
-// bun tests/benchmarks/interactive-routing-performance.ts --output /tmp/drag.json
 const ITERATIONS = 5;
 const SLICE_MS = 4;
 type Metric = {

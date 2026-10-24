@@ -8,8 +8,6 @@ import { initializeRustKernelFromBytes } from "../../features/graph-editor/compu
 import { scoreRustLoopObstacles } from "../../features/graph-editor/compute/wasm-routing";
 import type { GraphNode } from "../../features/graph-editor/core/graph/model";
 
-// Measure the same adapter workload, including snapshot validation, all ABI
-// copies and freeing. Each backend loads its matching real Wasm asset.
 type Backend = { name: string; score: typeof scoreRustLoopObstacles };
 const backends: Backend[] = [];
 const baselineIndex = process.argv.indexOf("--baseline-root");

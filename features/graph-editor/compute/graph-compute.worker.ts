@@ -21,8 +21,6 @@ import {
   isComputeResultOutsideCoordinateRange,
 } from "./worker-result";
 
-// No DOM or browser measurement APIs enter this worker. Measured widths are
-// part of the immutable model supplied by the editor.
 const scope = globalThis as unknown as {
   onmessage: ((event: MessageEvent<ComputeRequest>) => void) | null;
   postMessage: (message: ComputeResponse) => void;
@@ -98,12 +96,12 @@ scope.onmessage = (event) => {
           const response: ComputeResponse = delta
             ? { id, routingDelta: delta, kernels }
             : { id, result: step.value, kernels };
-          // A dedicated Worker posts to its owner, without a window targetOrigin.
+
           // eslint-disable-next-line unicorn/require-post-message-target-origin
           scope.postMessage(response);
           return;
         }
-        // Also lets the Worker receive cancellation and replacement requests.
+
         // eslint-disable-next-line no-await-in-loop
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }

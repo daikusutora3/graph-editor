@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Allow read-only Issue browsing; deny Issue operations."""
 
 from __future__ import annotations
 
@@ -135,7 +134,6 @@ LOCAL_GRAPH_READ = re.compile(
     r"\{\s*disableDiffing:\s*true\s*\}\s*\);?\s*"
 )
 
-# Only literal UI arguments; no arbitrary expressions or scripts.
 _LOCAL_STRING = r"(?:\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')"
 _LOCAL_LITERAL = rf"(?:{_LOCAL_STRING}|null|true|false|\d+|\[\s*\d+\s*,\s*\d+\s*\])"
 _LOCAL_OPTIONS = rf"\{{\s*(?:clickCount|mouseButton|key):\s*{_LOCAL_LITERAL}\s*\}}"
@@ -151,8 +149,6 @@ LOCAL_GRAPH_SAVE_SCREENSHOT = re.compile(
 )
 
 
-# Read only the documented viewport capability for the authorized local IAB
-# review. These calls do not inspect or operate another tab or application.
 LOCAL_GRAPH_REVIEW_DOCS = re.compile(
     r"\s*(?:await cua\.rewriteDocumentation\(\);|let localGraphBrowser = await cua\.getBrowser\(\{ id: 'iab' \}\);|"
     r"nodeRepl\.write\(await \(await localGraphBrowser\.capabilities\.get\('viewport'\)\)\.documentation\(\)\);|"
@@ -165,7 +161,6 @@ LOCAL_GRAPH_REVIEW_SCREENSHOT = re.compile(
 )
 
 
-# Verify only the known guide edge-list example without revealing clipboard data.
 LOCAL_GRAPH_GUIDE_COPY_CHECK = re.compile(
     r'\s*nodeRepl\.write\(\(await localGraphTab\.clipboard\.readText\(\)\) === '
     r'"4 4\\n1 2\\n2 3\\n2 4\\n3 4"\);\s*'
@@ -198,18 +193,13 @@ LOCAL_SAFARI_RUN = re.compile(r"\s*(?:/usr/bin/)?python3\s+tests/browser/safari-
 
 
 def should_block(tool_name: str, tool_input: Any) -> bool:
-    """Return True for Issue access outside permitted read-only browsing."""
 
     name = tool_name.casefold()
     payload = _compact_json(tool_input)
 
-    # The web tool only reads public pages and cannot mutate an Issue.
     if name in ("web__run", "web.run"):
         return False
 
-    # Restrict the entire computer-use surface while this policy applies.
-    # Otherwise a later call could mutate an already-open Issue without
-    # repeating its URL in the tool input.
     if name == "mcp__cua_repl__js":
         code = tool_input.get("code", "") if isinstance(tool_input, dict) else ""
         return not (
@@ -235,16 +225,11 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
             or GSC_SITEMAP_READ.fullmatch(code)
         )
 
-    # Dedicated GitHub Issue tools are unambiguous. This covers MCP tools such
-    # as mcp__github__issue_read and future connector naming variants.
     if "github" in name and "issue" in name:
         return True
 
     if name in ("bash", "exec_command", "functions__exec_command"):
         command = _command_from(tool_input)
-        # The reviewed Safari runner enforces the local origin and paths itself.
-        # Do not allow command prefixes, arguments or chained shell actions to
-        # turn this exception into arbitrary browser automation.
         if re.search(r"(?:^|\s)(?:/usr/bin/)?python3\s+tests/browser/safari-workflow\.py", command):
             return not bool(LOCAL_SAFARI_RUN.fullmatch(command))
         if GH_ISSUE_COMMAND.search(command) or GITHUB_ISSUE_URL.search(command):
@@ -255,12 +240,9 @@ def should_block(tool_name: str, tool_input: Any) -> bool:
             return True
         return False
 
-    # Generic GitHub API/GraphQL tools often put the operation in their JSON
-    # arguments instead of their tool name.
     if "github" in name and ISSUE_API_SIGNAL.search(payload):
         return True
 
-    # Interactive browser/computer-use tools can also write to Issues.
     if any(marker in name for marker in ("browser", "chrome", "computer")):
         return bool(GITHUB_ISSUE_URL.search(payload))
 
@@ -377,7 +359,6 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "await localGraphTab.clipboard.writeText('arbitrary text');"}),
         ("mcp__cua_repl__js", {"code": "nodeRepl.write((await issueTab.clipboard.readText()) === 'text');"}),
     ])
-    # Guide verification stays on the approved origins and exact route paths.
     for route in ("/guide", "/en/guide", "/zh-hans/guide"):
         for port in (3323, 3324):
             url = f"http://127.0.0.1:{port}{route}"
@@ -412,8 +393,6 @@ def self_test() -> None:
         ("mcp__cua_repl__js", {"code": "localGraphTab = await cua.getTab({ url: 'http://127.0.0.1:3324/' }, { browser: 'iab' }); await issueTab.click(1);"}),
     ])
 
-    # User-authorized article pages and isolated example editors remain exact:
-    # no arbitrary article slug, fragment, query parameter or extra navigation.
     def article_browser_calls(url: str) -> list[tuple[str, dict[str, str]]]:
         return [
             ("mcp__cua_repl__js", {"code": f"let localGraphTab = await cua.createBrowserTab('iab', '{url}', {{ visible: true }});"}),

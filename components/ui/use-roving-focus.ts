@@ -1,10 +1,5 @@
 import type { KeyboardEvent } from "react";
 
-/**
- * Arrow-key navigation for radio-style groups (WAI-ARIA "roving tabindex").
- * Attach the returned handler to the group; give the selected item
- * tabIndex 0 and the rest -1 so the group is one tab stop.
- */
 export function rovingFocusKeyDown(
   event: KeyboardEvent<HTMLElement>,
   itemSelector = "[role='radio']",

@@ -59,10 +59,6 @@ export function syncCytoscapeElements(
     return false;
   });
   if (removed.length > 0) {
-    // Capture surviving siblings before removal. Expanding once
-    // per endpoint pair avoids repeating the same incident-edge scan for every
-    // deleted parallel edge.
-    // If every old edge disappears, only newly added edges will need geometry.
     if (hasSurvivingEdges) {
       const pairs = new Map<string, Set<string>>();
       const representatives = removed
@@ -87,8 +83,7 @@ export function syncCytoscapeElements(
       );
     }
     result.removed = removed.length;
-    // Keep the established removal order: Cytoscape swaps the core pool's last
-    // entry into each deleted slot, which also determines overlay focus order.
+
     removed.forEach((element) => {
       element.remove();
     });

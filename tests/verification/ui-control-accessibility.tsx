@@ -36,8 +36,6 @@ function referencedText(markup: string, id: string | undefined) {
   return element[2]!.replace(/<[^>]*>/g, "");
 }
 
-// Both PNG controls have numeric presets. Their names must still identify the
-// setting and its unit when reached directly in a screen reader's button list.
 const sliders = renderToStaticMarkup(
   <>
     <Slider

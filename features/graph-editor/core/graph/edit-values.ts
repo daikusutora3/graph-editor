@@ -10,7 +10,6 @@ export function normalizeEdgeLabelInput(value: string) {
   return label === "" ? undefined : label;
 }
 
-/** Validation failures are codes; the UI resolves them through i18n. */
 export type InlineEditErrorCode = "invalid-number" | "invalid-graph";
 
 export function normalizeEdgeWeightInput(

@@ -77,8 +77,7 @@ export async function benchmarkWorkerCancellation({
         undefined,
         controller.signal,
       );
-      // Instrument the actual Rust ABI entry, not a timer that might abort
-      // before the Worker initializes or begins its synchronous calculation.
+
       await bounded(started, "1000-node Rust kernel entry");
       const kernelStartMs = performance.now() - submitted;
       const cancelAt = performance.now();

@@ -75,8 +75,6 @@ export function useGraphCanvasModeEffects({
       return;
     }
 
-    // Cytoscape dirties node and connected-edge styles even when removeClass
-    // is called on nodes without the class. Only touch the actual draft source.
     cy.nodes(".edge-source").removeClass("edge-source");
 
     if (edgeDraft.sourceNodeId) {

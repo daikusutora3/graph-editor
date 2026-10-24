@@ -55,7 +55,6 @@ export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
     return false;
   }
 
-  // Work in rendered px from Cytoscape's own size cache; no DOM layout read.
   const rect = { width: cy.width(), height: cy.height() };
   const insets = graphViewportInsets(rect, chrome);
   const visibleBounds = {
@@ -238,8 +237,6 @@ export function nextAnimationFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-/** Solid export backgrounds. Shared with the PNG panel preview so what the
- * user sees is exactly what gets written to the file. */
 export const EXPORT_BACKGROUND_COLORS = {
   black: "#000000",
   white: "#ffffff",
@@ -255,7 +252,6 @@ export function readExportBackground(
   return EXPORT_BACKGROUND_COLORS[background];
 }
 
-/** Error codes thrown by image export; the UI maps them to i18n text. */
 export const IMAGE_EXPORT_ERROR = {
   emptyGraph: "image-export:empty-graph",
   failed: "image-export:failed",

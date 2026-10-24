@@ -34,8 +34,7 @@ type EditorPanelShellProps = {
 
 function firstFocusable(root: HTMLElement | null) {
   const elements = tabbableElements(root);
-  // Prefer the first control after the close button so keyboard users land
-  // on the panel's own content.
+
   return (
     elements.find((element) => element.dataset.panelClose !== "true") ??
     elements[0] ??
@@ -151,8 +150,6 @@ export function EditorPanelShell({
         ? document.activeElement
         : null;
     const focusTimeout = window.setTimeout(() => {
-      // A user may start typing before this delayed initial focus runs.
-      // Preserve any control they have already focused inside the panel.
       if (
         document.activeElement !== section &&
         section?.contains(document.activeElement)
@@ -198,8 +195,6 @@ export function EditorPanelShell({
       onClose();
     };
 
-    // Capture canvas interactions even when their handlers stop propagation.
-    // Leave the current trigger's open/close behavior to its own handler.
     document.addEventListener("pointerdown", onPointerDown, true);
 
     return () =>
@@ -325,8 +320,6 @@ export function EditorPanelShell({
           </div>
           <div
             className={cn(
-              // Children keep their natural height; long content scrolls instead of
-              // squeezing controls above it.
               scrollOwner === "body"
                 ? "ge-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-4 pt-3.5 [&>*]:shrink-0"
                 : "flex min-h-0 flex-1 flex-col overflow-hidden",

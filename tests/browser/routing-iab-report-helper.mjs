@@ -1,4 +1,3 @@
-// Filesystem-only artifact helper. No browser access or hidden application-state reads.
 import * as fs from "node:fs/promises";
 import { createHash } from "node:crypto";
 const root = "/tmp/graph-editor-routing-comparison/iab";
@@ -110,8 +109,7 @@ async function persist(phase, report) {
   );
   return report;
 }
-// Pass native JPEG bytes and only DOM-derived state. UI snapshot text can be saved
-// separately as strings, so the gallery stays compact. This method merges entries.
+
 export async function saveScene({
   id,
   jpeg,

@@ -82,8 +82,6 @@ try {
     "The pinned caller should pass verification.",
   );
 
-  // Git hooks run outside the launcher's child PATH. Test that each hook can
-  // select the repository-local Bun when no Bun is available on its own PATH.
   const nodeBinary = spawnSync("node", ["-p", "process.execPath"], {
     encoding: "utf8",
   }).stdout.trim();

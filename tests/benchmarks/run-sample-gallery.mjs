@@ -5,8 +5,6 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-// --gallery-source compares a saved original without replacing the checkout.
-// Counts and Profiler instrumentation are confined to this temporary build.
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const temporary = mkdtempSync(join(tmpdir(), "graph-editor-gallery-"));
 const sourceIndex = process.argv.indexOf("--gallery-source");

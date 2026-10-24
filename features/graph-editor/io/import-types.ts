@@ -24,10 +24,6 @@ export type ImportFormatKind =
   | "adjacency-matrix"
   | "json";
 
-/**
- * Import warnings are structured so the UI can translate them; the English
- * rendering lives in i18n/import-warning-messages.ts.
- */
 export type ImportWarning =
   | { code: "empty-input" }
   | {

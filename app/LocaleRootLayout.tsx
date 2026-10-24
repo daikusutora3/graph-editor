@@ -37,9 +37,7 @@ export function LocaleRootLayout({
   return (
     <html lang={locale} data-locale={locale} suppressHydrationWarning>
       <head>
-        {/* Plain inline script: runs before first paint and is hashed into
-            the CSP at build time (next/script would re-inject it at runtime
-            as an un-hashed inline script). */}
+        {}
         <script
           id="app-init"
           dangerouslySetInnerHTML={{ __html: themeInitScript }}

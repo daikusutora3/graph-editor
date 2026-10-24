@@ -65,8 +65,6 @@ export function edgeControlPathInBox(
   >,
   viewport: RangeSelectionViewport = { zoom: 1, pan: { x: 0, y: 0 } },
 ) {
-  // Most edges are outside a small selection box. Reject their endpoints
-  // before asking Cytoscape for control points or allocating point arrays.
   const source = edge.renderedSourceEndpoint();
   if (isRenderedPoint(source) && !pointInBox(box, source)) return false;
   const target = edge.renderedTargetEndpoint();
@@ -77,8 +75,7 @@ export function edgeControlPathInBox(
       if (isRenderedPoint(point) && !pointInBox(box, point)) return false;
     }
   }
-  // Non-finite points were ignored by the previous containment check. An
-  // edge with no finite points still satisfies that vacuous check.
+
   return true;
 }
 
@@ -89,11 +86,7 @@ function readRenderedEdgePoints(
 ) {
   try {
     const points = edge[method]();
-    // Cytoscape's rendered plural getters call .map even when their model
-    // getter returns undefined (e.g. segmentPoints on a bezier edge). Guard
-    // that case, then retain its exact coordinate transformation before
-    // filtering finite points. A malformed point still invalidates the whole
-    // getter, and sparse arrays keep their holes, just as in the original.
+
     return Array.isArray(points)
       ? points.map((point) => ({
           x: point.x * viewport.zoom + viewport.pan.x,

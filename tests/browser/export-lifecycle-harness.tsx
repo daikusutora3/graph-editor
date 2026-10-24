@@ -199,7 +199,6 @@ export async function verifyExportLifecycle() {
       count < 2000 && output()?.getAttribute("aria-busy") === "true";
       count += 1
     )
-      // Each frame must settle React before advancing the same generator again.
       // oxlint-disable-next-line no-await-in-loop
       await frame();
     assert(

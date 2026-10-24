@@ -45,16 +45,20 @@ Controlled fields are emptied with native Select All and Backspace so their
 React input handlers observe the edit.
 
 The responsive-text stage constrains the editor to exact CSS boxes inside the
-Safari window: 320×390 with 16px root text, and 320×900 or 1280×900 with 24px
-root text. It measures toolbar bounds, text containment, rendered node sizes,
+Safari window: 320×390 with 16px root text, and 320×900, 768×900, or 1280×900
+with 24px root text (24 cases). It measures toolbar bounds, text containment, rendered node sizes,
 native keyboard creation, hitbox alignment, and node/chrome overlap in all
 three locales and both themes. It also fits the graph back inside the measured
-toolbar bounds and checks that the first start card remains visible. The
+toolbar bounds and checks that the first start card remains visible. Each top
+panel must contain its controls on a single row. Narrow panels hide text labels
+and key hints without adding ellipses. The
 range-menu suite moves the real pointer onto a tooltip, waits there, and checks
 Escape dismissal and description cleanup. The browser viewport and constrained editor
 box are recorded separately. A further 320×390 enlarged-text creation guard
-is tested only if its action is visible and unobscured; skipped coverage is
-reported explicitly. This simulates a smaller editor and larger text, rather
+is tested only if its action is visible and unobscured. If the shorter toolbar
+leaves enough room to add a node, the rendered node must avoid the chrome and
+the test undoes the addition; that case does not claim guard coverage. Skipped coverage is
+reported explicitly. Each responsive case uses a fresh isolated session. This simulates a smaller editor and larger text, rather
 than a physical mobile viewport or a changed system accessibility setting.
 
 Results and screenshots are saved under `/tmp/graph-editor-safari-review`.
@@ -106,6 +110,15 @@ multi-selection variants, so that nudge uses the existing DOM KeyboardEvent
 fallback and records the limitation. It is not evidence of native delivery of
 that key combination. Earlier failed artifacts remain diagnostic history;
 use the matching completed-run results for the current verification status.
+
+The later top-toolbar update adds six responsive cases (78 planned cases in
+total). Its Safari rerun passed the first three Japanese/light cases, including
+24px root text at 320px and 768px widths, before SafariDriver timed out. Session
+closure then timed out, and Safari refused a new isolated session because it
+was still paired with the earlier one. This rerun is incomplete; the earlier
+72-case result does not verify the later toolbar update. The runner now also
+catches Python 3.9 socket timeouts without replaying mutation commands. Local
+in-app browser screenshots provide separate visual evidence for the toolbar.
 
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 

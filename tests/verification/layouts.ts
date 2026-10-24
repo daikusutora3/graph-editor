@@ -281,9 +281,6 @@ expect(
   "bipartite layout should keep each side in natural node order",
 );
 
-// Long horizontal pills retain their fixed height. Vertical boundary pairs,
-// and pairs that become separated as the shared scale grows, must keep the
-// exact original clearance result and leave the caller's positions untouched.
 const clearancePositions = {
   a: { x: 0, y: 0 },
   b: { x: 0, y: 104 },

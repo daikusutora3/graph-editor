@@ -1,9 +1,5 @@
 import type { EdgeId, NodeId } from "../graph/model";
 
-/**
- * View-level types shared by the shell, the canvas and the Cytoscape adapter.
- * They live in core so the adapter never has to import from layers above it.
- */
 export type EditorLayout = "desktop" | "compact" | "mobile";
 
 export type SelectionState = {
@@ -21,7 +17,7 @@ export type EdgeDraftMessageCode =
 
 export type EdgeDraft = {
   sourceNodeId: NodeId | null;
-  /** Outcome of the last edge-mode action; only the kind is consumed. */
+
   message?: {
     kind: "info" | "success" | "error";
     code: EdgeDraftMessageCode;
@@ -43,6 +39,6 @@ export type GraphCanvasExportOptions = {
   maxWidth?: number;
   maxHeight?: number;
   includeSelection: boolean;
-  /** Preview cancellation; explicit copy/save exports omit this signal. */
+
   signal?: AbortSignal;
 };

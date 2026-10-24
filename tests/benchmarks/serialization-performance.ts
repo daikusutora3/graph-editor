@@ -10,9 +10,6 @@ import * as currentTransaction from "../../features/graph-editor/core/graph/grap
 import * as currentPatch from "../../features/graph-editor/core/graph/graph-patch";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
-// An untouched checkout/archive provides the reference. Both versions run in
-// this same Bun process, alternating first/second order. Run without other CPU
-// benchmarks/builds. Includes JSON encoding and contract checks; no browser I/O.
 const root = argument("--reference-root");
 if (!root) throw new Error("Pass --reference-root <unchanged source tree>");
 const loadReference = (file: string) =>

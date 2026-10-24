@@ -23,8 +23,6 @@ expect(
 );
 await initializeRustKernelFromBytes(readFileSync(`public${RUST_KERNEL_URL}`));
 
-// Frozen dense reader before the Rust change. This independently checks
-// Number parsing, lower-triangle comparisons, exact counts and row-major order.
 function reference(input: string): NumericImportMatrix | null {
   const rows = readLines(input).map((line) => splitTokens(line.text));
   const size = rows.length;
@@ -247,7 +245,6 @@ expect(
   "embedded row newline retains the JS ParsedLine contract",
 );
 
-// Symmetric 10,000 nonzero cells still represent exactly 5,000 allowed edges.
 const allowed = matrix(128, (source, target) => {
   if (source === target) return "0";
   let rank = 0;

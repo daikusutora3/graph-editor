@@ -820,7 +820,6 @@ export function getArticleForGuideExample(
   locale: AppLocale,
   exampleId: GuideExampleId,
 ): ArticleContent | undefined {
-  // The reading article comes first; TikZ shares the edge-list input as well.
   return getArticles(locale).find(
     (article) => article.canonicalGuideExampleId === exampleId,
   );

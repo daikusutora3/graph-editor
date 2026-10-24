@@ -55,8 +55,7 @@ for (const [nodeCount, edgeCount, movedCount] of [
   let compact!: { job: RoutingJob; restored: GraphModel["nodes"] };
   const measure = (isCompact: boolean, round: number) => {
     const start = performance.now();
-    // Both paths prepare the same sampled positions and measured route model.
-    // Browser/Cytoscape position reads are outside this CPU transport benchmark.
+
     const positioned = {
       ...graph,
       nodes: graph.nodes.map((node) =>
@@ -82,7 +81,7 @@ for (const [nodeCount, edgeCount, movedCount] of [
             movedNodeIds,
           },
     };
-    // The existing reply-delta client takes this immutable baseline snapshot.
+
     const snapshot = new Map(previousMeta);
     const prepared = performance.now();
     const transported = structuredClone(job);

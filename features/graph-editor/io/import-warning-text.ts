@@ -13,7 +13,6 @@ const formatNames: Record<ImportFormatKind, string> = {
 
 const count = (value: number) => value.toLocaleString("en-US");
 
-/** English rendering of a warning; also the diagnostic text in analyses. */
 export function describeImportWarning(w: ImportWarning): string {
   const at = "line" in w ? `line ${w.line}: ` : "";
 

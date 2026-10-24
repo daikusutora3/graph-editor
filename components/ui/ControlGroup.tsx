@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 
 import { SectionLabel } from "./Text";
 
-/** A panel section owns its heading and spacing; controls own their names. */
 export function ControlGroup({
   children,
   className,
@@ -30,7 +29,6 @@ export function ControlGroup({
   );
 }
 
-/** Short labels sit beside controls; longer labels keep the full control width. */
 export function ControlRow({
   children,
   className,
@@ -66,7 +64,6 @@ export function ControlRow({
   );
 }
 
-/** Equal-width actions keep their text and touch targets inside narrow panels. */
 export function PanelActions({ children }: { children: ReactNode }) {
   return (
     <div className="grid w-full min-w-0 auto-cols-[minmax(0,1fr)] grid-flow-col gap-2">

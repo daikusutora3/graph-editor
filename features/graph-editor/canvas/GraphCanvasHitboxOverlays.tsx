@@ -79,8 +79,6 @@ export const EdgeNodeHitboxes = memo(function EdgeNodeHitboxes({
             onPointerEnter={() => onPointerEnter(node)}
             onPointerLeave={() => onPointerLeave(node.id)}
             onKeyDown={(event) => {
-              // Let the native button activate without the editor's Enter
-              // shortcut cancelling the click to edit an older selection.
               if (event.key === "Enter" || event.key === " ")
                 event.stopPropagation();
             }}
@@ -118,9 +116,7 @@ type SelectEdgeHitboxesProps = {
   rangeSelectionActive: boolean;
   weighted: boolean;
   onContextMenu: (edge: EdgeLabelHitbox, event: CanvasPointer) => void;
-  /** Drag-to-bend: preview while dragging, commit on release, cancel on
-   * escape/pointer cancel. Read precise zoom when handling the pointer rather
-   * than using the rounded display percentage. */
+
   getZoom: () => number;
   onBendPreview: (edgeId: EdgeId, bend: EdgeBend) => RenderedPoint | null;
   onBendCommit: (edgeId: EdgeId, bend: EdgeBend) => void;
@@ -146,8 +142,6 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
   } | null>(null);
   const suppressClickRef = useRef(false);
 
-  // Activity retains the DOM while hidden, so cancel transient bends at the
-  // same boundary that previously unmounted their pointer capture elements.
   useLayoutEffect(
     () => () => {
       const bend = bendRef.current;
@@ -156,16 +150,12 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
       if (!bend) return;
       try {
         bend.captureElement.releasePointerCapture(bend.pointerId);
-      } catch {
-        // The browser may already have released the pointer.
-      }
+      } catch {}
       if (bend.moved) propsRef.current.onBendCancel(bend.edge.id);
     },
     [],
   );
 
-  // Dispatch through committed props so fresh parent callbacks do not force
-  // thousands of hitboxes to render, and skipped renders never use stale ones.
   const handlers = useMemo<EdgeHitboxHandlers>(
     () => ({
       onPointerDown: (edge, event) => {
@@ -190,10 +180,7 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
         };
         try {
           event.currentTarget.setPointerCapture(event.pointerId);
-        } catch {
-          // Synthetic or already-released pointers cannot be captured; the
-          // drag still works while the pointer stays over the element.
-        }
+        } catch {}
       },
       onPointerMove: (edge, event) => {
         const bend = bendRef.current;
@@ -238,9 +225,7 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
         bendRef.current = null;
         try {
           event.currentTarget.releasePointerCapture(event.pointerId);
-        } catch {
-          // Capture may already be gone.
-        }
+        } catch {}
 
         if (bend.moved && bend.bend !== null) {
           suppressClickRef.current = true;
@@ -290,8 +275,6 @@ export function SelectEdgeHitboxes(props: SelectEdgeHitboxesProps) {
     [],
   );
 
-  // Disable the complete interaction layer at its boundary. Modifier changes
-  // then retain the memoized buttons and SVG paths instead of rerendering them.
   return (
     <div
       className="pointer-events-none absolute inset-0"
@@ -363,8 +346,6 @@ const SelectEdgeHitboxList = memo(function SelectEdgeHitboxList({
   );
 });
 
-// Paths do not depend on selection. Keep their list stable when a label or
-// node is selected so React does not traverse thousands of unchanged paths.
 const SelectEdgePaths = memo(function SelectEdgePaths({
   edges,
   handlers,
@@ -463,9 +444,8 @@ const SelectEdgeLabelButton = memo(function SelectEdgeLabelButton({
 });
 
 export type EdgeBend = {
-  /** Perpendicular control-point offset in graph px (sign = side). */
   bowPx: number;
-  /** Control-point position along the edge, 0 = source, 1 = target. */
+
   bowT: number;
 };
 
@@ -477,7 +457,6 @@ type BendEndpoints = Pick<
 > &
   Partial<Pick<EdgeLabelHitbox, "sourceWidth" | "targetWidth" | "nodeHeight">>;
 
-/** Moves `from` to its pill boundary in the direction of `to`. */
 function boundaryTowards(
   from: Point,
   to: Point,
@@ -495,13 +474,6 @@ function boundaryTowards(
   };
 }
 
-/**
- * Converts a pointer position into a manual bend so the drawn curve passes
- * through the pointer. Cytoscape starts the curve where the line from the
- * control point meets each node's border, so the control point is refined a
- * few times against those border points before being expressed relative to
- * the centre-to-centre chord (which is what the routing data stores).
- */
 export function edgeBendFromRenderedPointer(
   edge: BendEndpoints,
   pointer: RenderedPoint,
@@ -518,7 +490,6 @@ export function edgeBendFromRenderedPointer(
   const height = edge.nodeHeight ?? 0;
 
   if (height > 0) {
-    // Include the border so the refined endpoints sit on the drawn outline.
     const border = 2 * zoom;
 
     for (let step = 0; step < 4; step += 1) {
@@ -540,7 +511,6 @@ export function edgeBendFromRenderedPointer(
     }
   }
 
-  // Distances are stored in graph px; weights are zoom-independent.
   const curve = curveFromControlPoint(source, target, control, {
     limitBow: false,
   });
@@ -576,8 +546,6 @@ export function createEdgeHitboxPath(edge: EdgeLabelHitbox) {
     return createLoopHitboxPath(edge);
   }
 
-  // A coincident ordinary edge has no visible stroke in the canvas or preview.
-  // Keep its model/label entry, without an invented loop-shaped pointer target.
   if (edge.sourceX === edge.targetX && edge.sourceY === edge.targetY) return "";
 
   return edgeCurveSvgPath(
@@ -686,8 +654,7 @@ export function SelectNodeHitboxes(props: SelectNodeHitboxesProps) {
     }),
     [],
   );
-  // The wrapper matches the canvas frame, including the pointer coordinates
-  // used by the edge layer, and inert excludes every descendant from focus.
+
   return (
     <div
       className="pointer-events-none absolute inset-0"

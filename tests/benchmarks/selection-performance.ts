@@ -11,8 +11,6 @@ import {
 import { I18nProvider } from "../../features/graph-editor/i18n/I18nProvider";
 import { messagesByLocale } from "../../features/graph-editor/i18n/messages";
 
-// Reproduce select-all at the supported limits. The previous membership scan
-// stays here as a comparison, including Set construction in the improved path.
 const graph = {
   ...createEmptyGraphModel({ directed: true, allowMultiEdges: true }),
   nodes: Array.from({ length: GRAPH_MAX_NODES }, (_, i) => ({

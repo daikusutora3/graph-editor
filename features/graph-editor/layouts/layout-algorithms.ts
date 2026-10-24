@@ -1,10 +1,6 @@
 import { resolveNodeOverlaps } from "./resolve-node-overlaps";
 import { tryRustForceLayout } from "../compute/wasm-layouts";
 import { stableHypot } from "../compute/numeric";
-/**
- * The layout algorithms themselves. Each takes a GraphModel and returns
- * positions; manual-layouts.ts is the registry that wires them to the UI.
- */
 
 import type { GraphModel, NodeId } from "../core/graph/model";
 import {
@@ -54,7 +50,6 @@ export function layoutForce(model: GraphModel) {
   return step.value;
 }
 
-/** Keeps the deterministic force calculation resumable between input events. */
 export function* createForceLayoutTask(
   model: GraphModel,
 ): Generator<void, Record<NodeId, { x: number; y: number }>> {
@@ -85,8 +80,7 @@ export function* createForceLayoutTask(
     components.forEach((component, index) => {
       for (const nodeId of component) componentByNode.set(nodeId, index);
     });
-    // Classify once in original edge order; repeated per-component filters
-    // otherwise scan every parallel edge even for unrelated components.
+
     for (const edge of validEdges) {
       const index = componentByNode.get(edge[0]);
       if (index !== undefined && index === componentByNode.get(edge[1]))
@@ -398,8 +392,6 @@ export function layoutScc(model: GraphModel) {
     .map((_, index) => index)
     .filter((index) => indegree.get(index) === 0);
 
-  // Every predecessor contributes a maximum rank before a component is ready.
-  // Ready components can therefore be consumed in FIFO order.
   for (let head = 0; head < queue.length; head += 1) {
     const current = queue[head]!;
 
@@ -514,7 +506,6 @@ export function layoutDag(model: GraphModel) {
   const visited = new Set<NodeId>();
   const queue = nodeIds.filter((nodeId) => indegree.get(nodeId) === 0);
 
-  // Maxima over all predecessors are independent of ready-node visit order.
   for (let head = 0; head < queue.length; head += 1) {
     const current = queue[head]!;
     visited.add(current);

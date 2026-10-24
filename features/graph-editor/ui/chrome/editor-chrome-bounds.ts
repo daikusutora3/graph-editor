@@ -7,7 +7,6 @@ export {
   readEditorChromeInsets,
 } from "../../adapters/browser/editor-chrome-insets";
 
-/** Publish measured positions without feeding toolbar height back into itself. */
 export function useEditorChromeBounds(position: "top" | "bottom") {
   const ref = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {

@@ -1,4 +1,3 @@
-/** Search terms can be entered in any order, using either locale's names. */
 export function matchesSampleQuery(query: string, terms: readonly string[]) {
   const normalize = (text: string) =>
     text

@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-/* Mobile density: primary controls grow to at least 44px. The narrow range
- * menu caret is pointer-only and is omitted on touch devices. */
 @custom-variant touch (&:where([data-layout="mobile"] *));
 
 [data-layout="mobile"] {
@@ -9,16 +7,10 @@
   --ge-mobile-controls-bottom: calc(var(--ge-mobile-toolbar-height) + 28px);
 }
 
-/* ---------------------------------------------------------------------------
- * Design tokens
- * One semantic set for the whole app (chrome, panels, canvas). Dark is the
- * default so that unstyled SSR output never flashes white; light overrides it.
- * ------------------------------------------------------------------------- */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* surfaces */
   --bg: #17171a;
   --grid: #26262b;
   --panel: rgb(31 31 35 / 0.94);
@@ -32,14 +24,12 @@
   --focus: #93b4ff;
   --scrim: rgb(0 0 0 / 0.5);
 
-  /* text */
   --text: #f4f4f5;
   --text-2: #d4d4d8;
   --muted: #a1a1aa;
   --faint: #a1a1aa;
   --disabled: #52525b;
 
-  /* actions */
   --primary: #f4f4f5;
   --primary-text: #17171a;
   --accent: #2563eb;
@@ -58,7 +48,6 @@
   --warning: rgb(251 191 36 / 0.16);
   --warning-text: #fcd34d;
 
-  /* canvas */
   --canvas-node: #27272a;
   --canvas-node-border: #e4e4e7;
   --canvas-node-text: #f4f4f5;
@@ -84,7 +73,6 @@
   --canvas-edge-green: #22c55e;
   --canvas-edge-pink: #f43f5e;
 
-  /* typography & canvas metrics */
   --font-ui:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
     Arial, "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "PingFang SC",
@@ -161,9 +149,6 @@
     sans-serif;
 }
 
-/* ---------------------------------------------------------------------------
- * Base
- * ------------------------------------------------------------------------- */
 @layer base {
   * {
     box-sizing: border-box;
@@ -211,20 +196,15 @@
 @theme inline {
   --font-mono: var(--font-mono);
   --font-sans: var(--font-ui);
-  /* Type scale used by controls and metadata (see ui/primitives). */
   --text-control: 0.8125rem;
   --text-control--line-height: 1.25rem;
   --text-meta: 0.6875rem;
   --text-meta--line-height: 1rem;
-  /* Icon sizes inside buttons and rows. */
   --spacing-icon-sm: 15px;
   --spacing-icon-md: 17px;
   --spacing-icon-lg: 18px;
 }
 
-/* ---------------------------------------------------------------------------
- * Brand logo: two raster variants, one per theme
- * ------------------------------------------------------------------------- */
 .ge-brand-light {
   display: none;
 }
@@ -241,9 +221,6 @@
   display: none;
 }
 
-/* ---------------------------------------------------------------------------
- * Surfaces
- * ------------------------------------------------------------------------- */
 .ge-panel {
   border: 1px solid var(--line);
   background: var(--panel);
@@ -269,8 +246,6 @@
   animation: ge-sheet 200ms ease-out both;
 }
 
-/* Modal content needs the available height in landscape and short windows.
- * Its header/footer stay visible while the body or gallery scrolls. */
 @media (max-height: 500px) {
   .ge-modal-panel {
     max-height: calc(100dvh - 24px);
@@ -280,8 +255,6 @@
     height: calc(100dvh - 24px);
   }
 
-  /* The toolbar's aria-label retains the selection description. Give the
-   * graph room above the touch controls in a short mobile viewport. */
   [data-layout="mobile"] .ge-selection-summary {
     display: none;
   }
@@ -347,9 +320,6 @@
   animation: ge-skeleton-breathe 1800ms ease-in-out infinite;
 }
 
-/* ---------------------------------------------------------------------------
- * Tooltip: shared layer positioned within the visible viewport
- * ------------------------------------------------------------------------- */
 .ge-tooltip {
   position: fixed;
   z-index: 120;
@@ -369,9 +339,6 @@
   pointer-events: auto;
 }
 
-/* ---------------------------------------------------------------------------
- * Form controls that need pseudo-elements
- * ------------------------------------------------------------------------- */
 .ge-focus:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -382,7 +349,6 @@
   border-color: var(--danger);
 }
 
-/* Scrollable output reaches the panel edge; keep its full focus outline inside. */
 .ge-focus-inset:focus-visible {
   outline-offset: -2px;
 }
@@ -466,11 +432,6 @@
   height: 24px;
 }
 
-/* ---------------------------------------------------------------------------
- * Canvas overlays: inline label editing & add feedback
- * ------------------------------------------------------------------------- */
-/* Thousands of empty hitboxes update on zoom. Dedicated styles reduce repeated
- * style work, and pixel translation avoids layout caused by position changes. */
 .ge-select-node-hitbox,
 .ge-select-edge-hitbox {
   position: absolute;
@@ -515,7 +476,6 @@
 
 .ge-inline-edit-form {
   --ge-inline-edit-zoom: 1;
-  /* The form carries the input's font so its ch-based width tracks the zoomed text. */
   font-family: var(--canvas-font);
   font-weight: 600;
 }
@@ -549,7 +509,6 @@
 }
 
 .ge-inline-edit-input-node {
-  /* Same box as the rendered node: pill, node fill, 2px border. */
   height: calc(var(--canvas-node-size) * var(--ge-inline-edit-zoom));
   border-radius: 9999px;
   background: var(--ge-edit-bg, var(--canvas-node));
@@ -562,7 +521,6 @@
 }
 
 .ge-inline-edit-input-edge {
-  /* Same chip as the rendered edge label: canvas fill, no border. */
   height: calc(
     (var(--canvas-edge-font) + var(--canvas-label-padding) * 2) *
       var(--ge-inline-edit-zoom)
@@ -591,9 +549,6 @@
   line-height: 1;
 }
 
-/* ---------------------------------------------------------------------------
- * Motion
- * ------------------------------------------------------------------------- */
 @keyframes ge-pop {
   from {
     opacity: 0;
@@ -713,9 +668,6 @@
   }
 }
 
-/* Touch inputs keep a readable size and avoid focus zoom on mobile browsers.
- * A narrow mouse/keyboard window retains each control's regular type scale.
- */
 @media (max-width: 767px) and (pointer: coarse) and (hover: none) {
   [data-editor-panel] input,
   [data-editor-panel] textarea,
@@ -724,7 +676,6 @@
   }
 }
 
-/* Leave room for editing above the keyboard. */
 @media (max-width: 767px) {
   [data-keyboard-open="true"] .ge-paste-grid {
     min-height: 120px;

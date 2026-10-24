@@ -13,7 +13,6 @@ import {
   createEdgeLabelHitboxSnapshot,
 } from "./hitbox-reconciliation";
 
-/** Reuse geometry between frames; changes from routing/style still invalidate it. */
 export function createRenderedHitboxReader(cy: Core) {
   let model: GraphModel | undefined;
   let nodes: NodeHitbox[] = [];
@@ -69,9 +68,7 @@ export function createRenderedHitboxReader(cy: Core) {
           graph.nodes.map((node) => [node.id, node.label]),
         );
         const nextEdges = new Map(graph.edges.map((edge) => [edge.id, edge]));
-        // An immutable command changes the model root even when only one label
-        // changes. Reset geometry only for structural changes; ordinary edits
-        // keep the geometry invalidations supplied by Cytoscape's own events.
+
         full ||=
           nextLabels.size !== labels.size ||
           nextEdges.size !== modelEdges.size ||

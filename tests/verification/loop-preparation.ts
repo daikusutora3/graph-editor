@@ -114,9 +114,6 @@ expect(
 console.log(JSON.stringify({ fixtures, stableFixtures }));
 finish();
 
-/** Fixed hashes were recorded from the saved pre-change source and kernel,
- * then matched against the optimized task. They include every yield's units,
- * ordered metadata, all statuses and the final counter, not only the outcome. */
 function compare(
   graph: ReturnType<typeof fixture>,
   context: string,

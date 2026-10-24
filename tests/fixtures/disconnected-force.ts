@@ -1,7 +1,6 @@
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 
-/** Interleaved reversed parallel edges exercise independent force components. */
 export function disconnectedForceFixture(
   nodeCount: number,
   edgeCount: number,
