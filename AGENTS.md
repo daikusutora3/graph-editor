@@ -66,10 +66,33 @@ example editors, edit the isolated example, reload to check restoration, and
 use the original-editor link. This extends only the in-app browser exception;
 the Safari runner's allowed paths and all other restrictions remain unchanged.
 
+## Safari verification: GitHub Actions dedicated Mac
+
+Run Safari verification on the disposable GitHub-hosted Mac through
+`.github/workflows/safari.yml` by default. This includes the full 78-case matrix
+and the three native-input cases. Use `tests/browser/safari-workflow.py` with
+the approved preview origin and paths below. Safari activation and recovery
+restarts must occur on the hosted Mac so verification does not interrupt the
+user's normal work.
+
+Do not launch, activate, resize, minimize, restore, quit, or restart Safari on
+the user's Mac for routine verification, including exploratory background
+probes. If hosted execution is unavailable or fails, diagnose and repair the
+GitHub Actions run rather than falling back to local Safari. Report the actual
+hosted Safari version and retain results, screenshots, native-input evidence,
+and session/driver cleanup records.
+
+The local exception below applies only when the user explicitly requests a
+local Safari run and authorizes its possible focus interference for that run.
+Earlier permission to automate or restart Safari is not standing permission
+to interrupt the user's work. Routine hosted verification does not require
+another confirmation.
+
 ## Local UI verification exception
 
-Agents may test this application's local preview in the installed Safari using
-Apple's `safaridriver` through `tests/browser/safari-workflow.py`.
+With the run-specific authorization above, agents may test this application's
+local preview in the installed Safari using Apple's `safaridriver` through
+`tests/browser/safari-workflow.py`.
 The approved preview origin for this task is `http://127.0.0.1:3323`;
 only `/`, `/en`, and `/zh-hans` may be navigated to by this test.
 Agents may enter graph test data, operate editor controls, capture screenshots,
