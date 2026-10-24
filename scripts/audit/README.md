@@ -63,10 +63,16 @@ retried, including assertions masked by a cleanup timeout. The runner checks a f
 of its source, runtime helper, and production output before and after every
 stage. A hover check may repeat pointer entry once when a recorded window blur interrupted tooltip display.
 
-Native Safari activation and recovery restarts are disabled by default. Only
-after direct user authorization for that run may the caller create
-`/tmp/graph-editor-safari-review/native-activation-request.json` with the exact
-payload `{"action":"restart-and-activate-safari-for-78-case-review"}`. This file controls
+Native Safari activation, focus restoration, minimize/restore recovery, and
+recovery restarts are disabled by default. Default input and wait operations
+do not recover document focus. Starting a SafariDriver session can still affect
+the desktop; this runner does not guarantee background execution. After the
+user reported interference with normal work, live Safari runs were suspended.
+Earlier restart permission must not be treated as permission to resume
+foreground testing while the user is working. Only after direct user
+authorization for an exclusive foreground run may the caller create
+`/tmp/graph-editor-safari-review/exclusive-foreground-request.json` with the exact
+payload `{"action":"exclusive-foreground-safari-for-78-case-review"}`. This file controls
 the run; its presence does not establish user authorization. The runner consumes
 it once and records `nativeActivationAuthorized`. If WebDriver restoration
 leaves the test document inactive, the fixed `open -a Safari` command activates
@@ -135,7 +141,9 @@ and screenshots are recorded separately; an inactive window does not exempt
 a case from the outline assertion.
 This is an expert review on installed desktop Safari, not a physical-device,
 screen-reader, native-download, or first-time-participant test. Any native
-keyboard limitations and use of DOM keyboard events are recorded per case.
+keyboard limitations are recorded per case. Multi-selection keyboard nudges
+require trusted native keydown and keyup events; there is no DOM KeyboardEvent
+fallback.
 
 The Next.js 16.4.1 update passed 83 verification suites, 27 Rust tests,
 the production build, and release checks; dependency audit returned `{}` and
@@ -184,14 +192,26 @@ and owned driver shutdown. No transport recovery was needed in this final run.
 The runner, runtime helper, and production-output fingerprint is
 `12e8fa48a3ff12f9180deb5e68ea2e60d90ab491429267e2f10e283345824230`. All 21 native persistence probes passed, and all six
 short-feedback cases passed native scrolling and visible final-line checks.
-The current sources also passed 83 verification suites, 37 runner mocks,
+That source also passed 83 verification suites, 37 runner mocks,
 18 restart-helper mocks, the production build, and release checks.
 
-SafariDriver sends U+001F for Shift+ArrowDown in the three multi-selection
-variants, so that nudge uses the existing DOM KeyboardEvent fallback and
-records the limitation. It is not evidence of native delivery of that key
-combination. Only matching completed-run results establish the current
-verification status.
+That completed run used a DOM KeyboardEvent fallback for Shift+ArrowDown in
+three multi-selection variants because SafariDriver's standard Actions mapping
+produced U+001F. It does not establish native delivery of that combination.
+
+The updated runner removes that fallback. A capability probe tries native
+WebDriver inputs and requires ordered, trusted ArrowDown keydown and keyup
+with Shift and no other modifiers. A live probe passed using Actions Shift-down,
+Element Send Keys U+F701, and Actions Shift-up. Safari reported `key: ArrowDown`
+and `code: KeyA` for the character-input route; this verifies native logical
+keyboard input, not physical ArrowDown scancode fidelity. Each real group case
+must record its native events and pass the existing position, persistence, and
+history assertions. The subsequent full run stopped with `no such window`;
+the updated runner has not completed a new 78-case run. The updated sources
+passed 83 verification suites, 42 runner mocks, 18 restart-helper mocks, and
+1,630 policy checks without operating Safari. Live execution remains
+suspended to avoid disrupting the user's work. Only matching completed-run
+results establish the current verification status.
 
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 

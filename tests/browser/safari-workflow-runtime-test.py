@@ -65,8 +65,8 @@ class WorkflowRuntimeTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         output = Path(temporary.name)
         if authorized:
-            (output / "native-activation-request.json").write_text(json.dumps({
-                "action": "restart-and-activate-safari-for-78-case-review",
+            (output / "exclusive-foreground-request.json").write_text(json.dumps({
+                "action": "exclusive-foreground-safari-for-78-case-review",
             }))
         if promo:
             (output / "promo-request.json").write_text(json.dumps({"scenario": "app-introduction"}))
@@ -208,7 +208,7 @@ class WorkflowRuntimeTests(unittest.TestCase):
         self.assertEqual(fixture["calls"]["editor-workflow"], 2)
         self.assertEqual(len(fixture["drivers"]), 2)
         self.assertEqual(fixture["restart"].call_count, 2)
-        self.assertFalse((fixture["output"] / "native-activation-request.json").exists())
+        self.assertFalse((fixture["output"] / "exclusive-foreground-request.json").exists())
         self.assertEqual(len(summary["results"]), 78)
         self.assertEqual(sum(item["stage"] == "design-guidelines" for item in summary["results"]), 12)
         self.assertEqual(len(summary["driverRecoveries"]), 1)
@@ -533,7 +533,7 @@ class WorkflowRuntimeTests(unittest.TestCase):
 
     def test_old_native_gate_payload_is_rejected(self):
         fixture = self.fixture(authorized=True)
-        (fixture["output"] / "native-activation-request.json").write_text(json.dumps({
+        (fixture["output"] / "exclusive-foreground-request.json").write_text(json.dumps({
             "action": "activate-safari-for-78-case-review",
         }))
         with self.assertRaisesRegex(AssertionError, "Only fixed Safari recovery"):
@@ -562,8 +562,28 @@ class WorkflowRuntimeTests(unittest.TestCase):
                         self.assertEqual(events[0], ("/usr/bin/open", "-a", "Safari"))
                         run.assert_called_once()
                     else:
-                        self.assertEqual(events[0], ("GET", "/window"))
+                        self.assertEqual(events, [])
                         run.assert_not_called()
+
+    def test_default_native_input_does_not_restore_or_inspect_focus(self):
+        session = self.pointer_session()
+        with patch.object(workflow, "NATIVE_ACTIVATION_AUTHORIZED", False):
+            self.pointer_action(session, "pointerDown")
+            self.pointer_action(session, "pointerUp")
+            session.command("POST", "/element/node/value", {"text": "a"})
+        session.window_state.assert_not_called()
+        session.focus_window.assert_not_called()
+
+    def test_default_wait_does_not_restore_or_minimize_hidden_window(self):
+        session = self.pointer_session()
+        session.js = Mock(side_effect=[False, False, True])
+        with patch.object(workflow, "NATIVE_ACTIVATION_AUTHORIZED", False), patch.object(
+            workflow.time, "monotonic", side_effect=[0, 0, 0.1, 0.2],
+        ), patch.object(workflow.time, "sleep"):
+            self.assertTrue(session.wait("return ready"))
+        session.window_state.assert_not_called()
+        session.focus_window.assert_not_called()
+        session.request.assert_not_called()
 
     def test_element_lookup_preserves_webdriver_reference_without_async_find(self):
         session = REAL_SESSION.__new__(REAL_SESSION)
@@ -598,6 +618,7 @@ class WorkflowRuntimeTests(unittest.TestCase):
             session = REAL_SESSION()
         self.assertEqual(session.pointer_buttons, set())
 
+    @patch.object(workflow, "NATIVE_ACTIVATION_AUTHORIZED", True)
     def test_held_pointer_continuations_do_not_restore_focus_until_release(self):
         session = self.pointer_session()
         self.pointer_action(session, "pointerDown")
@@ -616,6 +637,7 @@ class WorkflowRuntimeTests(unittest.TestCase):
         session.window_state.assert_called_once()
         session.focus_window.assert_called_once()
 
+    @patch.object(workflow, "NATIVE_ACTIVATION_AUTHORIZED", True)
     def test_release_actions_clears_all_sources_and_resumes_focus_guard(self):
         session = self.pointer_session()
         self.pointer_action(session, "pointerDown", source="first", button=0)
@@ -706,6 +728,62 @@ class WorkflowRuntimeTests(unittest.TestCase):
             self.assertIs(third.exception, error)
             self.assertIs(session.transport_error, error)
             request.assert_called_once_with("GET", "/session/owned-mock-session/url")
+
+
+class NativeShiftTests(unittest.TestCase):
+    def events(self):
+        return [{"type": kind, "key": "ArrowDown", "code": "ArrowDown", "shift": True,
+                 "trusted": True, "ctrl": False, "alt": False, "meta": False}
+                for kind in ("keydown", "keyup")]
+
+    def test_only_trusted_ordered_shifted_arrow_events_are_accepted(self):
+        events = self.events()
+        self.assertTrue(workflow.native_shift_events(events))
+        for key, value in (("trusted", False), ("shift", False), ("ctrl", True), ("alt", True), ("meta", True), ("key", "\u001f")):
+            with self.subTest(key=key):
+                changed = [dict(row) for row in events]
+                changed[0][key] = value
+                self.assertFalse(workflow.native_shift_events(changed))
+        for changed in ([], events[:1], events[::-1], events + [events[0]]):
+            self.assertFalse(workflow.native_shift_events(changed))
+
+    def test_dispatch_uses_only_native_webdriver_endpoints(self):
+        for method in ("actions-function", *workflow.NATIVE_SHIFT_ACTIONS, "send-keys-standard", "send-keys-function"):
+            with self.subTest(method=method):
+                session = Mock(transport_error=None)
+                session.element.return_value = "body"
+                workflow.dispatch_native_shift_down(session, method)
+                self.assertEqual(session.command.call_args.args, ("DELETE", "/actions"))
+                request = session.command.call_args_list[0].args
+                if method == "actions-function":
+                    self.assertEqual(request[:2], ("POST", "/actions"))
+                    self.assertEqual(session.command.call_args_list[1].args, ("POST", "/element/body/value", {"text": "\uf701"}))
+                    self.assertEqual(session.command.call_args_list[2].args[2]["actions"][0]["actions"], [{"type": "keyUp", "value": "\ue008"}])
+                elif method.startswith("actions-"):
+                    self.assertEqual(request[:2], ("POST", "/actions"))
+                else:
+                    self.assertEqual(request[:2], ("POST", "/element/body/value"))
+                    self.assertEqual(request[2], {"text": "\ue000"})
+                    expected = "\ue008" + ("\uf701" if method == "send-keys-function" else "\ue015") + "\ue000"
+                    self.assertEqual(session.command.call_args_list[1].args[2], {"text": expected})
+                session.js.assert_not_called()
+
+    def test_actual_graph_input_rejects_synthetic_events_without_retry(self):
+        for trusted in (False, True):
+            with self.subTest(trusted=trusted):
+                events = self.events()
+                events[0]["trusted"] = trusted
+                session = Mock(transport_error=None)
+                session.js.side_effect = [None, 0, events, None]
+                with patch.object(workflow, "NATIVE_SHIFT_METHOD", "send-keys-function"), patch.object(workflow, "dispatch_native_shift_down") as dispatch:
+                    if trusted:
+                        result = workflow.send_native_shift_down(session)
+                        self.assertEqual(result["events"], events)
+                    else:
+                        with self.assertRaises(AssertionError):
+                            workflow.send_native_shift_down(session)
+                    dispatch.assert_called_once_with(session, "send-keys-function")
+                self.assertEqual(session.js.call_count, 4)
 
 
 if __name__ == "__main__":

@@ -22,6 +22,13 @@ FOCUS_RECOVERIES = []
 STORAGE_PROBES = []
 CASE_RESULTS = {}
 NATIVE_ACTIVATION_AUTHORIZED = False
+NATIVE_SHIFT_METHOD = None
+NATIVE_SHIFT_ACTIONS = {
+    "actions-left": ("\ue008", "\ue015"),
+    "actions-right": ("\ue050", "\ue015"),
+    "actions-numpad-left": ("\ue008", "\ue05b"),
+    "actions-numpad-right": ("\ue050", "\ue05b"),
+}
 EXPECTED_STAGE_CASES = {
     "design-guidelines": 12,
     "editor-workflow": 18,
@@ -117,7 +124,7 @@ class Session:
         self.wait("return document.readyState==='complete'")
 
     def focus_window(self):
-        if self.pointer_buttons:
+        if self.pointer_buttons or not NATIVE_ACTIVATION_AUTHORIZED:
             return
         if NATIVE_ACTIVATION_AUTHORIZED:
             subprocess.run(["/usr/bin/open", "-a", "Safari"], check=True, timeout=10)
@@ -230,7 +237,7 @@ class Session:
                 or path == "/actions" and any(source.get("type") == "key" or source.get("type") == "pointer"
                     and any(action.get("type") in ("pointerDown", "pointerUp") for action in source.get("actions", []))
                     for source in (data or {}).get("actions", [])))
-            if native_input and not self.pointer_buttons:
+            if native_input and not self.pointer_buttons and NATIVE_ACTIVATION_AUTHORIZED:
                 state = self.window_state()
                 if state["visibility"] != "visible" or not state["focused"]:
                     self.focus_window()
@@ -282,7 +289,7 @@ class Session:
             result = self.js(script)
             if result:
                 return result
-            if not refocused and not self.pointer_buttons:
+            if not refocused and not self.pointer_buttons and NATIVE_ACTIVATION_AUTHORIZED:
                 state = self.window_state()
                 if state["visibility"] != "visible" or not state["focused"]:
                     self.focus_window()
@@ -1197,6 +1204,8 @@ def run_responsive_text_review(session, selected_case=None):
 
 
 def run_feedback_preflight(session):
+    run_native_shift_probe(session)
+    session.restart()
     return run_responsive_text_review(session, {"locale": "ja", "theme": "light", "rootFontPx": 24,
                                                "requestedEditorWidth": 320, "requestedEditorHeight": 900})
 
@@ -1889,6 +1898,103 @@ def run_text_weight_review(session):
     print("Safari text weights: import, keyboard edit, text input mode, canvas and reload passed", flush=True)
 
 
+def dispatch_native_shift_down(session, method):
+    if method == "actions-function":
+        body = session.element("body")
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "native-shift-down", "actions": [
+            {"type": "keyDown", "value": "\ue008"}, {"type": "pause", "duration": 100}]}]})
+        try:
+            session.command("POST", f"/element/{body}/value", {"text": "\uf701"})
+        finally:
+            if session.transport_error is None:
+                session.command("POST", "/actions", {"actions": [{"type": "key", "id": "native-shift-down", "actions": [
+                    {"type": "keyUp", "value": "\ue008"}]}]})
+    elif method in NATIVE_SHIFT_ACTIONS:
+        shift, arrow = NATIVE_SHIFT_ACTIONS[method]
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "native-shift-down", "actions": [
+            {"type": "keyDown", "value": shift}, {"type": "pause", "duration": 100},
+            {"type": "keyDown", "value": arrow}, {"type": "pause", "duration": 100},
+            {"type": "keyUp", "value": arrow}, {"type": "keyUp", "value": shift}]}]})
+    else:
+        assert method in ("send-keys-standard", "send-keys-function"), method
+        arrow = "\ue015" if method == "send-keys-standard" else "\uf701"
+        body = session.element("body")
+        session.command("POST", f"/element/{body}/value", {"text": "\ue000"})
+        session.command("POST", f"/element/{body}/value", {"text": "\ue008" + arrow + "\ue000"})
+    session.command("DELETE", "/actions")
+
+
+def native_shift_events(events):
+    downs = [e for e in events if e["type"] == "keydown" and e["key"] == "ArrowDown"]
+    ups = [e for e in events if e["type"] == "keyup" and e["key"] == "ArrowDown"]
+    return (len(downs) == len(ups) == 1 and events.index(downs[0]) < events.index(ups[0])
+            and all(e.get("trusted") and e.get("shift")
+            and not any(e.get(modifier) for modifier in ("ctrl", "alt", "meta")) for e in downs + ups)
+            and all(e.get("trusted") for e in events))
+
+
+def run_native_shift_probe(session):
+    global NATIVE_SHIFT_METHOD
+    NATIVE_SHIFT_METHOD = None
+    report = {"status": "running", "methods": [], "selected": None}
+    path = OUTPUT / "native-shift-probe.json"
+    session.navigate("/en")
+    session.js("localStorage.clear();")
+    session.refresh()
+    session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+    session.focus_window()
+    previous = session.js("""const previous=document.body.getAttribute('tabindex');document.body.tabIndex=-1;
+        document.body.focus();window.__nativeShiftEvents=[];
+        for(const type of ['keydown','keyup'])window.addEventListener(type,event=>window.__nativeShiftEvents.push({
+            type,key:event.key,code:event.code,location:event.location,shift:event.shiftKey,ctrl:event.ctrlKey,
+            alt:event.altKey,meta:event.metaKey,trusted:event.isTrusted}),true);
+        return previous;""")
+    try:
+        for method in ("actions-function", *NATIVE_SHIFT_ACTIONS, "send-keys-function", "send-keys-standard"):
+            session.command("DELETE", "/actions")
+            session.js("document.body.focus();window.__nativeShiftEvents=[];")
+            session.wait("return document.activeElement===document.body;")
+            row = {"method": method}
+            try:
+                dispatch_native_shift_down(session, method)
+            except DriverTimeoutError:
+                raise
+            except RuntimeError as error:
+                row["error"] = str(error)
+                session.command("DELETE", "/actions")
+            row["events"] = session.js("return window.__nativeShiftEvents;")
+            row["accepted"] = not row.get("error") and native_shift_events(row["events"])
+            report["methods"].append(row)
+            if row["accepted"]:
+                NATIVE_SHIFT_METHOD = method
+                report.update({"status": "passed", "selected": method})
+            path.write_text(json.dumps(report, indent=2))
+            if NATIVE_SHIFT_METHOD is not None:
+                print(f"Safari native Shift+ArrowDown: {method}, trusted down/up verified", flush=True)
+                break
+        assert NATIVE_SHIFT_METHOD is not None, report
+    finally:
+        if session.transport_error is None:
+            session.js("if(arguments[0]===null)document.body.removeAttribute('tabindex');else document.body.setAttribute('tabindex',arguments[0]);", previous)
+    return report
+
+
+def send_native_shift_down(session):
+    assert NATIVE_SHIFT_METHOD is not None, "Native Shift+ArrowDown must pass its input probe first"
+    previous = session.js("const previous=document.body.getAttribute('tabindex');document.body.tabIndex=-1;document.body.focus();return previous;")
+    session.wait("return document.activeElement===document.body;")
+    start = session.js("return window.__multiKeys.length;")
+    try:
+        dispatch_native_shift_down(session, NATIVE_SHIFT_METHOD)
+        session.wait("return window.__multiKeys.slice(" + str(start) + ").every(e=>e.settled);")
+        events = session.js("return window.__multiKeys.slice(arguments[0]);", start)
+        assert native_shift_events(events), events
+        return {"method": NATIVE_SHIFT_METHOD, "events": events}
+    finally:
+        if session.transport_error is None:
+            session.js("if(arguments[0]===null)document.body.removeAttribute('tabindex');else document.body.setAttribute('tabindex',arguments[0]);", previous)
+
+
 def run_multi_selection_review(session):
     results = []
     selected_ids = ["a", "b"]
@@ -1927,7 +2033,11 @@ def run_multi_selection_review(session):
             (OUTPUT / "multi-selection-fixture.json").write_text(json.dumps(diagnostic, indent=2))
             (OUTPUT / f"multi-selection-{variant}-fixture.json").write_text(json.dumps(diagnostic, indent=2))
         session.js(RANGE_CY + "cy.zoom(1); cy.pan({x:container.clientWidth/2,y:400});")
-        session.js("window.__multiKeys=[];for(const type of ['keydown','keyup'])window.addEventListener(type,e=>window.__multiKeys.push({type,key:e.key,shift:e.shiftKey,ctrl:e.ctrlKey,meta:e.metaKey,target:e.target.tagName,prevented:e.defaultPrevented}),true);")
+        session.js("""window.__multiKeys=[];for(const type of ['keydown','keyup'])window.addEventListener(type,e=>{
+            const row={type,key:e.key,code:e.code,location:e.location,shift:e.shiftKey,ctrl:e.ctrlKey,
+                alt:e.altKey,meta:e.metaKey,target:e.target.tagName,trusted:e.isTrusted,settled:false};
+            window.__multiKeys.push(row);setTimeout(()=>{row.prevented=e.defaultPrevented;row.settled=true;},0);
+        },true);""")
         baseline = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
         stages = []
         current_stage = "load"
@@ -2059,15 +2169,7 @@ def run_multi_selection_review(session):
             range_key(session, "\ue014")
             after_right = moved(after_drag, 1, 0)
             verify("arrow-right", after_right)
-            session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
-                {"type": "keyDown", "value": RANGE_KEYS["shift"]},
-                {"type": "keyDown", "value": "\ue015"}, {"type": "keyUp", "value": "\ue015"},
-                {"type": "keyUp", "value": RANGE_KEYS["shift"]}]}]})
-            keyboard_limit = None
-            if session.js("const keys=window.__multiKeys.slice(-4);return keys.some(e=>e.type==='keydown'&&e.shift&&e.key==='\\u001f')&&!keys.some(e=>e.type==='keydown'&&e.key==='ArrowDown');"):
-                session.js("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true,cancelable:true}));document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'ArrowDown',code:'ArrowDown',shiftKey:true,bubbles:true}));document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'Shift',code:'ShiftLeft',shiftKey:false,bubbles:true}));")
-                keyboard_limit = "SafariDriver sent U+001F for Shift+ArrowDown; shifted nudge used a DOM KeyboardEvent"
-            session.command("DELETE", "/actions")
+            native_shift_down = send_native_shift_down(session)
             after_down = moved(after_right, 0, 10)
             before_color = verify("shift-arrow-down", after_down)
             current_stage = "palette-green-click"
@@ -2110,7 +2212,7 @@ def run_multi_selection_review(session):
             assert restored["saved"] == after_color, (variant, "reload", restored)
             assert [(n["id"], n["x"], n["y"]) for n in restored["liveNodes"]] == [(n["id"], n["x"], n["y"]) for n in after_color["nodes"]], (variant, "reload", restored)
             stages.append({"stage": "reload", **restored})
-            results.append({"variant": variant, "status": "passed", "stages": stages, "keyboardLimit": keyboard_limit})
+            results.append({"variant": variant, "status": "passed", "stages": stages, "nativeShiftArrowDown": native_shift_down})
             (OUTPUT / "multi-selection-results.json").write_text(json.dumps({"status": "passed" if len(results) == 3 else "in_progress", "results": results}, indent=2))
         except Exception as error:
             failure = {"variant": variant, "stage": current_stage, "error": str(error), "snapshot": snapshot(), "completedStages": stages}
@@ -2652,10 +2754,10 @@ def main():
     OUTPUT.mkdir(exist_ok=True)
     NATIVE_ACTIVATION_AUTHORIZED = False
     promo_request = OUTPUT / "promo-request.json"
-    activation_request = OUTPUT / "native-activation-request.json"
+    activation_request = OUTPUT / "exclusive-foreground-request.json"
     if activation_request.exists():
         assert not sys.argv[1:] and not promo_request.exists(), "Native recovery is restricted to the full 78-case review"
-        assert json.loads(activation_request.read_text()) == {"action": "restart-and-activate-safari-for-78-case-review"}, "Only fixed Safari recovery is allowed"
+        assert json.loads(activation_request.read_text()) == {"action": "exclusive-foreground-safari-for-78-case-review"}, "Only fixed Safari recovery is allowed"
         activation_request.unlink()
         NATIVE_ACTIVATION_AUTHORIZED = True
     driver = None
