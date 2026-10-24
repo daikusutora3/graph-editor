@@ -54,15 +54,15 @@ type ThemeProps = {
 
 /** Every bar in the top row shares this height so they read as one group. */
 const TOP_BAR_HEIGHT = "min-h-[3.375rem] py-1";
+const TOOLBAR_LABEL = "hidden @min-[40rem]/top-toolbar:inline";
 
 const floating =
   "ge-panel pointer-events-auto flex items-center rounded-[14px] backdrop-blur-[16px]";
 
 /**
  * Top row of the desktop chrome. A three-column grid keeps the brand pill,
- * toolbar, and right rail from ever overlapping: the outer columns never
- * shrink below their content, so the toolbar is centered when there is room
- * and simply shifts when there is not.
+ * toolbar, and right rail from overlapping. The toolbar uses the remaining
+ * width and omits labels and key hints before its controls could wrap.
  */
 export function DesktopTopRow({
   onOpenStarter,
@@ -76,12 +76,8 @@ export function DesktopTopRow({
       ref={boundsRef}
       data-editor-chrome-top
       className={cn(
-        "pointer-events-none absolute inset-x-4 top-4 z-[70] grid items-start gap-3",
-        // Symmetric columns keep the toolbar centred when there is room; compact
-        // widths let the toolbar float between the brand pill and the rail.
-        wide
-          ? "grid-cols-[1fr_auto_1fr]"
-          : "grid-cols-[auto_minmax(0,1fr)_auto]",
+        "pointer-events-none absolute inset-x-[16px] top-[16px] z-[70] grid items-start gap-[12px]",
+        "grid-cols-[auto_minmax(0,1fr)_auto]",
       )}
     >
       <BrandPill
@@ -90,7 +86,9 @@ export function DesktopTopRow({
         wide={wide}
         onClick={() => props.onTogglePanel("app")}
       />
-      <DesktopToolbar {...props} wide={wide} />
+      <div className="@container/top-toolbar flex min-w-0 justify-center">
+        <DesktopToolbar {...props} wide={wide} />
+      </div>
       <DesktopRightRail {...props} wide={wide} onOpenStarter={onOpenStarter} />
     </div>
   );
@@ -106,7 +104,7 @@ export function MobileTopRow({
     <div
       ref={boundsRef}
       data-editor-chrome-top
-      className="pointer-events-none absolute inset-x-[12px] top-3 z-[70] flex flex-wrap items-start justify-between gap-3"
+      className="pointer-events-none absolute inset-x-[12px] top-3 z-[70] flex flex-wrap items-start justify-between gap-[12px]"
     >
       <BrandPill
         mobile
@@ -146,7 +144,7 @@ function BrandPill({
         floating,
         focusRing,
         pressFeedback,
-        "gap-2 justify-self-start pr-3 pl-2.5 text-[var(--text)] transition-colors hover:border-[var(--faint)]",
+        "gap-[8px] justify-self-start pr-[12px] pl-[10px] text-[var(--text)] transition-colors hover:border-[var(--faint)]",
         TOP_BAR_HEIGHT,
         open && "border-[var(--accent)]",
       )}
@@ -155,7 +153,10 @@ function BrandPill({
       {wide || mobile ? (
         <span
           translate="no"
-          className="text-sm font-bold whitespace-nowrap @max-[599px]/editor:hidden"
+          className={cn(
+            "text-sm font-bold whitespace-nowrap",
+            wide ? "@max-[76rem]/editor:hidden" : "@max-[599px]/editor:hidden",
+          )}
         >
           {messages.app.title}
         </span>
@@ -187,8 +188,10 @@ function DesktopToolbar({
   const { messages } = useI18n();
   const showRangeMenu = useShortcutPlatform() !== "touch";
   const modeButtonClass = cn(
-    "h-11 min-w-11 text-control",
-    wide ? "gap-2 pr-2.5 pl-3" : "gap-1.5 px-2.5",
+    "h-11 w-[44px] min-w-[44px] px-0 text-control @min-[40rem]/top-toolbar:w-auto touch:px-0",
+    wide
+      ? "@min-[40rem]/top-toolbar:gap-2 @min-[40rem]/top-toolbar:pr-2.5 @min-[40rem]/top-toolbar:pl-3"
+      : "@min-[40rem]/top-toolbar:gap-1.5 @min-[40rem]/top-toolbar:px-2.5",
   );
 
   return (
@@ -199,7 +202,7 @@ function DesktopToolbar({
       className={cn(
         floating,
         TOP_BAR_HEIGHT,
-        "max-w-full flex-wrap gap-0.5 justify-self-center px-1.5 backdrop-blur-[24px]",
+        "max-w-full flex-nowrap gap-[2px] px-[6px] backdrop-blur-[24px] [&_[data-range-selection-trigger]]:w-[24px] [&_[data-range-selection-trigger]_svg]:size-[14px]",
       )}
     >
       {editorModes.map(({ mode: itemMode, keyHint, icon: Icon }) => (
@@ -212,15 +215,21 @@ function DesktopToolbar({
             tooltip={`${messages.toolbar.modes[itemMode].tooltip} (${keyHint})`}
             className={cn(
               modeButtonClass,
-              itemMode === "select" && showRangeMenu && "rounded-r-none pr-1",
+              itemMode === "select" &&
+                showRangeMenu &&
+                "rounded-r-none @min-[40rem]/top-toolbar:pr-1",
             )}
             onClick={() => onModeChange(itemMode)}
           >
             <Icon className="size-4" aria-hidden="true" />
-            <span className={wide ? undefined : "@max-[959px]/editor:hidden"}>
+            <span className={TOOLBAR_LABEL}>
               {messages.toolbar.modes[itemMode].label}
             </span>
-            {wide ? <Kbd>{keyHint}</Kbd> : null}
+            {wide ? (
+              <span className="hidden @min-[48rem]/top-toolbar:inline-flex">
+                <Kbd>{keyHint}</Kbd>
+              </span>
+            ) : null}
           </Button>
           {itemMode === "select" ? (
             <RangeSelectionMenu onOpen={() => onModeChange("select")} />
@@ -229,7 +238,7 @@ function DesktopToolbar({
       ))}
       <Divider />
       <IconButton
-        className="size-11"
+        className="h-11 w-[44px] touch:w-[44px]"
         data-graph-shortcut-target="true"
         disabled={!canUndo}
         label={messages.toolbar.undo.label}
@@ -239,7 +248,7 @@ function DesktopToolbar({
         <Undo2 className="size-4" aria-hidden="true" />
       </IconButton>
       <IconButton
-        className="size-11"
+        className="h-11 w-[44px] touch:w-[44px]"
         data-graph-shortcut-target="true"
         disabled={!canRedo}
         label={messages.toolbar.redo.label}
@@ -260,8 +269,8 @@ function DesktopToolbar({
         onClick={() => onTogglePanel("layouts")}
       >
         <LayoutGrid className="size-4" aria-hidden="true" />
-        {messages.chrome.layouts}
-        <Chevron />
+        <span className={TOOLBAR_LABEL}>{messages.chrome.layouts}</span>
+        <Chevron className={TOOLBAR_LABEL} />
       </Button>
       <Button
         active={panel === "settings"}
@@ -274,8 +283,8 @@ function DesktopToolbar({
         onClick={() => onTogglePanel("settings")}
       >
         <SlidersHorizontal className="size-4" aria-hidden="true" />
-        {messages.chrome.settings}
-        <Chevron />
+        <span className={TOOLBAR_LABEL}>{messages.chrome.settings}</span>
+        <Chevron className={TOOLBAR_LABEL} />
       </Button>
     </div>
   );
@@ -298,7 +307,7 @@ function DesktopRightRail({
       className={cn(
         floating,
         TOP_BAR_HEIGHT,
-        "gap-0.5 justify-self-end px-1.5",
+        "gap-[2px] justify-self-end px-[6px]",
       )}
     >
       <ThemeButton theme={theme} onClick={onToggleTheme} />
@@ -349,7 +358,7 @@ function MobileTopRail({
       className={cn(
         floating,
         TOP_BAR_HEIGHT,
-        "max-w-full flex-wrap gap-0.5 px-1",
+        "max-w-full flex-nowrap gap-[2px] px-[4px]",
       )}
     >
       <ThemeButton theme={theme} iconSize={17} onClick={onToggleTheme} />
@@ -381,14 +390,17 @@ function MobileTopRail({
           active={panel === target}
           aria-expanded={panel === target}
           aria-label={label}
+          tooltip={label}
           data-editor-panel-trigger={target}
           data-graph-shortcut-target="true"
-          className="h-11 min-w-11 flex-col gap-1"
+          className="h-11 min-w-[44px] flex-col gap-1"
           style={{ paddingInline: 6 }}
           onClick={onClick}
         >
           <Icon className="size-4" aria-hidden="true" />
-          <span className="text-meta leading-none">{text}</span>
+          <span className="text-meta leading-none @max-[18rem]/editor:hidden">
+            {text}
+          </span>
         </Button>
       ))}
     </div>
@@ -502,7 +514,7 @@ function ThemeButton({
 
   return (
     <IconButton
-      className="size-11"
+      className="h-11 w-[44px] touch:w-[44px]"
       data-graph-shortcut-target="true"
       label={
         theme === "dark"
@@ -545,13 +557,18 @@ function RailButton({
       tooltip={label}
       tooltipSide="bottom-end"
       className={cn(
-        "h-11 min-w-11 gap-[7px] text-control",
-        wide ? "pr-3 pl-2.5" : "w-11 px-0",
+        "h-11 w-[44px] min-w-[44px] gap-[7px] px-0 text-control touch:px-0",
+        wide &&
+          "@min-[76rem]/editor:w-auto @min-[76rem]/editor:pr-3 @min-[76rem]/editor:pl-2.5",
       )}
       onClick={onClick}
     >
       <Icon className="size-4" aria-hidden="true" />
-      {wide ? (shortLabel ?? label) : null}
+      {wide ? (
+        <span className="hidden @min-[76rem]/editor:inline">
+          {shortLabel ?? label}
+        </span>
+      ) : null}
     </Button>
   );
 }
@@ -603,10 +620,10 @@ function MobileBarButton({
   );
 }
 
-function Chevron() {
+function Chevron({ className }: { className?: string }) {
   return (
     <ChevronDown
-      className="size-[13px] text-[var(--faint)]"
+      className={cn("size-[13px] text-[var(--faint)]", className)}
       aria-hidden="true"
     />
   );
@@ -618,7 +635,7 @@ function Divider({ tall = false }: { tall?: boolean }) {
       aria-hidden="true"
       className={cn(
         "shrink-0 bg-[var(--line)]",
-        tall ? "mx-0.5 h-6 w-px" : "mx-1.5 h-6 w-px",
+        tall ? "mx-0.5 h-6 w-px" : "mx-[4px] h-6 w-px",
       )}
     />
   );
