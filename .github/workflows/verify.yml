@@ -30,6 +30,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
+      - name: Verify public Git identities and repository history
+        run: node scripts/toolchain.mjs run privacy:check:ci
       - name: Install pinned Rust toolchain
         run: |
           python3 - <<'PY'

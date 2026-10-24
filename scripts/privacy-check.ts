@@ -5,6 +5,7 @@ import {
   extractIdentityEmail,
   findPrivacyFindings,
   isAllowedEmail,
+  isPublicCommitEmail,
   isZeroOid,
   normalizePrivacyValues,
   parsePushUpdates,
@@ -12,46 +13,58 @@ import {
 } from "./privacy-check-core";
 
 const MAX_BUFFER = 64 * 1024 * 1024;
-const blockedPatterns = readLocalConfig("privacy.blockedPattern");
-const allowedEmails = readLocalConfig("privacy.allowedEmail");
+let blockedPatterns: string[] = [];
+let allowedEmails: string[] = [];
+let ci = false;
 const findings: PrivacyFinding[] = [];
+const checkedBlobs = new Set<string>();
+const checkedTags = new Set<string>();
 
-if (blockedPatterns.length === 0) {
-  findings.push({
-    source: "repository config",
-    reason: "privacy.blockedPattern is not configured",
-  });
+try {
+  const [mode, ...args] = process.argv.slice(2);
+  ci = mode === "--ci";
+  if (!ci) {
+    blockedPatterns = readLocalConfig("privacy.blockedPattern");
+    allowedEmails = readLocalConfig("privacy.allowedEmail");
+    if (!allowedEmails.length)
+      findings.push({
+        source: "repository config",
+        reason: "privacy.allowedEmail is not configured",
+      });
+  }
+  switch (mode) {
+    case "--staged":
+      checkCurrentIdentity();
+      checkStagedFiles();
+      break;
+    case "--commit-message":
+      checkCurrentIdentity();
+      checkTextFile(args[0], "commit message");
+      break;
+    case "--pre-push":
+      checkPushInput(args[0] ?? "origin");
+      break;
+    case "--range":
+      checkCommitRange(args[0]);
+      break;
+    case "--ci": {
+      const tags = splitLines(
+        git(["for-each-ref", "--format=%(objectname)", "refs/tags"]).stdout,
+      );
+      for (const tag of tags) checkTag(tag);
+      checkCommits(splitLines(git(["rev-list", "HEAD", ...tags]).stdout));
+      break;
+    }
+    default:
+      failUsage();
+  }
+  finish();
+} catch {
+  console.error(
+    "Privacy check could not complete; inspect Git configuration and repository access locally. No private error details were printed.",
+  );
+  process.exit(1);
 }
-
-if (allowedEmails.length === 0) {
-  findings.push({
-    source: "repository config",
-    reason: "privacy.allowedEmail is not configured",
-  });
-}
-
-const [mode, ...modeArguments] = process.argv.slice(2);
-
-switch (mode) {
-  case "--staged":
-    checkCurrentIdentity();
-    checkStagedFiles();
-    break;
-  case "--commit-message":
-    checkCurrentIdentity();
-    checkTextFile(modeArguments[0], "commit message");
-    break;
-  case "--pre-push":
-    checkPushInput(modeArguments[0] ?? "origin");
-    break;
-  case "--range":
-    checkCommitRange(modeArguments[0]);
-    break;
-  default:
-    failUsage();
-}
-
-finish();
 
 function git(arguments_: string[], options?: { allowFailure?: boolean }) {
   const result = spawnSync("git", arguments_, {
@@ -60,10 +73,7 @@ function git(arguments_: string[], options?: { allowFailure?: boolean }) {
   });
 
   if (result.status !== 0 && !options?.allowFailure) {
-    const detail = result.stderr.trim() || result.stdout.trim();
-    throw new Error(
-      `git ${arguments_.join(" ")} failed${detail ? `: ${detail}` : ""}`,
-    );
+    throw new Error("Git command failed");
   }
 
   return result;
@@ -79,6 +89,12 @@ function readLocalConfig(key: string) {
     : [];
 }
 
+function emailAllowed(email: string) {
+  return (
+    isPublicCommitEmail(email) && (ci || isAllowedEmail(email, allowedEmails))
+  );
+}
+
 function checkCurrentIdentity() {
   checkIdentity("author", git(["var", "GIT_AUTHOR_IDENT"]).stdout);
   checkIdentity("committer", git(["var", "GIT_COMMITTER_IDENT"]).stdout);
@@ -90,10 +106,12 @@ function checkIdentity(role: string, identity: string) {
   );
 
   const email = extractIdentityEmail(identity);
-  if (!email || !isAllowedEmail(email, allowedEmails)) {
+  if (!email || !emailAllowed(email)) {
     findings.push({
       source: `${role} identity`,
-      reason: "email is not listed in privacy.allowedEmail",
+      reason: ci
+        ? "email must be a public GitHub noreply identity"
+        : "email must be a public GitHub noreply identity listed in privacy.allowedEmail",
     });
   }
 }
@@ -104,7 +122,10 @@ function checkStagedFiles() {
   );
 
   for (const path of paths) {
-    checkGitBlob(`:${path}`, `staged file ${path}`);
+    findings.push(
+      ...findPrivacyFindings(path, "staged filename", blockedPatterns),
+    );
+    checkGitBlob(`:${path}`, "staged file");
   }
 }
 
@@ -127,6 +148,8 @@ function checkPushInput(remoteName: string) {
     if (isZeroOid(update.localOid)) {
       continue;
     }
+
+    checkTag(update.localOid);
 
     const revisionArguments = isZeroOid(update.remoteOid)
       ? [update.localOid, "--not", `--remotes=${remoteName}`]
@@ -180,36 +203,68 @@ function checkCommits(commits: Iterable<string>) {
     checkCommitEmail(shortCommit, "author", authorEmail);
     checkCommitEmail(shortCommit, "committer", committerEmail);
 
-    const paths = splitNull(
+    const changes = splitNull(
       git([
         "diff-tree",
         "--root",
         "--no-commit-id",
-        "--name-only",
+        "--raw",
         "-r",
         "-z",
-        "--diff-filter=ACMR",
+        "-m",
+        "--no-renames",
+        "--diff-filter=ACMT",
         commit,
       ]).stdout,
     );
-
-    for (const path of paths) {
-      checkGitBlob(`${commit}:${path}`, `commit ${shortCommit} file ${path}`);
+    for (let index = 0; index < changes.length; index += 2) {
+      const header = changes[index].split(" ");
+      const path = changes[index + 1];
+      if (!path || header.length !== 5)
+        throw new Error("Invalid Git change record");
+      const source = `commit ${shortCommit} blob ${header[3]}`;
+      findings.push(
+        ...findPrivacyFindings(path, source + " filename", blockedPatterns),
+      );
+      if (header[1] !== "160000") checkGitBlob(header[3], source);
     }
   }
 }
 
 function checkCommitEmail(commit: string, role: string, email: string) {
-  if (!isAllowedEmail(email, allowedEmails)) {
+  if (!emailAllowed(email)) {
     findings.push({
       source: `commit ${commit} ${role}`,
-      reason: "email is not listed in privacy.allowedEmail",
+      reason: ci
+        ? "email must be a public GitHub noreply identity"
+        : "email must be a public GitHub noreply identity listed in privacy.allowedEmail",
     });
   }
 }
 
+function checkTag(object: string) {
+  if (checkedTags.has(object)) return;
+  checkedTags.add(object);
+  if (git(["cat-file", "-t", object]).stdout.trim() !== "tag") return;
+  const raw = git(["cat-file", "tag", object]).stdout;
+  const source = `tag object ${object.slice(0, 12)}`;
+  findings.push(...findPrivacyFindings(raw, source, blockedPatterns));
+  const header = raw.split("\n\n", 1)[0];
+  const tagger = header.split("\n").find((line) => line.startsWith("tagger "));
+  if (tagger) {
+    const email = extractIdentityEmail(tagger);
+    if (!email || !emailAllowed(email))
+      findings.push({ source, reason: "tagger email is not approved" });
+  }
+  const target = /^object ([a-f0-9]+)$/m.exec(header)?.[1];
+  if (target) checkTag(target);
+}
+
 function checkGitBlob(object: string, source: string) {
-  const result = git(["show", object], { allowFailure: true });
+  const oid = git(["rev-parse", object]).stdout.trim();
+  if (checkedBlobs.has(oid)) return;
+  checkedBlobs.add(oid);
+  const result = git(["cat-file", "blob", oid], { allowFailure: true });
 
   if (result.status !== 0) {
     findings.push({ source, reason: "could not read file content" });
@@ -252,14 +307,16 @@ function finish() {
     console.error(`- ${finding.source}: ${finding.reason}`);
   }
   console.error(
-    "Private values stay in repository-local Git config; update the content or config before retrying.",
+    ci
+      ? "Use public GitHub noreply identities and remove private values locally; do not paste private details into CI logs."
+      : "Private values stay in local Git config. Run bun run privacy:setup --email <GitHub-noreply-address> to configure a safe identity and hooks.",
   );
   process.exit(1);
 }
 
 function failUsage(): never {
   console.error(
-    "Usage: privacy-check.ts --staged | --commit-message <path> | --pre-push <remote> | --range <revision-range>",
+    "Usage: privacy-check.ts --staged | --commit-message <path> | --pre-push <remote> | --range <revision-range> | --ci",
   );
   process.exit(2);
 }

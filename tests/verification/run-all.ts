@@ -197,6 +197,7 @@ const suites = [
   { name: "canvas-lifecycle", path: "tests/verification/canvas-lifecycle.mjs" },
   { name: "canvas-resize", path: "tests/verification/canvas-resize.mjs" },
   { name: "privacy", path: "tests/verification/privacy-check.ts" },
+  { name: "privacy-git", path: "tests/verification/privacy-git.ts" },
   { name: "i18n", path: "tests/verification/i18n-literals.ts" },
   {
     name: "locale-preferences",

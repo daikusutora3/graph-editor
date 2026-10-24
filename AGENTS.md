@@ -117,6 +117,29 @@ Browser verification for this task covers desktop Safari and viewport
 simulations. First-use observation requires a real participant; an agent's
 walkthrough must be described as an expert review.
 
+## Public repository privacy
+
+Use `daikusutora3` as the maintainer's public identifier. Do not publish private
+names, personal email addresses, computer names, absolute home-directory paths,
+or conversation details that identify a person or device in files, filenames,
+commit/tag messages, or public logs. Describe environments generically and use
+repository-relative paths in tracked documentation.
+
+Before committing from a new clone, run `bun run privacy:setup --email
+<GitHub-noreply-address>` with the public noreply address from GitHub settings.
+The setup uses repository-local configuration, enables `.githooks`, and derives
+the public author alias from the noreply address. Never disable the hooks or
+use `--no-verify` to get past a privacy rejection. Diagnose rejected values
+locally without echoing them into public logs or committing them as test cases.
+Additional private aliases belong only in local `privacy.blockedPattern` config.
+
+Both author and committer identities must use approved GitHub noreply addresses.
+Check all outgoing commits and annotated tag metadata, including older commits
+and merge resolutions. CI runs the public history check without private local
+configuration as a second check; it runs after upload and does not replace the
+local commit/push guards. Keep GitHub's email privacy and command-line push
+blocking settings enabled on the account.
+
 ## Enforcement
 
 The project-local Codex `PreToolUse` hook in `.codex/config.toml` rejects known

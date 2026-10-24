@@ -10,8 +10,33 @@ export type PushUpdate = {
   remoteRef: string;
 };
 
-const UNIX_HOME_PATH = /\/(?:Users|home)\/[^/\s`"']+(?:\/|$)/i;
-const WINDOWS_HOME_PATH = /[A-Z]:\\Users\\[^\\\s`"']+(?:\\|$)/i;
+const UNIX_HOME_PATH = /\/(?:Users|home)\/[^/\s`"'<>]+(?:\/|(?=$|[\s`"'<>]))/i;
+const WINDOWS_HOME_PATH =
+  /[A-Z]:\\{1,2}Users\\{1,2}[^\\\s`"'<>]+(?:\\|(?=$|[\s`"'<>]))/i;
+
+export function isPublicCommitEmail(email: string) {
+  return /^(?:[a-z0-9+_.[\]-]+@users\.noreply\.github\.com|noreply@github\.com)$/i.test(
+    email.trim(),
+  );
+}
+
+function containsPrivateEmail(text: string) {
+  const pattern =
+    /[a-z0-9][a-z0-9._%+[\]-]*@[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}/gi;
+  return [...text.matchAll(pattern)].some((match) => {
+    const email = match[0];
+    const domain = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
+    const prefix = text.slice(0, match.index);
+    if (/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>/?#]*$/i.test(prefix)) return false;
+    return (
+      !isPublicCommitEmail(email) &&
+      email.toLowerCase() !== "noreply@anthropic.com" &&
+      !/^(?:example\.(?:com|org|net)|(?:[^.]+\.)*(?:test|example|invalid|localhost))$/i.test(
+        domain,
+      )
+    );
+  });
+}
 
 export function normalizePrivacyValues(values: readonly string[]) {
   const normalized = values
@@ -47,6 +72,10 @@ export function findPrivacyFindings(
       source,
       reason: "contains an absolute home-directory path",
     });
+  }
+
+  if (containsPrivateEmail(text)) {
+    findings.push({ source, reason: "contains a non-public email address" });
   }
 
   return findings;
