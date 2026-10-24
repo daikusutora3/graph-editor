@@ -158,4 +158,23 @@ expect(
   "JSON-escaped Windows paths should be blocked",
 );
 
+expect(
+  findPrivacyFindings("App-menu Up/Down/Home/End move focus", "fixture", [])
+    .length === 0,
+  "keyboard shortcut sequences are not absolute home paths",
+);
+expect(
+  findPrivacyFindings("docs/home/example/file", "fixture", []).length === 0,
+  "relative paths containing a home segment should be allowed",
+);
+
+expect(
+  findPrivacyFindings(
+    "git@github.com:daikusutora3/graph-editor.git",
+    "fixture",
+    [],
+  ).length === 0,
+  "public GitHub SSH remotes should not be mistaken for personal email",
+);
+
 finish();

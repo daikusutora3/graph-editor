@@ -10,7 +10,8 @@ export type PushUpdate = {
   remoteRef: string;
 };
 
-const UNIX_HOME_PATH = /\/(?:Users|home)\/[^/\s`"'<>]+(?:\/|(?=$|[\s`"'<>]))/i;
+const UNIX_HOME_PATH =
+  /(?<![a-z0-9_.-])\/(?:Users|home)\/[^/\s`"'<>]+(?:\/|(?=$|[\s`"'<>]))/i;
 const WINDOWS_HOME_PATH =
   /[A-Z]:\\{1,2}Users\\{1,2}[^\\\s`"'<>]+(?:\\|(?=$|[\s`"'<>]))/i;
 
@@ -27,6 +28,11 @@ function containsPrivateEmail(text: string) {
     const email = match[0];
     const domain = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
     const prefix = text.slice(0, match.index);
+    if (
+      /^git@github[.]com$/i.test(email) &&
+      text.slice(match.index + email.length).startsWith(":")
+    )
+      return false;
     if (/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>/?#]*$/i.test(prefix)) return false;
     return (
       !isPublicCommitEmail(email) &&
