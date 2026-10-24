@@ -4,6 +4,8 @@ import { scoreRustLoopObstacles } from "../../compute/wasm-routing";
 import type { GraphNode, GraphEdge, EdgeId } from "../graph/model";
 import {
   nodeGeometryWidth,
+  nodeGeometryHeight,
+  nodeGeometryClearance,
   NODE_SIZE_PX,
   pillExtentTowards,
 } from "../graph/node-size";
@@ -29,7 +31,7 @@ type LoopPreparation = {
   automaticIndexes: number[];
   fixed: { edge: GraphEdge; index: number }[];
   size: (edge: GraphEdge, index: number) => LoopSize;
-  extent: (halfWidth: number, angle: number) => number;
+  extent: (halfWidth: number, halfHeight: number, angle: number) => number;
 };
 
 /** Scratch geometry belongs to one resumable group, never to the graph. */
@@ -42,11 +44,13 @@ function prepareLoopGroup(
   const indexes = new Map(edges.map((edge, index) => [edge.id, index]));
   const automaticIds = new Set(automatic.map((edge) => edge.id));
   let cachedWidth = NaN;
+  let cachedHeight = NaN;
   const extents = new Map<number, number>();
-  const validateWidth = (halfWidth: number) => {
-    if (halfWidth !== cachedWidth) {
+  const validateWidth = (halfWidth: number, halfHeight: number) => {
+    if (halfWidth !== cachedWidth || halfHeight !== cachedHeight) {
       extents.clear();
       cachedWidth = halfWidth;
+      cachedHeight = halfHeight;
     }
   };
   return {
@@ -61,16 +65,16 @@ function prepareLoopGroup(
       if (!options.work.labelSizes) return edgeLabelSize(edge, options.work);
       return (sizes[index] ??= edgeLabelSize(edge, options.work));
     },
-    extent(halfWidth, angle) {
-      if (halfWidth <= 24) return 24;
+    extent(halfWidth, halfHeight, angle) {
+      if (halfWidth <= halfHeight) return halfHeight;
       // The caller may resume after changing measured source geometry. Exact
       // angle keys retain Math.cos/sin rounding rather than folding by 360°.
-      validateWidth(halfWidth);
+      validateWidth(halfWidth, halfHeight);
       const cached = extents.get(angle);
       if (cached !== undefined) return cached;
       const value = pillExtentTowards(
         halfWidth,
-        24,
+        halfHeight,
         Math.cos(angle),
         Math.sin(angle),
       );
@@ -141,7 +145,7 @@ function* loopObstacleNodes(
   nodes: GraphNode[],
   options: ResolvedEdgeRoutingOptions,
 ) {
-  const radius = options.nodeClearancePx * 1.7;
+  const radius = nodeGeometryClearance(source, options.nodeClearancePx) * 1.7;
   // Every sample lies on this circle. Only nodes within its clearance annulus
   // can contribute a score. Keep floating-point slack for translated drawings
   // where adding the radius to a large coordinate can lose precision.
@@ -149,10 +153,6 @@ function* loopObstacleNodes(
     Number.EPSILON *
     Math.max(1, Math.abs(source.x), Math.abs(source.y), radius) *
     8;
-  const outer = radius + options.nodeClearancePx + slack;
-  const inner = Math.max(0, radius - options.nodeClearancePx - slack);
-  const outerSquared = outer * outer;
-  const innerSquared = inner * inner;
 
   const nearby: GraphNode[] = [];
   for (const [index, node] of nodes.entries()) {
@@ -161,6 +161,11 @@ function* loopObstacleNodes(
     if (node.id === source.id) continue;
     const dx = node.x - source.x;
     const dy = node.y - source.y;
+    const clearance = nodeGeometryClearance(node, options.nodeClearancePx);
+    const outer = radius + clearance + slack;
+    const inner = Math.max(0, radius - clearance - slack);
+    const outerSquared = outer * outer;
+    const innerSquared = inner * inner;
     const squaredDistance = dx * dx + dy * dy;
     if (squaredDistance <= outerSquared && squaredDistance >= innerSquared)
       nearby.push(node);
@@ -220,7 +225,13 @@ function* scoreLoopDirectionTask(
       continue;
     }
     options.work.units++;
-    if (node.x < minX || node.x > maxX || node.y < minY || node.y > maxY)
+    const extra = Math.max(0, (nodeGeometryHeight(node) - NODE_SIZE_PX) / 2);
+    if (
+      node.x + extra < minX ||
+      node.x - extra > maxX ||
+      node.y + extra < minY ||
+      node.y - extra > maxY
+    )
       continue;
 
     let distance = Infinity;
@@ -231,7 +242,10 @@ function* scoreLoopDirectionTask(
         Math.hypot(node.x - point.x, node.y - point.y),
       );
     }
-    const overlap = Math.max(0, options.nodeClearancePx - distance);
+    const overlap = Math.max(
+      0,
+      nodeGeometryClearance(node, options.nodeClearancePx) - distance,
+    );
     score += overlap * overlap;
   }
 
@@ -246,7 +260,7 @@ export function loopSamplePoints(
   // measure from 3 o'clock. Match the renderer before scoring obstacles.
   const direction = ((directionDeg - 90) * Math.PI) / 180;
   const sweep = (options.loopSweepDeg * Math.PI) / 180;
-  const radius = options.nodeClearancePx * 1.7;
+  const radius = nodeGeometryClearance(source, options.nodeClearancePx) * 1.7;
 
   return Array.from({ length: 7 }, (_, index) => {
     const t = index / 6;
@@ -285,7 +299,11 @@ export function* createLoopGroupRoutingTask(
     } else automatic.push(edge);
   }
   if (!automatic.length) return fixed;
-  if (edges.length === 1 && nodeGeometryWidth(source) <= NODE_SIZE_PX) {
+  if (
+    edges.length === 1 &&
+    nodeGeometryWidth(source) <= nodeGeometryHeight(source) &&
+    nodeGeometryHeight(source) === NODE_SIZE_PX
+  ) {
     const direction = provisional
       ? options.loopDirectionDeg
       : yield* createLoopDirectionTask(source, nodes, options);
@@ -318,7 +336,7 @@ export function* createLoopGroupRoutingTask(
       if (
         node.id !== source.id &&
         Math.abs(node.x - source.x) <= 252 + nodeGeometryWidth(node) / 2 + 30 &&
-        Math.abs(node.y - source.y) <= 282
+        Math.abs(node.y - source.y) <= 258 + nodeGeometryHeight(node) / 2
       )
         nearby.push(node);
     }
@@ -468,10 +486,11 @@ function labelTouchesSource(
   point: { x: number; y: number },
   size: { width: number; height: number },
 ) {
-  const a = Math.max(0, nodeGeometryWidth(source) / 2 - NODE_SIZE_PX / 2);
+  const halfHeight = nodeGeometryHeight(source) / 2;
+  const a = Math.max(0, nodeGeometryWidth(source) / 2 - halfHeight);
   const dx = Math.max(0, Math.abs(point.x - source.x) - a - size.width / 2 - 4);
   const dy = Math.max(0, Math.abs(point.y - source.y) - size.height / 2 - 4);
-  return Math.hypot(dx, dy) < NODE_SIZE_PX / 2;
+  return Math.hypot(dx, dy) < halfHeight;
 }
 function* sizeLoopPlacements(
   source: GraphNode,
@@ -524,7 +543,12 @@ function* sizeLoopPlacements(
         ((route.loopDirectionDeg - 90 + (sign * route.loopSweepDeg) / 2) *
           Math.PI) /
         180;
-      step = Math.max(step, (preparation.extent(halfWidth, angle) + 6) / 1.4);
+      step = Math.max(
+        step,
+        (preparation.extent(halfWidth, nodeGeometryHeight(source) / 2, angle) +
+          6) /
+          1.4,
+      );
     }
     route.loopStepSizePx = Number.isFinite(step)
       ? normalizeLoopStepSize(Math.ceil(step))
@@ -620,7 +644,10 @@ function* scoreLoopLayout(
             collisions += rustScores[resultIndex + 2]!;
             continue;
           }
-          const a = Math.max(0, nodeGeometryWidth(node) / 2 - 24);
+          const a = Math.max(
+            0,
+            (nodeGeometryWidth(node) - nodeGeometryHeight(node)) / 2,
+          );
           let distance = Infinity;
           for (const sample of samples) {
             options.work.units++;
@@ -632,7 +659,7 @@ function* scoreLoopLayout(
               ),
             );
           }
-          if (distance < 30) collisions++;
+          if (distance < nodeGeometryClearance(node, 30)) collisions++;
         }
       }
     }
@@ -779,11 +806,19 @@ function nativeLoopSamplePoints(
     c2 = ray(angle + sweep, radius);
   const start = ray(
     angle - sweep,
-    extent(nodeGeometryWidth(source) / 2, angle - sweep),
+    extent(
+      nodeGeometryWidth(source) / 2,
+      nodeGeometryHeight(source) / 2,
+      angle - sweep,
+    ),
   );
   const end = ray(
     angle + sweep,
-    extent(nodeGeometryWidth(source) / 2, angle + sweep),
+    extent(
+      nodeGeometryWidth(source) / 2,
+      nodeGeometryHeight(source) / 2,
+      angle + sweep,
+    ),
   );
   const mid = { x: (c1.x + c2.x) / 2, y: (c1.y + c2.y) / 2 };
   const points: { x: number; y: number }[] = [];

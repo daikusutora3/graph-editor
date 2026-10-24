@@ -1,6 +1,6 @@
 /**
- * Node geometry shared by rendering, routing and layouts. Nodes are 48px tall
- * pills: a circle for short labels, stretched horizontally for longer ones.
+ * Default node geometry shared by rendering, routing and layouts. Browser
+ * measurements supply the displayed size when the root font size changes.
  */
 export const NODE_SIZE_PX = 48;
 export const NODE_FONT_PX = 16;
@@ -77,4 +77,20 @@ export function nodeGeometryWidth(node: {
   measuredWidth?: number;
 }) {
   return node.measuredWidth ?? estimateNodeWidth(node.label);
+}
+
+/** Browser measurements are transient and survive structured cloning to workers. */
+export function nodeGeometryHeight(node: {
+  label: string;
+  measuredHeight?: number;
+}) {
+  return node.measuredHeight ?? NODE_SIZE_PX;
+}
+
+/** Existing clearances include the default 24px radius; preserve their gap. */
+export function nodeGeometryClearance(
+  node: { label: string; measuredHeight?: number },
+  base: number,
+) {
+  return Math.max(0, base + (nodeGeometryHeight(node) - NODE_SIZE_PX) / 2);
 }

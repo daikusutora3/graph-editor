@@ -175,16 +175,21 @@ export function* createCytoscapeRoutingTask(
     previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
   },
 ): Generator<void, Map<EdgeId, EdgeRoutingMeta>> {
-  const positionedModel = graphModelWithCytoscapeNodePositions(cy, model);
+  const positionedModel = withMeasuredNodeGeometry(
+    graphModelWithCytoscapeNodePositions(cy, model),
+  );
   const rerouteEdgeIds = interaction
     ? yield* interactiveRerouteEdgeIdsTask(
         {
           ...positionedModel,
           nodes: [
             ...positionedModel.nodes,
-            ...model.nodes.filter((node) =>
-              interaction.movedNodeIds.has(node.id),
-            ),
+            ...withMeasuredNodeGeometry({
+              ...model,
+              nodes: model.nodes.filter((node) =>
+                interaction.movedNodeIds.has(node.id),
+              ),
+            }).nodes,
           ],
         },
         interaction.previousMeta,
@@ -192,7 +197,7 @@ export function* createCytoscapeRoutingTask(
       )
     : null;
   return yield* createEdgeRoutingTask(
-    withMeasuredNodeGeometry(positionedModel),
+    positionedModel,
     interaction
       ? {
           ...edgeRoutingOptions,

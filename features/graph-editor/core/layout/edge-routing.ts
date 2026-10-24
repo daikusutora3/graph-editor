@@ -34,7 +34,8 @@ import {
 } from "./edge-route-geometry";
 import {
   nodeGeometryWidth,
-  NODE_SIZE_PX,
+  nodeGeometryHeight,
+  nodeGeometryClearance,
   pillExtentTowards,
 } from "../graph/node-size";
 
@@ -228,6 +229,7 @@ function* routingTask(
       nodes: model.nodes.map((node) => ({
         ...node,
         measuredWidth: nodeGeometryWidth(node),
+        measuredHeight: nodeGeometryHeight(node),
       })),
     };
   }
@@ -908,7 +910,9 @@ export function createEdgeRoutingCacheKey(
       node.id,
       node.x,
       node.y,
-      ...(usesNodeWidth ? [nodeGeometryWidth(node)] : []),
+      ...(usesNodeWidth
+        ? [nodeGeometryWidth(node), nodeGeometryHeight(node)]
+        : []),
     ]),
   );
   const edgeSignature = model.edges
@@ -1132,15 +1136,16 @@ export function projectedEdgeObstacles(
       // Wide pills extend further than a circle; measure their reach along
       // and across the edge so the clearance hugs the actual shape.
       const halfWidth = nodeGeometryWidth(node) / 2;
-      const halfHeight = NODE_SIZE_PX / 2;
+      const halfHeight = nodeGeometryHeight(node) / 2;
       const acrossExtra =
         pillExtentTowards(halfWidth, halfHeight, normalX, normalY) - halfHeight;
       const alongExtra =
         pillExtentTowards(halfWidth, halfHeight, unitX, unitY) - halfHeight;
-      const clearancePx = baseClearancePx + acrossExtra;
+      const clearancePx =
+        nodeGeometryClearance(node, baseClearancePx) + acrossExtra;
       const extentWeight = Math.min(
         0.22,
-        (baseClearancePx + alongExtra) / length,
+        (nodeGeometryClearance(node, baseClearancePx) + alongExtra) / length,
       );
 
       return {
@@ -1353,7 +1358,7 @@ function routingDisplayModel(model: GraphModel): GraphModel {
       : model.nodes.map((node) => ({
           ...node,
           label: "",
-          measuredWidth: NODE_SIZE_PX,
+          measuredWidth: nodeGeometryHeight(node),
         })),
     edges: model.edges.map((edge) => ({
       ...edge,

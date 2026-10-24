@@ -35,6 +35,7 @@ const measuredModel = (model) => ({
   nodes: model.nodes.map((node) => ({
     ...node,
     measuredWidth: 60 + node.label.length * 8 + fontVersion,
+    measuredHeight: rootFontSize * 3,
   })),
 });
 mock.module(feature("adapters/browser/node-geometry.ts"), () => ({
@@ -388,7 +389,6 @@ function runFrame() {
   const { hook } = fixture();
   const original = requests[0];
   rootFontSize = 24;
-  fontVersion = 100;
   typographyMutations
     .filter((observer) => !observer.disconnected)
     .forEach((observer) => observer.callback());
@@ -408,8 +408,10 @@ function runFrame() {
   assert.equal(clearedMeasurements, 1);
   assert.equal(
     requests[1].model.nodes[0].measuredWidth,
-    original.model.nodes[0].measuredWidth + 100,
+    original.model.nodes[0].measuredWidth,
   );
+  assert.equal(requests[1].model.nodes[0].measuredHeight, 72);
+  assert.equal(original.model.nodes[0].measuredHeight, 48);
   const previous = requests[1];
   rootFontSize = 20;
   fontVersion = 80;

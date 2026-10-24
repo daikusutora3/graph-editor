@@ -9,6 +9,7 @@ type Kernel = WebAssembly.Exports & {
   memory: WebAssembly.Memory;
   alloc_f64: (length: number) => number;
   free_f64: (pointer: number, length: number) => void;
+  kernel_abi_version: () => number;
   routing_node_shape: (...args: number[]) => void;
   routing_node_collisions: (...args: number[]) => void;
 };
@@ -61,6 +62,7 @@ for (const nodeCount of [150, 1000]) {
     }
     const prepared = backends.map(({ name, kernel }) => {
       const nodePointer = kernel.alloc_f64(nodes.length);
+      const halfHeightsPointer = kernel.alloc_f64(nodeCount);
       const curvePointers = curves.map((curve) =>
         kernel.alloc_f64(curve.length),
       );
@@ -68,13 +70,30 @@ for (const nodeCount of [150, 1000]) {
       new Float64Array(kernel.memory.buffer, nodePointer, nodes.length).set(
         nodes,
       );
+      new Float64Array(
+        kernel.memory.buffer,
+        halfHeightsPointer,
+        nodeCount,
+      ).fill(24);
       for (const [i, curve] of curves.entries())
         new Float64Array(
           kernel.memory.buffer,
           curvePointers[i]!,
           curve.length,
         ).set(curve);
-      return { name, kernel, nodePointer, curvePointers, outputPointer };
+      const nodePointers = [
+        nodePointer,
+        ...(kernel.kernel_abi_version() >= 2 ? [halfHeightsPointer] : []),
+      ];
+      return {
+        name,
+        kernel,
+        nodePointer,
+        halfHeightsPointer,
+        nodePointers,
+        curvePointers,
+        outputPointer,
+      };
     });
     try {
       for (const operation of [
@@ -91,7 +110,7 @@ for (const nodeCount of [150, 1000]) {
             const run = () => {
               for (const curvePointer of backend.curvePointers)
                 backend.kernel[operation](
-                  backend.nodePointer,
+                  ...backend.nodePointers,
                   curvePointer,
                   backend.outputPointer,
                   ...args,
@@ -103,7 +122,7 @@ for (const nodeCount of [150, 1000]) {
             const outputs: number[][] = [];
             for (const curvePointer of backend.curvePointers) {
               backend.kernel[operation](
-                backend.nodePointer,
+                ...backend.nodePointers,
                 curvePointer,
                 backend.outputPointer,
                 ...args,
@@ -153,6 +172,7 @@ for (const nodeCount of [150, 1000]) {
         for (const [i, pointer] of backend.curvePointers.entries())
           backend.kernel.free_f64(pointer, curves[i]!.length);
         backend.kernel.free_f64(backend.nodePointer, nodes.length);
+        backend.kernel.free_f64(backend.halfHeightsPointer, nodeCount);
       }
     }
   }
