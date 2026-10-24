@@ -853,15 +853,18 @@ assert.equal(urls.size, 0);
       }),
     );
     hook.render();
+    const capturedPointers = new Set();
     const event = {
+      type: "pointerdown",
       button: 0,
       pointerId: 9,
       clientX: 10,
       clientY: 20,
       currentTarget: {
-        setPointerCapture() {},
-        releasePointerCapture() {},
-        hasPointerCapture: () => true,
+        setPointerCapture: (pointerId) => capturedPointers.add(pointerId),
+        releasePointerCapture: (pointerId) =>
+          capturedPointers.delete(pointerId),
+        hasPointerCapture: (pointerId) => capturedPointers.has(pointerId),
       },
       preventDefault() {},
     };
@@ -877,7 +880,12 @@ assert.equal(urls.size, 0);
     );
     hook.value.start(event, "__proto__");
     hook.value.update({ ...event, clientX: 46, clientY: 44 });
-    hook.value.finish(event);
+    hook.value.finish({
+      ...event,
+      type: "pointerup",
+      clientX: 46,
+      clientY: 44,
+    });
     const moved = store.get(graphAtom);
     for (const [index, node] of moved.nodes.entries()) {
       const original = graph.nodes[index];
@@ -904,6 +912,78 @@ assert.equal(urls.size, 0);
       moved,
       "Redo preserves moved domain coordinates",
     );
+    for (const moves of [[], [{ clientX: 846, clientY: 444 }]]) {
+      store.set(syncExternalGraphAtom, graph);
+      sync();
+      hook.value.start(event, "__proto__");
+      for (const position of moves)
+        hook.value.update({ ...event, ...position });
+      const release = { ...event, type: "pointerup", clientX: 46, clientY: 44 };
+      listeners.get("pointerup")({ ...release, pointerId: 10 });
+      assert.deepEqual(
+        store.get(graphAtom),
+        graph,
+        "A different pointer cannot commit the active drag",
+      );
+      assert(capturedPointers.has(event.pointerId));
+      listeners.get("pointerup")(release);
+      assert.deepEqual(
+        store.get(graphAtom),
+        moved,
+        "Window pointerup commits its final coordinates even without a move event or after a superseded preview",
+      );
+      assert.equal(capturedPointers.size, 0);
+      for (const type of ["pointerup", "pointercancel", "blur"])
+        assert(
+          !listeners.has(type),
+          `${type} listener is removed after release`,
+        );
+      store.set(undoAtom);
+      sync();
+      assert.deepEqual(store.get(graphAtom), graph);
+      store.set(redoAtom);
+      sync();
+      assert.deepEqual(store.get(graphAtom), moved);
+    }
+    for (const end of ["blur", "pointercancel", "react-pointercancel", "tap"]) {
+      store.set(syncExternalGraphAtom, graph);
+      sync();
+      hook.value.start(event, "__proto__");
+      if (end !== "tap")
+        hook.value.update({ ...event, clientX: 846, clientY: 444 });
+      if (end === "react-pointercancel")
+        hook.value.finish({
+          ...event,
+          type: "pointercancel",
+          clientX: 46,
+          clientY: 44,
+        });
+      else if (end === "tap")
+        listeners.get("pointerup")({
+          ...event,
+          type: "pointerup",
+          clientX: 11,
+          clientY: 21,
+        });
+      else listeners.get(end)({ ...event, type: end });
+      assert.deepEqual(
+        store.get(graphAtom),
+        graph,
+        `${end} preserves the graph`,
+      );
+      for (const node of graph.nodes)
+        assert.deepEqual(
+          toGraphPosition(cy, getCytoscapeElement(cy, node.id).position()),
+          { x: node.x, y: node.y },
+          `${end} restores the domain snapshot without committing terminal coordinates`,
+        );
+      assert.equal(capturedPointers.size, 0);
+      for (const type of ["pointerup", "pointercancel", "blur"])
+        assert(
+          !listeners.has(type),
+          `${type} listener is removed after ${end}`,
+        );
+    }
     hook.unmount();
     cancelScheduledStoredGraphWrite();
     uninstallStorageFlushListeners();

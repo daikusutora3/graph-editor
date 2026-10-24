@@ -339,7 +339,9 @@
   pointer-events: auto;
 }
 
-.ge-focus:focus-visible {
+.ge-focus:focus-visible,
+.ge-focus[role="region"]:focus,
+[data-node-creation-feedback][tabindex="0"]:focus {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
   border-color: var(--control-accent);
@@ -349,7 +351,9 @@
   border-color: var(--danger);
 }
 
-.ge-focus-inset:focus-visible {
+.ge-focus-inset:focus-visible,
+.ge-focus-inset[role="region"]:focus,
+[data-node-creation-feedback][tabindex="0"]:focus {
   outline-offset: -2px;
 }
 
