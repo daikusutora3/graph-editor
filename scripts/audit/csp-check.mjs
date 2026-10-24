@@ -1,5 +1,3 @@
-// Loads the served export and fails on any CSP violation or page error.
-// Usage: bun scripts/audit/serve-out.mjs & bun scripts/audit/csp-check.mjs
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 

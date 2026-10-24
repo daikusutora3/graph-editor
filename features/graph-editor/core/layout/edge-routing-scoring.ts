@@ -16,8 +16,7 @@ import { representativeBow } from "./edge-routing";
 import { edgeLabelSize } from "./edge-routing-shared";
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
 import { EDGE_PAIR_SCORING_WORK_LIMIT } from "./edge-routing";
-/** Candidate-curve scoring for automatic edge routing. Pure functions; the
- * work counter in RoutingWork bounds the total cost per routing pass. */
+
 import type { GraphEdge, GraphNode, EdgeId, NodeId } from "../graph/model";
 import {
   approximateCurveLength,
@@ -28,7 +27,7 @@ import {
 } from "./edge-route-geometry";
 
 export const NODE_CHECK_UNITS = 1;
-/** Bounding-box slack around a candidate curve when pruning obstacles. */
+
 export const PRUNE_MARGIN_PX = 120;
 export const STRAIGHT_CURVE: EdgeCurveGeometry = {
   controlPointDistancesPx: [0],
@@ -140,7 +139,7 @@ export function routeForEdge(
     STRAIGHT_CURVE
   );
 }
-/** Axis-aligned box that contains the curve plus `margin`, for cheap pruning. */
+
 export function curveBounds(
   source: EdgeCurvePoint,
   target: EdgeCurvePoint,
@@ -222,8 +221,7 @@ export function scoreCurveLabelOverlap(
     labels.push({ anchor: otherAnchor, size: otherSize });
   }
   if (labels.length === 0) return 0;
-  // Rust saves midpoint sampling work for multi-control candidates. For simple
-  // curves or many cached anchors, copying labels costs more than JS arithmetic.
+
   const rustScore =
     curve.controlPointWeights.length >= 3 && labels.length <= 64
       ? scoreRustCurveLabelOverlap(curve, source, target, size, labels)

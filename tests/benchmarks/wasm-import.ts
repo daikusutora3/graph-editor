@@ -10,8 +10,6 @@ import {
 import { evaluateGraphInput } from "../../features/graph-editor/io/import-graph";
 import type { ImportOptions } from "../../features/graph-editor/io/import-utils";
 
-// Run without other CPU benchmarks/builds. All three paths include readLines,
-// format detection, matrix parsing, graph creation and settings/warnings.
 const flag = process.argv.indexOf("--baseline-root");
 const root = flag < 0 ? undefined : process.argv[flag + 1];
 if (!root) throw new Error("Provide the saved pre-change --baseline-root");

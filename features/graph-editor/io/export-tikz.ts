@@ -7,7 +7,6 @@ import {
   type EdgeCurvePoint,
 } from "../core/layout/edge-route-geometry";
 
-// Fixed, print-friendly colours independent of the editor's light/dark theme.
 const COLORS: Record<GraphColor, { fill: string; stroke: string }> = {
   paper: { fill: "FFFFFF", stroke: "334155" },
   white: { fill: "FFFFFF", stroke: "334155" },
@@ -36,7 +35,7 @@ function escapeTex(text: string) {
   return (
     text
       .replace(/[\\{}$&#%_~^]/g, (character) => TEX_ESCAPES[character]!)
-      // Control characters have no printable representation in a TeX label.
+
       // oxlint-disable-next-line no-control-regex
       .replace(/[\u0000-\u001f\u007f]+/g, " ")
   );
@@ -54,16 +53,13 @@ function borderAnchor(
 ) {
   const toward =
     control.x === center.x && control.y === center.y ? fallback : control;
-  // Explicit angular anchors also work in previews that resolve bare node
-  // names to their centres instead of TikZ's automatic border intersection.
+
   const angle =
     (Math.atan2(center.y - toward.y, toward.x - center.x) * 180) / Math.PI;
-  // Integer degrees avoid the ambiguous second dot in names such as v0.30.5
-  // for lightweight TikZ parsers (at most half a degree of rounding).
+
   return `(${name}.${(Math.round(angle) + 360) % 360})`;
 }
 
-/** A pasteable picture, also usable as \input{graph.tex} inside a document. */
 export function exportTikz(model: GraphModel): string {
   const task = createTikzExportTask(model);
   let step = task.next();
@@ -71,7 +67,6 @@ export function exportTikz(model: GraphModel): string {
   return step.value;
 }
 
-/** Keeps the exact export output while allowing the UI to yield between steps. */
 export function* createTikzExportTask(
   model: GraphModel,
 ): Generator<void, string> {
@@ -80,8 +75,7 @@ export function* createTikzExportTask(
   const routes = yield* createEdgeRoutingTask(model, {
     mode: model.settings.autoEdgeRouting ? "quality" : "simple",
   });
-  // Normalize translation and bound the drawing to 12 cm on its longest axis.
-  // In particular, large valid model coordinates must not exceed TeX dimensions.
+
   const minX = Math.min(...model.nodes.map((node) => node.x));
   const minY = Math.min(...model.nodes.map((node) => node.y));
   let span = Math.max(
@@ -97,8 +91,7 @@ export function* createTikzExportTask(
     const node = nodesById.get(edge.source);
     const route = routes.get(edge.id);
     if (!node || !route) continue;
-    // TikZ's default loop minimum is10mm (80 model pixels); reserve its
-    // proportional size, and the pill source, before scaling large drawings.
+
     const radius = 2 * normalizeLoopStepSize(route.loopStepSizePx);
     const width = Math.max(radius, estimateNodeWidth(node.label) / 2);
     drawingMinX = Math.min(drawingMinX, node.x - width);
@@ -157,7 +150,6 @@ export function* createTikzExportTask(
       edge.label ?? (model.settings.weighted ? (edge.weight ?? "1") : "");
     const label = text ? ` node[ge label,midway] {${escapeTex(text)}}` : "";
     if (edge.source === edge.target) {
-      // Cytoscape measures clockwise from up; TikZ measures CCW from right.
       const direction = 90 - route.loopDirectionDeg;
       const distanceMm =
         10 * (normalizeLoopStepSize(route.loopStepSizePx) / 40) * (scale * 80);
@@ -182,7 +174,6 @@ export function* createTikzExportTask(
     );
     const path = segments
       .map((segment, index) => {
-        // TikZ uses cubic Beziers; convert the editor's quadratic exactly.
         const control = (end: EdgeCurvePoint) => ({
           x: end.x + (2 / 3) * (segment.control.x - end.x),
           y: end.y + (2 / 3) * (segment.control.y - end.y),

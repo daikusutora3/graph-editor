@@ -17,8 +17,6 @@ const measurementPasses = 10;
 const noOperation = () => {};
 const emptySelection = new Set<string>();
 
-// Measure the real overlay components with deterministic input. This is the
-// CPU cost of producing initial HTML, not browser mounting or frame latency.
 function overlay(nodeCount: number, edgeCount: number) {
   const nodes: NodeHitbox[] = Array.from({ length: nodeCount }, (_, index) => ({
     id: `n${index}`,

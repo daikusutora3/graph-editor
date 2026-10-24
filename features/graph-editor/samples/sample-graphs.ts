@@ -367,7 +367,7 @@ function hypercubePositions(
 
 function octahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
   const x = Math.sqrt(3) / 2;
-  // Outer face and inverted inner face: preserve adjacency without crossings.
+
   return fixedPositions(nodeIds, [
     { x: 0, y: -240 },
     { x: x * 75, y: -37.5 },
@@ -380,7 +380,7 @@ function octahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
 
 function icosahedralPositions(nodeIds: NodeId[]): Record<NodeId, Point> {
   const x = Math.sqrt(3) / 2;
-  // Three concentric rings keep the planar embedding and vertex clearance.
+
   return fixedPositions(nodeIds, [
     { x: 0, y: -320 },
     { x: x * 320, y: 160 },
@@ -2953,11 +2953,9 @@ function maxBalancedBipartiteNodesForEdgeLimit(maxEdges: number) {
 }
 
 function maxCrownGraphNodesForEdgeLimit(maxEdges: number) {
-  // Crown graphs have two equal parts of size k and exactly k(k - 1) edges.
   return 2 * Math.floor((1 + Math.sqrt(1 + 4 * maxEdges)) / 2);
 }
 
-/** Called by the parameter API after it has bounded and normalized the inputs. */
 export function createParameterizedSampleGraph(
   kind: SampleGraphKind,
   values: Readonly<Record<string, number>>,
@@ -3087,7 +3085,6 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-/** A shuffled recursive tree; every new vertex attaches to an earlier vertex. */
 function randomSpanningTree(
   nodeCount: number,
   random: () => number,
@@ -3114,13 +3111,12 @@ function pairAtRank(
   const width = 2 * nodeCount - 1;
   let source = Math.floor((width - Math.sqrt(width * width - 8 * rank)) / 2);
   const prefix = (index: number) => (index * (2 * nodeCount - index - 1)) / 2;
-  // The quadratic inverse can land on either side of a boundary after rounding.
+
   while (prefix(source) > rank) source -= 1;
   while (prefix(source + 1) <= rank) source += 1;
   return [source, source + 1 + rank - prefix(source)];
 }
 
-/** Sample pairs without replacement, including dense graphs without retry loops. */
 function randomSimpleEdges(
   nodeCount: number,
   edgeCount: number,

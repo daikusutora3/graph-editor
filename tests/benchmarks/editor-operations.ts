@@ -10,7 +10,6 @@ import {
   createOverlapTask,
 } from "../../features/graph-editor/layouts/resolve-node-overlaps";
 
-// Deterministic fixtures; report the longest synchronous call, not only averages.
 for (const [name, count, edgeCount, dense, long] of [
   ["small", 20, 30, false, false],
   ["long labels / parallel", 100, 500, false, true],

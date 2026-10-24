@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
 
-/**
- * State that falls back to `idle` after `durationMs` whenever it is set to
- * anything else. Used for armed confirmations and toasts.
- */
 export function useTimedState<T>(idle: T, durationMs: number) {
   const [value, setValue] = useState<T>(idle);
 

@@ -6,8 +6,6 @@ export const APP_NAME = "Graph Editor";
 export const AUTHOR_NAME = "daikusutora";
 export const REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
 
-// Search engines (Google in particular) ignore WebP favicons, so the icons
-// exposed through metadata are PNG plus a multi-size favicon.ico.
 export const APP_ICON = "/brand/graph-editor-logo-512.png";
 export const APP_ICON_192 = "/brand/graph-editor-logo-192.png";
 export const APP_ICON_48 = "/brand/graph-editor-logo-48.png";
@@ -163,7 +161,6 @@ export const APP_PUBLIC_DESCRIPTION = appLocaleMetadata.ja.description;
 export const APP_TITLE = APP_PUBLIC_TITLE;
 export const APP_DESCRIPTION = APP_PUBLIC_DESCRIPTION;
 
-/** Browser chrome colour follows the app theme tokens in globals.css. */
 export const appViewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f9fafb" },
@@ -197,8 +194,7 @@ export const appRootMetadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  // Search engine ownership is verified by dropping the provider's HTML file
-  // into public/ (e.g. public/google1234abcd.html); no tokens or env vars.
+
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [

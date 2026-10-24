@@ -93,7 +93,7 @@ export function StarterPasteBody({
     preview?.status === "failure"
       ? "error"
       : "warning";
-  // Empty input is already announced by the preview pane; keep the header quiet.
+
   const meta =
     inputStatus === "empty"
       ? ""
@@ -348,7 +348,7 @@ export function StarterPasteFooter({
   }[inputStatus];
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  // Switching to samples removes this footer without closing the starter.
+
   useLayoutEffect(() => starter.cancelFileRead, [starter.cancelFileRead]);
 
   return (
@@ -402,8 +402,6 @@ export function StarterSampleBody({
 }: {
   onSampleApplied: () => void;
 }) {
-  // React.lazy retains a rejected request. Keep its identity stable during
-  // ordinary renders and create a new request only for an explicit retry.
   const [attempt, setAttempt] = useState(() => ({
     id: 0,
     Gallery: createSampleGallery(),

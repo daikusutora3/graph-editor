@@ -15,7 +15,6 @@ export const IDLE_FILE_READ_STATE: StarterFileReadState = { status: "idle" };
 
 type GraphInputFile = Pick<File, "size" | "text">;
 
-/** Protect the input from older file reads, edits and closed starter sessions. */
 export function createStarterFileReader({
   getFormat,
   onInput,
@@ -40,9 +39,7 @@ export function createStarterFileReader({
       format === "auto" || format === "json"
         ? GRAPH_MAX_JSON_CHARS
         : GRAPH_MAX_INPUT_CHARS;
-    // File.text() decodes UTF-8. A valid UTF-16 unit can require at most three
-    // UTF-8 bytes; also allow the three-byte BOM that decoding removes.
-    // A byte cap equal to the character cap would reject valid CJK input.
+
     if (file.size > maximumChars * 3 + 3) {
       onState({ status: "failed", reason: "too-large", limit: maximumChars });
       return;

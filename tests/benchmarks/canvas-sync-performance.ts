@@ -14,9 +14,6 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { defaultEdgeRoutingMeta } from "../../features/graph-editor/core/layout/edge-routing";
 import { createCalculationCanvas } from "../fixtures/calculation-canvas";
 
-// Run alone, outside builds and other timings. The optional reference module
-// can be a saved bundle of graph-canvas-elements-sync.ts from before an edit.
-// This measures real Cytoscape geometry and synchronization, without DOM paint.
 const referencePath = argument("--reference");
 const reference: typeof syncCytoscapeElements | undefined = referencePath
   ? (await import(pathToFileURL(referencePath).href)).syncCytoscapeElements

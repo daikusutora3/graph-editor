@@ -17,17 +17,11 @@ import {
 } from "../../shell/state/graph-atoms";
 import { HINT_STORAGE_PREFIX, HINTS_RESET_EVENT } from "./hint-storage";
 
-/** How long the user has to sit still before a hint offers help. */
 const HINT_IDLE_MS = 2500;
 
 type HintId =
   "place-node" | "connect" | "edge-start" | "edge-target" | "select";
 
-/**
- * Quiet guidance pill under the toolbar. Hints stay hidden while the user is
- * acting; one appears only after a pause in a state where the next step is not
- * obvious, and never again once that step has been performed.
- */
 export function CanvasHint({
   mobile,
   visible,
@@ -110,7 +104,6 @@ export function CanvasHint({
   );
 }
 
-/** True once the user has not touched pointer or keyboard for `delayMs`. */
 function useIdle(delayMs: number, enabled: boolean) {
   const [idle, setIdle] = useState(false);
 
@@ -132,9 +125,7 @@ function useIdle(delayMs: number, enabled: boolean) {
     const reset = () => {
       setIdle(false);
       lastActivity = performance.now();
-      // Pointer movement can fire hundreds of times per second. Keep one
-      // timer and check the latest deadline when it wakes instead of
-      // allocating and cancelling a timer for each event.
+
       timeoutId ??= window.setTimeout(checkIdle, delayMs);
     };
     timeoutId = window.setTimeout(checkIdle, delayMs);
@@ -155,10 +146,6 @@ function useIdle(delayMs: number, enabled: boolean) {
   return enabled && idle;
 }
 
-/**
- * A hint is offered while `active`. Once the user performs the step (`done`)
- * after the hint was armed, it is remembered as learned and never shown again.
- */
 function useStuckHint({
   id,
   active,
@@ -201,9 +188,7 @@ function useStuckHint({
       setLearned(true);
       try {
         window.localStorage.setItem(storageKey, "1");
-      } catch {
-        // Remembering the hint is a convenience only.
-      }
+      } catch {}
     }
   }, [active, done, learned, storageKey]);
 

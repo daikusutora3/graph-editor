@@ -31,7 +31,7 @@ export const GRAPH_EXPORT_FORMATS: Array<{
     extension: "txt",
     mimeType: "text/plain;charset=utf-8",
   },
-  // Lossless: keeps positions, colours and manual bends.
+
   {
     value: "json",
 
@@ -57,7 +57,6 @@ export function exportGraph(
   return text;
 }
 
-/** Same format restrictions as exportGraph, with resumable TikZ routing. */
 export function* createGraphExportTask(
   model: GraphModel,
   format: GraphExportFormat,
@@ -174,8 +173,7 @@ function exportAdjacencyMatrix(model: GraphModel): string {
   const orderIndex = new Map(
     entries.map((entry, index) => [entry.node.id, index]),
   );
-  // Preserve the original direct writes for dense graphs. Here the number of
-  // allocated cells is less than twice the edge count, so it stays bounded.
+
   if (entries.length ** 2 < model.edges.length * 2)
     return exportDenseAdjacencyMatrix(model, orderIndex, entries.length);
   const rows = Array.from(
@@ -208,7 +206,7 @@ function exportAdjacencyMatrix(model: GraphModel): string {
       if (row.size === 0) return emptyRow;
       let cursor = 0;
       let text = "";
-      // The output is dense, but only existing edges need cell objects.
+
       for (const [column, value] of [...row].sort(([a], [b]) => a - b)) {
         text += "0 ".repeat(column - cursor) + value;
         cursor = column + 1;
@@ -273,7 +271,7 @@ export function graphExportProblem(
       )
     )
       return "matrix-weight";
-    // Includes delimiters before allocating a quadratic matrix.
+
     let size = Math.max(0, 2 * model.nodes.length ** 2 - 1);
     if (model.settings.weighted)
       for (const edge of model.edges)

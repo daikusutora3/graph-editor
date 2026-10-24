@@ -9,7 +9,6 @@ export function applyGraphPatch(
   return prepareGraphPatch(model, patch).after;
 }
 
-/** Validates the restored model once and retains its JSON for the save queue. */
 export function prepareGraphPatch(model: GraphModel, patch: GraphPatch) {
   const next: GraphModel = {
     ...model,
@@ -57,8 +56,6 @@ export function diffGraphModels(
 }
 
 function diffElements<T extends { id: string }>(before: T[], after: T[]) {
-  // Reducers preserve each untouched collection, so a node edit need not walk
-  // every edge twice to prepare its forward and backward history patches.
   if (before === after) return undefined;
   const beforeById = new Map(before.map((item) => [item.id, item]));
   const afterById = new Map(after.map((item) => [item.id, item]));

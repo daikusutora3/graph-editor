@@ -126,8 +126,7 @@ function fakeEdge(
     if (example.throwSegments) throw new Error("unavailable geometry");
     return example.segments;
   };
-  // Match the installed Cytoscape rendered plural getter, including its
-  // coercion, undefined-array throws, sparse map and malformed-point throws.
+
   const render = (points: unknown[] | undefined) =>
     points!.map((value) => {
       const valuePoint = value as { x: number; y: number };
@@ -181,8 +180,6 @@ for (const viewport of [
       );
 assert.equal(edgeControlPathInBox(smallBox, fakeEdge(examples[9])), true);
 
-// Independent deterministic fixtures include both control/segment paths and
-// invalid points. Compare with the saved, allocation-heavy implementation.
 let seed = 0x12345678;
 const random = () => {
   seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;

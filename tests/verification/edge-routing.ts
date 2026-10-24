@@ -608,9 +608,6 @@ expect(
   "label collision scoring should use the curved edge midpoint instead of its endpoint midpoint",
 );
 
-// Rectangle dimensions come from the renderer: short-label backgrounds are
-//26graph px tall. A30px vertical gap already leaves visible space, even for
-//long text; width must not inflate the required vertical clearance.
 {
   const base: GraphModel = {
     ...graphFixture([]),
@@ -1382,8 +1379,6 @@ function verifyLoopRoutingWork() {
       const nodes = [
         source,
         ...Array.from({ length: 180 }, (_, index) => {
-          // Include both sides of the inner/outer clearance boundary, dense
-          // nearby obstacles, and remote nodes that should be pruned.
           const radii = [
             0,
             29.4 - 1e-8,
@@ -1421,8 +1416,7 @@ function verifyLoopRoutingWork() {
             const overlap = Math.max(0, options.nodeClearancePx - distance);
             score += overlap * overlap;
           }
-          // Rust's hypot and the browser's Math.hypot can differ by a few ulps.
-          // The chosen direction below must still match the exhaustive result.
+
           const candidateScore = scoreLoopDirection(
             candidate,
             source,
@@ -1546,8 +1540,7 @@ function verifyParallelRoutingHistoryWork() {
     })),
     edges: Array.from({ length: 200 }, (_, index) => ({
       id: `e${index}`,
-      // Include both directions so canonical orientation and lane centering
-      // are exercised together.
+
       source: `n${index % 2 ? (index + 1) % 40 : index % 40}`,
       target: `n${index % 2 ? index % 40 : (index + 1) % 40}`,
     })),

@@ -1,11 +1,8 @@
-// Snapshot of eb9e11e's React-state reconciliation benchmark baseline.
 import type {
   EdgeLabelHitbox,
   NodeHitbox,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 
-// Preserve unchanged entries as well as the whole array. Individual hitbox
-// components can then skip rendering when another node or edge moves.
 export function reconcileNodeHitboxes(
   current: NodeHitbox[],
   next: NodeHitbox[],

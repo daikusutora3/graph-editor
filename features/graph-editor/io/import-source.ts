@@ -11,12 +11,10 @@ type AdjacencyRow = {
   separator: string;
   sourceLabel: string;
   targetTokens: string[];
-  // Each synchronous scan owns a fresh token. Repeated cached rows can skip
-  // label work without allocating WeakSet entries for uncached, distinct rows.
+
   lastScan: object | undefined;
 };
 
-/** One evaluation owns these parsed rows; analysis and import share its matrix. */
 export function createImportSource(lines: ParsedLine[]) {
   let firstRow: string[] | undefined;
   let rows: string[][] | undefined;
@@ -36,7 +34,7 @@ export function createImportSource(lines: ParsedLine[]) {
       let row = adjacencyRows.get(text);
       if (row === undefined) {
         row = readAdjacencyRow(text);
-        // Keep repeated rows cheap while bounding per-evaluation cache entries.
+
         if (adjacencyRows.size < MAX_IMPORT_NODES) adjacencyRows.set(text, row);
       }
       previousAdjacencyText = text;
@@ -59,9 +57,6 @@ export function createImportSource(lines: ParsedLine[]) {
 
 export type ImportSource = ReturnType<typeof createImportSource>;
 
-/** A third contest parameter is safe to skip only for complete labeled rows.
- * Numeric triples can also be matrices or headerless weighted edges.
- */
 export function isStructuredEdgeListHeader(
   header: string[],
   dataRows: string[][],
@@ -95,8 +90,7 @@ function readAdjacencyRow(text: string): AdjacencyRow | null {
   const targetTokens = splitTokens(
     text.slice(separatorIndex + separator.length),
   );
-  // Row separators in a target's weight are data. Reject any remaining
-  // separator in the target label so malformed rows still cannot be truncated.
+
   if (
     targetTokens.some(
       (token) =>

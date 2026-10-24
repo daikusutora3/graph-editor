@@ -1,6 +1,3 @@
-//! Stadium overlap relaxation. Node ordering and label spans are prepared in
-//! TypeScript so this kernel shares the editor's geometry and stable ordering.
-
 const REQUIRED: f64 = 60.0;
 const EPSILON: f64 = 0.00001;
 const GRID: f64 = 24.0;
@@ -18,7 +15,6 @@ fn gap_x(a: Node, b: Node) -> f64 {
 
 fn count_pairs(nodes: &[Node], limit: usize) -> usize {
     let mut order: Vec<usize> = (0..nodes.len()).collect();
-    // Stable sorting matches the JavaScript sweep, including equal heights.
     order.sort_by(|&a, &b| nodes[a].y.total_cmp(&nodes[b].y));
     let mut remaining = 0;
     for i in 0..order.len() {
@@ -46,7 +42,6 @@ fn count_pairs(nodes: &[Node], limit: usize) -> usize {
     remaining
 }
 
-// JavaScript Math.sign preserves zero; f64::signum would turn it into +/-1.
 fn js_sign(value: f64) -> f64 {
     if value == 0.0 {
         value
@@ -55,7 +50,6 @@ fn js_sign(value: f64) -> f64 {
     }
 }
 
-// JavaScript rounds halfway values toward +infinity, including negative ones.
 fn js_round(value: f64) -> f64 {
     if !value.is_finite() || value == 0.0 || value.abs() >= 4503599627370496.0 {
         return value;
@@ -155,11 +149,6 @@ fn resolve(nodes: &mut [Node], snap: bool) -> (usize, bool) {
     (count_pairs(nodes, usize::MAX), changed)
 }
 
-/// Input consists of `node_count` x/y/span triples. Output consists of x/y
-/// pairs followed by the remaining collision count and a 0/1 changed flag.
-///
-/// # Safety
-/// Buffers must be separate, valid, and large enough for these lengths.
 #[no_mangle]
 pub unsafe extern "C" fn resolve_overlaps(
     nodes_ptr: *const f64,

@@ -18,7 +18,7 @@ import { overlapVerificationFixtures } from "../fixtures/overlaps";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Overlap");
-// Far below the 1e-5px collision threshold; grid coordinates remain exact.
+
 const COORDINATE_TOLERANCE_PX = 1e-7;
 
 function coordinateGoldenError(
@@ -146,8 +146,6 @@ function verifyCoordinates(name: string, graph: GraphModel) {
 
 const nativeHypot = Math.hypot;
 function scaledHypot(...values: number[]) {
-  // Exercise a different valid rounding path without depending on the host's
-  // libm or replacing the production implementation. Avoid overflow/underflow.
   if (values.some((value) => !Number.isFinite(value)))
     return nativeHypot(...values);
   const maximum = Math.max(0, ...values.map(Math.abs));
@@ -220,7 +218,6 @@ try {
   Math.hypot = nativeHypot;
 }
 
-// Verify that allowing last-bit rounding does not hide observable regressions.
 const mutationFixture = overlapVerificationFixtures.find(
   ([name]) => name === "wide labels",
 )!;

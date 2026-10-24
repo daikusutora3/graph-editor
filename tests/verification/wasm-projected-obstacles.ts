@@ -23,8 +23,6 @@ import { createVerification } from "./harness";
 const { expect, finish } = createVerification("Rust projected obstacles");
 await initializeRustKernelFromBytes(readFileSync(`public${RUST_KERNEL_URL}`));
 
-// Frozen projection algorithm: retain exact host hypot, clamps, stable sorting
-// and cluster construction instead of comparing two Rust-backed callers.
 function reference(
   edge: GraphEdge,
   source: GraphNode,

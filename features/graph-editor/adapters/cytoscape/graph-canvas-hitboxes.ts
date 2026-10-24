@@ -12,26 +12,26 @@ export type NodeHitbox = {
   label: string;
   x: number;
   y: number;
-  /** Rendered hit area width; grows with pill-shaped nodes. */
+
   width: number;
 };
 
 export type EdgeLabelHitbox = {
   id: EdgeId;
-  /** Endpoint identity, independent of rendered coordinate coincidence. */
+
   isLoop: boolean;
   label: string;
   sourceX: number;
   sourceY: number;
   targetX: number;
   targetY: number;
-  /** Rendered outer sizes of the endpoints (pills are wider than tall). */
+
   sourceWidth: number;
   targetWidth: number;
   nodeHeight: number;
   x: number;
   y: number;
-  /** Rendered label background bounds, with a minimum pointer target. */
+
   labelWidth?: number;
   labelHeight?: number;
   bowPx: number;
@@ -39,9 +39,9 @@ export type EdgeLabelHitbox = {
   controlPointWeights?: readonly number[];
   loopDirectionDeg: number;
   loopSweepDeg: number;
-  /** Rendered fallback size; public renderer points take precedence. */
+
   loopStepSizePx?: number;
-  /** Source, two controls, midpoint and target in rendered coordinates. */
+
   loopPoints?: readonly RenderedPoint[];
 };
 
@@ -105,8 +105,7 @@ export function readEdgeLabelHitboxes(
       height: number;
     }
   >();
-  // Shared endpoints are read once per snapshot. This cache cannot outlive
-  // the call, so dragging, zoom, label resizing and theme changes stay live.
+
   const geometryFor = (node: NodeSingular) => {
     const cached = nodeGeometry.get(node.id());
     if (cached) return cached;
@@ -323,7 +322,6 @@ export function edgeLabelHitboxWidth(label: string) {
   return Math.max(label.length * 9 + 28, 44);
 }
 
-/** Display text is also compared when an immutable model replaces its parent. */
 export function edgeHitboxLabel(
   edge: GraphModel["edges"][number],
   weighted: boolean,

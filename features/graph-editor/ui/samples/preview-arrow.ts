@@ -7,7 +7,6 @@ export const PREVIEW_ARROW_REACH = Math.hypot(
   PREVIEW_ARROW_HALF_WIDTH,
 );
 
-/** The marker uses strokeWidth units and puts its tip at the curve endpoint. */
 export function previewArrowVertices(
   tip: EdgeCurvePoint,
   control: EdgeCurvePoint,

@@ -8,8 +8,6 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import * as currentAnalysis from "../../features/graph-editor/core/graph/graph-analysis";
 import * as currentLayouts from "../../features/graph-editor/layouts/layout-algorithms";
 
-// Run by itself. --reference-dir can point to unchanged modules with imports
-// rebased to this checkout, preserving shared working-tree changes.
 const referenceDir = argument("--reference-dir");
 const analysis: typeof currentAnalysis = referenceDir
   ? await import(pathToFileURL(`${referenceDir}/graph-analysis.ts`).href)

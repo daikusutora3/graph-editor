@@ -37,7 +37,7 @@ import { refreshCytoscapeGeometry } from "../adapters/cytoscape/graph-canvas-geo
 type DragSnapshot = Record<NodeId, Position>;
 const NODE_DRAG_GRID_SIZE_PX = 24;
 const INTERACTIVE_EDGE_ROUTING_INTERVAL_MS = 80;
-/** Interval grows with the last measured routing cost so drags stay smooth. */
+
 const MAX_INTERACTIVE_EDGE_ROUTING_INTERVAL_MS = 400;
 
 type HtmlNodeDragState = {
@@ -152,8 +152,6 @@ export function useHtmlNodeDrag({
         return;
       }
 
-      // Edge label hitboxes depend on Cytoscape's rendered edge geometry.
-      // Read them after routing data has had a frame to settle.
       postRoutingHitboxFrameRef.current = window.requestAnimationFrame(() => {
         postRoutingHitboxFrameRef.current = null;
 
@@ -185,8 +183,6 @@ export function useHtmlNodeDrag({
         );
 
         if (routingActiveRef.current) {
-          // Let the sampled positions finish. A newer pointer position is
-          // queued instead of repeatedly discarding the task's first slice.
         } else if (forceRouting || elapsed >= interval) {
           if (dragRoutingTimerRef.current !== null) {
             window.clearTimeout(dragRoutingTimerRef.current);
@@ -298,7 +294,7 @@ export function useHtmlNodeDrag({
 
       schedulePostRoutingHitboxes(cy);
     },
-    // Refs are stable; listing them would only add noise.
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [acceptRoutingMeta, edgeRoutingOptions, graph, schedulePostRoutingHitboxes],
   );
@@ -626,9 +622,7 @@ function releasePointerCapture(state: HtmlNodeDragState) {
     if (state.captureElement.hasPointerCapture(state.pointerId)) {
       state.captureElement.releasePointerCapture(state.pointerId);
     }
-  } catch {
-    // The browser may already have released capture after cancellation.
-  }
+  } catch {}
 }
 
 function restoreDragSnapshot(cy: Core, state: HtmlNodeDragState) {

@@ -92,8 +92,7 @@ for (const { count, obstacles, labels } of workloads) {
       const routeHash = createHash("sha256")
         .update(JSON.stringify([...step.value]))
         .digest("hex");
-      // Scheduling is allowed to improve. Ordered geometry and statuses
-      // must still agree; both step counts and maximum slices are reported.
+
       const signature = routeHash;
       expected ??= signature;
       if (signature !== expected)

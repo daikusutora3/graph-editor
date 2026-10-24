@@ -17,12 +17,6 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { defaultEdgeRoutingMeta } from "../../features/graph-editor/core/layout/edge-routing";
 import { createCalculationCanvas } from "../fixtures/calculation-canvas";
 
-// Run alone after builds. Save the pre-edit sync module with Bun build --target
-// bun --outfile <path>, then pass that path as --reference. Timing includes
-// batching, the established geometry refresh and complete hitbox snapshots,
-// but excludes DOM painting. --cached-reader uses the actual primed incremental
-// reader. Pass both --candidate and --reference saved bundles for matching JIT
-// form; --precise-setters asserts the rejected selective-write candidate events.
 const referencePath = argument("--reference");
 const reference: typeof syncCytoscapeElements | undefined = referencePath
   ? (await import(pathToFileURL(referencePath).href)).syncCytoscapeElements

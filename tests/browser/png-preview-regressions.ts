@@ -75,8 +75,6 @@ async function verify(viewport: ViewportSize) {
   };
   const imageHash = () =>
     image.evaluate(async (element) => {
-      // connect-src intentionally excludes blob:. Capture test-created blobs
-      // instead of weakening production CSP to fetch an image's source.
       const bytes = await (
         window as unknown as {
           readPreviewImageBytes: (url: string) => Promise<ArrayBuffer>;
@@ -99,9 +97,6 @@ async function verify(viewport: ViewportSize) {
       };
       Object.assign(window, {
         signalDisplayDensityChange: () => {
-          // CDP changes DPR and query matches without emitting the resolution
-          // change event. Deliver that standard event to the real app listener.
-          // Snapshot first because handling a change registers the next query.
           for (const entry of queries.slice()) {
             const matches = entry.query.matches;
             if (matches === entry.matches) continue;
@@ -160,10 +155,10 @@ async function verify(viewport: ViewportSize) {
     await page.waitForTimeout(350);
     assert.equal(await count(), 1, "full PNG does not depend on pan");
     assert.equal(await image.getAttribute("src"), fullUrl);
-    // Exercise the real desktop zoom controls too; mobile uses touch gestures.
+
     if (viewport.width > 768) {
       await page.getByRole("button", { name: "Zoom out", exact: true }).click();
-      // Canvas controls intentionally close this floating panel.
+
       await panel.waitFor({ state: "detached" });
       await page
         .getByRole("button", { name: "PNG image", exact: true })
@@ -329,8 +324,6 @@ async function verify(viewport: ViewportSize) {
       "viewport PNG follows resize",
     );
 
-    // Keep the CDP session alive: detaching it resets emulated display scale.
-    // Change only display density; CSS dimensions and graph zoom stay fixed.
     const display = await context.newCDPSession(page);
     const changeDisplayScale = async (deviceScaleFactor: number) => {
       await display.send("Emulation.setDeviceMetricsOverride", {

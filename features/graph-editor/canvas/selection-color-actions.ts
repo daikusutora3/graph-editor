@@ -7,7 +7,6 @@ type SelectionColorActions = {
   onSetSelectionColors: (selection: SelectionState, color: GraphColor) => void;
 };
 
-/** One palette choice is one command, including a mixed node/edge selection. */
 export function pickSelectionColor(
   selection: SelectionState,
   kind: "node" | "edge" | "mixed",

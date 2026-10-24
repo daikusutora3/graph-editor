@@ -34,7 +34,7 @@ export function createPreviewEdgePath({
   targetWidth = radius * 2,
 }: {
   directed: boolean;
-  /** Endpoint identity decides loops; coincident distinct vertices do not. */
+
   isLoop?: boolean;
   radius: number;
   routing?: {
@@ -136,7 +136,7 @@ function createLoopGeometry(
   const direction = (((routing?.loopDirectionDeg ?? -45) - 90) * Math.PI) / 180;
   const sweep = ((routing?.loopSweepDeg ?? 70) * Math.PI) / 180;
   const stepSize = normalizeLoopStepSize(routing?.loopStepSizePx);
-  // Keep gallery icons readable while larger loops fit their reserved bounds.
+
   const loopRadius = Math.max(
     radius * 1.5,
     Math.min(radius * 3 * (stepSize / 40), 1.4 * stepSize * scale),
@@ -199,7 +199,6 @@ export type PreparedPreviewGeometry = {
   paintBounds: PreviewBounds;
 };
 
-/** Prepare model-space curves once for fit bounds, arrows and SVG rendering. */
 export function preparePreviewGeometry(
   model: GraphModel,
   routes: ReturnType<typeof computeEdgeRouting>,
@@ -348,8 +347,6 @@ export function createPreparedPreviewEdgePath(
   }
   const parts = [`M${round(source.x)} ${round(source.y)}`];
   for (const segment of segments) {
-    // Editor curves are already clipped in model space. Undirected curves do
-    // not need clipping, so both can transform only the two points SVG uses.
     const control =
       directed && !editorLike ? segment.control : transform(segment.control);
     const end = directed && !editorLike ? segment.end : transform(segment.end);
@@ -422,8 +419,6 @@ function getPreparedModelBounds(
     return { minX: -1, minY: -1, width: 2, height: 2 };
   }
 
-  // The paste preview includes labels, so fit the whole pill and scale its
-  // text with it. Fitting only node centres clips long labels at the frame.
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
@@ -444,8 +439,6 @@ function getPreparedModelBounds(
       const loop = prepared.loop;
       includeCurve([loop.start, loop.controlA, loop.controlB, loop.end]);
       if (!editorLike) {
-        // Gallery nodes stay a fixed screen size. Keep the existing roomy loop
-        // reservation; their radius is independent of the graph fit scale.
         const halfWidth = nodeGeometryWidth(node) / 2;
         includeBounds(
           node.x - halfWidth,

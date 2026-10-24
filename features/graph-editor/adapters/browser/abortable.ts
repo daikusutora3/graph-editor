@@ -1,4 +1,3 @@
-/** Stop waiting without leaving an unhandled rejection or an abort listener. */
 export function awaitAbortable<T>(
   pending: PromiseLike<T>,
   signal?: AbortSignal,

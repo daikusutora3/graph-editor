@@ -321,7 +321,6 @@ expect(
   "dense Rust loop work trace",
 );
 
-// Warm the same array's snapshot, then mutate each geometry input in place.
 const mutable = [
   source,
   target,
@@ -363,9 +362,6 @@ for (const mutate of [
   await initializeRustKernelFromBytes(bytes);
 }
 
-// A measured width overrides the label exactly as nodeGeometryWidth does,
-// including zero and negative values. Null/undefined retain label sizing;
-// non-finite widths retain the existing Rust rejection and JS fallback.
 type SnapshotNode = GraphNode & { measuredWidth?: number };
 function snapshotNodes(): SnapshotNode[] {
   return [
@@ -387,7 +383,7 @@ function expectFreshSnapshot(nodes: SnapshotNode[], label: string) {
 const snapshotWidths = [undefined, null, 48, 0, -24, NaN, Infinity];
 for (const measuredWidth of snapshotWidths) {
   const nodes = snapshotNodes();
-  // Runtime public helpers can receive null even though the TS field is optional.
+
   Object.assign(nodes[2]!, { measuredWidth });
   const before = snapshotScore(nodes);
   nodes[2]!.label = "非常に広い頂点".repeat(12);
@@ -461,7 +457,6 @@ for (const mutate of [
   );
 }
 
-// Source-target identity and zero length geometry are intentional edge cases.
 const degenerate: GraphEdge = {
   id: "same",
   source: source.id,
@@ -566,9 +561,6 @@ expect(
   "symmetric candidate scores retain exact ties",
 );
 
-// Canonical documents reject coordinates outside their operating range. Raw
-// scoring helpers still retain the JS reference if an external caller bypasses
-// that boundary instead of overflowing the numeric backend's projection.
 const extremeSource = { id: "a", label: "1", order: 0, x: 0, y: 0 };
 const extremeTarget = { id: "b", label: "2", order: 1, x: 1e160, y: 0 };
 const extremeEdge = { id: "extreme", source: "a", target: "b" };
@@ -648,9 +640,6 @@ for (const x of [29.99, 30.01]) {
   );
 }
 
-// Exercise the normal product entry point with no custom routing options.
-// Native loop sampling previously called this ready in Rust but unresolved in
-// JS because the nearest sample is 29.999999999999993px away in Math.hypot.
 const thresholdLoopModel = parseGraphModelJson(
   JSON.stringify({
     ...createEmptyGraphModel(),

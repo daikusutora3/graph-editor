@@ -151,8 +151,7 @@ export function useGraphIOScreenshot({
     visiblePreview,
     currentPreviewInputKey,
   );
-  // Reopening a pane restores its live revision; wait for those inputs instead
-  // of exporting once with the dormant revision and again after the debounce.
+
   const previewReadyToRefresh =
     currentPreviewInputKey === debouncedPreviewInputKey &&
     (previewStale || visiblePreview.state !== "ready");
@@ -283,7 +282,7 @@ export function useGraphIOScreenshot({
         url: objectUrl,
         width,
       });
-      // Transfer ownership to the visible preview only after successful decode.
+
       objectUrl = "";
     } catch (error) {
       if (signal.aborted || !mountedRef.current) return;
@@ -485,8 +484,7 @@ export function useGraphIOScreenshot({
     const controller = new AbortController();
     void refreshPreview(controller.signal);
     return () => controller.abort();
-    // refreshPreview is recreated per render; the key captures its inputs.
-    // Loading/ready changes must not cancel the request that produces them.
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentPreviewInputKey,

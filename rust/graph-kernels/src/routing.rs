@@ -1,6 +1,3 @@
-//! Batched numeric edge-routing work. Graph identities and resumable scheduling
-//! stay in TypeScript; a candidate is scored in one Wasm call.
-
 use crate::numeric::hypot;
 use std::slice;
 
@@ -63,9 +60,6 @@ impl Piece {
         )
     }
 
-    // The L-infinity gap between the segment's AABB and a horizontal capsule
-    // spine is a lower bound on their Euclidean distance. Keep a rounding guard
-    // so a near-equality still executes the original distance calculation.
     fn cannot_improve(&self, left: Point, right: Point, minimum: f64) -> bool {
         let x_gap = (left.x - self.max_x).max(self.min_x - right.x).max(0.0);
         let y_gap = (left.y - self.max_y).max(self.min_y - left.y).max(0.0);
@@ -98,8 +92,6 @@ impl Piece {
         let endpoints = spine_distance(self.start).min(spine_distance(self.end));
         let from_left = self.point_distance(left);
         if left.x == right.x {
-            // Circular nodes have identical spine endpoints. The former fourth
-            // distance was exactly the same operation on the same point.
             endpoints.min(from_left)
         } else {
             endpoints.min(from_left).min(self.point_distance(right))
@@ -253,8 +245,6 @@ fn subdivide(segment: Segment, depth: usize, pieces: &mut Vec<Piece>) {
     );
 }
 
-/// The JS host's hypot can round an adaptive split tie differently. Only the
-/// final collision operation needs strict count compatibility at that tie.
 fn subdivide_final_route(
     segment: Segment,
     depth: usize,
@@ -318,8 +308,6 @@ fn curve_midpoint(segments: &[Segment], source: Point, target: Point) -> Point {
     }
 }
 
-/// nodes = [x,y,half_width]*N; curve = [distance_count,weight_count,distances...,weights...].
-/// output = [collisions,score,work_units]. Source/target indices can be -1.
 #[no_mangle]
 pub unsafe extern "C" fn routing_node_shape(
     nodes_ptr: *const f64,
@@ -414,10 +402,6 @@ pub unsafe extern "C" fn routing_node_shape(
     out[2] = units;
 }
 
-/// Final-route collision checks use a tighter pruning box than candidate
-/// scoring. Keep its 48px reach and 30px distance threshold independent of
-/// the configurable candidate clearance. output = [collision_count,work_units,
-/// needs_js_reference]. Rare hypot/split ties defer to JS's strict comparison.
 #[no_mangle]
 pub unsafe extern "C" fn routing_node_collisions(
     nodes_ptr: *const f64,
@@ -484,8 +468,6 @@ pub unsafe extern "C" fn routing_node_collisions(
             .max(node[1].abs())
             .max(node[2].abs());
         let tolerance = 1e-7_f64.max(f64::EPSILON * node_scale * 32.0);
-        // Distances above this limit cannot collide or trigger the existing
-        // ambiguity fallback. Preserve all calculations within that band.
         let mut minimum = node_clearance + tolerance * 2.0;
         let spine_width = right.x - left.x;
         let spine_squared = spine_width * spine_width;
@@ -515,7 +497,6 @@ pub unsafe extern "C" fn routing_node_collisions(
     out[2] = if needs_js && units > 0.0 { 1.0 } else { 0.0 };
 }
 
-/// labels = [anchor_x,anchor_y,width,height]*N.
 #[no_mangle]
 pub unsafe extern "C" fn routing_label_overlap(
     curve_ptr: *const f64,
@@ -545,16 +526,6 @@ pub unsafe extern "C" fn routing_label_overlap(
     *output_ptr = score;
 }
 
-/// Loop points retain JS trigonometry. Process all numeric obstacles together;
-/// the existing generator consumes results at its original yield boundaries.
-/// output = [overlap_score,work_units,collision_count]*N, preserving JS's sum
-/// order and generator work accounting even when each chunk is computed ahead.
-/// A -1 in the first collision slot requests the JS reference for the entire
-/// batch when hypot rounding could change a strict clearance comparison.
-/// # Safety
-/// The caller supplies separate live buffers for node_count triples,
-/// point_count pairs and node_count output triples. The host bounds numerical
-/// inputs to avoid overflow in the clearance comparison and rounding guard.
 #[no_mangle]
 pub unsafe extern "C" fn routing_loop_obstacles(
     nodes_ptr: *const f64,
@@ -603,8 +574,6 @@ pub unsafe extern "C" fn routing_loop_obstacles(
                 .max(span)
                 .max(clearance.abs());
             let tolerance = 1e-7_f64.max(f64::EPSILON * scale * 32.0);
-            // Only distances below clearance contribute a score or collision.
-            // Retain a wider band for the strict-threshold rounding fallback.
             let mut distance = node_clearance + tolerance * 2.0;
             for point in points.chunks_exact(2) {
                 units += 1.0;
@@ -614,8 +583,6 @@ pub unsafe extern "C" fn routing_loop_obstacles(
                     node[0] - point[0]
                 };
                 let dy = node[1] - point[1];
-                // L-infinity is a conservative lower bound on the exact norm.
-                // Still count every original sample, including rejected ones.
                 if dx.abs().max(dy.abs()) <= distance + tolerance {
                     distance = distance.min(hypot(dx, dy));
                 }
@@ -837,9 +804,6 @@ mod collision_tests {
 
     #[test]
     fn candidate_unbounded_coordinates_and_widths_match_original() {
-        // The candidate host intentionally retains its general numeric helper.
-        // Huge/invalid public-helper inputs must not change its old result just
-        // because only the final-route host applies a finite-coordinate gate.
         for shift in [0.0, 1e20, -1e150] {
             let source = Point {
                 x: shift - 100.0,

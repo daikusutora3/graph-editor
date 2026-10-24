@@ -5,8 +5,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import * as routing from "../../features/graph-editor/core/layout/edge-routing";
 import * as kernel from "../../features/graph-editor/compute/rust-kernel";
 
-// Execute the real hook with deterministic effect, Worker and frame owners.
-// Browser metrics and actual Worker transport have independent coverage.
 let currentHarness;
 mock.module("react", () => ({
   ...React,
@@ -442,7 +440,7 @@ function runFrame() {
   const { hook } = fixture();
   requests[0].resolve(null);
   await hook.flush();
-  // Advance exactly one generator yield per fake frame.
+
   const originalNow = performance.now;
   let time = 0;
   performance.now = () => (time += 5);

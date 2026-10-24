@@ -1,6 +1,3 @@
-//! Numeric layout kernels. Graph IDs, label measurement and output normalization
-//! stay in TypeScript; a complete relaxation crosses the Wasm boundary once.
-
 use crate::numeric::hypot;
 use std::slice;
 

@@ -366,8 +366,6 @@ function SelectionColorPalette({
           id={id}
           className="ge-panel ge-pop absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl p-1.5 backdrop-blur-[12px]"
           onClick={(event) => {
-            // Roving focus activates radios with .click() (detail=0). Keep
-            // keyboard navigation open; a pointer pick returns to the canvas.
             if (event.detail > 0) close(true);
           }}
         >

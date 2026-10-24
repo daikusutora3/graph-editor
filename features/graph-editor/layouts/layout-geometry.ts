@@ -232,10 +232,6 @@ function scalePositions(
   ) as Record<NodeId, { x: number; y: number }>;
 }
 
-/**
- * Like ensureMinimumNodeDistance, but measures each pair from the boundary of
- * its pill-shaped nodes, so wide labels get the same gap as plain circles.
- */
 export function ensureNodeClearance(
   positions: Record<NodeId, { x: number; y: number }>,
   nodes: readonly Pick<GraphNode, "id" | "label">[],
@@ -257,8 +253,7 @@ export function* createNodeClearanceTask(
     nodes.map((node) => [node.id, nodeGeometryWidth(node) / 2]),
   );
   const entries = Object.entries(positions);
-  // No pair can need more than this, so anything farther apart is skipped
-  // before the (comparatively expensive) pill extent math.
+
   const maxRequired = 2 * Math.max(halfHeight, ...halfWidths.values()) + gap;
   const maxRequiredSquared = maxRequired * maxRequired;
   const accelerated = tryRustNodeClearance(
@@ -282,8 +277,7 @@ export function* createNodeClearanceTask(
       const [idB, b] = entries[j]!;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
-      // Scaling only increases vertical separation. All pills share the same
-      // height, so these pairs already have clearance regardless of label width.
+
       if (Math.abs(dy) * scale >= required) continue;
       const distanceSquared = dx * dx + dy * dy;
 

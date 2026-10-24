@@ -8,7 +8,6 @@ import { graphStorageReadyAtom } from "./state/graph-atoms";
 
 import dynamic from "next/dynamic";
 
-// Cytoscape is ~40% of the bundle; load it after the shell has painted.
 const GraphCanvas = dynamic(
   () => import("../canvas/GraphCanvas").then((module) => module.GraphCanvas),
   { ssr: false },

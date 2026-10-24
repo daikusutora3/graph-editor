@@ -12,8 +12,7 @@ import {
 const store = Jotai.createStore();
 let applications = 0;
 let closes = 0;
-// Exercise the real Apply handler before any debounced preview exists. Effects
-// and hook scheduling are irrelevant to this direct current-text action.
+
 mock.module("react", () => ({
   ...React,
   useState: (initial) => [initial, () => {}],

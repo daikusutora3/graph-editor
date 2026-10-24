@@ -25,8 +25,6 @@ import {
 } from "../../features/graph-editor/core/layout/edge-routing-scoring";
 import type { ResolvedEdgeRoutingOptions } from "../../features/graph-editor/core/layout/edge-routing-shared";
 
-// This measures application entry points, including snapshots, buffer copies,
-// allocations and results, rather than timing an isolated Rust function.
 const bytes = readFileSync(`${process.cwd()}/public${RUST_KERNEL_URL}`);
 const graph = fixture(1000, 160);
 const source = graph.nodes[0]!;

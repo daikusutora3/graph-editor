@@ -44,8 +44,7 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   className,
 }: SampleGraphPreviewProps) {
   const markerId = `sample-arrow-${useId().replaceAll(":", "")}`;
-  // Imports/commands enforce this contract too. Protect standalone previews
-  // before bounds, routing or transforms can overflow on unvalidated input.
+
   if (!hasGraphCoordinatePositions(model.nodes)) return null;
   const edgeRouting = computeEdgeRouting(model, { mode: "simple" });
   const editorLike = variant === "editor";
@@ -76,8 +75,7 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   const galleryEdgeStroke = Math.max(0.9, galleryRadius * 0.42);
   const nodeById = geometry.nodeById;
   const bounds = geometry.paintBounds;
-  // Editor paint scales with the model; only its readable stroke floors need
-  // pixel space. Gallery nodes and markers keep a fixed screen size instead.
+
   const fixedPaintMargin = editorLike
     ? model.settings.directed
       ? PREVIEW_ARROW_REACH * arrowScale
@@ -184,8 +182,6 @@ export const SampleGraphPreview = memo(function SampleGraphPreview({
   );
 });
 
-// Bound the work performed by each React component so concurrent preview
-// updates can yield between chunks without changing the final SVG markup.
 const PREVIEW_CHUNK_SIZE = 128;
 
 function chunkPreviewItems<T>(items: readonly T[]) {
@@ -234,8 +230,7 @@ function PreviewEdges({
   return edges.map((edge) => {
     const prepared = geometry.edgeById.get(edge.id);
     if (!prepared) return null;
-    // Distinct coincident vertices have no edge direction or visible length.
-    // Keep the edge in the model, without inventing a loop or protruding arrow.
+
     if (
       !prepared.loop &&
       prepared.source.x === prepared.target.x &&

@@ -2,8 +2,6 @@ import type { Core, EdgeSingular } from "cytoscape";
 import type { RangeSelectionFilter } from "../../features/graph-editor/canvas/range-selection-filter";
 import type { RangeSelectionBox } from "../../features/graph-editor/canvas/range-selection-preview-geometry";
 
-// Frozen containment implementation from graph-canvas-range-selection-preview.ts
-// before endpoint early rejection. Shared by equivalence tests and benchmarks.
 export function readRangeSelectionPreviewReference(
   cy: Pick<Core, "nodes" | "edges">,
   box: RangeSelectionBox,

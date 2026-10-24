@@ -1,6 +1,3 @@
-//! Straight-route obstacle selection during dragging. IDs and scheduling stay
-//! in TypeScript; each call owns only the supplied batch and releases no memory.
-
 use crate::numeric::hypot;
 use std::slice;
 
@@ -35,11 +32,6 @@ fn segment_distance(a: Point, b: Point, c: Point, d: Point) -> f64 {
         .min(point_segment_distance(d, a, b))
 }
 
-/// nodes = [x,y,capsule_span]*N; edges = [sx,sy,tx,ty,weight,has_control]*E.
-/// output per edge: 0 = keep, 1 = reroute, 2 = decide with the JS reference.
-/// # Safety
-/// Buffers must be live allocations sized for the supplied counts. TypeScript
-/// admits only finite, bounded coordinates and straight, single-control curves.
 #[no_mangle]
 pub unsafe extern "C" fn interactive_straight_reroutes(
     nodes_ptr: *const f64,
@@ -55,7 +47,6 @@ pub unsafe extern "C" fn interactive_straight_reroutes(
     let output = slice::from_raw_parts_mut(output_ptr, edge_count);
     for (edge_index, edge) in edges.chunks_exact(6).enumerate() {
         output[edge_index] = 0.0;
-        // A curve without controls has no subdivision pieces in the JS solver.
         if edge[5] == 0.0 {
             continue;
         }
@@ -71,8 +62,6 @@ pub unsafe extern "C" fn interactive_straight_reroutes(
             x: source.x + (target.x - source.x) * edge[4],
             y: source.y + (target.y - source.y) * edge[4],
         };
-        // Retain the JS adaptive solver's error deduction even for a straight
-        // control: translated floating-point coordinates need not be collinear.
         let error = point_segment_distance(control, source, target) / 2.0;
         if error > 0.25 {
             output[edge_index] = 2.0;
@@ -108,8 +97,6 @@ pub unsafe extern "C" fn interactive_straight_reroutes(
             };
             let distance = segment_distance(source, target, left, right) - error;
             let coordinate_scale = scale.max(node[0].abs()).max(node[1].abs()).max(node[2]);
-            // The hosts' hypot implementations can differ by rounding. Recheck
-            // the original JS solver when that could change the strict 84px tie.
             let tolerance = 1e-7_f64.max(f64::EPSILON * coordinate_scale * 32.0);
             if (distance - clearance).abs() <= tolerance || !distance.is_finite() {
                 output[edge_index] = 2.0;

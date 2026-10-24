@@ -24,9 +24,6 @@ mock.module(provider, () => ({
 const { EdgeNodeHitboxes } =
   await import("../../features/graph-editor/canvas/GraphCanvasHitboxOverlays.tsx");
 
-// Execute the real hitbox handlers and edge commands with a native activation
-// model: keydown bubbles to the editor, then the button clicks unless default
-// was prevented. Safari covers the browser's actual Enter/Space dispatch.
 for (const key of ["Enter", " "]) {
   const store = createStore();
   const execute = (command) => store.set(executeCommandAtom, command);

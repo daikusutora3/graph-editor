@@ -34,7 +34,6 @@ function containsPath(directory: string, path: string) {
 }
 
 function requestPath(url: string) {
-  // Inspect the original path before a URL parser can normalize dot segments.
   if (!url.startsWith("/") || url.startsWith("//")) {
     throw new PreviewRequestError(400);
   }
@@ -51,7 +50,6 @@ function findFile(directory: string, candidate: string) {
     throw new PreviewRequestError(403);
   }
   try {
-    // Checking the real path also covers files reached through directory links.
     const canonical = realpathSync(candidate);
     if (!containsPath(directory, canonical)) {
       throw new PreviewRequestError(403);
@@ -66,7 +64,6 @@ function findFile(directory: string, candidate: string) {
 
 type StaticRedirect = { source: string; destination: string; status: number };
 
-/** Support the exact local redirects used by this export; reject silent drift. */
 export function parseStaticRedirects(text: string): StaticRedirect[] {
   return text.split("\n").flatMap((rawLine, index) => {
     const line = rawLine.trim();
@@ -91,7 +88,6 @@ export function parseStaticRedirects(text: string): StaticRedirect[] {
   });
 }
 
-/** The same handler can verify Request fixtures without opening a browser. */
 export function createStaticPreviewHandler(outDirectory: string) {
   const directory = realpathSync(outDirectory);
   const rules = parseHeaderRules(
@@ -113,8 +109,7 @@ export function createStaticPreviewHandler(outDirectory: string) {
           headers: { allow: "GET, HEAD" },
         });
       }
-      // Native HTTP supplies the original request target; Request fixtures
-      // supply an absolute URL. Keep raw dot segments for the security check.
+
       const target = request.url.replace(/^https?:\/\/[^/]+/, "") || "/";
       const path = requestPath(target);
       const redirect = redirects.find((rule) => rule.source === path);
@@ -126,7 +121,7 @@ export function createStaticPreviewHandler(outDirectory: string) {
           "http://preview.invalid",
         );
         if (!redirect.destination.includes("?")) destination.search = query;
-        // Cloudflare evaluates redirects before _headers and before assets.
+
         return new Response(null, {
           status: redirect.status,
           headers: {
@@ -143,7 +138,7 @@ export function createStaticPreviewHandler(outDirectory: string) {
         findFile(directory, candidate) ??
         findFile(directory, `${candidate}.html`);
       const status = file ? 200 : 404;
-      // Unknown routes receive the exported 404 and their requested-path headers.
+
       file ??= findFile(directory, join(directory, "404.html"));
       if (!file) throw new Error("Missing static 404 page");
       const contents = readFileSync(file);
@@ -186,7 +181,6 @@ export function createStaticPreviewHandler(outDirectory: string) {
   };
 }
 
-/** A local-only static export server. Rules are loaded once per start. */
 export function startStaticPreviewServer(
   outDirectory: string,
   port: number,

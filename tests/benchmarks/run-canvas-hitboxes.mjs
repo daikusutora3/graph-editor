@@ -5,17 +5,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-// bun tests/benchmarks/run-canvas-hitboxes.mjs --output /tmp/canvas-before.json
-// bun tests/benchmarks/run-canvas-hitboxes.mjs --baseline /tmp/canvas-before.json
-// --overlay-source and --hitboxes-source compare saved original modules using
-// the current dependencies; PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is optional.
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const temporary = mkdtempSync(join(tmpdir(), "graph-editor-hitboxes-"));
 const bundle = join(temporary, "canvas-hitboxes.js");
 let browser;
 try {
-  // Override only this module in memory when comparing a saved original
-  // against current dependencies. The checkout is never replaced or reset.
   const sourceIndex = process.argv.indexOf("--overlay-source");
   const savedSource =
     sourceIndex >= 0

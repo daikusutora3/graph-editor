@@ -45,11 +45,6 @@ function equivalent(first, second, message) {
   assert.deepEqual([...first], [...second], message);
 }
 
-// These fixtures fill the supported [-180, 180] lanes in input order. Keep
-// the integer lane decisions exact, including the exceptions made to avoid
-// the fixed manual sibling and labels. Platform libm differences can choose
-// either a fractional lane or its rounded candidate during label scoring;
-// both must stay within half a pixel of the same representative bow.
 function assertFixtureRoutes(
   routes,
   graph,
@@ -150,8 +145,6 @@ try {
     "scratch caches never change the model",
   );
 
-  // Count the actual rounding used by representativeBow, rather than timing a
-  // mock. The old sibling loop repeats this calculation for every comparison.
   const nativeRound = Math.round;
   try {
     for (const [count, maxRounds, steps, readyRange] of automaticCases) {
@@ -177,10 +170,6 @@ try {
     Math.round = nativeRound;
   }
 
-  // Fixed manual geometry removes one automatic lane, so the remaining
-  // siblings run the reconciliation stage even in simple/parallel mode.
-  // Preserve its geometry, orientation, tie decisions and scheduling while
-  // ensuring each candidate's bow is evaluated once, not once per sibling.
   for (const [mode, count, maxRounds, steps, bows] of manualCases) {
     const manualGraph = manualParallelRoutingFixture(count);
     const savedManual = JSON.stringify(manualGraph);
@@ -212,8 +201,6 @@ try {
     );
   }
 
-  // Exercise the portable geometry contract under tiny libm-like changes,
-  // while still requiring the same discrete decisions and generator yields.
   const nativeHypot = Math.hypot;
   try {
     for (const direction of [-1, 1]) {
@@ -266,7 +253,6 @@ try {
     "simple routing only computes its existing lane spacing",
   );
 
-  // A second endpoint group must get its own spacing, including reversed edges.
   const second = {
     ...graph,
     nodes: graph.nodes.map((node) => ({
@@ -304,7 +290,6 @@ try {
   for (const edge of second.edges)
     assert.equal(partial.routes.get(edge.id), grouped.routes.get(edge.id));
 
-  // Hidden weights and explicit empty labels use the same displayed text as before.
   const weighted = {
     ...parallelRoutingFixture(4),
     settings: { ...graph.settings, weighted: true, showNodeLabels: false },
@@ -341,7 +326,6 @@ try {
     "hidden text causes no label scan",
   );
 
-  // Drop a task after its lazy cache is populated, then interleave two snapshots.
   uncachedLabelReads = 0;
   const abandoned = createEdgeRoutingTask(graph);
   let step;
@@ -384,7 +368,6 @@ try {
     "canceled or concurrent tasks cannot seed a new snapshot cache",
   );
 
-  // Synchronous budget drafts resume the same generator and its local cache.
   const budgetGraph = {
     ...graph,
     nodes: [

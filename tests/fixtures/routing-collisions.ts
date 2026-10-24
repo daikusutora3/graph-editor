@@ -4,8 +4,6 @@ import type {
 } from "../../features/graph-editor/core/graph/model";
 import type { EdgeCurveGeometry } from "../../features/graph-editor/core/layout/edge-route-geometry";
 
-/** Dense obstacles sit inside the production collision pruning box. Sparse
- * obstacles fail that same box, making input-transfer regressions visible. */
 export function collisionFixture(
   count: number,
   controls: number,

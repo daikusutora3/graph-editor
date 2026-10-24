@@ -1,6 +1,6 @@
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
 import { scoreRustLoopObstacles } from "../../compute/wasm-routing";
-/** Self-loop placement: picks the direction with the most free space. */
+
 import type { GraphNode, GraphEdge, EdgeId } from "../graph/model";
 import {
   nodeGeometryWidth,
@@ -34,7 +34,6 @@ type LoopPreparation = {
   extent: (halfWidth: number, halfHeight: number, angle: number) => number;
 };
 
-/** Scratch geometry belongs to one resumable group, never to the graph. */
 function prepareLoopGroup(
   edges: GraphEdge[],
   automatic: GraphEdge[],
@@ -60,15 +59,12 @@ function prepareLoopGroup(
       automaticIds.has(edge.id) ? [] : [{ edge, index }],
     ),
     size(edge, index) {
-      // Public helpers can omit the task-level label cache. Keep their fresh
-      // reads, including edits made while the generator is suspended.
       if (!options.work.labelSizes) return edgeLabelSize(edge, options.work);
       return (sizes[index] ??= edgeLabelSize(edge, options.work));
     },
     extent(halfWidth, halfHeight, angle) {
       if (halfWidth <= halfHeight) return halfHeight;
-      // The caller may resume after changing measured source geometry. Exact
-      // angle keys retain Math.cos/sin rounding rather than folding by 360°.
+
       validateWidth(halfWidth, halfHeight);
       const cached = extents.get(angle);
       if (cached !== undefined) return cached;
@@ -78,7 +74,7 @@ function prepareLoopGroup(
         Math.cos(angle),
         Math.sin(angle),
       );
-      // Large public-helper inputs cannot grow this scratch map without bound.
+
       if (extents.size < 1024) extents.set(angle, value);
       return value;
     },
@@ -96,7 +92,6 @@ export function chooseLoopDirection(
   return step.value;
 }
 
-/** Keep each direction resumable without rescoring distant nodes 24 times. */
 export function* createLoopDirectionTask(
   source: GraphNode,
   nodes: GraphNode[],
@@ -146,9 +141,7 @@ function* loopObstacleNodes(
   options: ResolvedEdgeRoutingOptions,
 ) {
   const radius = nodeGeometryClearance(source, options.nodeClearancePx) * 1.7;
-  // Every sample lies on this circle. Only nodes within its clearance annulus
-  // can contribute a score. Keep floating-point slack for translated drawings
-  // where adding the radius to a large coordinate can lose precision.
+
   const slack =
     Number.EPSILON *
     Math.max(1, Math.abs(source.x), Math.abs(source.y), radius) *
@@ -256,8 +249,6 @@ export function loopSamplePoints(
   directionDeg: number,
   options: ResolvedEdgeRoutingOptions,
 ) {
-  // Cytoscape measures loop-direction from 12 o'clock, while Math.cos/sin
-  // measure from 3 o'clock. Match the renderer before scoring obstacles.
   const direction = ((directionDeg - 90) * Math.PI) / 180;
   const sweep = (options.loopSweepDeg * Math.PI) / 180;
   const radius = nodeGeometryClearance(source, options.nodeClearancePx) * 1.7;
@@ -276,7 +267,6 @@ export function normalizeDegrees(value: number) {
   return ((((value + 180) % 360) + 360) % 360) - 180;
 }
 
-/** Sector placement and native loop sizing, independent of the avoidance toggle. */
 export function* createLoopGroupRoutingTask(
   source: GraphNode,
   nodes: GraphNode[],
@@ -321,8 +311,6 @@ export function* createLoopGroupRoutingTask(
       )
     )
       return new Map([[automatic[0]!.id, route]]);
-    // A long label can cover a circular source too; only clear single loops
-    // retain the legacy size/direction fast path.
   }
   const sorted = automatic.toSorted((a, b) =>
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
@@ -343,7 +331,7 @@ export function* createLoopGroupRoutingTask(
   }
   let best = new Map<EdgeId, LoopPlacement>();
   let bestScore = Infinity;
-  // Fixed manual sectors stay anchored; their free arcs do not rotate.
+
   const candidates =
     provisional || fixed.size
       ? [options.loopDirectionDeg]
@@ -451,7 +439,6 @@ function allocateLoopSectors(
   return layout;
 }
 
-/** Cytoscape's bundled-loop label is the average of two radius1.4*step controls. */
 export function loopLabelPoint(
   source: GraphNode,
   route: Pick<
@@ -667,7 +654,7 @@ function* scoreLoopLayout(
     score += collisions * 1_000_000;
   }
   if (edges.length * edges.length > 4_000_000) return score;
-  // Tiny groups have little pair work to amortize the extra scheduling setup.
+
   if (options.work.stableLabels && edges.length >= 8)
     return yield* scoreStableLoopLabelPairs(
       edges,
@@ -678,8 +665,6 @@ function* scoreLoopLayout(
       score,
     );
 
-  // Public helpers can change labels while suspended. Keep their original
-  // per-pair reads and yields unless the caller promises immutable labels.
   for (let i = 0; i < edges.length; i++)
     for (let j = 0; j < i; j++) {
       yield;
@@ -710,7 +695,6 @@ function* scoreLoopLayout(
   return score;
 }
 
-/** Skip invisible pairs while retaining their original work-budget charge. */
 function* scoreStableLoopLabelPairs(
   edges: GraphEdge[],
   points: { x: number; y: number }[],
@@ -724,9 +708,6 @@ function* scoreStableLoopLabelPairs(
   for (let index = 0; index < edges.length; index++)
     if (edgeHasVisibleLabel(edges[index]!)) visible.push(index);
 
-  // Real comparisons yield every 64 pairs. Arithmetic-only skipped work is
-  // charged in at-most-4096-unit chunks, below the synchronous 25000-unit
-  // routing budget; cancellation never waits for an entire dense group.
   let unitsSinceYield = 0,
     pairsSinceYield = 0,
     accounted = 0;

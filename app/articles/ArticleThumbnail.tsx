@@ -1,7 +1,6 @@
 import { ArticleGraphDrawing } from "./ArticleDiagram";
 import type { ArticleContent } from "@/lib/article-content";
 
-/** Topic illustrations are separate from the exact result diagram in the article. */
 export function ArticleThumbnail({ article }: { article: ArticleContent }) {
   const { example, slug } = article;
   const dataToGraph = slug === "edge-list" || slug === "adjacency-matrix";

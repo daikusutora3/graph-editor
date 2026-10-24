@@ -6,9 +6,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 
 /* eslint-disable no-await-in-loop -- Each keyboard interaction must settle before the next measurement. */
 
-// Build and serve out/ first, then run alone (no builds or other timings).
-// BASE_URL=http://127.0.0.1:3123/en bun tests/benchmarks/canvas-modifier-performance.mjs --output /tmp/modifiers.json
-// Five fresh pages, ten Shift press/release cycles each, at the graph limits.
 const fixture = {
   ...createEmptyGraphModel({ allowMultiEdges: true }),
   nodes: Array.from({ length: 1000 }, (_, index) => ({

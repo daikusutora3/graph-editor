@@ -10,7 +10,6 @@ type Point = { x: number; y: number };
 export const popularSampleGraphKinds = ["cycle", "tree", "grid"] as const;
 export type PopularSampleGraphKind = (typeof popularSampleGraphKinds)[number];
 
-/** The starter screen needs only these three samples, before the gallery loads. */
 export function createPopularSampleGraph(
   kind: PopularSampleGraphKind,
   settings: Partial<GraphSettings> = {},

@@ -7,8 +7,6 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import * as current from "../../features/graph-editor/layouts/resolve-node-overlaps";
 import { overlapGraph, overlapNode } from "../fixtures/overlaps";
 
-// Run alone. For a comparison, use an original module with its imports rebased:
-// bun tests/benchmarks/overlap-performance.ts --reference /tmp/overlap-original.ts
 const referencePath = argument("--reference");
 const reference = referencePath
   ? ((await import(pathToFileURL(referencePath).href)) as typeof current)

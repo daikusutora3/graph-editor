@@ -4,8 +4,6 @@ import { chromium } from "playwright";
 
 /* eslint-disable no-await-in-loop -- Each actual interaction must settle before the next measurement. */
 
-// Serve the current production out/ and run alone (no builds/other timings).
-// BASE_URL=http://127.0.0.1:3335/en bun tests/benchmarks/canvas-mode-performance.mjs --output /tmp/mode-before.json
 const fixture = {
   version: 1,
   settings: {
@@ -183,12 +181,12 @@ try {
       edgeModeButtons: 0,
     });
     const metrics = [];
-    // First keyboard edge mount and first select remount are the cold samples.
+
     for (const source of ["keyboard", "toolbar"]) {
       metrics.push(await measure(page, source, "edge"));
       metrics.push(await measure(page, source, "select"));
     }
-    // Real keyboard events queued as fast as protocol permits. Final mode wins.
+
     for (const key of ["e", "v", "e", "v", "e", "v"])
       await page.keyboard.press(key);
     await settleMode(page, "select");

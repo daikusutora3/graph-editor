@@ -4,7 +4,6 @@ import { edgeDraftAtom, selectionAtom } from "./editor-atoms";
 import type { EditorPanel } from "./editor-layout";
 import { graphAtom, graphIsEmptyAtom } from "./graph-atoms";
 
-/** Keep graph edits out of the chrome while its graph-dependent panels are closed. */
 export function createChromeGraphAtom(visiblePanel: EditorPanel | null) {
   const needsGraph =
     visiblePanel === "layouts" ||

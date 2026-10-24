@@ -24,9 +24,7 @@ type AtomSetter<T> = (value: T | ((current: T) => T)) => void;
 type UseCytoscapeInteractionEventsOptions = {
   cyRef: MutableRefObject<Core | null>;
   mode: EditorMode;
-  /** Node mode: called with the graph position of a background tap. Reading
-   * the tap from Cytoscape (instead of an overlay div) keeps two-finger
-   * pinch and pan working on touch devices. */
+
   onPlaceNode: (position: Position) => void;
   rangeSelectionFilterRef: MutableRefObject<RangeSelectionFilter>;
   setContextMenuTarget: (target: GraphContextMenuTarget | null) => void;
@@ -97,7 +95,6 @@ export function useCytoscapeInteractionEvents({
 
     const onTapSelection = () => {
       if (mode === "select") {
-        // Native modifier-click selection finishes after the tap event.
         setSelection(readCytoscapeSelection(cy));
       }
     };

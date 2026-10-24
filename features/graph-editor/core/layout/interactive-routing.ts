@@ -43,16 +43,12 @@ export function* interactiveRerouteEdgeIdsTask(
       });
   }
   const reroute = new Set<EdgeId>();
-  // A whole-graph drag marks every valid edge by endpoint membership; there is
-  // no obstacle selection to accelerate and no reason to build Wasm buffers.
+
   let rustBatch: ReturnType<typeof createRustInteractiveRerouteBatch> = null;
   if (
     movedNodes.length !== model.nodes.length &&
     canRustBatchInteractiveReroutes(movedNodes.length, model.edges.length)
   ) {
-    // Sampling selects the backend only. Every edge is still tested. Pending,
-    // curved and endpoint-moved routes are already cheap; avoid array/buffer
-    // construction when those dominate (e.g. beyond the quality size gate).
     let eligible = 0;
     for (let index = 0; index < 16; index++) {
       const edge = model.edges[Math.floor((index * model.edges.length) / 16)]!;
@@ -72,8 +68,6 @@ export function* interactiveRerouteEdgeIdsTask(
   }
 
   if (rustBatch) {
-    // Keep batches bounded so the Worker can receive cancellation between them.
-    // Apply every decision in original edge order, including JS-only metadata.
     for (let start = 0; start < model.edges.length; start += 64) {
       const entries: {
         id: EdgeId;
@@ -162,13 +156,11 @@ function* routeNeedsObstacleReroute(
   movedNodes: Array<GraphNode & { measuredWidth: number }>,
 ): Generator<void, boolean> {
   const distanceToNode = createCurveNodeDistance(source, target, curve);
-  // Straight single-control routes stay inside their endpoint box, so remote
-  // capsules cannot affect the reroute decision. Other geometry stays exact.
+
   const isStraight =
     curve.controlPointDistancesPx.every((distance) => distance === 0) &&
     curve.controlPointWeights.every((weight) => weight >= 0 && weight <= 1);
-  // The extra pixel includes the distance solver's subdivision tolerance;
-  // translated drawings also need slack for floating-point cancellation.
+
   const margin =
     85 +
     Number.EPSILON *

@@ -1,16 +1,7 @@
 import { execFileSync } from "node:child_process";
 
-/**
- * Build-time content dates for sitemap <lastmod> and structured data.
- *
- * Search engines compare <lastmod> against what they last crawled and skip
- * pages that claim a change on every deploy, so each page group reports the
- * commit date of the files that actually produce its content instead of the
- * build clock. Runs only in server code during `next build`.
- */
 const BUILD_DATE = new Date();
 
-/** First public release of the localized guide pages. */
 export const GUIDE_PUBLISHED_DATE = "2026-09-04";
 export const ARTICLES_PUBLISHED_DATE = "2026-10-11";
 
@@ -52,7 +43,6 @@ export const ARTICLES_LAST_MODIFIED = lastCommitDate([
   "components/content",
 ]);
 
-/** YYYY-MM-DD, the form schema.org and sitemaps both accept. */
 export function toIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }

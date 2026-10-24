@@ -15,11 +15,6 @@ import {
 } from "../../features/graph-editor/compute/rust-kernel";
 import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/edge-routing";
 
-// Capture the old version, then compare the new version on the same machine:
-// node scripts/toolchain.mjs run tests/benchmarks/routing-parallel-spacing-performance.ts --output /tmp/parallel-spacing-before.json
-// node scripts/toolchain.mjs run tests/benchmarks/routing-parallel-spacing-performance.ts --baseline /tmp/parallel-spacing-before.json --output /tmp/parallel-spacing-after.json
-// Add --manual to both runs to measure fixed manual-sibling reconciliation.
-// Current Wasm is initialized. Measured runs have no mocks, spies or diagnostics.
 const PASSES = 7;
 const WARMUPS = 2;
 type Metric = {
@@ -61,7 +56,7 @@ for (const edgeCount of [100, 200]) {
     let step;
     do {
       const started = performance.now();
-      // Only the first discarded warmup verifies the active Rust kernel.
+
       step =
         pass === 0
           ? withRustKernelDiagnostics(kernels, () => task.next())

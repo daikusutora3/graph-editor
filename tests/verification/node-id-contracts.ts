@@ -58,7 +58,7 @@ const model: GraphModel = {
     x: order * 120,
     y: 0,
   })),
-  // A forest with multiple components exercises both group and column packing.
+
   edges: [
     [0, 1],
     [0, 2],

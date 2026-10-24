@@ -44,8 +44,6 @@ for (const layout of ["mobile", "compact", "desktop"] as const) {
   );
 }
 
-// The camera pan already includes Cytoscape's local-coordinate origin. A
-// distant graph must receive nearby domain coordinates, not a node at zero.
 for (const direction of [-1, 1]) {
   const domainCenter = direction * (GRAPH_MAX_ABS_COORDINATE - 1000);
   const viewport = {
@@ -108,7 +106,6 @@ assert.deepEqual(
   "redo restores the same ID and position",
 );
 
-// Wide pills must reserve their label width, not just their 48px height.
 const wide = {
   ...empty,
   nodes: [
@@ -127,8 +124,6 @@ const aroundWide = findNodeCreationPosition(wide, desktop, {
 assert(aroundWide);
 assert(Math.abs(aroundWide.y) >= 60 || Math.abs(aroundWide.x) > 160);
 
-// Short mobile view: the old symmetric whole-step grid repeated the center
-// from the fourth activation, despite space near the top and bottom bounds.
 const smallStore = createStore();
 const smallViewport = {
   width: 320,
@@ -177,8 +172,6 @@ assert(
   "very large finite viewport sizes keep a bounded candidate search",
 );
 
-// The CSS node diameter is in rem. Preferred font enlargement therefore
-// changes the real geometry, including the creation action's wrapped height.
 const enlarged = createEmptyGraphModel();
 for (let index = 0; index < 3; index += 1) {
   const position = findNodeCreationPosition(
@@ -214,7 +207,6 @@ assert(
   "wrapped action height remains outside the node placement region",
 );
 
-// A view too small for a complete node must not add it behind the chrome.
 assert.equal(
   findNodeCreationPosition(
     after,

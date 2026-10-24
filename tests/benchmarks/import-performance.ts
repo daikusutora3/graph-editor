@@ -6,8 +6,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import { evaluateGraphInput as currentEvaluate } from "../../features/graph-editor/io/import-graph";
 import type { ImportOptions } from "../../features/graph-editor/io/import-utils";
 
-// Run sequentially without other benchmarks/builds. --reference accepts the
-// original import-graph module with imports rebased to saved dependency modules.
 const reference = argument("--reference");
 const evaluate: typeof currentEvaluate = reference
   ? (await import(pathToFileURL(resolve(reference)).href)).evaluateGraphInput

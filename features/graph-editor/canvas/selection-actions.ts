@@ -21,7 +21,7 @@ export type SelectionActionDefinition = {
   label: string;
   kbd?: string;
   danger?: boolean;
-  /** Shown in the context menu but not in the selection bar. */
+
   menuOnly?: boolean;
 };
 
@@ -94,8 +94,6 @@ export function resolveSelectionActions(
   }
 
   if (canEditEdge && selectedEdges[0]?.source !== selectedEdges[0]?.target) {
-    // Keyboard/menu alternative to dragging the edge; menu only to keep the
-    // selection bar short.
     actions.push(
       {
         id: "bend-left",

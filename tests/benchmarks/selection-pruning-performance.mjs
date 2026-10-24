@@ -6,11 +6,6 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-// Compare the selection helper and the real command atom, in same-form bundles.
-// Default compares only editor-selection.ts. --all-command-changes also restores
-// reference graph-json.ts, measuring the final serializer and pruning together.
-// --mixed-color compares one original two-command palette choice with the
-// production atomic palette action; use with --all-command-changes.
 const revision = argument("--reference-revision");
 const outputDirectory = argument("--output-directory");
 if (!revision || !outputDirectory)

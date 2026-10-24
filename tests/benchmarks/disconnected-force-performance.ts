@@ -12,10 +12,6 @@ import {
 import { createForceLayoutTask } from "../../features/graph-editor/layouts/layout-algorithms";
 import { disconnectedForceFixture } from "../fixtures/disconnected-force";
 
-// Run baseline/after without concurrent CPU benchmarks or builds. --module may
-// point to a saved original algorithm module without altering the checkout.
-// node scripts/toolchain.mjs run tests/benchmarks/disconnected-force-performance.ts --output /tmp/force-before.json
-// node scripts/toolchain.mjs run tests/benchmarks/disconnected-force-performance.ts --baseline /tmp/force-before.json --output /tmp/force-after.json
 const PASSES = 9;
 const WARMUPS = 2;
 const RUNS_PER_PASS = 10;

@@ -27,8 +27,6 @@ const original =
         normalizeGraphModel: typeof normalizeGraphModel;
       });
 
-// Original serialization contract: normalize, then compare the full document.
-// The optimized save path must retain both exact JSON and rejection reasons.
 function reference(value: GraphModel) {
   const raw = JSON.stringify(value);
   const normalized = normalizeGraphModel(value);
@@ -352,7 +350,7 @@ function verifyIndependentContracts() {
     const value = item[key];
     delete item[key];
     Object.setPrototypeOf(item, { [key]: value });
-    // x remains a valid inherited number: ownership, rather than range, fails.
+
     rejected(graph);
   }
   const nodes = {
@@ -444,7 +442,7 @@ function verifyArrayMethodContracts() {
     const invalidEntries = invalidIteration[section].slice();
     if (section === "nodes") Object.assign(invalidEntries[0]!, { x: NaN });
     else Object.assign(invalidEntries[0]!, { target: "missing" });
-    // Restore canonical numeric entries while the iterator retains the bad copy.
+
     if (section === "nodes") invalidIteration.nodes = fixture().nodes;
     else invalidIteration.edges = fixture().edges;
     Object.defineProperty(invalidIteration[section], Symbol.iterator, {
@@ -510,8 +508,7 @@ function verifyAccessorContracts() {
   type Expected =
     | { accepted: true; reads: number }
     | { error: string; message: string; reads: number; reason?: string };
-  // Getter state is observable. Each implementation must receive an entirely
-  // fresh fixture, rather than verify(value)'s repeated use of one object.
+
   const observe = (
     serialize: typeof serializeGraphModel,
     make: () => AccessorFixture,

@@ -52,18 +52,12 @@ type ThemeProps = {
   onToggleTheme: () => void;
 };
 
-/** Every bar in the top row shares this height so they read as one group. */
 const TOP_BAR_HEIGHT = "min-h-[3.375rem] py-1";
 const TOOLBAR_LABEL = "hidden @min-[40rem]/top-toolbar:inline";
 
 const floating =
   "ge-panel pointer-events-auto flex items-center rounded-[14px] backdrop-blur-[16px]";
 
-/**
- * Top row of the desktop chrome. A three-column grid keeps the brand pill,
- * toolbar, and right rail from overlapping. The toolbar uses the remaining
- * width and omits labels and key hints before its controls could wrap.
- */
 export function DesktopTopRow({
   onOpenStarter,
   wide,

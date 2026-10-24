@@ -18,8 +18,6 @@ import {
 } from "../../features/graph-editor/compute/routing-result";
 import type { ComputeJob } from "../../features/graph-editor/compute/worker-protocol";
 
-// Real Cytoscape projection/geometry APIs, with deterministic font measurement.
-// These CPU and clone timings exclude browser rasterization and pointer latency.
 const results = [];
 for (const [nodeCount, edgeCount] of [
   [100, 400],
@@ -118,8 +116,7 @@ for (const [nodeCount, edgeCount] of [
     }
     assert.equal(job.kind, "routing");
     const previous = job.options.previousMeta!;
-    // Like the router, retain baseline objects for unaffected edges. Reverse
-    // key order to also check that delta restoration preserves router order.
+
     const routed = new Map(
       [...previous]
         .reverse()
@@ -141,8 +138,7 @@ for (const [nodeCount, edgeCount] of [
       };
       const deltaResponse = () => {
         const start = performance.now();
-        // Include the client's per-request shallow snapshot, encoding in the
-        // Worker, clone transport, and client restoration in the comparison.
+
         const snapshot = new Map(previous);
         const delta = createRoutingDelta(routed, previous)!;
         restoredDelta = restoreRoutingDelta(structuredClone(delta), snapshot);

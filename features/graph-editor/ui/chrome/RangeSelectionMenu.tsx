@@ -89,8 +89,6 @@ export function RangeSelectionMenu({
         active={mode === "select"}
         disabled={panel !== null}
         className={cn(
-          // This menu is hidden on touch devices; a narrow window should keep
-          // its pointer target compact instead of squeezing the Select button.
           "w-6 rounded-l-none touch:w-6 touch:rounded-l-none",
           "h-11",
           above && "rounded-r-xl touch:rounded-r-xl",
@@ -132,8 +130,6 @@ export function RangeSelectionMenu({
           }}
           onKeyDown={(event) => {
             if (event.key === "Tab") {
-              // Safari may move Tab focus to browser chrome without a DOM
-              // blur. Dismiss the menu and preserve native Tab navigation.
               close();
               return;
             }

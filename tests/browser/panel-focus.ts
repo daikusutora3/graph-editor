@@ -7,7 +7,7 @@ const base = process.env.BASE_URL ?? "http://127.0.0.1:3323";
 try {
   await page.goto(base);
   await page.locator('[data-canvas-ready="true"]').waitFor();
-  // Hold only the delayed panel focus, so the user can type before it runs.
+
   await page.evaluate(() => {
     const original = window.setTimeout.bind(window);
     const callbacks: Array<() => void> = [];

@@ -7,8 +7,6 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { computeEdgeRouting } from "../../features/graph-editor/core/layout/edge-routing";
 import * as previewGeometry from "../../features/graph-editor/ui/samples/preview-geometry";
 
-// An older standalone bundle can be supplied for before/after comparisons.
-// Routing is prepared outside the timed geometry and SVG path-string workload.
 const moduleArgument = process.argv.find((argument) =>
   argument.startsWith("--geometry-module="),
 );
@@ -32,7 +30,7 @@ for (const nodeCount of [20, 250, 1_000]) {
         x: Math.cos(index) * index * 10,
         y: Math.sin(index) * index * 10,
       })),
-      // Includes self-loops, distinct parallel edges and both directions.
+
       edges: Array.from({ length: nodeCount * 5 }, (_, index) => ({
         id: `e${index}`,
         source: `n${index % nodeCount}`,

@@ -4,9 +4,6 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Prepare same-form factories for routing-label-pairs-performance.ts. Reference
-// replaces the snapshot module; --all-routing-changes also replaces scoring.
-// Both factories share the measured kernel.
 const revision = argument("--reference-revision");
 const output = argument("--output-directory");
 if (!revision || !output)

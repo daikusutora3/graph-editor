@@ -43,7 +43,6 @@ const legacySectionIds: Readonly<Record<string, string>> = {
   shortcuts: "guide-section-4",
 };
 
-/** The guide renders on the server; copy and return controls use client code. */
 export function GuidePage({ locale }: { locale: AppLocale }) {
   const copy = guideCopy[locale];
   const entries = [

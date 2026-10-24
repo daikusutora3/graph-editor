@@ -94,7 +94,6 @@ export function getSampleParameters(
     : [];
 }
 
-/** Normalize all constraints together so preview and inserted graph agree. */
 export function normalizeSampleParameters(
   kind: SampleGraphKind,
   values: SampleParameterValues = {},

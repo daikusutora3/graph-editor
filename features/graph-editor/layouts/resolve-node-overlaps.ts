@@ -13,7 +13,6 @@ export type OverlapResult = {
   remainingPairs: number;
 };
 
-/** Exact distance between the horizontal center segments of two stadiums. */
 export function resolveNodeOverlaps(model: GraphModel): OverlapResult {
   const task = createOverlapTask(model);
   let step = task.next();
@@ -57,8 +56,6 @@ export function* createOverlapTask(
   function* scan(move: boolean, limit = Infinity): Generator<void, number> {
     let remaining = 0;
     if (!move) {
-      // Pills all have the same height. Only neighbors less than the required
-      // gap apart vertically can collide, regardless of their label widths.
       const verticalOrder = nodes
         .map((node, index) => ({ index, point: positions[node.id]! }))
         .sort((a, b) => a.point.y - b.point.y);
@@ -96,14 +93,13 @@ export function* createOverlapTask(
         const distance = Math.hypot(gapX, dy);
         if (distance >= required - 0.00001) continue;
         remaining++;
-        // Overlapping center segments separate vertically; disjoint segments use their closest points.
+
         const ux = distance > 0.00001 ? (Math.sign(dx) * gapX) / distance : 0;
         const uy = distance > 0.00001 ? dy / distance : (i + j) % 2 ? 1 : -1;
         const push = (required - distance + 0.001) / 2;
         let mx = ux * push,
           my = uy * push;
         if (model.settings.snapToGrid) {
-          // Outward grid steps cannot round a separating displacement back to zero.
           mx = Math.sign(mx) * Math.ceil(Math.abs(mx) / 24) * 24;
           my = Math.sign(my) * Math.ceil(Math.abs(my) / 24) * 24;
         }
@@ -126,8 +122,6 @@ export function* createOverlapTask(
     moved: boolean,
   ): Generator<void, OverlapResult> {
     if (!translateIntoCoordinateRange(positions, model.settings.snapToGrid)) {
-      // A drawing spanning the full range cannot always be shifted as a whole.
-      // Preserve the supported input rather than clamp and recreate collisions.
       positions = Object.fromEntries(
         nodes.map((node) => [node.id, { x: node.x, y: node.y }]),
       );
@@ -143,15 +137,12 @@ export function* createOverlapTask(
       status: remainingPairs ? "unresolved" : moved ? "resolved" : "unchanged",
     };
   }
-  // Separated graphs need no relaxation. Keep the moving scan in stable node
-  // order so resolving an actual collision produces identical coordinates.
+
   if ((yield* scan(false, 1)) === 0) {
     return { positions, remainingPairs: 0, status: "unchanged" };
   }
   for (let step = 0; step < 128; step++) if ((yield* scan(true)) === 0) break;
-  // Dense clusters can converge slowly under symmetric relaxation. Finish only
-  // residual collisions in stable order, moving the later node monotonically.
-  // Each jump passes an earlier capsule, so at most N jumps are needed per node.
+
   if ((yield* scan(false)) > 0) {
     for (let j = 1; j < nodes.length; j++) {
       const b = positions[nodes[j]!.id]!;
@@ -175,8 +166,6 @@ export function* createOverlapTask(
   return yield* finish(remainingPairs, changed);
 }
 
-/** A uniform translation preserves capsule clearance. Grid translations use
- * whole grid steps; neither path clips individual nodes at the boundary. */
 function translateIntoCoordinateRange(
   positions: NodePositionMap,
   snap: boolean,

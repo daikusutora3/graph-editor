@@ -131,8 +131,7 @@ function verifyBulkElementRemoval() {
       refreshCytoscapeGeometry(synced.changedElements) === 2,
       "bulk removal must refresh the surviving parallel and loop groups only",
     );
-    // Cytoscape's pool swaps on deletion, so compare geometry by ID and check
-    // its established sequential-removal ordering separately below.
+
     const sorted = <T extends { id: string }>(items: T[]) =>
       items.toSorted((a, b) => a.id.localeCompare(b.id));
     expect(
@@ -356,8 +355,7 @@ function verifyIncrementalHitboxes() {
       initial.nodes === unchanged.nodes && initial.edges === unchanged.edges,
       "idle frames reuse the geometry snapshot",
     );
-    // Cytoscape may emit invalidations whose data changes do not affect any
-    // rendered geometry. They must not rebuild the React selection lists.
+
     cy.getElementById("a").data("interactionTest", 1);
     cy.getElementById("ab").data("interactionTest", 1);
     const unchangedInvalidation = check("unrelated data invalidation");
@@ -436,8 +434,7 @@ function verifyIncrementalHitboxes() {
     };
     syncCytoscapeElements(cy, definitions(graph));
     check("model label update");
-    // Removal/re-addition changes Cytoscape iteration order independently of
-    // model order. The local lookup must be rebuilt against that full read.
+
     const detached = cy.getElementById("c").remove();
     cy.add(detached);
     refreshCytoscapeGeometry(cy.elements());
@@ -609,8 +606,7 @@ function verifyImmutableModelHitboxes() {
       reordered.positions === 0 && reordered.midpoints === 0,
       "model-only reordering preserves the renderer's iteration order cheaply",
     );
-    // Model display metadata can change before Cytoscape delivers any data
-    // event. Compare it explicitly instead of treating every new root as dirty.
+
     graph = {
       ...graph,
       nodes: graph.nodes.map((node) =>
@@ -693,8 +689,7 @@ function verifyCoincidentEdgeHitboxes() {
         createEdgeHitboxPath(loop).includes("Q"),
       "a true self-loop retains the installed renderer's visible loop hitbox",
     );
-    // Simulate renderer-less/nonfinite label midpoint fallbacks using endpoint
-    // identity, including the coincident ordinary edge that has no direction.
+
     const fallback = (isLoop: boolean) =>
       readRenderedEdgeLabelPosition(
         {
@@ -807,8 +802,7 @@ function verifyHitboxInvalidationDeduplication() {
       connectedExpansions === 1 && parallelExpansions === 1,
       "repeated node events and subsequent incident-edge events reuse dirty membership",
     );
-    // Structural/Core events must still promote an already dirty snapshot to a
-    // full read. Otherwise a removed/re-added ID could retain stale ordering.
+
     for (const boundary of ["add", "remove", "core"]) {
       const previousReads = fullReads;
       emit(
@@ -1051,8 +1045,7 @@ function verifyCachedRouteBounds() {
     const edge = cy.getElementById("ab");
     const original = { ...edge.boundingBox() };
     edge.data("controlPointDistances", [-160]);
-    // Fit reads bounds before the renderer's frame. That sequence captures an
-    // obsolete box even though the subsequent frame updates the real midpoint.
+
     edge.boundingBox();
     renderer.flushRenderedStyleQueue();
     const bent = edge.midpoint();

@@ -18,10 +18,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/edge-routing";
 
-// Run versions separately using the same runtime and machine:
-// node scripts/toolchain.mjs run tests/benchmarks/geometry-routing-performance.ts --output /tmp/geometry-routing-before.json
-// node scripts/toolchain.mjs run tests/benchmarks/geometry-routing-performance.ts --baseline /tmp/geometry-routing-before.json
-// Real Cytoscape projections with deterministic font metrics; no DOM/raster/FPS.
 const ITERATIONS = 15;
 const WARMUPS = 5;
 type Metric = {

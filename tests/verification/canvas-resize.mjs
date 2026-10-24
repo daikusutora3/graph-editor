@@ -12,8 +12,6 @@ import {
   centerGraphOrigin,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-viewport";
 
-// Run the installed canvas-sizing implementation: assigning a canvas size
-// clears its pixel backing store. Browser review covers the final raster.
 const Canvas = cytoscape("renderer", "canvas");
 const graph = {
   ...createEmptyGraphModel(),
@@ -231,7 +229,7 @@ function fixture() {
     },
   };
 }
-// Prepare actual cores before replacing the constructor used by the hook.
+
 const baseline = fixture();
 const main = fixture();
 const strictFirst = fixture();
@@ -307,7 +305,6 @@ assert.equal(
 );
 batchedCanvas.cy.destroy();
 
-// Real Cytoscape bounds at enlarged text must fit between wrapped controls.
 {
   const tall = {
     ...createEmptyGraphModel(),
@@ -536,7 +533,7 @@ function lifecycleFixture(canvas) {
   };
   const hook = harness(() => useGraphCanvasLifecycle(options));
   hook.render();
-  // The first graph fit is still completed through its render acknowledgement.
+
   canvas.renderer.render();
   hook.flush();
   assert.equal(hook.value.displayReady, true);
@@ -570,7 +567,7 @@ function lifecycleFixture(canvas) {
   const observer = resizeObservers.find((entry) => !entry.disconnected);
   const densityPaints = main.paints;
   const densityHitboxes = test.hitboxRefreshes;
-  // CSS dimensions stay constant: only the resolution media query fires.
+
   for (const density of [2, 1, 3, 1]) {
     canvasWindow.devicePixelRatio = density;
     const previousQuery = mediaQueries.at(-1);

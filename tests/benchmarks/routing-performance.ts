@@ -12,9 +12,6 @@ import {
 } from "../../features/graph-editor/core/layout/edge-routing";
 import { exportTikz } from "../../features/graph-editor/io/export-tikz";
 
-// Run each version in isolation to avoid competing benchmark processes.
-// bun tests/benchmarks/routing-performance.ts --output /tmp/routing-before.json
-// bun tests/benchmarks/routing-performance.ts --baseline /tmp/routing-before.json
 const ITERATIONS = 5;
 const SLICE_MS = 4;
 type Metric = {
@@ -77,8 +74,6 @@ for (const [name, nodeCount, edgeCount, longLabels] of [
   measure(`${name}: TikZ export`, () => exportTikz(graph));
 }
 
-// 600 loop sources still qualify for quality routing (600² < 400,000).
-// More nodes would exercise the inexpensive fallback and miss loop scoring.
 for (const [name, spacing, longLabels] of [
   ["loops / grid", 90, false],
   ["loops / collapsed", 0, false],

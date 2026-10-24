@@ -6,8 +6,6 @@ import {
 } from "../../features/graph-editor/io/export-graph";
 import { getExportNodeEntries } from "../../features/graph-editor/io/export-node-labels";
 
-// Pure calculation only. The browser runner excludes export text layout, paint
-// and input latency. Keep its timing separate from builds and other benchmarks.
 export function runExportMatrixBenchmark() {
   const iterations = 15;
   const metrics = [];
@@ -26,7 +24,6 @@ export function runExportMatrixBenchmark() {
     const before: number[] = [];
     const after: number[] = [];
     for (let run = 0; run < iterations + 3; run += 1) {
-      // Alternate to avoid systematically giving one version the cold run.
       for (const current of run % 2 ? [true, false] : [false, true]) {
         const start = performance.now();
         const output = current
@@ -81,8 +78,6 @@ function fixture(
   };
 }
 
-// Frozen pre-pass matrix construction, using identical format restrictions and
-// numbering. It is kept out of the production bundle.
 function exportMatrixReference(model: GraphModel) {
   const problem = graphExportProblem(model, "adjacency-matrix");
   if (problem) throw new Error(problem);

@@ -22,13 +22,11 @@ export function isInlineEditStartShortcut(event: KeyboardEvent) {
 
 export const isCanvasShortcutBlockedTarget = isEditorShortcutBlockedTarget;
 
-/** Horizontal padding of node pills; must match NODE_LABEL_PADDING in the adapter. */
 const NODE_LABEL_PADDING = 14;
-/** Room for the caret so the last glyph never touches the edge. */
+
 const CARET_ROOM = 4;
 const INLINE_EDIT_CANVAS_INSET = 16;
 
-/** Keep the measured editor inside the canvas without moving its graph element. */
 export function clampInlineEditCenterX(
   centerX: number,
   formWidth: number,
@@ -81,10 +79,6 @@ function canvasCssPx(name: string, fallback: number): number {
   return value.endsWith("rem") ? parsed * 16 : parsed;
 }
 
-/**
- * Sizes the inline editor so it matches the rendered label pixel for pixel:
- * same font, same padding, same minimum size, scaled by the current zoom.
- */
 export function inlineEditCssProperties({
   edit,
   maxZoom,

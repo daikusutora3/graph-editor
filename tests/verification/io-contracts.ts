@@ -226,7 +226,6 @@ expect(
   "empty JSON documents should still import successfully as empty graphs",
 );
 
-// Keep the copyable guide inputs and their diagrams consistent with real imports.
 for (const example of guideExamples) {
   const result = importGraphInput(example.input);
   const labels = new Map(
@@ -343,7 +342,6 @@ for (const format of [
 }
 
 {
-  // JSON is the lossless format: positions, colours and bends must survive.
   const richModel: GraphModel = {
     ...weightedDirectedModel,
     nodes: weightedDirectedModel.nodes.map((node, index) => ({
@@ -1341,8 +1339,6 @@ expect(
   "import should reject oversized raw input before parsing lines",
 );
 
-// Exhaust the small binary matrices against an independent edge enumeration.
-// Directed overrides must affect the import without changing format evidence.
 for (let bits = 0; bits < 512; bits += 1) {
   const values = Array.from({ length: 3 }, (_, source) =>
     Array.from(

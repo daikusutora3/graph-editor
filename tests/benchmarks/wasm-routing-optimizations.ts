@@ -10,9 +10,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createEdgeRoutingTask } from "../../features/graph-editor/core/layout/edge-routing";
 
-// --baseline-root takes a saved source snapshot containing features/, lib/,
-// node_modules (or a symlink), and wasm/. Each version loads its own real asset.
-// This compares the previously Rust-enabled app, rather than all-JS routing.
 type Backend = { name: string; route: typeof createEdgeRoutingTask };
 const backends: Backend[] = [];
 const baselineIndex = process.argv.indexOf("--baseline-root");

@@ -44,8 +44,6 @@ backends.push({
   ).instance.exports as Kernel,
 });
 
-// Buffers are packed and allocated before timing, exposing numeric-kernel cost
-// separately from JS snapshots, ABI copies, scheduling, and browser painting.
 const curves = [
   new Float64Array([1, 1, 0, 0.5]),
   new Float64Array([1, 1, 128, 0.5]),

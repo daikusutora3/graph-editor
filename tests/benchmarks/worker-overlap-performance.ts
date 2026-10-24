@@ -14,11 +14,6 @@ import {
   installRealComputeWorkers,
 } from "../fixtures/real-compute-workers";
 
-// Production client and worker, with a real Bun Worker and file-backed Wasm.
-// Includes client preparation, retained replay snapshot, native message clones,
-// Worker validation/computation, reply clone and client decode; excludes startup.
-// This is native-worker latency on this CPU, not browser input/paint latency.
-// Supply --reference with the original worker-client module for before/after.
 const referencePath = argument("--reference");
 if (!referencePath)
   throw new Error(

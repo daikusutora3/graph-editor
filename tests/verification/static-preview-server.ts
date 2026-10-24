@@ -90,8 +90,6 @@ try {
     "The preview must bind only IPv4 loopback.",
   );
 
-  // Alias requests are pure Request fixtures, never requests to the user's
-  // preview. Follow their Location through the exact handler used by HTTP.
   const handler = createStaticPreviewHandler(out);
   await Promise.all(
     parseStaticRedirects(redirectText).flatMap((rule) =>

@@ -96,7 +96,6 @@ import {
 } from "./GraphCanvasProvider";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 
-/** Graph px added per "bend" menu action. */
 const BEND_STEP_PX = 48;
 
 export function GraphCanvas() {
@@ -393,8 +392,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
 
   const flushModeHitboxesRef = useRef(flushRenderedHitboxes);
   flushModeHitboxesRef.current = flushRenderedHitboxes;
-  // A retained overlay may have been hidden through zoom, pan and graph edits.
-  // Refresh before its first visible paint, rather than exposing stale targets.
+
   useLayoutEffect(() => {
     const cy = cyRef.current;
     if (mode === "select" && cy && !cy.destroyed())
@@ -516,7 +514,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     selection.nodeIds.length > 0 || selection.edgeIds.length > 0
       ? describeSelection(graph, selection, messages)
       : "";
-  // Menu/keyboard bend: nudge the curve sideways, keeping its position.
+
   const bendEdgeBy = useCallback(
     (edgeId: string, direction: -1 | 1) => {
       const edge = graph.edges.find((candidate) => candidate.id === edgeId);
@@ -638,7 +636,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             onAddNode={addNodeInView}
           />
         ) : null}
-        {/* Announces what is selected to assistive tech; visually hidden. */}
+        {}
         <div role="status" aria-live="polite" className="sr-only">
           {selectionSummary}
         </div>
@@ -667,8 +665,6 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             ) : null;
 
           if (layout !== "mobile") {
-            // Compact windows reserve space for zoom beside the wrapping palette.
-            // Wide windows retain the centered three-column desktop layout.
             return (
               <div
                 className={cn(
@@ -698,9 +694,6 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             );
           }
 
-          // Mobile: pinch handles zoom, so the pill is replaced by a rescue
-          // "fit" button that only appears when the graph is off-screen. The
-          // stack keeps it clear of the selection bar and the bottom toolbar.
           return (
             <div className="pointer-events-none absolute inset-x-3 bottom-[var(--ge-mobile-controls-bottom,92px)] z-40 flex flex-col items-stretch gap-2">
               {isGraphOutOfView ? (

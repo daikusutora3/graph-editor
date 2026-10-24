@@ -363,7 +363,6 @@ export function createGraphCanvasStylesheet(
     {
       selector: "node",
       style: cytoscapeStyle({
-        // A circle that stretches into a pill when the label needs more room.
         shape: "round-rectangle",
         "corner-radius": `${palette.nodeSize / 2}px`,
         width: (node: NodeSingular) =>
@@ -468,8 +467,7 @@ export function createGraphCanvasStylesheet(
       style: cytoscapeStyle({
         width: EDGE_WIDTH,
         "curve-style": "unbundled-bezier",
-        // Control points are measured from node centres, matching the routing
-        // and manual-bend math, instead of from the node border intersections.
+
         "edge-distances": "node-position",
         "control-point-distances": "data(controlPointDistances)",
         "control-point-weights": "data(controlPointWeights)",
@@ -580,15 +578,12 @@ export function createGraphCanvasStylesheet(
     {
       selector: "node:selected",
       style: cytoscapeStyle({
-        // Keep the node's fill, border and contrasting label colour visible
-        // while recolouring it; the outside halo indicates selection.
         "underlay-color": palette.active,
         "underlay-opacity": palette.activeOpacity,
         "underlay-padding": 5,
       }),
     },
-    // Selection keeps the edge's own colour visible (so recolouring a
-    // selected edge shows immediately) and marks it with an accent halo.
+
     ...SELECTED_EDGE_SELECTORS.map((selector) => ({
       selector,
       style: cytoscapeStyle({

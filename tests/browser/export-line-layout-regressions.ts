@@ -11,8 +11,6 @@ import {
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { exportGraph } from "../../features/graph-editor/io/export-graph";
 
-// Keep the large labels and weights in the exported source, while avoiding a
-// separate canvas glyph workload. Each label remains within the model limit.
 const seedModel: GraphModel = {
   ...createEmptyGraphModel({
     autoEdgeRouting: false,
@@ -33,7 +31,7 @@ const seedModel: GraphModel = {
     weight: "字".repeat(256),
   })),
 };
-// Storage normalizes property order before the graph reaches the UI.
+
 const model = parseGraphModelJson(serializeGraphModel(seedModel))!;
 const raw = serializeGraphModel(model);
 assert.ok(raw.length > 1_500_000 && !raw.includes("\n"));
@@ -232,7 +230,6 @@ async function verifyLarge(name: string, viewport: ViewportSize) {
     assert.equal(readFileSync((await (await downloaded).path())!, "utf8"), raw);
 
     if (name === "desktop") {
-      // Exercise the actual font-loading notification with a changed font size.
       const firstChunkWidth = await output
         .locator("[data-export-line-chunk]")
         .first()
@@ -272,8 +269,6 @@ async function verifyLarge(name: string, viewport: ViewportSize) {
       await waitReady();
       assert.equal(await output.textContent(), raw);
 
-      // A graph-setting update changes the source while pending measurement is
-      // discarded with the panel; old callbacks must not restore the old text.
       await format.selectOption("edge-list");
       await format.selectOption("json");
       await page.getByRole("button", { name: "Settings", exact: true }).click();

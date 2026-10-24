@@ -37,7 +37,6 @@ const rowClass = cn(
   focusRing,
 );
 
-/** App menu behind the brand pill: project links and help. */
 export function AppMenuPanel({
   onOpenShortcuts,
 }: {

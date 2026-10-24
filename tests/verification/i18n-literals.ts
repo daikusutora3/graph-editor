@@ -1,11 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-/**
- * User-facing text belongs in the message and localized content dictionaries.
- * This scans application code for CJK characters so a hard-coded Japanese
- * string cannot ship to the English or Chinese UI unnoticed.
- */
 const roots = ["features", "app", "lib"];
 const allowed = [
   "features/graph-editor/i18n/",

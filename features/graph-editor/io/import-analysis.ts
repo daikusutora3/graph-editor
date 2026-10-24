@@ -75,7 +75,6 @@ export function analyzeGraphInput(
   return analyzeGraphSource(createImportSource(lines), options);
 }
 
-/** Analyze the same rows that the importer will consume in this evaluation. */
 export function analyzeGraphSource(
   source: ImportSource,
   options: ImportOptions = {},
@@ -156,7 +155,6 @@ export function analyzeGraphSource(
   };
 }
 
-/** Reuse the validated document when analysis accompanies a JSON import. */
 export function analyzeGraphJsonModel(
   model: GraphModel | null,
 ): ImportAnalysis {
@@ -262,8 +260,7 @@ function probeAdjacencyList(
     strength: "exact",
     evidence: ["adjacency-syntax"],
     nodeCount: labels.size,
-    // Beyond the entry budget, avoid retaining a potentially huge pair index
-    // or presenting an incomplete graph count as an exact number.
+
     edgeCount:
       entryCount > MAX_IMPORT_ADJACENCY_ENTRIES
         ? undefined

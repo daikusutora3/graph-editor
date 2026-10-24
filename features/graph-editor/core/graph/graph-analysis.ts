@@ -257,7 +257,6 @@ export function isDirectedAcyclic(model: GraphModel) {
   const queue = nodeIds.filter((nodeId) => indegree.get(nodeId) === 0);
   let visitedCount = 0;
 
-  // Kahn's cycle test depends on visited count, not the choice of ready node.
   for (let head = 0; head < queue.length; head += 1) {
     const current = queue[head]!;
     visitedCount += 1;

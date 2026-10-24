@@ -1,4 +1,3 @@
-// Measurements operate on one live page and must run sequentially.
 /* oxlint-disable no-await-in-loop */
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -10,7 +9,6 @@ import {
 } from "../../features/graph-editor/core/graph/graph-json";
 import { exportGraph } from "../../features/graph-editor/io/export-graph";
 
-// Uses a fresh browser context and a test-local clipboard stub.
 const seedModel = {
   ...createEmptyGraphModel({ allowSelfLoops: true }),
   nodes: Array.from({ length: 600 }, (_, i) => ({
@@ -50,15 +48,13 @@ try {
   }, serializeGraphModel(model));
   await page.goto(process.env.BASE_URL ?? "http://127.0.0.1:3314/en");
   await page.locator('[data-canvas-ready="true"]').waitFor();
-  await page.waitForTimeout(2000); // Complete initial canvas routing before timing export.
+  await page.waitForTimeout(2000);
   await page.getByRole("button", { name: "Export", exact: true }).click();
   const format = page.getByRole("combobox", { name: "Export format" });
   const output = page.locator("pre[aria-label^='Exported']");
   const gaps: number[] = [];
   for (let run = 0; run < 5; run++) {
     if (run > 0) {
-      // Start each sample without the completed-export cache. Reopening is
-      // tested separately below so cache hits do not skew generation timing.
       await page.reload();
       await page.locator('[data-canvas-ready="true"]').waitFor();
       await page.waitForTimeout(2000);
@@ -120,7 +116,7 @@ try {
     await page.locator('[data-canvas-ready="true"]').waitFor();
     await page.waitForTimeout(2000);
     await page.getByRole("button", { name: "Export", exact: true }).click();
-    // Switch away while routing is scheduled; old TeX must not overwrite JSON.
+
     await format.selectOption("edge-list");
     await format.selectOption("tikz");
     await format.selectOption("json");
@@ -149,8 +145,7 @@ try {
     await page.waitForTimeout(220);
     await page.getByRole("button", { name: "Export", exact: true }).click();
     assert.equal(await format.inputValue(), "json");
-    // Reopening remounts the long single-line layout. Its cooperative font
-    // measurement exposes the existing Preparing state before the text.
+
     await page.waitForFunction(
       (text) =>
         document.querySelector("pre[aria-label^='Exported']")?.textContent ===

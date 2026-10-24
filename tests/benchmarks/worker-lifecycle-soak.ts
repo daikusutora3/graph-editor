@@ -29,12 +29,6 @@ import {
   installRealComputeWorkers,
 } from "../fixtures/real-compute-workers";
 
-// Standalone lifecycle/resource soak; deliberately excluded from the test suite.
-// Default smoke: node scripts/toolchain.mjs run tests/benchmarks/worker-lifecycle-soak.ts
-// Review first, then use --duration-seconds 5400 --interval-ms 2000 --output /tmp/worker-soak.json
-// Explicit durations are bounded to 2 hours; the default remains a short smoke.
-// Every job is bounded to 10 seconds.
-// It uses real production client/Workers/Wasm and file-backed fetch, without a browser.
 const options = parseOptions();
 const latencies = new Map<string, RollingMetric>();
 const stats = {
@@ -79,9 +73,7 @@ let heapStats: (() => Record<string, unknown>) | undefined;
 try {
   const name = "bun:jsc";
   heapStats = (await import(name)).heapStats;
-} catch {
-  // Other runtimes can still report process.memoryUsage without JSC details.
-}
+} catch {}
 const bun = (
   globalThis as unknown as { Bun?: { gc?: (force?: boolean) => void } }
 ).Bun;
@@ -135,8 +127,7 @@ try {
       );
       void interrupted.catch(() => {});
       await bounded(entered, "1000-node force Rust ABI entry");
-      // Queue a real successor behind the synchronous running kernel before
-      // aborting its owner. Its immutable snapshot must survive Worker replay.
+
       overlap = timed("replayed overlap", computeOverlapsInWorker(source));
       const sourceBeforeMutation = signature(source);
       assert.equal(
@@ -170,9 +161,6 @@ try {
     }
     stats.mutationChecks++;
 
-    // Two pending request-local baselines are replaced/cleared by their caller
-    // immediately after submission. Every reply must retain its own exact Map
-    // order and route values, including real compact routing-delta responses.
     const first = route(variant, routingFixtures[variant]!);
     const secondVariant = (variant + 1) % routingFixtures.length;
     const second = route(secondVariant, routingFixtures[secondVariant]!);
@@ -462,9 +450,7 @@ function routingFixture(variant: number): RoutingFixture {
       autoEdgeRouting: true,
       directed: variant % 2 === 1,
     }),
-    // Most routes are straight separated pairs, so a remote-node move retains
-    // a majority of their request-local baseline objects. One parallel group
-    // still exercises rerouted values in the same compact delta response.
+
     nodes: Array.from({ length: 24 }, (_, index) => ({
       id: `r${variant}n${index}`,
       order: index,

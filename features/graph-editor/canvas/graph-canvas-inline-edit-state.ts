@@ -94,8 +94,7 @@ export function useGraphInlineEdit({
 
     const shouldSelect = focusKeyRef.current !== focusKey;
     focusKeyRef.current = focusKey;
-    // Select the existing label before input can arrive. A deferred selection
-    // can otherwise select newly typed text and replace it on the next key.
+
     const input = inputRef.current;
     input?.focus();
     if (shouldSelect) input?.select();

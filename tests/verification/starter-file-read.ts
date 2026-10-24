@@ -55,7 +55,6 @@ function session(
   };
 }
 
-// Resolve in the opposite order to selection; the second file wins.
 {
   const current = session();
   const first = deferredFile();
@@ -84,7 +83,6 @@ function session(
   );
 }
 
-// Typing is newer user intent even while File.text is still pending.
 {
   const current = session();
   const file = deferredFile();
@@ -102,7 +100,6 @@ function session(
   );
 }
 
-// Closing and reopening invalidate the previous session before the next read.
 {
   const current = session();
   const old = deferredFile();
@@ -129,7 +126,6 @@ function session(
   );
 }
 
-// Rejection must be handled, and only the latest request may display an error.
 {
   const current = session();
   const old = deferredFile();
@@ -169,7 +165,6 @@ function session(
   expect(attempts === 2, "same file retry starts a fresh read");
 }
 
-// The byte limit runs before allocating the entire decoded string.
 await Promise.all(
   (["auto", "json", "edge-pairs"] as const).map(async (format) => {
     const limit =
@@ -201,7 +196,6 @@ await Promise.all(
   }),
 );
 
-// Real UTF-8 files exercise the boundary where byte count exceeds text length.
 const jsonPrefix = '{"value":"';
 const jsonSuffix = '"}';
 const exactJson =
@@ -279,7 +273,6 @@ await Promise.all(
   }),
 );
 
-// Format selection during reading controls the decoded-text contract.
 {
   const current = session("retained", "edge-pairs");
   const asciiJson = exactJson.replaceAll("界", "a");
@@ -294,7 +287,6 @@ await Promise.all(
   );
 }
 
-// A newer rejected selection must also prevent an older valid read from winning.
 {
   const current = session("retained");
   const old = deferredFile();
@@ -316,7 +308,6 @@ await Promise.all(
   );
 }
 
-// A canceled native chooser does not erase input or interfere with a read.
 {
   const current = session();
   const pending = deferredFile();

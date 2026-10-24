@@ -5,7 +5,6 @@ type RenderRequestClock = {
   cancelFrame: (id: number) => void;
 };
 
-/** Finish only the current request, after Cytoscape has painted its changes. */
 export function afterCytoscapeRender(
   cy: Core,
   isCurrent: () => boolean,

@@ -110,8 +110,6 @@ try {
     "permanent ABI failures share their rejection without repeated downloads",
   );
 
-  // Instrument the real Rust allocator, memory and operation. The wrappers only
-  // record ownership and poison buffers while they are still live before free.
   const { instance } = await instantiate(bytes, {});
   const exports = instance.exports as WebAssembly.Exports & {
     memory: WebAssembly.Memory;
@@ -137,7 +135,7 @@ try {
       const pointer = exports.alloc_f64(length);
       allocations++;
       if (before !== exports.memory.buffer) growths++;
-      // Zero-length Rust slices share their dangling aligned pointer.
+
       if (length) {
         expect(
           !owned.has(pointer),
@@ -297,9 +295,7 @@ try {
         call();
         throw new Error("diagnostic scope probe");
       });
-    } catch {
-      // The inner collector is restored even when that slice throws.
-    }
+    } catch {}
     call();
     withRustKernelSuppressed(call);
   });

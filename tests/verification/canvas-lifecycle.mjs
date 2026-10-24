@@ -3,8 +3,6 @@ import { mock } from "bun:test";
 import * as React from "react";
 import cytoscape from "cytoscape";
 
-// Execute the real hook/gesture closures with deterministic lifecycle and
-// browser resources. PNG pixels are covered by the in-app browser review.
 let currentHarness;
 mock.module("react", () => ({
   ...React,
@@ -93,7 +91,7 @@ Object.assign(globalThis, {
         const write = { items, resolve, reject };
         clipboardWrites.push(write);
         if (clipboardMode === "auto") resolve();
-        // Consume PNG data as a browser ClipboardItem does before completing.
+
         return Promise.all(
           items.flatMap((item) => Object.values(item.data)),
         ).then(() => completed);
@@ -404,11 +402,9 @@ const png = () => new Blob(["original"], { type: "image/png" });
   assert.equal(urls.size, 0);
 }
 
-// Explicit Copy and Save have independent owners. Settings edits invalidate
-// feedback, while both completion orders retain their actual pending state.
 /* eslint-disable no-await-in-loop -- The fixtures share a hook host and explicitly order each completion/timer. */
 const originalWarn = console.warn;
-console.warn = () => {}; // Expected failure cases below verify their UI state.
+console.warn = () => {};
 for (const copyFirst of [true, false]) {
   const { hook } = screenshotFixture({ previewEnabled: false });
   hook.value.copy();
@@ -468,8 +464,6 @@ for (const copyFirst of [true, false]) {
   hook.unmount();
 }
 
-// A cleared timer may already be queued by the host. It must not affect a
-// later pending action or its completed feedback, even without another render.
 for (const kind of ["copy", "download"]) {
   const { hook } = screenshotFixture({ previewEnabled: false });
   clipboardMode = "auto";
@@ -704,7 +698,7 @@ for (const blocked of [true, false]) {
 
 console.warn = originalWarn;
 /* eslint-enable no-await-in-loop */
-// Exercise the actual pointer handlers with a fractional live Cytoscape zoom.
+
 {
   const cy = cytoscape({ headless: true });
   let zoomReads = 0;
@@ -765,8 +759,7 @@ console.warn = originalWarn;
   cy.destroy();
 }
 assert.equal(urls.size, 0);
-// Real drag/tap closures must cross the domain/local boundary. A geometry-only
-// projection test cannot catch a saved drag silently becoming local coordinates.
+
 {
   const { useHtmlNodeDrag } = await import(
     feature("canvas/graph-canvas-html-node-drag.ts")
@@ -938,8 +931,7 @@ assert.equal(urls.size, 0);
     cancelScheduledStoredGraphWrite();
   }
 }
-// A representation-only pan must not move the HTML overlay during the frame
-// between a rebase and the renderer's next completed paint.
+
 {
   const { useRenderedHitboxes } = await import(
     feature("canvas/graph-canvas-rendered-hitboxes.ts")

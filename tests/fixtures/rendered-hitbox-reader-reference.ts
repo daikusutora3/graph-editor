@@ -1,5 +1,5 @@
 import type { Core, EventObject } from "cytoscape";
-// Snapshot of eb9e11e's reader, kept only as the benchmark baseline.
+
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   readEdgeLabelHitboxes,
@@ -8,7 +8,6 @@ import {
   type NodeHitbox,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 
-/** Reuse geometry between frames; changes from routing/style still invalidate it. */
 export function createRenderedHitboxReader(cy: Core) {
   let model: GraphModel | undefined;
   let nodes: NodeHitbox[] = [];

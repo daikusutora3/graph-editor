@@ -55,8 +55,7 @@ for (const format of ["auto", "contest-edge-list"]) {
 const partialInput = "3 3\n# skipped comment\n0 1 8\n1 2\n0 4 5\n2 0 9\n";
 const partialOptions = { weighted: true, indexBase: 0 };
 const source = createImportSource(readOriginalLines(partialInput));
-// Analysis and import may already have read the rows before constructing the
-// graph. Reuse must preserve warning lines and all supplied weight checks.
+
 void source.rows;
 lineReads = 0;
 tokenReads = 0;

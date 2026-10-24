@@ -1,4 +1,3 @@
-// Browser interactions depend on the previous action and run sequentially.
 /* oxlint-disable no-await-in-loop */
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -298,7 +297,7 @@ try {
           );
           await page.setViewportSize({ width, height: 390 });
           await load.click();
-          // Reopening intentionally clears the previous input.
+
           await page.waitForFunction(
             () => document.querySelector("textarea")?.value === "",
           );
@@ -371,7 +370,7 @@ try {
       }
     }
   }
-  // Sweep the gaps between screenshot widths and both sides of each breakpoint.
+
   const sweepWidths = [
     ...new Set([
       ...Array.from({ length: 141 }, (_, i) => 320 + i * 16),

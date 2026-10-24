@@ -18,8 +18,6 @@ import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Layout topology");
 
-// Exhaust all directed graphs on three vertices. Independent reachability
-// establishes both cycle detection and the SCC partition, including self-loops.
 for (let mask = 0; mask < 1 << 9; mask += 1) {
   const edges = Array.from({ length: 9 }, (_, bit) => bit)
     .filter((bit) => mask & (1 << bit))

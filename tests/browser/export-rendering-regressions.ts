@@ -6,8 +6,6 @@ import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/gr
 import { serializeGraphModel } from "../../features/graph-editor/core/graph/graph-json";
 import { exportGraph } from "../../features/graph-editor/io/export-graph";
 
-// Run against a current production build. Separate contexts prevent changes to
-// the user's browser/storage, and these checks do not collect timing samples.
 const longLabel = "漢😀".repeat(128);
 const model = {
   ...createEmptyGraphModel(),

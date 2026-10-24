@@ -7,8 +7,7 @@ export function downloadBlob(blob: Blob, fileName: string) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  // The browser has queued the download once click() returns; release the
-  // URL on the next macrotask (with a long fallback for throttled tabs).
+
   const revoke = () => URL.revokeObjectURL(blobUrl);
   const fallbackId = window.setTimeout(revoke, 60_000);
   window.setTimeout(() => {

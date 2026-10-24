@@ -46,7 +46,7 @@ for (const locale of locales) {
   );
 
   const html = renderToStaticMarkup(createElement(GuidePage, { locale }));
-  // JSON-LD is data, not markup: do not interpret its quoted text as attributes.
+
   const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
   const tags = [...markup.matchAll(/<[a-z][^>]*>/gi)].map((match) => match[0]);
   const ids = tags.flatMap((tag) => {

@@ -2,8 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-// Build first. Count unique JS references in the static entry page, including
-// preloads; modern browsers do not download the nomodule polyfill.
 const outputDirectory = process.argv[2] ?? "out";
 const html = readFileSync(join(outputDirectory, "index.html"), "utf8");
 const references = new Map<string, string>();

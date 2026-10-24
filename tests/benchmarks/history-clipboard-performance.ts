@@ -16,8 +16,6 @@ import {
   uninstallStorageFlushListeners,
 } from "../../features/graph-editor/adapters/browser/stored-graph";
 
-// Compare each version sequentially without concurrent builds or benchmarks.
-// --original-dir accepts saved modules with their dependency imports resolved.
 const originalDir = argument("--original-dir");
 const history = (await import(
   originalDir

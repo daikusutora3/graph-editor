@@ -18,19 +18,11 @@ import type {
   GraphSettings,
 } from "./model";
 
-/**
- * The graph's JSON document: the same shape as the in-memory model, used for
- * local storage and for lossless export/import (positions, colours, bends).
- */
 export const GRAPH_JSON_VERSION = 1;
 export const GRAPH_JSON_MAX_NODES = GRAPH_MAX_NODES;
 export const GRAPH_JSON_MAX_EDGES = GRAPH_MAX_EDGES;
 export const GRAPH_JSON_MAX_TEXT_CHARS = GRAPH_MAX_TEXT_CODE_POINTS;
 
-/**
- * Upgrades older documents in place before normalization. Each future schema
- * bump adds one step here; documents newer than this build are rejected.
- */
 export function migrateGraphDocument(value: unknown): unknown | null {
   if (!isRecord(value) || typeof value.version !== "number") {
     return null;
@@ -40,7 +32,6 @@ export function migrateGraphDocument(value: unknown): unknown | null {
     return null;
   }
 
-  // version 1 is the current schema; nothing to migrate yet.
   return value;
 }
 
@@ -60,8 +51,7 @@ const defaultArrayEvery = Array.prototype.every;
 
 export function serializeGraphModel(model: GraphModel) {
   const raw = JSON.stringify(model);
-  // Only ordinary data properties use the direct check. Accessors and array
-  // hooks must run through normalization without extra observable reads.
+
   const direct =
     typeof raw === "string" &&
     raw.length <= GRAPH_MAX_JSON_CHARS &&
@@ -118,7 +108,6 @@ const edgeKeys = new Set([
   "routing",
 ]);
 
-/** Check the lossless document without allocating a normalized copy on every edit. */
 function isSerializableGraphModel(model: GraphModel) {
   if (
     !isPlainDataRecord(model) ||
@@ -186,9 +175,6 @@ function isSerializableGraphModel(model: GraphModel) {
   return true;
 }
 
-// Like sameDocument, undefined properties do not belong to the JSON document.
-// Counting own fields also rejects inherited/missing fields that normalization
-// would add, while retaining the original acceptance of extra undefined fields.
 function hasDocumentKeys(
   value: object,
   allowed: Set<string>,
@@ -204,7 +190,6 @@ function hasDocumentKeys(
   return count === expected;
 }
 
-/** Parses a JSON document produced by serializeGraphModel; null if invalid. */
 export function parseGraphModelJson(text: string): GraphModel | null {
   if (text.length > GRAPH_MAX_JSON_CHARS) return null;
   try {
@@ -214,7 +199,6 @@ export function parseGraphModelJson(text: string): GraphModel | null {
   }
 }
 
-/** Cheap check so plain text formats never go through the JSON parser. */
 export function looksLikeGraphJson(text: string) {
   return text.trimStart().startsWith("{");
 }

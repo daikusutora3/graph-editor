@@ -1,6 +1,3 @@
-//! Project node capsules into a chord frame, then retain the reference's stable
-//! ordering and cluster boundaries. JS supplies its hypot-derived directions.
-
 use std::slice;
 
 #[derive(Clone, Copy)]
@@ -15,9 +12,6 @@ fn near_boundary(value: f64, boundary: f64) -> bool {
     (value - boundary).abs() <= 1e-12_f64.max(f64::EPSILON * value.abs().max(boundary.abs()) * 32.0)
 }
 
-// Follow all 24 reference bisections. Inputs are bounded, so squaring cannot
-// overflow. Compare squared distance to the measured radius squared, with a wider near-tie fallback
-// than the reference's hypot guard; every accepted low/high choice stays exact.
 fn pill_extent(
     half_width: f64,
     half_height: f64,
@@ -43,7 +37,6 @@ fn pill_extent(
         let py = t * uy;
         let outside_x = (px - span).max(0.0);
         let squared_distance = outside_x * outside_x + py * py;
-        // Keep the original 24px guard and scale it for larger measured radii.
         if (squared_distance - squared_radius).abs() <= tolerance {
             return None;
         }
@@ -73,9 +66,6 @@ fn project(
     let normal_x = -unit_y;
     let normal_y = unit_x;
     let mut obstacles = Vec::new();
-    // Directions are fixed for this call, so equal width/height bits produce
-    // exactly the same pure 24-step searches. Keep the cache local and capped;
-    // ordinary circles do not allocate it, and diverse widths stay bounded.
     let mut extents: Vec<(u64, u64, f64, f64)> = Vec::new();
     for (index, node) in nodes.chunks_exact(3).enumerate() {
         if index as f64 == source_index || index as f64 == target_index {
@@ -123,8 +113,6 @@ fn project(
         }
         let start = raw_start.max(0.08).min(0.92);
         let end = raw_end.max(0.08).min(0.92);
-        // Equal clamped endpoints are definitively outside; they are common
-        // and need no boundary fallback or perpendicular comparison.
         if start >= end {
             continue;
         }
@@ -144,7 +132,6 @@ fn project(
             positive: perpendicular + clearance,
         });
     }
-    // Stable sort preserves node order for equal starts, as Array.toSorted does.
     obstacles.sort_by(|a, b| a.start.partial_cmp(&b.start).unwrap());
     let mut clusters: Vec<Obstacle> = Vec::new();
     for obstacle in obstacles {
@@ -182,12 +169,6 @@ fn project(
     Some((vec![collapsed], true))
 }
 
-/// nodes = [x,y,half_width]*N, output = [cluster_count,collapsed_flag,
-/// start,end,negative,positive,...], with room for two clusters (10 f64).
-/// cluster_count=-1 requests the exact JavaScript path for ambiguous boundaries.
-/// # Safety
-/// The caller supplies finite bounded geometry, positive finite lengths and
-/// valid live buffers. Excluded node indices may be -1 for absent identities.
 #[no_mangle]
 pub unsafe extern "C" fn routing_projected_obstacles(
     nodes_ptr: *const f64,
@@ -242,8 +223,6 @@ mod tests {
 
     #[test]
     fn squared_capsule_ties_keep_the_wider_js_fallback() {
-        // First bisection is t=60, span=72, outside_x=0 and py=24.
-        // The strict host-hypot decision must never be guessed at this tie.
         let dir_x = 0.84_f64.sqrt();
         for delta in [-1e-15, 0.0, 1e-15] {
             assert!(pill_extent(96.0, 24.0, dir_x, 0.4 + delta, 1.0).is_none());
@@ -396,7 +375,6 @@ mod tests {
     #[test]
     fn capped_width_cache_matches_individual_uncached_searches() {
         let widths: Vec<f64> = (0..40).map(|index| 32.0 + index as f64 * 7.25).collect();
-        // Repeat widths retained in the first 16 slots and widths beyond the cap.
         let repeated = widths
             .iter()
             .copied()

@@ -17,7 +17,6 @@ import {
   type LayoutKind,
 } from "../../layouts";
 
-/** Order matches the design: primary strategies first, then geometric ones. */
 export const layoutPanelOrder: readonly LayoutKind[] = [
   "force",
   "bfs",
@@ -42,7 +41,7 @@ export function LayoutsPanel({
 }: {
   graph: GraphModel;
   pending?: boolean;
-  /** Show a section heading; used when the panel is stacked with others. */
+
   showTitle?: boolean;
   onApplyLayout: (kind: LayoutKind) => void;
   onToggleOffsetEdges: () => void;

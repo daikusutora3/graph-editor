@@ -6,8 +6,7 @@ export const GRAPH_MAX_INPUT_CHARS = 1_000_000;
 
 export function isGraphText(value: unknown): value is string {
   if (typeof value !== "string") return false;
-  // UTF-16 code units never undercount Unicode code points. Short text needs
-  // no iteration, while astral characters still get their full 256-point limit.
+
   if (value.length <= GRAPH_MAX_TEXT_CODE_POINTS) return true;
   if (value.length > GRAPH_MAX_TEXT_CODE_POINTS * 2) return false;
   let codePoints = 0;

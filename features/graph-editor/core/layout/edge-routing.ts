@@ -45,7 +45,7 @@ export type EdgeRoutingMeta = EdgeCurveGeometry & {
   duplicate: boolean;
   loopDirectionDeg: number;
   loopSweepDeg: number;
-  /** Renderer-only loop size; absent means40px, never stored in GraphModel. */
+
   loopStepSizePx?: number;
 };
 
@@ -62,15 +62,10 @@ const LOOP_DIRECTION_STEP_DEG = 42;
 const LOOP_SWEEP_DEG = 70;
 const LOOP_SWEEP_STEP_DEG = 16;
 const MAX_LOOP_SWEEP_DEG = 120;
-// Coarse gates; the per-call work budget below is what bounds actual time.
+
 const NODE_AVOIDANCE_WORK_LIMIT = 400_000;
 export const EDGE_PAIR_SCORING_WORK_LIMIT = 4_000_000;
-/**
- * Scoring work allowed per computeEdgeRouting call, in "units" (one node
- * distance or label comparison =1). A synchronous call returns a pending
- * draft once spent; subsequent calls resume its exact generator. Browser
- * tasks finish all stages across frames instead of restarting the route.
- */
+
 const ROUTING_WORK_BUDGET = 25_000;
 const MIN_DUPLICATE_BOW_SPACING_PX = 12;
 
@@ -111,7 +106,7 @@ type EdgeRoutingTaskState = {
   result?: Map<EdgeId, EdgeRoutingMeta>;
   cacheKey: string;
   options: EdgeRoutingOptions;
-  /** Cheap provisional lanes used only while the complete task is pending. */
+
   skipManualReconciliation?: boolean;
 };
 const routingTaskStates = new WeakMap<EdgeRoutingTask, EdgeRoutingTaskState>();
@@ -148,8 +143,6 @@ export function computeEdgeRouting(
     step = task.next();
   if (step.done) return step.value;
 
-  // Keep the exact task alive. Rebuilding a partial route would change which
-  // labels later edges see and could starve final simplification.
   const fallback = createParallelRoutingDraft(
     model,
     state.options.previousMeta,
@@ -170,7 +163,6 @@ export function computeEdgeRouting(
   return draft;
 }
 
-/** A provisional draft must not recursively spend the quality work budget. */
 function createParallelRoutingDraft(
   model: GraphModel,
   previousMeta: EdgeRoutingOptions["previousMeta"],
@@ -182,7 +174,6 @@ function createParallelRoutingDraft(
   return step.value;
 }
 
-/** A complete resumable task: callers can yield between browser frames. */
 export function createEdgeRoutingTask(
   model: GraphModel,
   options: EdgeRoutingOptions = {},
@@ -222,8 +213,6 @@ function* routingTask(
   const resolvedOptions = resolveEdgeRoutingOptions(model, options);
   resolvedOptions.work = state.work;
   if (resolvedOptions.avoidNodes) {
-    // Resolve label geometry once for this pass. Candidate scoring repeatedly
-    // reads it; the transient widths must never enter history or saved models.
     model = {
       ...model,
       nodes: model.nodes.map((node) => ({
@@ -254,8 +243,6 @@ function* routingTask(
   );
 
   if (resolvedOptions.rerouteEdgeIds) {
-    // Compare against old curves only when their entire group stays unchanged.
-    // Collect them first so earlier groups can see later retained routes.
     const retainedMeta = new Map<EdgeId, EdgeRoutingMeta>();
     for (const edges of routeGroups.values()) {
       yield;
@@ -341,8 +328,6 @@ function* routingTask(
     }
 
     if (!resolvedOptions.separateParallelEdges) {
-      // Simple mode skips route scoring, but parallel edges still fan out
-      // around the straight line; otherwise they render as one edge.
       const orderedEdges = orderParallelEdges(
         edges,
         resolvedOptions.previousMeta,
@@ -425,15 +410,14 @@ function* routingTask(
       ),
     );
     const maxDuplicateBow = center * duplicateBowPx;
-    // A manual sibling remains fixed; its bow must not become the automatic
-    // group's centre before the override removes that sibling's lane offset.
+
     const firstEdge =
       orderedEdges.find((edge) => edge.routing?.bowPx === undefined) ??
       firstGroupEdge;
     const canonicalEdge = canonicalRoutingEdge(firstEdge);
     const canonicalOptions = {
       ...resolvedOptions,
-      // The outside lane's midpoint lies half its control offset from centre.
+
       nodeClearancePx: resolvedOptions.nodeClearancePx + maxDuplicateBow / 2,
     };
     const groupCurve = clampCurveDistances(
@@ -472,15 +456,12 @@ function* routingTask(
   if (resolvedOptions.avoidNodes) {
     for (const edges of routeGroups.values()) {
       yield;
-      // This task's labels and endpoints are immutable. Only colliding,
-      // non-retained routes need the group spacing, shared by all offsets.
+
       let distinctBowSpacing: number | undefined;
       const pending = edges.some((edge) =>
         resolvedOptions.work.pending?.has(edge.id),
       );
       for (const edge of edges) {
-        // A large parallel group must not perform every collision check in
-        // one generator step; callers yield back to the UI between steps.
         yield;
         const route = meta.get(edge.id);
         const source = nodesById.get(edge.source),
@@ -502,7 +483,6 @@ function* routingTask(
           resolvedOptions.work,
         );
         if (!edge.routing && edges.length > 1 && finalCollisions > 0) {
-          // Evaluate offsets after applying the parallel lane, including the clamp.
           for (const offset of [24, -24, 48, -48, 96, -96, 180, -180]) {
             yield;
             const candidate = clampCurveDistances(
@@ -583,7 +563,7 @@ function* routingTask(
     state.result = meta;
     return meta;
   }
-  // Decision order is canonical; callers keep the established group/lane order.
+
   const result = new Map<EdgeId, EdgeRoutingMeta>();
   for (const edges of routeGroups.values()) {
     const ordered =
@@ -691,7 +671,6 @@ function* simplifyFinishedRoutes(
   }
 }
 
-/** Reconcile lanes against fixed manual geometry, which has no lane offset. */
 function* separateAutomaticSiblingsFromManualRoutes(
   groups: Iterable<GraphEdge[]>,
   model: GraphModel,
@@ -900,11 +879,11 @@ export function createEdgeRoutingCacheKey(
     resolvedOptions.maxLoopSweepDeg,
     resolvedOptions.candidateBowPx.join(","),
   ].join(":");
-  // Loop sizing uses source-pill width even with obstacle avoidance disabled.
+
   const usesNodeWidth =
     resolvedOptions.avoidNodes ||
     model.edges.some((edge) => edge.source === edge.target);
-  // Even simple parallel lanes depend on chord direction for label spacing.
+
   const nodeSignature = JSON.stringify(
     model.nodes.map((node) => [
       node.id,
@@ -981,9 +960,6 @@ function* chooseEdgeCurve(
     return simpleCurve;
   }
 
-  // A clear straight route needs no obstacle projection or bent candidates.
-  // Keep the first candidate's original yield/work boundary, then reuse its
-  // evaluation if node or label obstacles require the remaining search.
   yield;
   const straightEvaluation = scoreCurveNodeAndShape(
     simpleCurve,
@@ -1072,8 +1048,7 @@ function* chooseEdgeCurve(
     )
       return candidate;
   }
-  // Node safety has strict priority. Label checks are only useful on curves
-  // that can still win; do not repeat the expensive node-distance scan.
+
   bestScore = Infinity;
   for (const evaluation of evaluated) {
     if (evaluation.collisions !== minimumCollisions) continue;
@@ -1133,8 +1108,7 @@ export function projectedEdgeObstacles(
     .map((node) => {
       const relativeX = node.x - source.x;
       const relativeY = node.y - source.y;
-      // Wide pills extend further than a circle; measure their reach along
-      // and across the edge so the clearance hugs the actual shape.
+
       const halfWidth = nodeGeometryWidth(node) / 2;
       const halfHeight = nodeGeometryHeight(node) / 2;
       const acrossExtra =
@@ -1219,13 +1193,6 @@ export function projectedEdgeObstacles(
   ];
 }
 
-/**
- * Single-control curves that clear the obstacles on one side. Each cluster
- * yields a curve passing over its centre with the required offset, and the
- * strictest cluster yields one more so a single bend can clear several nodes.
- * Every candidate is a plain quadratic bend, so it is exactly what a manual
- * drag can produce and stays within the manual bend limits.
- */
 function createObstacleAvoidingCurves(
   source: GraphNode,
   target: GraphNode,

@@ -33,7 +33,6 @@ import {
 import { StorageNotice } from "../../features/graph-editor/ui/chrome/StorageNotice";
 import { useGraphStarterState } from "../../features/graph-editor/workflows/starter/graph-starter-state";
 
-// Parser instrumentation exists only in the runner's temporary bundle.
 const calls = { input: 0, stored: 0, key: 0 };
 Object.assign(globalThis, {
   IS_REACT_ACT_ENVIRONMENT: true,
@@ -243,7 +242,7 @@ export async function verifyDormantWork() {
       "saved command-error notice skips stored parsing",
     );
     await act(async () => observeExternalStorage(validInput));
-    // The accepted baseline is equal, so use another valid snapshot.
+
     const conflictingInput = serializeGraphModel({
       ...validModel,
       settings: { ...validModel.settings, directed: true },

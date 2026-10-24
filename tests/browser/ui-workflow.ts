@@ -1,4 +1,3 @@
-// Exercise the user's workflow, including the visual viewport shrinking independently.
 /* oxlint-disable no-await-in-loop */
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -73,7 +72,6 @@ try {
         exact: true,
       });
       if (width < 768) {
-        // dvh remains 900px, but the keyboard leaves only 390px visible.
         await page.evaluate(() => {
           Object.defineProperty(window.visualViewport!, "height", {
             configurable: true,

@@ -39,8 +39,7 @@ export type ParsedLine = {
 export const MAX_IMPORT_INPUT_CHARS = GRAPH_MAX_INPUT_CHARS;
 export const MAX_IMPORT_NODES = GRAPH_MAX_NODES;
 export const MAX_IMPORT_EDGES = GRAPH_MAX_EDGES;
-// An undirected adjacency list can list every edge from both endpoints.
-// Keep a separate work budget so repeated entries cannot bypass graph limits.
+
 export const MAX_IMPORT_ADJACENCY_ENTRIES = MAX_IMPORT_EDGES * 2;
 
 export function readLines(input: string): ParsedLine[] {
@@ -60,8 +59,6 @@ export function readLines(input: string): ParsedLine[] {
 }
 
 export function splitTokens(text: string) {
-  // Matching non-separators omits empty tokens without a second trim/filter
-  // pass over every cell of a large adjacency matrix.
   return text.match(/[^\s,]+/g) ?? [];
 }
 

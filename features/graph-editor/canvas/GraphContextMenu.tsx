@@ -60,7 +60,6 @@ export function GraphContextMenu({
 
   const restoreFocusRef = useRef<(() => void) | null>(null);
 
-  // Return focus to where the menu was opened from once it closes.
   useEffect(() => () => restoreFocusRef.current?.(), []);
 
   useLayoutEffect(() => {
@@ -309,7 +308,6 @@ function MenuButton({
   );
 }
 
-/** Roving focus for menu items: arrows wrap, Home/End jump. */
 function moveMenuFocus(
   event: React.KeyboardEvent,
   menu: HTMLDivElement | null,

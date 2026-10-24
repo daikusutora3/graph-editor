@@ -66,9 +66,9 @@ export function SampleGalleryPane({
   useLayoutEffect(() => focusAfterContentSwitch(searchRef.current), []);
   const [sampleQuery, setSampleQuery] = useState("");
   const [category, setCategory] = useState<SampleGraphGroupKey | "all">("all");
-  // Generation settings are a local snapshot when the gallery opens.
+
   const [settings, setSettings] = useState(() => store.get(graphSettingsAtom));
-  // Keep entered values when a search or category temporarily hides a card.
+
   const [configurations, setConfigurations] = useState<
     Partial<Record<SampleGraphKind, SampleValues>>
   >({});
@@ -100,8 +100,6 @@ export function SampleGalleryPane({
     0,
   );
   const clearSearch = () => {
-    // The reset button disappears with its query. Keep keyboard focus in
-    // the dialog before React removes the button that was just activated.
     searchRef.current?.focus();
     setSampleQuery("");
   };

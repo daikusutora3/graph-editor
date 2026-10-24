@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-/** True while Shift/Meta/Ctrl is held, which turns drags into range selection. */
 export function useRangeSelectionKey() {
   const [active, setActive] = useState(false);
 
@@ -14,7 +13,7 @@ export function useRangeSelectionKey() {
 
     window.addEventListener("keydown", sync);
     window.addEventListener("keyup", sync);
-    // A pointer interaction also gives the current modifiers after focus changes.
+
     window.addEventListener("pointerdown", sync, true);
     window.addEventListener("blur", reset);
 

@@ -49,7 +49,7 @@ try {
   console.log("Loaded; testing recovery");
   const retry = page.getByRole("button", { name: /Retry/ });
   await retry.waitFor();
-  // Retain the real retry handler to also exercise a remount after successful display.
+
   await retry.evaluate((element) => {
     const key = Object.keys(element).find((property) =>
       property.startsWith("__reactProps$"),
@@ -96,7 +96,7 @@ try {
   );
 
   console.log("Recovery and undo passed");
-  // No-op imports still fit immediately and do not create undo entries.
+
   await button("Load a graph").click();
   await settle();
   await page.locator("select").selectOption("json");
@@ -171,7 +171,7 @@ try {
   await button("Undo").click();
   await settle();
   assert.equal(JSON.parse((await saved())!).nodes[0].x, 0);
-  // Read the actual rendered control point, then exercise the user-facing menu.
+
   const displayed = await page.evaluate(() => {
     const container = [...document.querySelectorAll("div")].find(
       (element) => "_cyreg" in element,
@@ -182,7 +182,7 @@ try {
         };
       };
     };
-    // Cytoscape registers its renderer on the container; inspect it only in this test.
+
     // eslint-disable-next-line no-underscore-dangle
     const edge = container._cyreg.cy.getElementById("e");
     return {
@@ -208,7 +208,7 @@ try {
     undefined,
     "one undo removes the manual override",
   );
-  // Range selection and background deselection must also reconnect on remount.
+
   await page
     .locator('[data-canvas-ready="true"]')
     .click({ position: { x: 400, y: 250 } });
@@ -230,7 +230,6 @@ try {
   });
   assert.equal(selected, 3, "range selection reconnects after retry");
 
-  // Parent state changes must reach memoized hitboxes and their event handlers.
   await button("Select node 0").dblclick();
   const nodeInput = page.getByRole("textbox", { name: "Edit node label" });
   assert.deepEqual(

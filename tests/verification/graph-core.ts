@@ -348,7 +348,7 @@ const emptyModel: GraphModel = {
   edges: [],
   settings: defaultGraphSettings,
 };
-// Beyond the coarse gate (nodes × edges > 400k) routing skips avoidance.
+
 const largeRoutingModel: GraphModel = {
   version: 1,
   nodes: Array.from({ length: 1000 }, (_, index) => ({
@@ -636,8 +636,6 @@ const oversizedRoutingGraph: GraphModel = {
 };
 
 {
-  // Large inputs no longer flip wholesale to straight edges; a per-call work
-  // budget bounds the time and the remaining edges degrade gracefully.
   const startedAt = performance.now();
   const routes = computeEdgeRouting(oversizedRoutingGraph, { mode: "quality" });
   const elapsedMs = performance.now() - startedAt;

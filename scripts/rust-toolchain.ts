@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Use the repository's Rust installation when present, otherwise PATH. */
 export function runCargo(args: string[]) {
   const localCargo = resolve(root, ".local-bin/rust/cargo/bin/cargo");
   const environment = { ...process.env };

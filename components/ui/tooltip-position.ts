@@ -10,7 +10,6 @@ export type TooltipRect = {
 
 export const TOOLTIP_MARGIN = 8;
 
-/** The tooltip is measured after its size is constrained to the viewport. */
 export function getTooltipPosition(
   anchor: TooltipRect,
   size: { width: number; height: number },

@@ -1,6 +1,3 @@
-//! Scan the normalized ASCII safe-integer subset of adjacency matrices.
-//! Unsupported Number syntax is rejected for the host's existing JS fallback.
-
 use std::slice;
 
 const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
@@ -101,9 +98,6 @@ fn scan_matrix(data: &[u8], output: &mut [f64], size: usize, capacity: usize) ->
     true
 }
 
-/// # Safety
-/// `input` points to `byte_length` bytes in a live alloc_f64 allocation;
-/// `output` points to HEADER_LENGTH + capacity * 3 live f64 entries.
 #[no_mangle]
 pub unsafe extern "C" fn import_integer_matrix(
     input: *const f64,

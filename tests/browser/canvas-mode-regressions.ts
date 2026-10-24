@@ -96,8 +96,6 @@ try {
       "Tab skips the dormant selection overlay",
     );
 
-    // Zoom and pan still update the active edge targets, but dormant edge
-    // label geometry must not be read or exposed until select mode returns.
     await page.evaluate(() => {
       window.modeTestEdgeReads = 0;
       window.modeTestCy.zoom(0.7);
@@ -192,7 +190,6 @@ try {
       "setting and clearing a draft only changes the actual source node",
     );
 
-    // Switching modes during a real pointer drag cancels the transient move.
     const beforeMove = await page.evaluate(() => ({
       ...window.modeTestCy.getElementById("a").position(),
     }));
@@ -230,8 +227,6 @@ try {
       beforeMove,
     );
 
-    // Activity's cleanup restores a bend and drops the previous pointer
-    // session, so releasing the pointer later cannot commit the cancelled bend.
     const edgeBounds = await page
       .locator(".ge-select-edge-hitbox")
       .boundingBox();
@@ -279,8 +274,7 @@ try {
       saved.edges.find((edge: { id: string }) => edge.id === "e").routing,
       undefined,
     );
-    // Modifier keys can make a captured pointer's ancestor inert. Releasing
-    // under that modifier must still finish the existing drag and clear it.
+
     await page.evaluate(
       (zoom) => {
         window.modeTestCy.zoom(zoom);

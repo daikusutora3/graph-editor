@@ -36,12 +36,10 @@ function visibleViewport(): TooltipRect {
   };
 }
 
-/** One document-level tooltip also covers raw data-tooltip controls. */
 export function TooltipLayer() {
   const id = useId();
 
   useEffect(() => {
-    // Render outside panels so their scrolling and transforms cannot clip it.
     const tooltip = document.createElement("div");
     tooltip.id = id;
     tooltip.className = "ge-tooltip";
@@ -134,9 +132,7 @@ export function TooltipLayer() {
         cancelHide();
         return;
       }
-      // The tooltip is separated from its trigger by a small gap. Keep an
-      // already visible hint while the pointer crosses it, without delaying
-      // cancellation of a hint that has not appeared yet.
+
       if (!hovered && !tooltipHovered && anchor && !tooltip.hidden) {
         hideTimer ??= window.setTimeout(() => {
           hide();
@@ -215,22 +211,20 @@ export function TooltipLayer() {
       if (focused) {
         hovered = null;
         tooltipHovered = false;
-        // A new keyboard destination takes effect immediately, even while a
-        // pointer hint was waiting for its gap-crossing grace period.
+
         if (anchor && anchor !== focused) hide();
       }
       sync();
     };
     const onFocusOut = () => {
       focused = null;
-      // Keyboard navigation should not wait for the pointer crossing delay.
+
       if (!hovered && !tooltipHovered) hide();
       sync();
     };
     const dismiss = () => {
       dismissed = anchor ?? dismissed;
-      // Hiding a hovered tooltip can itself emit pointerout. A previously
-      // focused neighbour must not immediately reopen its own tooltip.
+
       focused = null;
       hide();
     };

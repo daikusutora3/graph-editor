@@ -5,8 +5,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { messagesByLocale } from "../../features/graph-editor/i18n/messages";
 import { integrityCopy } from "../../features/graph-editor/i18n/integrity-copy";
 
-// The actual boundary and retry callbacks are exercised without browser DOM.
-// The in-app-browser review verifies React's client error capture and refetch.
 let attempt;
 const setAttempt = (next) => {
   attempt = typeof next === "function" ? next(attempt) : next;

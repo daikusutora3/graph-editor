@@ -92,7 +92,7 @@ export const algorithmicSampleFactories = {
         [3, 5, 8],
       ],
     );
-    // Reversed directions use the same bow sign to place their weights apart.
+
     model.edges[2].routing = { bowPx: 64 };
     model.edges[3].routing = { bowPx: 64 };
     return model;
@@ -136,7 +136,7 @@ export const algorithmicSampleFactories = {
         [2, 2],
       ],
     );
-    // Keep the defining parallel edges visible even if automatic routing is off.
+
     model.edges[0].routing = { bowPx: -32 };
     model.edges[1].routing = { bowPx: 32 };
     model.edges[5].routing = { loopDirectionDeg: 45, loopSweepDeg: 70 };

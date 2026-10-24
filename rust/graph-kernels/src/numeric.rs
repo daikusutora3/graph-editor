@@ -1,5 +1,3 @@
-/// Canonical two-dimensional norm shared with compute/numeric.ts. No host
-/// imports or software libm hypot calls in the hot pairwise loops.
 pub fn hypot(x: f64, y: f64) -> f64 {
     let ax = x.abs();
     let ay = y.abs();

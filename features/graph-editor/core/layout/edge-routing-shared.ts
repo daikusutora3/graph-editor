@@ -1,10 +1,9 @@
 import type { EdgeCurveGeometry, EdgeCurvePoint } from "./edge-route-geometry";
 import { estimateLabelWidth } from "../graph/node-size";
 import type { EdgeRoutingMeta } from "./edge-routing";
-/** Types and small helpers shared by the routing modules. */
+
 import type { GraphEdge, EdgeId } from "../graph/model";
 
-/** Per-call scratch state: a work counter and cached curve samples. */
 export type RoutingWork = {
   units: number;
   pending?: Set<EdgeId>;
@@ -14,7 +13,7 @@ export type RoutingWork = {
     { curve: EdgeCurveGeometry; point: EdgeCurvePoint }
   >;
   labelSizes?: Map<EdgeId, { width: number; height: number }>;
-  /** Product tasks retain immutable edge labels; public helpers may not. */
+
   stableLabels?: true;
 };
 export type ResolvedEdgeRoutingOptions = {
@@ -29,9 +28,9 @@ export type ResolvedEdgeRoutingOptions = {
   maxLoopSweepDeg: number;
   nodeClearancePx: number;
   previousMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
-  /** Previous routes belonging to whole groups retained in this pass. */
+
   retainedMeta?: ReadonlyMap<EdgeId, EdgeRoutingMeta>;
-  /** The current group's previous route, oriented and centred for scoring. */
+
   previousRoute?: EdgeRoutingMeta;
   rerouteEdgeIds: ReadonlySet<EdgeId> | null;
   separateParallelEdges: boolean;
@@ -63,7 +62,6 @@ export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-/** Axis-aligned background bounds at the renderer's12px edge font. */
 export function edgeLabelSize(edge: GraphEdge, work?: RoutingWork) {
   const cached = work?.labelSizes?.get(edge.id);
   if (cached) return cached;

@@ -5,8 +5,6 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-// bun tests/benchmarks/run-range-selection.mjs --output /tmp/range.json
-// Run separately from builds and other timing work. The browser is isolated.
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const temporary = mkdtempSync(join(tmpdir(), "graph-editor-range-"));
 let browser;

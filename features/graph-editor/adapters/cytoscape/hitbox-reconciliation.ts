@@ -8,8 +8,6 @@ export function createEdgeLabelHitboxSnapshot() {
   return createHitboxSnapshot(sameEdgeLabelHitbox);
 }
 
-// A full read establishes order and the index. Local geometry invalidations
-// then compare only their replacements and copy the array only if needed.
 function createHitboxSnapshot<T extends { id: string }>(
   same: (a: T, b: T) => boolean,
 ) {
@@ -37,8 +35,6 @@ function createHitboxSnapshot<T extends { id: string }>(
   };
 }
 
-// Preserve unchanged entries as well as the whole array. Individual hitbox
-// components can then skip rendering when another node or edge moves.
 export function reconcileNodeHitboxes(
   current: NodeHitbox[],
   next: NodeHitbox[],

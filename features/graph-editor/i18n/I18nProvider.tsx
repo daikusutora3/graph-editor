@@ -160,7 +160,5 @@ function readStoredLocale(): Locale | null {
 function writeStoredLocale(locale: Locale) {
   try {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-  } catch {
-    // Locale application should not depend on storage availability.
-  }
+  } catch {}
 }

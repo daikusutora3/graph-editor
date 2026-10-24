@@ -41,8 +41,7 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   useEffect(() => {
     if (graph.nodes.length) void initializeRustKernel().catch(() => {});
   }, [graph.nodes.length]);
-  // Edges stay straight unless the setting is on; then parallel edges fan
-  // out and edges bend just enough to clear nodes sitting on their path.
+
   const [fontRevision, setFontRevision] = useState(0);
   useEffect(
     () => observeCanvasTypography(() => setFontRevision((value) => value + 1)),
@@ -55,8 +54,7 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     }),
     [mode],
   );
-  // Font loading invalidates the browser's label measurements. All routing
-  // stages for this render share one transient snapshot of the same geometry.
+
   const measured = useMemo(
     () => ({ graph: withMeasuredNodeGeometry(graph), fontRevision }),
     [graph, fontRevision],
@@ -70,7 +68,7 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
   const cacheRef = useRef<{ key: string; meta: RoutingMeta } | null>(null);
   const routingSnapshotRef = useRef(emptyEdgeRoutingContinuitySnapshot());
   const [, setAsyncMeta] = useState<RoutingMeta | null>(null);
-  // A cheap provisional route lets React mount the canvas and start its timeout.
+
   if (!cacheRef.current) {
     cacheRef.current = {
       key: mode ? "" : cacheKey,
@@ -102,8 +100,6 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
 
   const restartFallbackRef = useRef<(() => void) | null>(null);
   useEffect(() => {
-    // The Worker initializes its own kernel. Main-thread readiness only
-    // upgrades an active JS fallback, without cancelling a healthy Worker job.
     if (kernelReady) restartFallbackRef.current?.();
   }, [kernelReady]);
 
