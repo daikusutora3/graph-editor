@@ -77,6 +77,28 @@ later WebDriver storage read returned null. The runner retains the failure,
 before/after diagnostics, and successful session cleanup; this is not a
 passing 70-case run. The cause of that storage discrepancy is unconfirmed.
 
+The follow-up application commit `3435483` uses Next.js 16.4.1. All 83
+verification suites, 27 Rust tests, the production build, and release checks
+passed; dependency audit returned `{}` and the build no longer emitted the
+security reminder. The new enlarged-routing stage passed in both Safari
+themes: root text 16→24→16px produced 48→72→48px nodes, Worker/Wasm recomputed
+the route, coordinates stayed unchanged, and the enlarged rendered curve
+cleared the obstacle by at least 8.477px. It waits for an actual renderer frame
+before capturing screenshots.
+
+Persistence testing now checks a native storage probe before importing the
+fixture. This distinguishes an application failure from Safari's storage
+backend rolling back a write: `native-storage-preflight.json` records its
+immediate, delayed, and next-command reads. The follow-up probe failed even in
+fresh sessions and a new automation window; sessionStorage retained its value,
+while localStorage returned null and IndexedDB could not open its database.
+WebKit's system log reported an ENOENT opening the isolated
+`SafariAutomation/<UUID>/Origins/.../LocalStorage/localstorage.sqlite3`.
+No normal Safari data or browser settings were changed. The three
+multi-selection cases and the full 72-case run remain unverified until the
+native test storage backend works again; earlier successful stages are not
+evidence for this follow-up application commit.
+
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 
 ```bash
