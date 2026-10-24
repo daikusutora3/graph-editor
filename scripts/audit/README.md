@@ -13,6 +13,27 @@ The CLI commands below document the maintained audit tools; changes to their
 source or a passing `bun run check` do not establish that those browser suites
 were executed. Record actual in-app screenshots and interactions separately.
 
+## Safari regression on a separate Mac
+
+`.github/workflows/safari.yml` runs the same 78-case matrix on a disposable
+GitHub-hosted `macos-15` machine. It is triggered by changes to the workflow or
+browser tests and can also be dispatched manually once available on the default
+branch. This is the preferred path while the user is working: Safari launch,
+focus recovery, and restarts occur only on the hosted Mac. No local Safari
+process or window is operated by this workflow.
+
+The job builds the static release, checks URL policy and lifecycle mocks, and
+uses the existing fixed-origin runner against `http://127.0.0.1:3323`. Its
+foreground-recovery request is created only after asserting GitHub Actions and
+`RUNNER_ENVIRONMENT=github-hosted`. The job requires all nine stage counts,
+78 results, all three trusted native Shift+ArrowDown proofs, a passed input
+probe, and matching successful session/driver cleanup. Failure evidence is
+uploaded too; starting a workflow does not establish verification completion.
+Artifacts include the tested commit, macOS/SafariDriver versions, screenshots,
+exports, source fingerprint, raw results, and cleanup. They are retained for
+14 days. This verifies the hosted machine's installed Safari, not the user's
+local Safari version or a first-time human participant.
+
 ## Installed Safari regression
 
 Start the approved preview at `http://127.0.0.1:3323`, then run from the
