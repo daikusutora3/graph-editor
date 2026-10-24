@@ -94,10 +94,18 @@ fresh sessions and a new automation window; sessionStorage retained its value,
 while localStorage returned null and IndexedDB could not open its database.
 WebKit's system log reported an ENOENT opening the isolated
 `SafariAutomation/<UUID>/Origins/.../LocalStorage/localstorage.sqlite3`.
-No normal Safari data or browser settings were changed. The three
-multi-selection cases and the full 72-case run remain unverified until the
-native test storage backend works again; earlier successful stages are not
-evidence for this follow-up application commit.
+No normal Safari data or browser settings were changed by the runner. After
+the user restarted Safari on 2026-10-24, the native storage probe retained its
+value across delayed and separate-command reads. All 72 cases then passed on
+application commit `3435483`, including all three multi-selection variants,
+the two enlarged-routing cases, and every earlier regression stage. The run
+ID `1792804341985462000` matches `results.json` and `cleanup.json`; both session
+closure and driver shutdown succeeded. All 12 focus-appearance cases passed.
+SafariDriver still sends U+001F for Shift+ArrowDown in the three
+multi-selection variants, so that nudge uses the existing DOM KeyboardEvent
+fallback and records the limitation. It is not evidence of native delivery of
+that key combination. Earlier failed artifacts remain diagnostic history;
+use the matching completed-run results for the current verification status.
 
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 
