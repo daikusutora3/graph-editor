@@ -41,8 +41,9 @@ requested Safari window widths. It exercises persistent input examples,
 validation associations and disclosures, sample-search focus, keyboard graph
 creation, explicit clear/cancel and Undo, output focus, button press feedback,
 and PNG dimension drafts committed by Tab, Enter, and a real pointer blur.
-Controlled fields are emptied with native Select All and Backspace so their
-React input handlers observe the edit.
+For controlled fields, DOM focus and select prepare the selection; native
+Backspace must empty the focused field before native typing continues. The
+runner does not assign the value or synthesize an input event.
 
 The responsive-text stage constrains the editor to exact CSS boxes inside the
 Safari window: 320×390 with 16px root text, and 320×900, 768×900, or 1280×900
@@ -65,60 +66,53 @@ Results and screenshots are saved under `/tmp/graph-editor-safari-review`.
 Use `results.json` from a completed run for the full-suite result. A `passed`
 status is saved only after session cleanup succeeds; `cleanup.json` carries the
 same run ID and records session closure and driver shutdown. Requested
-window sizes are reported alongside actual viewport sizes. Focus appearance
-checks record when Safari's test window is inactive, because keyboard focus in
-the DOM alone does not establish that an active focus outline was displayed.
+window sizes are reported alongside actual viewport sizes. All 12 export-focus
+cases require a computed outline of at least 2px. The raw document-focus state
+and screenshots are recorded separately; an inactive window does not exempt
+a case from the outline assertion.
 This is an expert review on installed desktop Safari, not a physical-device,
 screen-reader, native-download, or first-time-participant test. Any native
 keyboard limitations and use of DOM keyboard events are recorded per case.
 
-The 2026-10-24 UI review verified application commit `fe217bd` with 82
-verification suites, type checks, lint, formatting, the production build, and
-release checks. Safari completed 67 cases across the other seven stages on
-that application source. The three multi-selection cases remain incomplete:
-fixture import emitted a saved event containing the expected graph, while a
-later WebDriver storage read returned null. The runner retains the failure,
-before/after diagnostics, and successful session cleanup; this is not a
-passing 70-case run. The cause of that storage discrepancy is unconfirmed.
+The Next.js 16.4.1 update passed 83 verification suites, 27 Rust tests,
+the production build, and release checks; dependency audit returned `{}` and
+the build no longer emitted the security reminder. Its enlarged-routing stage
+passed in both Safari themes: root text 16→24→16px produced 48→72→48px nodes,
+Worker/Wasm recomputed the route, coordinates stayed unchanged, and the
+enlarged rendered curve cleared the obstacle by at least 8.477px. It waits for
+an actual renderer frame before capturing screenshots.
 
-The follow-up application commit `3435483` uses Next.js 16.4.1. All 83
-verification suites, 27 Rust tests, the production build, and release checks
-passed; dependency audit returned `{}` and the build no longer emitted the
-security reminder. The new enlarged-routing stage passed in both Safari
-themes: root text 16→24→16px produced 48→72→48px nodes, Worker/Wasm recomputed
-the route, coordinates stayed unchanged, and the enlarged rendered curve
-cleared the obstacle by at least 8.477px. It waits for an actual renderer frame
-before capturing screenshots.
+Persistence testing checks a native storage probe before importing or resetting
+the fixture. `native-storage-preflight.json` records immediate, delayed,
+separate-command, and reload reads. Probe keys and values are unique to each
+attempt. If native persistence fails, the runner may replace its own WebDriver
+window once, then repeat the same persistence checks. It does not substitute
+an in-memory storage implementation. Per-session reports and the full run
+summary preserve the failed attempt and recovery outcome.
 
-Persistence testing now checks a native storage probe before importing the
-fixture. This distinguishes an application failure from Safari's storage
-backend rolling back a write: `native-storage-preflight.json` records its
-immediate, delayed, and next-command reads. The follow-up probe failed even in
-fresh sessions and a new automation window; sessionStorage retained its value,
-while localStorage returned null and IndexedDB could not open its database.
-WebKit's system log reported an ENOENT opening the isolated
-`SafariAutomation/<UUID>/Origins/.../LocalStorage/localstorage.sqlite3`.
-No normal Safari data or browser settings were changed by the runner. After
-the user restarted Safari on 2026-10-24, the native storage probe retained its
-value across delayed and separate-command reads. All 72 cases then passed on
-application commit `3435483`, including all three multi-selection variants,
-the two enlarged-routing cases, and every earlier regression stage. The run
-ID `1792804341985462000` matches `results.json` and `cleanup.json`; both session
-closure and driver shutdown succeeded. All 12 focus-appearance cases passed.
-SafariDriver still sends U+001F for Shift+ArrowDown in the three
-multi-selection variants, so that nudge uses the existing DOM KeyboardEvent
-fallback and records the limitation. It is not evidence of native delivery of
-that key combination. Earlier failed artifacts remain diagnostic history;
-use the matching completed-run results for the current verification status.
+After the user restarted Safari on 2026-10-24, all 72 cases passed on application
+commit `3435483`. Run ID `1792804341985462000` matches `results.json` and
+`cleanup.json`; session closure and driver shutdown succeeded. That result
+predates the top-toolbar update, which adds six responsive cases for a total
+of 78. It does not verify the later source.
 
-The later top-toolbar update adds six responsive cases (78 planned cases in
-total). Its Safari rerun passed the first three Japanese/light cases, including
-24px root text at 320px and 768px widths, before SafariDriver timed out. Session
-closure then timed out, and Safari refused a new isolated session because it
-was still paired with the earlier one. This rerun is incomplete; the earlier
-72-case result does not verify the later toolbar update. The runner now also
-catches Python 3.9 socket timeouts without replaying mutation commands. Local
-in-app browser screenshots provide separate visual evidence for the toolbar.
+The follow-up found a real Tab escape from the starter textarea to the page
+footer. Modal and mobile panels now explicitly cycle their visible, enabled
+Tab stops, including native summary controls. The browser regression records
+the trusted Tab keydown, requires it to be handled, and rejects any intervening
+focus outside the starter panel. The application fix passed all 83 verification
+suites, the production build, and release checks. The current 78-case Safari
+run is incomplete because a native storage write is discarded before graph
+operations, even after replacing the test window. WebKit reports an ENOENT
+for its isolated `SafariAutomation/<UUID>/Origins/.../LocalStorage/localstorage.sqlite3`.
+No normal Safari data or browser settings were changed, and failed sessions
+were closed. These failures do not establish a passing 78-case result.
+
+SafariDriver sends U+001F for Shift+ArrowDown in the three multi-selection
+variants, so that nudge uses the existing DOM KeyboardEvent fallback and
+records the limitation. It is not evidence of native delivery of that key
+combination. Only matching completed-run results establish the current
+verification status.
 
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 

@@ -1,18 +1,17 @@
 "use client";
 
 import { X } from "lucide-react";
-import type {
-  CSSProperties,
-  KeyboardEvent as ReactKeyboardEvent,
-  ReactNode,
-} from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { IconButton } from "@/components/ui/controls";
-import { tabbableElements } from "../primitives/focus-navigation";
+import {
+  tabbableElements,
+  trapFocusKeyDown,
+} from "../primitives/focus-navigation";
 import type {
   EditorLayout,
   EditorPanel,
@@ -40,26 +39,6 @@ function firstFocusable(root: HTMLElement | null) {
     elements[0] ??
     null
   );
-}
-
-function trapTab(event: ReactKeyboardEvent, root: HTMLElement | null) {
-  const elements = tabbableElements(root);
-
-  if (elements.length === 0) {
-    return;
-  }
-
-  const first = elements[0];
-  const last = elements[elements.length - 1];
-  const active = document.activeElement;
-
-  if (event.shiftKey && (active === first || active === root)) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && active === last) {
-    event.preventDefault();
-    first.focus();
-  }
 }
 
 export function EditorPanelShell({
@@ -286,7 +265,7 @@ export function EditorPanelShell({
             }
 
             if (event.key === "Tab" && (modal || mobile)) {
-              trapTab(event, sectionRef.current);
+              trapFocusKeyDown(event, sectionRef.current);
             }
           }}
         >
