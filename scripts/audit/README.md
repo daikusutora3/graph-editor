@@ -228,11 +228,32 @@ and `code: KeyA` for the character-input route; this verifies native logical
 keyboard input, not physical ArrowDown scancode fidelity. Each real group case
 must record its native events and pass the existing position, persistence, and
 history assertions. The subsequent full run stopped with `no such window`;
-the updated runner has not completed a new 78-case run. The updated sources
-passed 83 verification suites, 42 runner mocks, 18 restart-helper mocks, and
-1,630 policy checks without operating Safari. Live execution remains
-suspended to avoid disrupting the user's work. Only matching completed-run
-results establish the current verification status.
+that local attempt did not complete the matrix. Local Safari execution remains
+suspended while the user is working.
+
+On 2026-10-25 (JST), the hosted run
+[40118392496](https://github.com/daikusutora3/graph-editor/actions/runs/40118392496)
+passed all 78 cases on macOS 15.7.9 with Safari 26.6.1 (20624.5.1.18.3), at
+commit `c0af6be157e69c8b2d11a5b72f0d1607f5538a41`. Its test run ID is
+`1792864599303366000`, and the source/build fingerprint is
+`61f0c3ad09155bd20f30812648ab75093dfab7a520684f1ae75c1f47554b556b`.
+The separate feedback preflight also passed. There were zero transport
+recoveries; 21 native persistence probes passed. The three Ctrl, Meta, and
+range multi-selection variants each recorded trusted Shift+ArrowDown keydown
+and keyup events using `actions-function`, a 10px movement of both selected
+nodes, unchanged unselected nodes, Undo/Redo, and reload persistence. The
+character-input route reported `code: KeyA` as described above.
+
+A separate read of the downloaded evidence confirmed the fixed nine stage
+counts, 12 export focus outlines, 18 exact drag displacements and JSON exports,
+both text-enlargement routing cases, six keyboard-scrollable feedback cases,
+all three native-input cases, and matching successful WebDriver/driver cleanup.
+The smallest measured enlarged-text curve clearance was 8.477873459793472px.
+All 408 screenshots and the raw JSON, exports, CI log, tested runner sources,
+and a hashed verification summary were archived locally. This hosted result
+verifies the hosted Safari version; it does not claim a new run in the user's
+local Safari. Both the tested commit and the subsequent documentation commit
+also passed the normal `Verify` workflow.
 
 Run from the repository root. Install Playwright's bundled Chromium if needed:
 
