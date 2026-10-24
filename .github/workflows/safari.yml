@@ -1,0 +1,122 @@
+name: Safari regression
+
+on:
+  push:
+    paths:
+      - .github/workflows/safari.yml
+      - tests/browser/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: safari-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  safari:
+    name: Safari 78 cases
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install locked dependencies and build static preview
+        run: |
+          node scripts/toolchain.mjs install --frozen-lockfile
+          node scripts/toolchain.mjs run build
+          node scripts/toolchain.mjs run tests/verification/release.ts
+      - name: Check policy and Safari lifecycle without browser operations
+        run: |
+          python3 .codex/hooks/block_github_issues.py --self-test
+          python3 tests/browser/safari_runtime.py --self-test
+          python3 tests/browser/safari-workflow-runtime-test.py
+      - name: Prepare disposable hosted Safari
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+          assert os.environ.get("GITHUB_ACTIONS") == "true"
+          assert os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
+          output = Path("/tmp/graph-editor-safari-review")
+          output.mkdir()
+          environment = {
+              "executionEnvironment": "github-hosted",
+              "commit": os.environ["GITHUB_SHA"],
+              "workflowRun": os.environ["GITHUB_RUN_ID"],
+              "macOS": subprocess.check_output(["sw_vers"], text=True),
+              "driver": subprocess.check_output(["/usr/bin/safaridriver", "--version"], text=True),
+          }
+          (output / "environment.json").write_text(json.dumps(environment, indent=2))
+          (output / "exclusive-foreground-request.json").write_text(json.dumps({
+              "action": "exclusive-foreground-safari-for-78-case-review",
+          }))
+          PY
+          sudo /usr/bin/safaridriver --enable
+      - name: Verify all 78 cases with native input
+        run: |
+          PORT=3323 node scripts/toolchain.mjs run serve:out > /tmp/graph-editor-safari-review/preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          python3 - <<'PY'
+          import time
+          import urllib.request
+          for attempt in range(100):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:3323", timeout=1) as response:
+                      assert response.status == 200
+                  break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise RuntimeError("Owned static preview did not become ready")
+          PY
+          python3 tests/browser/safari-workflow.py
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          output = Path("/tmp/graph-editor-safari-review")
+          result = json.loads((output / "results.json").read_text())
+          cleanup = json.loads((output / "cleanup.json").read_text())
+          groups = json.loads((output / "multi-selection-results.json").read_text())
+          probe = json.loads((output / "native-shift-probe.json").read_text())
+          expected = [12, 18, 2, 24, 3, 3, 4, 4, 8]
+          assert result["status"] == "passed" and len(result["results"]) == 78
+          assert [stage["cases"] for stage in result["completedStages"]] == expected
+          assert result["feedbackPreflight"]["status"] == "passed"
+          assert cleanup["runId"] == result["runId"]
+          assert cleanup["sessionClosed"] and cleanup["driverStopped"]
+          assert probe["status"] == "passed"
+          assert groups["status"] == "passed" and len(groups["results"]) == 3
+          for group in groups["results"]:
+              assert group["status"] == "passed"
+              events = group["nativeShiftArrowDown"]["events"]
+              arrows = [event for event in events if event["key"] == "ArrowDown"]
+              assert [event["type"] for event in arrows] == ["keydown", "keyup"]
+              assert all(event["trusted"] for event in events)
+              assert all(event["shift"] and not any(event[key] for key in ("ctrl", "alt", "meta")) for event in arrows)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"78/78 Safari cases passed; 3/3 native Shift+ArrowDown cases passed.\n\nRun ID: {result['runId']}\n\nSource fingerprint: `{result['sourceFingerprint']}`\n\nSession closed and driver stopped.\n")
+          PY
+      - name: Save Safari evidence and failures
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: safari-${{ github.sha }}-${{ github.run_attempt }}
+          path: /tmp/graph-editor-safari-review/
+          if-no-files-found: warn
+          retention-days: 14
