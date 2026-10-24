@@ -195,19 +195,47 @@ function clickAction() {
   });
 }
 clickAction();
-let status = action().props.children[2];
+let rendered = action();
+let status = rendered.props.children[2];
 assert(status.props.children.includes("Could not add a node"));
-assert(
-  status.props.className.includes("bottom-full"),
-  "failure is visible above the action without changing its height",
+assert.equal(
+  status.props.tabIndex,
+  0,
+  "overflowed feedback can receive keyboard focus",
 );
+assert.equal(status.props.role, "status");
+assert.equal(status.props["aria-live"], "polite");
+assert.equal(
+  rendered.props.children[0].props["aria-describedby"],
+  `creation-description ${status.props.id}`,
+  "retry keeps the failure associated with the creation action",
+);
+let stopped = false;
+let prevented = false;
+status.props.onKeyDown({
+  key: "ArrowDown",
+  stopPropagation: () => {
+    stopped = true;
+  },
+  preventDefault: () => {
+    prevented = true;
+  },
+});
+assert(stopped, "scrolling feedback does not nudge selected graph nodes");
+assert(!prevented, "native keyboard scrolling remains available");
 success = true;
 clickAction();
-status = action().props.children[2];
+rendered = action();
+status = rendered.props.children[2];
 assert.equal(
   status.props.className,
   "sr-only",
   "successful retry clears the visible failure",
+);
+assert.equal(status.props.tabIndex, undefined);
+assert.equal(
+  rendered.props.children[0].props["aria-describedby"],
+  "creation-description",
 );
 assert.deepEqual(
   heights,

@@ -25,16 +25,68 @@ python3 tests/browser/safari-workflow.py
 The runner tests the URL policy before opening isolated Safari WebDriver
 sessions, renews the session between suites to isolate native input state, and
 closes the final session afterward. Editor workflow and range-selection cases
-also start in fresh sessions. Navigation and refresh wait for a new document
+also start in fresh sessions. Each design-controls case starts in a fresh
+isolated session as well. Navigation and refresh wait for a new document
 before checking editor state. It visits only `/`, `/en`, and
 `/zh-hans`. The default run covers design controls, Rust/Wasm computation,
 multi-selection and history, range menus and gestures, edge routing, and the
 localized import/edit/export/reload workflow. Ordinary buttons use native
 keyboard activation; drag and hover checks use native pointer actions.
+A fixed Japanese short-feedback preflight runs first and is recorded separately
+as `feedbackPreflight`. It does not seed checkpoints or count toward the matrix.
+The nine matrix stages must return their fixed case counts and 78 cases in total.
+Editor drags check the measured hit target, use absolute viewport coordinates,
+and require trusted pointer down/up events and the exact displacement after
+converting through the canvas zoom. Native pointer buttons are tracked across
+commands; activation, window movement, minimization, and focus recovery are
+suspended while a button is held, so inspecting a drag preview cannot cancel
+the drag. Group-drag waypoints use zero-duration native moves with pauses,
+and require an exact live preview without saving before pointer release. Pointer capture, cancellation, focus,
+keyboard input, and saved coordinates are recorded for each drag. The final
+trusted pointerup coordinates are applied through the same zoom and grid
+conversion before saving. Missing or superseded move events cannot determine
+the saved endpoint. Pointer cancellation and window blur restore the snapshot;
+Undo and Redo retain the complete multi-node move as one history entry.
 The expected editor state is checked between workflow stages. Commands such as
-Undo and setting toggles are not replayed on a timeout. Only read-only WebDriver
-requests may be retried after transport failures. A hover check may repeat
-pointer entry once when a recorded window blur interrupted tooltip display.
+Undo and setting toggles are not replayed on a timeout. Timed-out commands are
+never resent, including reads: their backend operation may still be pending. Commands
+are separated by 20ms. With explicit native-control authorization, a transport
+timeout can restart Safari and the driver in a new isolated session. Design,
+editor-workflow, and responsive-text cases retain only fully asserted results
+in memory under the same run ID and source fingerprint. Their exact case keys
+and ordered prefix are checked before resuming; a new run clears this cache and
+does not read previous JSON results. Three consecutive timeouts without a new
+completed case stop the run, with an absolute limit of three times the stage's
+expected case count. The other stages rerun as a whole, at most twice.
+Completed stages remain recorded under the same run ID; assertions are never
+retried, including assertions masked by a cleanup timeout. The runner checks a fingerprint
+of its source, runtime helper, and production output before and after every
+stage. A hover check may repeat pointer entry once when a recorded window blur interrupted tooltip display.
+
+Native Safari activation and recovery restarts are disabled by default. Only
+after direct user authorization for that run may the caller create
+`/tmp/graph-editor-safari-review/native-activation-request.json` with the exact
+payload `{"action":"restart-and-activate-safari-for-78-case-review"}`. This file controls
+the run; its presence does not establish user authorization. The runner consumes
+it once and records `nativeActivationAuthorized`. If WebDriver restoration
+leaves the test document inactive, the fixed `open -a Safari` command activates
+Safari before the runner restores its owned window. The runner requires visible
+focus before continuing native input. Element lookup returns the WebDriver
+reference from a synchronous DOM query, avoiding SafariDriver's asynchronous
+find-node polling; subsequent key and pointer inputs remain native.
+Recovery restarts request a normal quit first; if necessary, SIGTERM is limited
+to the single Safari process after verifying its owner and executable again.
+SIGKILL is never used for Safari. The recovery does not read or modify normal
+browsing content, browser data files, or settings. The authorized run starts
+with a fresh browser and enables diagnostics only for its isolated WebDriver
+sessions.
+
+The recovery and lifecycle checks can run without operating Safari:
+
+```bash
+python3 tests/browser/safari_runtime.py --self-test
+python3 tests/browser/safari-workflow-runtime-test.py
+```
 
 The design-guidelines stage checks all three locales in both themes at two
 requested Safari window widths. It exercises persistent input examples,
@@ -44,6 +96,9 @@ and PNG dimension drafts committed by Tab, Enter, and a real pointer blur.
 For controlled fields, DOM focus and select prepare the selection; native
 Backspace must empty the focused field before native typing continues. The
 runner does not assign the value or synthesize an input event.
+The pointer-blur check uses the measured background-button center and trusted
+native pointer down/up/click events. It requires the draft dimension to commit
+on blur before the click and the preview to become exactly 1440×720px.
 
 The responsive-text stage constrains the editor to exact CSS boxes inside the
 Safari window: 320×390 with 16px root text, and 320×900, 768×900, or 1280×900
@@ -59,7 +114,13 @@ box are recorded separately. A further 320×390 enlarged-text creation guard
 is tested only if its action is visible and unobscured. If the shorter toolbar
 leaves enough room to add a node, the rendered node must avoid the chrome and
 the test undoes the addition; that case does not claim guard coverage. Skipped coverage is
-reported explicitly. Each responsive case uses a fresh isolated session. This simulates a smaller editor and larger text, rather
+reported explicitly. When creation is blocked, the feedback must clear both
+toolbars and the action, expose a full text line, and receive native Tab focus.
+Responsive keys use a 100ms hold and release all actions after each key.
+Native key names, modifiers, default prevention, and scroll offsets are recorded.
+ArrowDown and End must scroll overflowing text to its final visible line while
+the graph remains unchanged, with a measured focus outline of at least 2px.
+Each responsive case uses a fresh isolated session. This simulates a smaller editor and larger text, rather
 than a physical mobile viewport or a changed system accessibility setting.
 
 Results and screenshots are saved under `/tmp/graph-editor-safari-review`.
@@ -67,7 +128,9 @@ Use `results.json` from a completed run for the full-suite result. A `passed`
 status is saved only after session cleanup succeeds; `cleanup.json` carries the
 same run ID and records session closure and driver shutdown. Requested
 window sizes are reported alongside actual viewport sizes. All 12 export-focus
-cases require a computed outline of at least 2px. The raw document-focus state
+cases require a computed outline of at least 2px, including native Shift+Tab to
+the format selector and Tab back to the output. All 18 editor-workflow cases
+also require a 2px outline on the native Tab destination button. The raw document-focus state
 and screenshots are recorded separately; an inactive window does not exempt
 a case from the outline assertion.
 This is an expert review on installed desktop Safari, not a physical-device,
@@ -100,13 +163,29 @@ The follow-up found a real Tab escape from the starter textarea to the page
 footer. Modal and mobile panels now explicitly cycle their visible, enabled
 Tab stops, including native summary controls. The browser regression records
 the trusted Tab keydown, requires it to be handled, and rejects any intervening
-focus outside the starter panel. The application fix passed all 83 verification
-suites, the production build, and release checks. The current 78-case Safari
-run is incomplete because a native storage write is discarded before graph
-operations, even after replacing the test window. WebKit reports an ENOENT
-for its isolated `SafariAutomation/<UUID>/Origins/.../LocalStorage/localstorage.sqlite3`.
-No normal Safari data or browser settings were changed, and failed sessions
-were closed. These failures do not establish a passing 78-case result.
+focus outside the starter panel. A task after event dispatch records the final
+`defaultPrevented` value; the runner waits for that observation to settle before
+checking it. The application fixes passed all 83 verification suites, the
+production build, and release checks. Exported text and scrollable creation
+feedback also expose a focus outline when Safari does not match
+`:focus-visible`. Creation feedback stays between the measured toolbars and
+supports native keyboard scrolling on short, enlarged-text editors.
+
+Earlier attempts were blocked by the isolated Safari storage backend reporting
+ENOENT for `SafariAutomation/<UUID>/Origins/.../LocalStorage/localstorage.sqlite3`.
+Authorized Safari restarts and native persistence probes now record recovery
+without substituting storage or modifying normal browser data or settings.
+Only a matching completed 78-case run establishes the current browser result.
+
+The full matrix passed on 2026-10-24: run `1792836256076948000` completed all 78
+cases in the nine fixed stages (12/18/2/24/3/3/4/4/8). Its separate feedback
+preflight also passed. Matching `cleanup.json` confirms WebDriver session closure
+and owned driver shutdown. No transport recovery was needed in this final run.
+The runner, runtime helper, and production-output fingerprint is
+`12e8fa48a3ff12f9180deb5e68ea2e60d90ab491429267e2f10e283345824230`. All 21 native persistence probes passed, and all six
+short-feedback cases passed native scrolling and visible final-line checks.
+The current sources also passed 83 verification suites, 37 runner mocks,
+18 restart-helper mocks, the production build, and release checks.
 
 SafariDriver sends U+001F for Shift+ArrowDown in the three multi-selection
 variants, so that nudge uses the existing DOM KeyboardEvent fallback and

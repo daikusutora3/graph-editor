@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import hashlib
 import json
 import socket
 import subprocess
@@ -11,12 +12,53 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from safari_runtime import restart_safari, self_test as runtime_policy_checks
+
 ORIGIN = "http://127.0.0.1:3323"
 DRIVER = "http://127.0.0.1:4447"
 OUTPUT = Path("/tmp/graph-editor-safari-review")
 ELEMENT = "element-6066-11e4-a52e-4f735466cecf"
 FOCUS_RECOVERIES = []
 STORAGE_PROBES = []
+CASE_RESULTS = {}
+NATIVE_ACTIVATION_AUTHORIZED = False
+EXPECTED_STAGE_CASES = {
+    "design-guidelines": 12,
+    "editor-workflow": 18,
+    "enlarged-routing": 2,
+    "responsive-text": 24,
+    "multi-selection": 3,
+    "range-menu": 3,
+    "edge-routing": 4,
+    "range-selection": 4,
+    "rust-compute": 8,
+}
+CASE_KEY_FIELDS = {
+    "design-guidelines": ("locale", "theme", "requestedWindowWidth"),
+    "editor-workflow": ("locale", "theme", "requestedWindowWidth"),
+    "responsive-text": ("locale", "theme", "rootFontPx", "requestedEditorWidth", "requestedEditorHeight"),
+}
+EXPECTED_CASE_KEYS = {
+    "design-guidelines": [(locale, theme, width) for locale in ("ja", "en", "zh-hans")
+                          for width in (600, 1440) for theme in ("light", "dark")],
+    "editor-workflow": [(locale, theme, width) for locale in ("zh-hans", "ja", "en")
+                        for width in (600, 960, 1440) for theme in ("light", "dark")],
+    "responsive-text": [(locale, theme, font, width, height) for locale in ("ja", "en", "zh-hans")
+                        for theme in ("light", "dark")
+                        for font, width, height in ((16, 320, 390), (24, 320, 900), (24, 768, 900), (24, 1280, 900))],
+}
+
+
+def _case_keys(stage, results):
+    keys = [tuple(result[field] for field in CASE_KEY_FIELDS[stage]) for result in results]
+    assert keys == EXPECTED_CASE_KEYS[stage][:len(keys)], f"Invalid completed case order or duplicate in {stage}"
+    return keys
+
+
+def _case_completed(stage, case):
+    key = tuple(case[field] for field in CASE_KEY_FIELDS[stage])
+    assert key in EXPECTED_CASE_KEYS[stage], f"Unexpected case in {stage}: {key}"
+    return key in _case_keys(stage, CASE_RESULTS.setdefault(stage, []))
 
 
 class DriverTimeoutError(RuntimeError):
@@ -41,10 +83,30 @@ def policy_checks():
     print("Safari URL policy: 13 checks passed", flush=True)
 
 
+def review_fingerprint():
+    root = Path(__file__).resolve().parents[2]
+    output = root / "out"
+    assert output.is_dir(), "Build the static preview before Safari verification"
+    paths = [Path(__file__).resolve(), Path(__file__).with_name("safari_runtime.py").resolve()]
+    paths.extend(sorted(path for path in output.rglob("*") if path.is_file()))
+    digest = hashlib.sha256()
+    for path in paths:
+        assert not path.is_symlink(), "Review artifacts must not be symbolic links"
+        digest.update(str(path.relative_to(root)).encode())
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
+
+
 class Session:
     def __init__(self):
         self.started_ns = time.time_ns()
-        result = self.request("POST", "/session", {"capabilities": {"alwaysMatch": {"browserName": "safari"}}})
+        self.transport_error = None
+        self.pointer_buttons = set()
+        capabilities = {"browserName": "safari"}
+        if NATIVE_ACTIVATION_AUTHORIZED:
+            capabilities["safari:diagnose"] = True
+        result = self.request("POST", "/session", {"capabilities": {"alwaysMatch": capabilities}})
         self.id = result["sessionId"]
         self.capabilities = result["capabilities"]
 
@@ -55,11 +117,29 @@ class Session:
         self.wait("return document.readyState==='complete'")
 
     def focus_window(self):
+        if self.pointer_buttons:
+            return
+        if NATIVE_ACTIVATION_AUTHORIZED:
+            subprocess.run(["/usr/bin/open", "-a", "Safari"], check=True, timeout=10)
         handle = self.command("GET", "/window")
         self.command("POST", "/window", {"handle": handle})
         rect = self.command("GET", "/window/rect")
         self.command("POST", "/window/rect", {**rect, "x": 0, "y": 0})
         state = self.window_state()
+        if NATIVE_ACTIVATION_AUTHORIZED:
+            FOCUS_RECOVERIES.append({"method": "activate-authorized-safari-before-window-restore", "after": state})
+        if NATIVE_ACTIVATION_AUTHORIZED and (not state["focused"] or state["visibility"] != "visible"):
+            subprocess.run(["/usr/bin/open", "-a", "Safari"], check=True, timeout=10)
+            self.command("POST", "/window", {"handle": handle})
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                current = self.window_state()
+                if current["focused"] and current["visibility"] == "visible":
+                    break
+                time.sleep(0.1)
+            FOCUS_RECOVERIES.append({"method": "activate-authorized-safari", "before": state, "after": current})
+            assert current["focused"] and current["visibility"] == "visible", "Safari did not focus its owned local test window"
+            state = current
         if state["visibility"] != "visible" or not state["focused"]:
             self.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "window-focus", "parameters": {"pointerType": "mouse"}, "actions": [
                 {"type": "pointerMove", "origin": "viewport", "x": 0, "y": 0, "duration": 0}]}]})
@@ -126,33 +206,51 @@ class Session:
         payload = None if data is None else json.dumps(data).encode()
         request = urllib.request.Request(DRIVER + path, data=payload, method=method,
                                          headers={"Content-Type": "application/json"})
-        for attempt in range(2):
-            try:
-                with urllib.request.urlopen(request, timeout=40) as response:
-                    result = json.load(response)
-                break
-            except urllib.error.HTTPError as error:
-                raise RuntimeError(error.read().decode()) from error
-            except (TimeoutError, socket.timeout) as error:
-                if method != "GET" or attempt == 1:
-                    raise DriverTimeoutError(f"Safari driver timed out: {method} {path}") from error
-                print(f"Safari driver: retrying timed-out read {method} {path}", flush=True)
+        try:
+            with urllib.request.urlopen(request, timeout=40) as response:
+                result = json.load(response)
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(error.read().decode()) from error
+        except (TimeoutError, socket.timeout) as error:
+            raise DriverTimeoutError(f"Safari driver timed out: {method} {path}") from error
         value = result.get("value")
         if isinstance(value, dict) and "error" in value:
             raise RuntimeError(json.dumps(value))
+        time.sleep(0.02)
         return value
 
     def command(self, method, path, data=None, check=True):
-        if check:
-            url = self.request("GET", f"/session/{self.id}/url")
-            assert approved(url), f"Blocked browser operation outside local preview: {url}"
-        native_input = method == "POST" and (path.startswith("/element/") and path.endswith(("/value", "/click"))
-            or path == "/actions" and any(source.get("type") == "key" for source in (data or {}).get("actions", [])))
-        if native_input:
-            state = self.window_state()
-            if state["visibility"] != "visible" or not state["focused"]:
-                self.focus_window()
-        return self.request(method, f"/session/{self.id}" + path, data)
+        if self.transport_error is not None:
+            raise self.transport_error
+        try:
+            if check:
+                url = self.request("GET", f"/session/{self.id}/url")
+                assert approved(url), f"Blocked browser operation outside local preview: {url}"
+            native_input = method == "POST" and (path.startswith("/element/") and path.endswith(("/value", "/click"))
+                or path == "/actions" and any(source.get("type") == "key" or source.get("type") == "pointer"
+                    and any(action.get("type") in ("pointerDown", "pointerUp") for action in source.get("actions", []))
+                    for source in (data or {}).get("actions", [])))
+            if native_input and not self.pointer_buttons:
+                state = self.window_state()
+                if state["visibility"] != "visible" or not state["focused"]:
+                    self.focus_window()
+            result = self.request(method, f"/session/{self.id}" + path, data)
+            if method == "POST" and path == "/actions":
+                for source in (data or {}).get("actions", []):
+                    if source.get("type") != "pointer":
+                        continue
+                    for action in source.get("actions", []):
+                        button = (source.get("id"), action.get("button"))
+                        if action.get("type") == "pointerDown":
+                            self.pointer_buttons.add(button)
+                        elif action.get("type") == "pointerUp":
+                            self.pointer_buttons.discard(button)
+            elif method == "DELETE" and path == "/actions":
+                self.pointer_buttons.clear()
+            return result
+        except DriverTimeoutError as error:
+            self.transport_error = error
+            raise
 
     def navigate(self, path):
         url = ORIGIN + path
@@ -184,7 +282,7 @@ class Session:
             result = self.js(script)
             if result:
                 return result
-            if not refocused:
+            if not refocused and not self.pointer_buttons:
                 state = self.window_state()
                 if state["visibility"] != "visible" or not state["focused"]:
                     self.focus_window()
@@ -204,8 +302,8 @@ class Session:
         raise AssertionError(f"Timed out: {script}")
 
     def element(self, selector):
-        self.wait("return !!document.querySelector(arguments[0])".replace("arguments[0]", json.dumps(selector)))
-        return self.command("POST", "/element", {"using": "css selector", "value": selector})[ELEMENT]
+        element = self.wait("return document.querySelector(arguments[0]);".replace("arguments[0]", json.dumps(selector)))
+        return element[ELEMENT]
 
     def button(self, label):
         element = self.wait("return [...document.querySelectorAll('button')].find(e=>"
@@ -271,7 +369,8 @@ def run_design_guidelines_review(session):
                     "guide": "使用指南", "articles": "文章", "shortcuts": "键盘快捷键",
                     "samples": "使用示例", "clearSearch": "清除搜索", "clearFilters": "清除筛选"},
     }
-    results = []
+    results = CASE_RESULTS.setdefault("design-guidelines", [])
+    case_started = False
     current_case = None
     report = OUTPUT / "design-guidelines-results.json"
 
@@ -287,9 +386,12 @@ def run_design_guidelines_review(session):
                        "No file download, clipboard permission or system accessibility setting changes"],
         }, indent=2, ensure_ascii=False))
 
-    def key(value):
-        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "design-keyboard", "actions": [
-            {"type": "keyDown", "value": value}, {"type": "keyUp", "value": value}]}]})
+    def key(value, shift=False):
+        actions = [{"type": "keyDown", "value": value}, {"type": "keyUp", "value": value}]
+        if shift:
+            actions.insert(0, {"type": "keyDown", "value": "\ue008"})
+            actions.append({"type": "keyUp", "value": "\ue008"})
+        session.command("POST", "/actions", {"actions": [{"type": "key", "id": "design-keyboard", "actions": actions}]})
 
     def replace_input(text):
         element = session.element("[data-editor-panel=starter] textarea")
@@ -328,7 +430,12 @@ def run_design_guidelines_review(session):
             for width in (600, 1440):
                 for theme in ("light", "dark"):
                     current_case = {"locale": locale, "theme": theme, "requestedWindowWidth": width}
+                    if _case_completed("design-guidelines", current_case):
+                        continue
                     save("running")
+                    if case_started:
+                        session.restart()
+                    case_started = True
                     session.command("POST", "/window/rect", {"width": width, "height": 1000}, check=False)
                     session.navigate(m["path"])
 
@@ -529,10 +636,18 @@ def run_design_guidelines_review(session):
                     session.wait("return document.activeElement===document.querySelector('[data-editor-panel=export] pre')")
                     output = session.js("""const e=document.activeElement;const s=getComputedStyle(e);
                         return {tag:e.tagName,role:e.getAttribute('role'),label:e.getAttribute('aria-label'),tabIndex:e.tabIndex,
-                            documentFocused:document.hasFocus(),outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth,text:e.textContent.trim()};""")
+                            documentFocused:document.hasFocus(),focusVisible:e.matches(':focus-visible'),outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth,text:e.textContent.trim()};""")
                     assert output["role"] == "region" and output["label"] and output["tabIndex"] == 0, output
                     assert output["outlineStyle"] != "none" and float(output["outlineWidth"].removesuffix("px")) >= 2, output
                     output["appearanceChecked"] = True
+                    key("\ue004", shift=True)
+                    session.wait("return document.activeElement===document.querySelector('[data-editor-panel=export] select')")
+                    output["formatFocus"] = session.js("const e=document.activeElement,s=getComputedStyle(e);return {tag:e.tagName,focusVisible:e.matches(':focus-visible'),outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth};")
+                    assert output["formatFocus"]["outlineStyle"] != "none" and float(output["formatFocus"]["outlineWidth"].removesuffix("px")) >= 2, output
+                    key("\ue004")
+                    session.wait("return document.activeElement===document.querySelector('[data-editor-panel=export] pre')")
+                    output["roundTripFocus"] = session.js("const e=document.activeElement,s=getComputedStyle(e);return {tag:e.tagName,focusVisible:e.matches(':focus-visible'),outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth};")
+                    assert output["roundTripFocus"]["outlineStyle"] != "none" and float(output["roundTripFocus"]["outlineWidth"].removesuffix("px")) >= 2, output
                     export_geometry = panel_geometry("export")
                     capture("export-focus")
                     close_panel("export")
@@ -663,16 +778,32 @@ def run_design_guidelines_review(session):
                     session.command("POST", f"/element/{width_input}/value", {"text": "1440"})
                     session.wait("return document.querySelectorAll('[data-editor-panel=png] input[type=number]')[0].value==='1440'")
                     background_button = session.button(m["transparent"])
-                    session.js("""window.__pngCommitEvents=[];const input=arguments[0],button=arguments[1];
+                    session.focus_window()
+                    commit_point = session.js("""window.__pngCommitEvents=[];window.__pngPointerEvents=[];const input=arguments[0],button=arguments[1];
                         input.addEventListener('blur',()=>window.__pngCommitEvents.push({type:'blur',value:input.value}),{once:true});
-                        button.addEventListener('click',()=>window.__pngCommitEvents.push({type:'click',value:input.value}),{once:true});""",
+                        button.addEventListener('click',()=>window.__pngCommitEvents.push({type:'click',value:input.value}),{once:true});
+                        for(const type of ['pointerdown','pointerup','click','blur'])window.addEventListener(type,e=>window.__pngPointerEvents.push({
+                            type,trusted:e.isTrusted,x:e.clientX,y:e.clientY,target:e.target.tagName,label:e.target.getAttribute?.('aria-label'),
+                            focused:document.hasFocus(),time:performance.now()}),true);
+                        const r=button.getBoundingClientRect(),x=Math.round(r.x+r.width/2),y=Math.round(r.y+r.height/2);
+                        return {x,y,hit:document.elementFromPoint(x,y)?.closest('button')===button,focused:document.hasFocus()};""",
                         {ELEMENT: width_input}, {ELEMENT: background_button})
-                    session.click(background_button)
-                    session.wait("const p=document.querySelector('[data-editor-panel=png]');const img=p.querySelector('img');const b=[...p.querySelectorAll('[role=radio]')].find(e=>e.textContent.trim()===" + json.dumps(m["transparent"]) + ");return b?.getAttribute('aria-checked')==='true'&&img?.naturalWidth===1440&&img?.naturalHeight===720")
-                    click_commit = session.js("""const p=document.querySelector('[data-editor-panel=png]');const img=p.querySelector('img');return {
-                        events:window.__pngCommitEvents,values:[...p.querySelectorAll('input[type=number]')].map(e=>e.value),
-                        width:img.naturalWidth,height:img.naturalHeight};""")
+                    assert commit_point["hit"], commit_point
+                    session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "design-commit-pointer", "parameters": {"pointerType": "mouse"}, "actions": [
+                        {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": commit_point["x"], "y": commit_point["y"]},
+                        {"type": "pointerDown", "button": 0}, {"type": "pointerUp", "button": 0}]}]})
+                    session.command("DELETE", "/actions")
+                    try:
+                        session.wait("const p=document.querySelector('[data-editor-panel=png]');const img=p.querySelector('img');const b=[...p.querySelectorAll('[role=radio]')].find(e=>e.textContent.trim()===" + json.dumps(m["transparent"]) + ");return b?.getAttribute('aria-checked')==='true'&&img?.naturalWidth===1440&&img?.naturalHeight===720")
+                    finally:
+                        click_commit = session.js("""const p=document.querySelector('[data-editor-panel=png]');const img=p.querySelector('img');return {
+                            events:window.__pngCommitEvents,pointerEvents:window.__pngPointerEvents,focused:document.hasFocus(),
+                            values:[...p.querySelectorAll('input[type=number]')].map(e=>e.value),
+                            width:img.naturalWidth,height:img.naturalHeight};""")
+                        click_commit["point"] = commit_point
+                        (OUTPUT / f"{prefix}-png-pointer-commit.json").write_text(json.dumps(click_commit, indent=2))
                     assert [event["type"] for event in click_commit["events"]] == ["blur", "click"], click_commit
+                    assert all(any(e["type"] == kind and e["trusted"] for e in click_commit["pointerEvents"]) for kind in ("pointerdown", "pointerup", "click")), click_commit
                     assert click_commit["values"] == ["1440", "720"], click_commit
                     fixed_geometry = panel_geometry("png")
                     capture("png-dimensions")
@@ -753,13 +884,14 @@ def run_design_guidelines_review(session):
         raise
 
 
-def run_responsive_text_review(session):
+def run_responsive_text_review(session, selected_case=None):
     messages = {
         "ja": {"path": "/", "node": "頂点", "edge": "辺", "add": "中央付近に頂点を追加", "fit": "グラフを表示領域に戻す", "undo": "戻す"},
         "en": {"path": "/en", "node": "Node", "edge": "Edge", "add": "Add node near center", "fit": "Fit graph to view", "undo": "Undo"},
         "zh-hans": {"path": "/zh-hans", "node": "顶点", "edge": "边", "add": "在中央附近添加顶点", "fit": "适应视图", "undo": "撤销"},
     }
-    results = []
+    results = [] if selected_case is not None else CASE_RESULTS.setdefault("responsive-text", [])
+    case_started = False
     current_case = None
     original_styles = None
     report = OUTPUT / "responsive-text-results.json"
@@ -767,7 +899,7 @@ def run_responsive_text_review(session):
     def save(status, error=None):
         report.write_text(json.dumps({
             "status": status, "review": "Expert responsive and text-resize review in isolated installed Safari",
-            "results": results, "currentCase": current_case, "error": error,
+            "results": results, "currentCase": current_case, "error": error, "selectedCase": selected_case,
             "limits": ["The editor is constrained to an exact CSS box inside a desktop Safari window; this is a viewport simulation",
                        "24 px root text simulates text enlargement; no operating-system or browser accessibility setting is changed",
                        "Every primary toolbar control has a 44 px minimum; the separate range-menu trigger is a pointer-only exception with a 24 px minimum",
@@ -778,7 +910,8 @@ def run_responsive_text_review(session):
 
     def key(value):
         session.command("POST", "/actions", {"actions": [{"type": "key", "id": "responsive-keyboard", "actions": [
-            {"type": "keyDown", "value": value}, {"type": "keyUp", "value": value}]}]})
+            {"type": "keyDown", "value": value}, {"type": "pause", "duration": 100}, {"type": "keyUp", "value": value}]}]})
+        session.command("DELETE", "/actions")
 
     def overlaps(a, b):
         return min(a["right"], b["right"]) - max(a["left"], b["left"]) > 1 and min(a["bottom"], b["bottom"]) - max(a["top"], b["top"]) > 1
@@ -849,14 +982,19 @@ def run_responsive_text_review(session):
         for locale, m in messages.items():
             for theme in ("light", "dark"):
                 for font_size, width, height in ((16, 320, 390), (24, 320, 900), (24, 768, 900), (24, 1280, 900)):
-                    if results:
-                        session.restart()
                     window_width = 600 if width < 768 else 1440
                     expected_layout = "mobile" if width < 768 else "compact" if width < 1280 else "desktop"
                     current_case = {"locale": locale, "theme": theme, "rootFontPx": font_size,
                                     "requestedEditorWidth": width, "requestedEditorHeight": height,
                                     "requestedWindowWidth": window_width, "requestedWindowHeight": 1000}
+                    if selected_case is not None and any(current_case[field] != value for field, value in selected_case.items()):
+                        continue
+                    if selected_case is None and _case_completed("responsive-text", current_case):
+                        continue
                     save("running")
+                    if case_started:
+                        session.restart()
+                    case_started = True
                     session.command("POST", "/window/rect", {"width": window_width, "height": 1000}, check=False)
                     session.navigate(m["path"])
                     session.js("localStorage.clear();localStorage.setItem('graph-editor-theme',arguments[0]);", theme)
@@ -983,7 +1121,49 @@ def run_responsive_text_review(session):
                                 if(count===3&&e&&!e.classList.contains('sr-only')&&e.textContent.trim())return {kind:'blocked',message:e.textContent.trim()};
                                 return false;""")
                             if outcome["kind"] == "blocked":
-                                insufficient_space.update({"status": "passed", "reason": None, "message": outcome["message"]})
+                                feedback = session.wait("""const e=document.querySelector('[data-node-creation-feedback]');
+                                    if(!e||e.classList.contains('sr-only'))return false;
+                                    const r=e.getBoundingClientRect(),line=parseFloat(getComputedStyle(e).lineHeight);
+                                    if(e.clientHeight<line-1)return false;
+                                    return {bounds:{left:r.left,top:r.top,right:r.right,bottom:r.bottom},lineHeight:line,
+                                        clientHeight:e.clientHeight,scrollHeight:e.scrollHeight,scrollTop:e.scrollTop,
+                                        clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,tabIndex:e.tabIndex};""")
+                                updated_chrome = inspect_chrome()
+                                updated_action = session.js("const r=document.querySelector('[data-node-creation-action] button').getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom};")
+                                assert contains(updated_chrome["root"], feedback["bounds"]), feedback
+                                assert all(not overlaps(feedback["bounds"], row["bounds"]) for row in updated_chrome["rows"]), feedback
+                                assert not overlaps(feedback["bounds"], updated_action), feedback
+                                assert feedback["tabIndex"] == 0 and feedback["scrollWidth"] <= feedback["clientWidth"] + 1, feedback
+                                unchanged_nodes = session.js("return JSON.stringify(JSON.parse(localStorage.getItem('graph-editor-graph')).nodes);")
+                                capture("short-feedback-start")
+                                session.js("""window.__feedbackKeys=[];const e=document.querySelector('[data-node-creation-feedback]');
+                                    for(const type of ['keydown','keyup'])e.addEventListener(type,event=>{
+                                        const row={type,key:event.key,code:event.code,shift:event.shiftKey,ctrl:event.ctrlKey,
+                                            alt:event.altKey,meta:event.metaKey,trusted:event.isTrusted};
+                                        window.__feedbackKeys.push(row);setTimeout(()=>{row.prevented=event.defaultPrevented;row.scrollTop=e.scrollTop;},0);
+                                    },true);""")
+                                key("\ue004")
+                                session.wait("return document.activeElement===document.querySelector('[data-node-creation-feedback]')")
+                                if feedback["scrollHeight"] > feedback["clientHeight"] + 1:
+                                    key("\ue015")
+                                    try:
+                                        session.wait("return document.querySelector('[data-node-creation-feedback]').scrollTop>0;")
+                                    finally:
+                                        (OUTPUT / f"{prefix}-feedback-keyboard.json").write_text(json.dumps(session.js("const e=document.querySelector('[data-node-creation-feedback]');return {events:window.__feedbackKeys,scrollTop:e.scrollTop,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight,focused:document.activeElement===e};"), indent=2))
+                                    key("\ue010")
+                                    session.wait("const e=document.querySelector('[data-node-creation-feedback]');return e.scrollTop>0&&e.scrollTop+e.clientHeight>=e.scrollHeight-1;")
+                                feedback_end = session.js("""const e=document.querySelector('[data-node-creation-feedback]'),r=e.getBoundingClientRect();
+                                    const range=document.createRange();range.selectNodeContents(e);
+                                    const lines=[...range.getClientRects()].filter(r=>r.width&&r.height),last=lines.at(-1);
+                                    return {scrollTop:e.scrollTop,focused:document.activeElement===e,
+                                        outlineStyle:getComputedStyle(e).outlineStyle,outlineWidth:getComputedStyle(e).outlineWidth,
+                                        lastLine:{left:last.left,top:last.top,right:last.right,bottom:last.bottom},
+                                        bounds:{left:r.left,top:r.top,right:r.right,bottom:r.bottom}};""")
+                                assert contains(feedback_end["bounds"], feedback_end["lastLine"]), feedback_end
+                                assert feedback_end["focused"] and feedback_end["outlineStyle"] != "none" and float(feedback_end["outlineWidth"].removesuffix("px")) >= 2, feedback_end
+                                assert session.js("return JSON.stringify(JSON.parse(localStorage.getItem('graph-editor-graph')).nodes);") == unchanged_nodes
+                                insufficient_space.update({"status": "passed", "reason": None, "message": outcome["message"],
+                                                           "feedback": feedback, "feedbackAfterKeyboardScroll": feedback_end})
                             else:
                                 added = session.js(RANGE_CY + """const node=cy.nodes().last(),p=node.renderedPosition(),r=container.getBoundingClientRect(),radius=node.outerHeight()*cy.zoom()/2;
                                     return {left:r.left+p.x-radius,right:r.left+p.x+radius,top:r.top+p.y-radius,bottom:r.top+p.y+radius};""")
@@ -1016,19 +1196,29 @@ def run_responsive_text_review(session):
         restore_styles()
 
 
+def run_feedback_preflight(session):
+    return run_responsive_text_review(session, {"locale": "ja", "theme": "light", "rootFontPx": 24,
+                                               "requestedEditorWidth": 320, "requestedEditorHeight": 900})
+
+
 def run_editor_review(session):
     messages = {
         "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像", "color": "頂点の色", "green": "頂点の色: 緑"},
         "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "image": "PNG image", "color": "Node color", "green": "Node color: Green"},
         "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "image": "PNG 图像", "color": "顶点颜色", "green": "顶点颜色：绿色"},
     }
-    results = []
+    results = CASE_RESULTS.setdefault("editor-workflow", [])
+    case_started = False
     for locale in ("zh-hans", "ja", "en"):
         m = messages[locale]
         for width in (600, 960, 1440):
             for theme in ("light", "dark"):
-                if results:
+                current_case = {"locale": locale, "theme": theme, "requestedWindowWidth": width}
+                if _case_completed("editor-workflow", current_case):
+                    continue
+                if case_started:
                     session.restart()
+                case_started = True
                 session.command("POST", "/window/rect", {"width": width, "height": 1000}, check=False)
                 session.navigate(m["path"])
                 session.verify_storage()
@@ -1054,16 +1244,19 @@ def run_editor_review(session):
                             target:e.target.tagName,active:document.activeElement.tagName,prevented:e.defaultPrevented,trusted:e.isTrusted,
                             panel:e.target.closest?.('[data-editor-panel]')?.dataset.editorPanel,
                             text:e.target.textContent?.trim().slice(0,100)};
-                        window.__editorTabEvents.push(row);queueMicrotask(()=>row.prevented=e.defaultPrevented);
+                        window.__editorTabEvents.push(row);
+                        setTimeout(()=>{row.prevented=e.defaultPrevented;row.settled=true;},0);
                     },true);""")
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue004"}, {"type": "keyUp", "value": "\ue004"}]}]})
                 session.wait("return document.activeElement!==window.__editorTabStart&&document.querySelector('[data-editor-panel=starter]')?.contains(document.activeElement)")
-                tab_navigation = session.js("return {start:window.__editorTabStartInfo,events:window.__editorTabEvents,inside:document.querySelector('[data-editor-panel=starter]').contains(document.activeElement)};")
+                session.wait("return window.__editorTabEvents.length>0&&window.__editorTabEvents.every(e=>e.settled===true)")
+                tab_navigation = session.js("const e=document.activeElement,s=getComputedStyle(e);return {start:window.__editorTabStartInfo,events:window.__editorTabEvents,inside:document.querySelector('[data-editor-panel=starter]').contains(e),appearance:{tag:e.tagName,focusVisible:e.matches(':focus-visible'),outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth}};")
                 tab_down = next(e for e in tab_navigation["events"] if e["type"] == "keydown" and e["key"] == "Tab")
                 assert tab_down["target"] == "TEXTAREA" and tab_down["trusted"] and tab_down["prevented"], tab_navigation
                 tab_focus = [e for e in tab_navigation["events"] if e["type"] == "focusin"]
                 assert tab_focus and all(e.get("panel") == "starter" for e in tab_focus), tab_navigation
+                assert tab_navigation["appearance"]["outlineStyle"] != "none" and float(tab_navigation["appearance"]["outlineWidth"].removesuffix("px")) >= 2, tab_navigation
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue00c"}, {"type": "keyUp", "value": "\ue00c"}]}]})
                 session.wait("return !document.querySelector('[data-editor-panel=starter]')")
@@ -1087,12 +1280,41 @@ def run_editor_review(session):
                     session.wait("return !document.querySelector('[role=radiogroup]')")
                 before = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0]")
                 node = session.element("button.ge-select-node-hitbox")
-                session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
-                    {"type": "pointerMove", "duration": 0, "origin": {ELEMENT: node}, "x": 0, "y": 0},
-                    {"type": "pointerDown", "button": 0},
-                    {"type": "pointerMove", "duration": 400, "origin": "pointer", "x": 40, "y": 20},
-                    {"type": "pointerUp", "button": 0}]}]})
-                session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].x!==" + str(before["x"]))
+                session.focus_window()
+                drag_start = session.js(RANGE_CY + """const node=arguments[0],r=node.getBoundingClientRect();
+                    const x=Math.round(r.x+r.width/2),y=Math.round(r.y+r.height/2);
+                    window.__editorDragEvents=[];
+                    for(const type of ['pointerdown','pointermove','pointerup','pointercancel','gotpointercapture','lostpointercapture','keydown','keyup','blur','focus'])window.addEventListener(type,e=>{
+                        window.__editorDragEvents.push({type,key:e.key,x:e.clientX,y:e.clientY,buttons:e.buttons,
+                            ctrl:e.ctrlKey,meta:e.metaKey,shift:e.shiftKey,trusted:e.isTrusted,
+                            target:e.target===window?'window':e.target.tagName,label:e.target.getAttribute?.('aria-label'),
+                            focused:document.hasFocus(),time:performance.now()});
+                        window.__editorDragEvents=window.__editorDragEvents.slice(-80);
+                    },true);
+                    return {x,y,zoom:cy.zoom(),hit:document.elementFromPoint(x,y)?.closest('.ge-select-node-hitbox')===node,
+                        focused:document.hasFocus(),visibility:document.visibilityState};""", {ELEMENT: node})
+                assert drag_start["hit"], drag_start
+                drag_actions = [
+                    {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": drag_start["x"], "y": drag_start["y"]},
+                    {"type": "pointerDown", "button": 0}]
+                for step in range(1, 5):
+                    drag_actions.append({"type": "pointerMove", "duration": 100, "origin": "viewport",
+                                         "x": drag_start["x"] + step * 10, "y": drag_start["y"] + step * 5})
+                drag_actions.append({"type": "pointerUp", "button": 0})
+                session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": drag_actions}]})
+                session.command("DELETE", "/actions")
+                try:
+                    session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].x!==" + str(before["x"]))
+                finally:
+                    drag_result = session.js("return {events:window.__editorDragEvents,focused:document.hasFocus(),saved:JSON.parse(localStorage.getItem('graph-editor-graph'))?.nodes[0]};")
+                    drag_result.update({"start": drag_start, "before": before, "expectedViewportDelta": {"x": 40, "y": 20}})
+                    (OUTPUT / f"{prefix}-drag.json").write_text(json.dumps(drag_result, indent=2))
+                drag_down = [e for e in drag_result["events"] if e["type"] == "pointerdown"]
+                drag_up = [e for e in drag_result["events"] if e["type"] == "pointerup"]
+                assert len(drag_down) == len(drag_up) == 1 and drag_down[0]["trusted"] and drag_up[0]["trusted"], drag_result
+                assert drag_down[0]["label"] == session.js("return arguments[0].getAttribute('aria-label');", {ELEMENT: node}), drag_result
+                assert abs(drag_result["saved"]["x"] - before["x"] - 40 / drag_start["zoom"]) < 0.0001, drag_result
+                assert abs(drag_result["saved"]["y"] - before["y"] - 20 / drag_start["zoom"]) < 0.0001, drag_result
                 session.open_panel(m["export"], "export")
                 session.click(session.element('[data-editor-panel=export] option[value="json"]'))
                 text = session.wait("const e=document.querySelector('[data-editor-panel=export] pre');return e&&e.textContent.trim().startsWith('{')&&e.textContent;")
@@ -1111,7 +1333,7 @@ def run_editor_review(session):
                 session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===4")
                 restored = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
                 assert restored["nodes"][0]["color"] == "green" and restored["nodes"][0]["x"] == graph["nodes"][0]["x"]
-                results.append({"locale": locale, "theme": theme, "requestedWindowWidth": width, "viewport": dimensions, "tabNavigation": tab_navigation, "checks": ["keyboard Enter opens panel", "trusted Tab stays inside the dialog", "Escape and opener restoration", "text input after reopening", "import", "node color", "drag", "JSON export data", "PNG preview", "reload persistence", "geometry"]})
+                results.append({"locale": locale, "theme": theme, "requestedWindowWidth": width, "viewport": dimensions, "tabNavigation": tab_navigation, "drag": drag_result, "checks": ["keyboard Enter opens panel", "trusted Tab stays inside the dialog", "Escape and opener restoration", "text input after reopening", "import", "node color", "native pointer drag and exact displacement", "JSON export data", "PNG preview", "reload persistence", "geometry"]})
                 print(f"{prefix} {dimensions}: passed", flush=True)
     return results
 
@@ -1720,6 +1942,7 @@ def run_multi_selection_review(session):
                 summary: document.querySelector('.ge-selection-summary')?.textContent.trim() ?? '',
                 inlineEditors: [...document.querySelectorAll('.ge-inline-edit-input')].map(e=>e.value),
                 activeElement: {tag:document.activeElement.tagName,label:document.activeElement.getAttribute('aria-label')},
+                dragEvents: window.__multiDragEvents ?? [],
                 keyEvents: window.__multiKeys,
                 paletteClick: window.__multiPaletteClick ?? null,
                 paletteEvents: window.__multiPaletteEvents ?? []
@@ -1793,22 +2016,45 @@ def run_multi_selection_review(session):
             session.wait("return !document.querySelector('.ge-select-node-hitbox')?.closest('[inert]')")
             session.screenshot(f"multi-selection-{variant}-selected")
             current_stage = "drag-preview"
+            session.focus_window()
             start = point("a")
-            session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
+            drag_start = session.js(RANGE_CY + """const x=Math.round(arguments[0].x),y=Math.round(arguments[0].y);
+                window.__multiDragEvents=[];
+                for(const type of ['pointerdown','pointermove','pointerup','pointercancel','gotpointercapture','lostpointercapture','blur','focus'])window.addEventListener(type,e=>{
+                    window.__multiDragEvents.push({type,x:e.clientX,y:e.clientY,buttons:e.buttons,trusted:e.isTrusted,
+                        label:e.target.getAttribute?.('aria-label'),focused:document.hasFocus(),time:performance.now()});
+                },true);
+                return {x,y,zoom:cy.zoom(),hit:document.elementFromPoint(x,y)?.closest('.ge-select-node-hitbox')?.getAttribute('aria-label'),
+                    focused:document.hasFocus(),visibility:document.visibilityState};""", start)
+            assert drag_start["hit"] == "Select node A" and drag_start["zoom"] == 1, drag_start
+            assert drag_start["focused"] and drag_start["visibility"] == "visible", drag_start
+            drag_actions = [
                 {"type": "pointerMove", "duration": 0, "origin": "viewport", "x": round(start["x"]), "y": round(start["y"])},
-                {"type": "pointerDown", "button": 0},
-                {"type": "pointerMove", "duration": 400, "origin": "pointer", "x": 60, "y": 40}]}]})
+                {"type": "pointerDown", "button": 0}]
+            for step in range(1, 5):
+                drag_actions.append({"type": "pointerMove", "duration": 0, "origin": "viewport",
+                                     "x": drag_start["x"] + step * 15, "y": drag_start["y"] + step * 10})
+                drag_actions.append({"type": "pause", "duration": 100})
+            session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": drag_actions}]})
             after_drag = moved(baseline, 60, 40)
             live_projection = [[n["id"], n["x"], n["y"]] for n in after_drag["nodes"]]
-            session.wait(RANGE_CY + "return JSON.stringify(cy.nodes().map(n=>[n.id(),n.position('x'),n.position('y')]))===JSON.stringify(" + json.dumps(live_projection) + ");")
+            try:
+                session.wait(RANGE_CY + "return JSON.stringify(cy.nodes().map(n=>[n.id(),n.position('x'),n.position('y')]))===JSON.stringify(" + json.dumps(live_projection) + ");")
+            finally:
+                (OUTPUT / f"multi-selection-{variant}-drag-attempt.json").write_text(json.dumps({"start": drag_start, "snapshot": snapshot()}, indent=2))
             preview = snapshot()
             assert preview["selectedNodes"] == selected_ids and preview["summary"] == "2 nodes", (variant, preview)
             assert preview["saved"] == baseline, "The group preview must not persist before pointer release"
+            downs = [e for e in preview["dragEvents"] if e["type"] == "pointerdown"]
+            assert len(downs) == 1 and downs[0]["trusted"] and downs[0]["label"] == "Select node A", preview
+            assert not any(e["type"] in ("pointerup", "pointercancel", "blur") for e in preview["dragEvents"]), preview
             (OUTPUT / f"multi-selection-{variant}-drag-preview.json").write_text(json.dumps(preview, indent=2))
             session.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "mouse", "parameters": {"pointerType": "mouse"}, "actions": [
                 {"type": "pointerUp", "button": 0}]}]})
             session.command("DELETE", "/actions")
-            verify("drag-committed", after_drag)
+            committed = verify("drag-committed", after_drag)
+            ups = [e for e in committed["dragEvents"] if e["type"] == "pointerup"]
+            assert len(ups) == 1 and ups[0]["trusted"] and ups[0]["x"] == drag_start["x"] + 60 and ups[0]["y"] == drag_start["y"] + 40, committed
 
             range_key(session, "\ue014")
             after_right = moved(after_drag, 1, 0)
@@ -2338,55 +2584,163 @@ def run_promo_recording(session):
     print(f"App introduction: {len(frames)} real Safari frames, Rust force, native color/drag, JSON and PNG passed", flush=True)
 
 
+def _start_driver():
+    with (OUTPUT / "driver.log").open("a") as log:
+        return subprocess.Popen(["/usr/bin/safaridriver", "-p", "4447"],
+                                stdout=log, stderr=subprocess.STDOUT)
+
+
+def _wait_driver(driver):
+    for _ in range(50):
+        return_code = driver.poll()
+        if return_code is not None:
+            raise RuntimeError(f"The owned Safari driver exited with return code {return_code}; refusing to use an unrelated server")
+        try:
+            Session.request("GET", "/status")
+            return
+        except (urllib.error.URLError, ConnectionError):
+            time.sleep(0.1)
+    raise RuntimeError("The owned Safari driver did not become ready")
+
+
+def _stop_driver(driver):
+    report = {"pid": None if driver is None else driver.pid,
+              "terminated": False, "killed": False, "stopped": driver is None}
+    if driver is None:
+        return report
+    if driver.poll() is None:
+        driver.terminate()
+        report["terminated"] = True
+        try:
+            driver.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            driver.kill()
+            report["killed"] = True
+            driver.wait(timeout=5)
+    report["stopped"] = driver.poll() is not None
+    if not report["stopped"]:
+        raise RuntimeError("The owned Safari driver did not stop")
+    return report
+
+
+def _substantive_exception(error):
+    pending = [(error, False)]
+    seen = set()
+    substantive = []
+    while pending:
+        current, expanded = pending.pop()
+        if expanded:
+            if not isinstance(current, (DriverTimeoutError, TimeoutError, socket.timeout)):
+                substantive.append(current)
+            continue
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        pending.append((current, True))
+        pending.append((current.__cause__, False))
+        pending.append((current.__context__, False))
+    return next((error for error in substantive if isinstance(error, AssertionError)),
+                substantive[0] if substantive else None)
+
+
 def main():
+    global NATIVE_ACTIVATION_AUTHORIZED
+    CASE_RESULTS.clear()
     assert sys.argv[1:] in ([], ["--self-loops"], ["--text-weights"]), "This runner accepts only a fixed local scenario, no URL or command overrides"
     policy_checks()
+    runtime_policy_checks()
     OUTPUT.mkdir(exist_ok=True)
-    driver = subprocess.Popen(["/usr/bin/safaridriver", "-p", "4447"], stdout=(OUTPUT / "driver.log").open("w"), stderr=subprocess.STDOUT)
+    NATIVE_ACTIVATION_AUTHORIZED = False
+    promo_request = OUTPUT / "promo-request.json"
+    activation_request = OUTPUT / "native-activation-request.json"
+    if activation_request.exists():
+        assert not sys.argv[1:] and not promo_request.exists(), "Native recovery is restricted to the full 78-case review"
+        assert json.loads(activation_request.read_text()) == {"action": "restart-and-activate-safari-for-78-case-review"}, "Only fixed Safari recovery is allowed"
+        activation_request.unlink()
+        NATIVE_ACTIVATION_AUTHORIZED = True
+    driver = None
     session = None
     summary = None
-    if not sys.argv[1:] and not (OUTPUT / "promo-request.json").exists():
+    pending_driver_timeout = False
+    if not sys.argv[1:] and not promo_request.exists():
         summary = {"status": "running", "runId": time.time_ns(), "capabilities": None,
                    "results": [], "completedStages": [], "focusRecoveries": FOCUS_RECOVERIES, "storageProbes": STORAGE_PROBES,
+                   "expectedCases": 78,
+                   "nativeActivationAuthorized": NATIVE_ACTIVATION_AUTHORIZED,
+                   "sourceFingerprint": review_fingerprint(), "driverRecoveries": [], "browserRestarts": [],
                    "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}
-        (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
-    try:
-        for _ in range(50):
-            try:
-                if driver.poll() is not None:
-                    raise RuntimeError("The Safari driver exited; refusing to use an unrelated server")
-                Session.request("GET", "/status")
-                break
-            except (urllib.error.URLError, ConnectionError):
-                time.sleep(0.1)
-        session = Session()
 
+    def save():
+        if summary is not None:
+            (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+
+    def start_session():
+        nonlocal driver, session
+        if driver is None:
+            driver = _start_driver()
+        _wait_driver(driver)
+        session = Session()
         session.navigate("/")
         session.wait("return document.readyState==='complete'")
         (OUTPUT / "capabilities.json").write_text(json.dumps(session.capabilities, indent=2))
         if summary is not None:
             summary["capabilities"] = session.capabilities
-        promo_request = OUTPUT / "promo-request.json"
-        if promo_request.exists():
-            assert not sys.argv[1:], "The fixed promo scenario requires the no-argument runner"
-            assert json.loads(promo_request.read_text()) == {"scenario": "app-introduction"}, "Only the fixed app-introduction scenario is allowed"
-            promo_request.unlink()
-            run_promo_recording(session)
-            return
-        if sys.argv[1:] == ["--text-weights"]:
-            run_text_weight_review(session)
-            return
-        if sys.argv[1:] == ["--self-loops"]:
-            run_self_loop_review(session)
-            return
+            save()
+
+    def restart_browser(reason, stage=None, attempt=None):
+        entry = {"reason": reason, "stage": stage, "attempt": attempt, "status": "running"}
+        if summary is not None:
+            summary["browserRestarts"].append(entry)
+            save()
+        try:
+            entry["report"] = restart_safari(True)
+            entry["status"] = "restarted"
+            save()
+        except Exception as error:
+            entry.update({"status": "failed", "error": str(error)})
+            save()
+            raise
+
+    def check_fingerprint():
+        assert review_fingerprint() == summary["sourceFingerprint"], "Safari review sources or built preview changed during verification"
+
+    save()
+    try:
+        (OUTPUT / "driver.log").write_text("")
+        if NATIVE_ACTIVATION_AUTHORIZED:
+            restart_browser("initial-fresh-browser")
+        if summary is None:
+            start_session()
+            if promo_request.exists():
+                assert not sys.argv[1:], "The fixed promo scenario requires the no-argument runner"
+                assert json.loads(promo_request.read_text()) == {"scenario": "app-introduction"}, "Only the fixed app-introduction scenario is allowed"
+                promo_request.unlink()
+                run_promo_recording(session)
+                return
+            if sys.argv[1:] == ["--text-weights"]:
+                run_text_weight_review(session)
+                return
+            if sys.argv[1:] == ["--self-loops"]:
+                run_self_loop_review(session)
+                return
+
         def record(stage, results):
+            if stage == "feedback-preflight":
+                assert len(results) == 1
+                summary["feedbackPreflight"] = {"status": "passed", "result": results[0]}
+                save()
+                return
+            assert len(results) == EXPECTED_STAGE_CASES[stage], f"Unexpected case count in {stage}: {len(results)}"
+            if stage in CASE_KEY_FIELDS:
+                assert _case_keys(stage, results) == EXPECTED_CASE_KEYS[stage], f"Incomplete cases in {stage}"
             summary["results"].extend(results)
             summary["completedStages"].append({"name": stage, "cases": len(results)})
-            (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
-        (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+            save()
+
         stages = [
-            ("editor-workflow", run_editor_review, None),
+            ("feedback-preflight", run_feedback_preflight, "feedback-preflight-results.json"),
             ("design-guidelines", run_design_guidelines_review, None),
+            ("editor-workflow", run_editor_review, None),
             ("enlarged-routing", run_enlarged_routing_review, None),
             ("responsive-text", run_responsive_text_review, None),
             ("multi-selection", run_multi_selection_review, "multi-selection-results.json"),
@@ -2395,21 +2749,83 @@ def main():
             ("range-selection", run_range_selection, "range-selection-results.json"),
             ("rust-compute", run_rust_compute_review, None),
         ]
+        assert stages[0][0] == "feedback-preflight"
+        assert [name for name, _, _ in stages[1:]] == list(EXPECTED_STAGE_CASES)
         for index, (name, review, report) in enumerate(stages):
-            if index:
-                session.restart()
-            results = review(session)
-            if report:
-                (OUTPUT / report).write_text(json.dumps({"status": "passed", "results": results}, indent=2))
-            record(name, results)
+            checkpointed = name in CASE_KEY_FIELDS
+            expected_count = 1 if name == "feedback-preflight" else EXPECTED_STAGE_CASES[name]
+            max_attempts = 3 * expected_count if checkpointed else 3
+            consecutive_timeouts = 0
+            completed_cases = 0
+            for attempt in range(1, max_attempts + 1):
+                summary["currentStage"] = {"name": name, "attempt": attempt, "status": "running",
+                                           "completedCases": completed_cases, "maxAttempts": max_attempts,
+                                           "consecutiveTimeouts": consecutive_timeouts}
+                save()
+                check_fingerprint()
+                try:
+                    if session is None:
+                        start_session()
+                    elif index and attempt == 1:
+                        session.restart()
+                    results = review(session)
+                    check_fingerprint()
+                    if checkpointed:
+                        assert _case_keys(name, results) == EXPECTED_CASE_KEYS[name], f"Incomplete cases in {name}"
+                    assert len(results) == expected_count, f"Unexpected case count in {name}: {len(results)}"
+                    if report:
+                        (OUTPUT / report).write_text(json.dumps({"status": "passed", "results": results}, indent=2))
+                    summary["currentStage"]["status"] = "passed"
+                    record(name, results)
+                    break
+                except DriverTimeoutError as error:
+                    pending_driver_timeout = True
+                    substantive = _substantive_exception(error)
+                    if substantive is not None:
+                        summary["currentStage"].update({"status": "failed", "error": str(substantive),
+                                                        "cleanupTransportError": str(error)})
+                        summary.update({"status": "failed_or_blocked", "error": str(substantive)})
+                        save()
+                        raise substantive from None
+                    summary["currentStage"].update({"status": "driver-timeout", "error": str(error)})
+                    now_completed = len(_case_keys(name, CASE_RESULTS.get(name, []))) if checkpointed else 0
+                    assert now_completed >= completed_cases, f"Completed cases were lost in {name}"
+                    if now_completed > completed_cases:
+                        consecutive_timeouts = 0
+                    completed_cases = now_completed
+                    consecutive_timeouts += 1
+                    summary["currentStage"].update({"completedCases": completed_cases,
+                                                    "consecutiveTimeouts": consecutive_timeouts})
+                    recovery = {"stage": name, "attempt": attempt, "error": str(error), "status": "not-retried",
+                                "completedCases": completed_cases, "consecutiveTimeouts": consecutive_timeouts}
+                    summary["driverRecoveries"].append(recovery)
+                    save()
+                    if not NATIVE_ACTIVATION_AUTHORIZED or consecutive_timeouts == 3 or attempt == max_attempts:
+                        raise
+                    recovery["status"] = "stopping-driver"
+                    save()
+                    recovery["driverStop"] = _stop_driver(driver)
+                    driver = None
+                    session = None
+                    recovery["status"] = "restarting-browser"
+                    save()
+                    restart_browser("stage-driver-timeout", name, attempt)
+                    pending_driver_timeout = False
+                    recovery["status"] = "retrying-incomplete-cases" if checkpointed else "retrying-whole-stage"
+                    save()
+                    print(f"Safari driver: recovered timeout in {name}; completed {completed_cases}/{expected_count} cases, retry attempt {attempt + 1}/{max_attempts}", flush=True)
+        assert summary["feedbackPreflight"]["status"] == "passed"
+        assert len(summary["results"]) == sum(EXPECTED_STAGE_CASES.values()) == 78
+        summary["currentStage"] = None
         summary["status"] = "awaiting_cleanup"
-        (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+        save()
     except Exception as error:
+        pending_driver_timeout = pending_driver_timeout or isinstance(error, DriverTimeoutError)
         if summary is not None:
             summary.update({"status": "failed_or_blocked", "error": str(error)})
-            (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+            save()
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))
-        if session and not isinstance(error, DriverTimeoutError):
+        if session and not pending_driver_timeout:
             try:
                 (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {visibility:document.visibilityState,focused:document.hasFocus(),ready:document.querySelector('[data-canvas-ready]')?.getAttribute('data-canvas-ready'),compute:performance.getEntriesByType('mark').filter(e=>e.name.startsWith('graph-compute:')).map(e=>e.name),trace:window.__focusTrace,tabStart:window.__editorTabStartInfo,tabEvents:window.__editorTabEvents,active:document.activeElement.tagName,activeHtml:document.activeElement.outerHTML.slice(0,300),activePanel:document.activeElement.closest('[data-editor-panel]')?.dataset.editorPanel,input:document.querySelector('textarea')?.value,panels:[...document.querySelectorAll('[data-editor-panel]')].map(e=>({panel:e.dataset.editorPanel,state:e.dataset.panelState})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.textContent,label:e.getAttribute('aria-label'),expanded:e.getAttribute('aria-expanded')}))}"), indent=2))
                 (OUTPUT / "range-failure-state.json").write_text(json.dumps(session.js("return {events:window.__rangeEvents, nodes:[...document.querySelectorAll('.ge-select-node-hitbox')].map(e=>({label:e.getAttribute('aria-label'),inert:e.closest('[inert]')?.outerHTML.slice(0,400)})), modes:[...document.querySelectorAll('[data-graph-shortcut-target][aria-pressed]')].map(e=>({label:e.getAttribute('aria-label'),pressed:e.getAttribute('aria-pressed')}))}"), indent=2))
@@ -2420,31 +2836,57 @@ def main():
     finally:
         active_error = sys.exc_info()[0] is not None
         cleanup = {"runId": summary["runId"] if summary else None,
-                   "sessionCreated": session is not None, "sessionClosed": None, "driverStopped": False}
+                   "sessionCreated": session is not None, "sessionClosed": None,
+                   "driverStopped": driver is None, "method": None}
+        cleanup_error = None
         try:
-            if session:
-                session.close()
-                cleanup["sessionClosed"] = True
+            close_failed = pending_driver_timeout
+            if session and not pending_driver_timeout:
+                try:
+                    session.close()
+                    cleanup.update({"sessionClosed": True, "method": "webdriver"})
+                except Exception as error:
+                    cleanup["webdriverCloseError"] = str(error)
+                    close_failed = True
+                    if not NATIVE_ACTIVATION_AUTHORIZED:
+                        raise
+            if close_failed and NATIVE_ACTIVATION_AUTHORIZED:
+                cleanup["driverStop"] = _stop_driver(driver)
+                driver = None
+                session = None
+                restart_browser("cleanup-of-unresponsive-session")
+                cleanup.update({"sessionClosed": True, "method": "authorized-browser-restart"})
+            elif close_failed:
+                cleanup["sessionClosed"] = False
         except Exception as error:
             cleanup["error"] = str(error)
+            cleanup_error = error
             if summary is not None:
                 summary.update({"status": "failed_or_blocked", "cleanupError": str(error)})
-                (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
-            if not active_error:
-                raise
+                save()
         finally:
-            driver.terminate()
             try:
-                driver.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                driver.kill()
-                driver.wait(timeout=5)
-            cleanup["driverStopped"] = driver.poll() is not None
+                if driver is not None:
+                    cleanup["driverStop"] = _stop_driver(driver)
+                cleanup["driverStopped"] = True
+            except Exception as error:
+                cleanup.update({"driverStopped": False, "driverStopError": str(error)})
+                cleanup_error = cleanup_error or error
+                if summary is not None:
+                    summary.update({"status": "failed_or_blocked", "cleanupError": str(error)})
+                    save()
             (OUTPUT / "cleanup.json").write_text(json.dumps(cleanup, indent=2))
             if summary is not None and summary["status"] == "awaiting_cleanup":
-                assert cleanup["sessionClosed"] and cleanup["driverStopped"], cleanup
-                summary["status"] = "passed"
-                (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
+                try:
+                    assert cleanup["sessionClosed"] and cleanup["driverStopped"], cleanup
+                    check_fingerprint()
+                    summary["status"] = "passed"
+                except Exception as error:
+                    cleanup_error = cleanup_error or error
+                    summary.update({"status": "failed_or_blocked", "cleanupError": str(error)})
+                save()
+        if cleanup_error is not None and not active_error:
+            raise cleanup_error
 
 
 if __name__ == "__main__":

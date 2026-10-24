@@ -35,6 +35,7 @@ import { withCytoscapeBatch } from "../adapters/cytoscape/cytoscape-batch";
 import { refreshCytoscapeGeometry } from "../adapters/cytoscape/graph-canvas-geometry-refresh";
 
 type DragSnapshot = Record<NodeId, Position>;
+type DragPointer = Pick<PointerEvent, "pointerId" | "clientX" | "clientY">;
 const NODE_DRAG_GRID_SIZE_PX = 24;
 const INTERACTIVE_EDGE_ROUTING_INTERVAL_MS = 80;
 
@@ -417,73 +418,80 @@ export function useHtmlNodeDrag({
     setSelection({ nodeIds: selectedNodeIds, edgeIds: [] });
   };
 
-  const update = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const state = htmlNodeDragRef.current;
-    const cy = cyRef.current;
-
-    if (!state || !cy || state.pointerId !== event.pointerId) {
-      return;
-    }
-
-    event.preventDefault();
-
-    const renderedDx = event.clientX - state.startClientX;
-    const renderedDy = event.clientY - state.startClientY;
-    const dx = renderedDx / cy.zoom();
-    const dy = renderedDy / cy.zoom();
-
-    if (Math.abs(renderedDx) > 2 || Math.abs(renderedDy) > 2) {
-      state.moved = true;
-    }
-
-    let positionsChanged = false;
-    withCytoscapeBatch(cy, () => {
-      state.nodeIds.forEach((id) => {
-        const startPosition = state.before[id];
-
-        if (!startPosition) {
-          return;
-        }
-
-        const node = getCytoscapeElement(cy, id);
-
-        if (node.empty() || !node.isNode()) {
-          return;
-        }
-
-        const nextGraphPosition = resolveDragPosition(
-          {
-            x: startPosition.x + dx,
-            y: startPosition.y + dy,
-          },
-          graph.settings.snapToGrid,
-        );
-        const nextPosition = toCytoscapePosition(cy, nextGraphPosition);
-        const currentPosition = node.position();
-        if (
-          currentPosition.x !== nextPosition.x ||
-          currentPosition.y !== nextPosition.y
-        ) {
-          positionsChanged = true;
-          node.position(nextPosition);
-        }
-      });
-    });
-    if (positionsChanged) {
-      dragPositionRevisionRef.current++;
-      scheduleDragPreview(cy);
-    }
-  };
-
-  const finishDrag = useCallback(
-    (pointerId: number) => {
+  const updateDragPosition = useCallback(
+    (event: DragPointer) => {
       const state = htmlNodeDragRef.current;
       const cy = cyRef.current;
 
-      if (!state || !cy || state.pointerId !== pointerId) {
+      if (!state || !cy || state.pointerId !== event.pointerId) {
+        return false;
+      }
+
+      const renderedDx = event.clientX - state.startClientX;
+      const renderedDy = event.clientY - state.startClientY;
+      const dx = renderedDx / cy.zoom();
+      const dy = renderedDy / cy.zoom();
+
+      if (Math.abs(renderedDx) > 2 || Math.abs(renderedDy) > 2) {
+        state.moved = true;
+      }
+
+      let positionsChanged = false;
+      withCytoscapeBatch(cy, () => {
+        state.nodeIds.forEach((id) => {
+          const startPosition = state.before[id];
+
+          if (!startPosition) {
+            return;
+          }
+
+          const node = getCytoscapeElement(cy, id);
+
+          if (node.empty() || !node.isNode()) {
+            return;
+          }
+
+          const nextGraphPosition = resolveDragPosition(
+            {
+              x: startPosition.x + dx,
+              y: startPosition.y + dy,
+            },
+            graph.settings.snapToGrid,
+          );
+          const nextPosition = toCytoscapePosition(cy, nextGraphPosition);
+          const currentPosition = node.position();
+          if (
+            currentPosition.x !== nextPosition.x ||
+            currentPosition.y !== nextPosition.y
+          ) {
+            positionsChanged = true;
+            node.position(nextPosition);
+          }
+        });
+      });
+      if (positionsChanged) {
+        dragPositionRevisionRef.current++;
+        scheduleDragPreview(cy);
+      }
+      return true;
+    },
+    [cyRef, graph.settings.snapToGrid, scheduleDragPreview],
+  );
+
+  const update = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (updateDragPosition(event)) event.preventDefault();
+  };
+
+  const finishDrag = useCallback(
+    (event: DragPointer) => {
+      const state = htmlNodeDragRef.current;
+      const cy = cyRef.current;
+
+      if (!state || !cy || state.pointerId !== event.pointerId) {
         return;
       }
 
+      updateDragPosition(event);
       htmlNodeDragRef.current = null;
       cleanupDragListeners();
       releasePointerCapture(state);
@@ -549,11 +557,16 @@ export function useHtmlNodeDrag({
       graph.settings.snapToGrid,
       restoreRoutes,
       setSelection,
+      updateDragPosition,
     ],
   );
 
   const finish = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    finishDrag(event.pointerId);
+    if (event.type === "pointercancel") {
+      cancel();
+      return;
+    }
+    finishDrag(event);
   };
 
   const consumeSuppressedClick = () => {
@@ -595,12 +608,12 @@ function listenForDragEnd(
   pointerId: number,
   handlers: {
     onCancel: () => void;
-    onFinish: (pointerId: number) => void;
+    onFinish: (event: DragPointer) => void;
   },
 ) {
   const finishIfCurrentPointer = (event: PointerEvent) => {
     if (event.pointerId === pointerId) {
-      handlers.onFinish(pointerId);
+      handlers.onFinish(event);
     }
   };
 
