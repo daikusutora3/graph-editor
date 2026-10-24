@@ -15,6 +15,8 @@ ORIGIN = "http://127.0.0.1:3323"
 DRIVER = "http://127.0.0.1:4447"
 OUTPUT = Path("/tmp/graph-editor-safari-review")
 ELEMENT = "element-6066-11e4-a52e-4f735466cecf"
+FOCUS_RECOVERIES = []
+STORAGE_PROBES = []
 
 
 class DriverTimeoutError(RuntimeError):
@@ -41,6 +43,7 @@ def policy_checks():
 
 class Session:
     def __init__(self):
+        self.started_ns = time.time_ns()
         result = self.request("POST", "/session", {"capabilities": {"alwaysMatch": {"browserName": "safari"}}})
         self.id = result["sessionId"]
         self.capabilities = result["capabilities"]
@@ -54,22 +57,69 @@ class Session:
     def focus_window(self):
         handle = self.command("GET", "/window")
         self.command("POST", "/window", {"handle": handle})
+        rect = self.command("GET", "/window/rect")
+        self.command("POST", "/window/rect", {**rect, "x": 0, "y": 0})
+        state = self.window_state()
+        if state["visibility"] != "visible" or not state["focused"]:
+            self.command("POST", "/actions", {"actions": [{"type": "pointer", "id": "window-focus", "parameters": {"pointerType": "mouse"}, "actions": [
+                {"type": "pointerMove", "origin": "viewport", "x": 0, "y": 0, "duration": 0}]}]})
+
+    def window_state(self):
+        return self.js("return {visibility:document.visibilityState,focused:document.hasFocus(),url:location.href};")
 
     def verify_storage(self):
-        key = "graph-editor-safari-storage-probe"
-        value = str(time.time_ns())
-        self.js("""const key=arguments[0],value=arguments[1];
-            window.__safariStorageProbe={key,value,initial:null,later:null,done:false};
-            localStorage.setItem(key,value);
-            window.__safariStorageProbe.initial=localStorage.getItem(key);
-            window.setTimeout(()=>{window.__safariStorageProbe.later=localStorage.getItem(key);window.__safariStorageProbe.done=true;},250);
-        """, key, value)
-        self.wait("return window.__safariStorageProbe?.done===true")
-        probe = self.js("return {...window.__safariStorageProbe,current:localStorage.getItem(arguments[0]),url:location.href};", key)
-        self.js("localStorage.removeItem(arguments[0]);", key)
-        probe["status"] = "passed" if probe["initial"] == value and probe["later"] == value and probe["current"] == value else "failed"
-        (OUTPUT / "native-storage-preflight.json").write_text(json.dumps(probe, indent=2))
-        assert probe["status"] == "passed", "Safari's native localStorage backend discarded a write before application testing; see native-storage-preflight.json"
+        report = {"status": "running", "sessionStartedNs": self.started_ns, "attempts": []}
+        STORAGE_PROBES.append(report)
+
+        def save():
+            contents = json.dumps(report, indent=2)
+            (OUTPUT / "native-storage-preflight.json").write_text(contents)
+            (OUTPUT / f"native-storage-preflight-{self.started_ns}.json").write_text(contents)
+
+        for attempt in range(2):
+            value = str(time.time_ns())
+            key = "graph-editor-safari-storage-probe-" + value
+            self.js("""const key=arguments[0],value=arguments[1];
+                window.__safariStorageProbe={key,value,initial:null,later:null,done:false};
+                localStorage.setItem(key,value);
+                window.__safariStorageProbe.initial=localStorage.getItem(key);
+                window.setTimeout(()=>{window.__safariStorageProbe.later=localStorage.getItem(key);window.__safariStorageProbe.done=true;},250);
+            """, key, value)
+            self.wait("return window.__safariStorageProbe?.done===true")
+            probe = self.js("return {...window.__safariStorageProbe,current:localStorage.getItem(arguments[0]),url:location.href};", key)
+            retained = all(probe[name] == value for name in ("initial", "later", "current"))
+            if retained:
+                self.refresh()
+                self.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+                probe["reloaded"] = self.js("return localStorage.getItem(arguments[0]);", key)
+                retained = probe["reloaded"] == value
+            self.js("localStorage.removeItem(arguments[0]);", key)
+            probe["status"] = "passed" if retained else "failed"
+            report["attempts"].append(probe)
+            if retained:
+                report["status"] = "passed"
+                save()
+                return
+            save()
+            if attempt:
+                break
+            path = urllib.parse.urlsplit(probe["url"]).path
+            previous = self.command("GET", "/window")
+            rect = self.command("GET", "/window/rect")
+            replacement = self.command("POST", "/window/new", {"type": "window"})
+            self.command("POST", "/window", {"handle": replacement["handle"]}, check=False)
+            self.navigate(path)
+            self.command("POST", "/window", {"handle": previous})
+            self.command("DELETE", "/window")
+            self.command("POST", "/window", {"handle": replacement["handle"]}, check=False)
+            self.command("POST", "/window/rect", {**rect, "x": 0, "y": 0})
+            report["recovery"] = {"method": "replace-owned-webdriver-window", "status": "recreated"}
+            save()
+            print("Safari storage: replaced the isolated test window; checking native persistence again", flush=True)
+            self.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+        report["status"] = "failed"
+        save()
+        raise AssertionError("Safari's native localStorage backend discarded a write before application testing; see native-storage-preflight.json")
 
     @staticmethod
     def request(method, path, data=None):
@@ -96,6 +146,12 @@ class Session:
         if check:
             url = self.request("GET", f"/session/{self.id}/url")
             assert approved(url), f"Blocked browser operation outside local preview: {url}"
+        native_input = method == "POST" and (path.startswith("/element/") and path.endswith(("/value", "/click"))
+            or path == "/actions" and any(source.get("type") == "key" for source in (data or {}).get("actions", [])))
+        if native_input:
+            state = self.window_state()
+            if state["visibility"] != "visible" or not state["focused"]:
+                self.focus_window()
         return self.request(method, f"/session/{self.id}" + path, data)
 
     def navigate(self, path):
@@ -123,10 +179,27 @@ class Session:
 
     def wait(self, script, timeout=15):
         deadline = time.monotonic() + timeout
+        refocused = False
         while time.monotonic() < deadline:
             result = self.js(script)
             if result:
                 return result
+            if not refocused:
+                state = self.window_state()
+                if state["visibility"] != "visible" or not state["focused"]:
+                    self.focus_window()
+                    current = self.window_state()
+                    method = "switch-and-restore"
+                    if current["visibility"] != "visible":
+                        rect = self.command("GET", "/window/rect")
+                        self.command("POST", "/window/minimize", {})
+                        self.command("POST", "/window/rect", {**rect, "x": 0, "y": 0})
+                        self.focus_window()
+                        current = self.window_state()
+                        method = "minimize-and-restore"
+                    FOCUS_RECOVERIES.append({"method": method, "before": state, "after": current})
+                    print("Safari driver: reselected isolated test window " + json.dumps(current), flush=True)
+                    refocused = True
             time.sleep(0.1)
         raise AssertionError(f"Timed out: {script}")
 
@@ -209,7 +282,8 @@ def run_design_guidelines_review(session):
             "focusAppearanceStatus": "passed" if results and all(r["outputKeyboardFocus"]["appearanceChecked"] for r in results) else "incomplete-or-window-inactive",
             "limits": ["Window widths are requested sizes; each result records the actual viewport",
                        "DOM associations and native keyboard behavior checked; no screen-reader or first-use participant test",
-                       "Focus appearance is asserted only while Safari reports its test document focused; inactive cases are recorded",
+                       "Native Tab targets must expose a measured outline of at least 2 px; document focus is recorded separately",
+                       "Text selection is prepared with DOM select(); deletion and typing use native WebDriver input without assigning field values or dispatching input events",
                        "No file download, clipboard permission or system accessibility setting changes"],
         }, indent=2, ensure_ascii=False))
 
@@ -225,11 +299,10 @@ def run_design_guidelines_review(session):
         session.wait("return document.querySelector('[data-editor-panel=starter] textarea')?.value===" + json.dumps(text))
 
     def clear_input(element):
-        session.js("arguments[0].focus();", {ELEMENT: element})
+        session.js("window.__safariTextEditTarget=arguments[0];arguments[0].focus();arguments[0].select();", {ELEMENT: element})
         session.command("POST", "/actions", {"actions": [{"type": "key", "id": "design-text-keyboard", "actions": [
-            {"type": "keyDown", "value": "\ue03d"}, {"type": "keyDown", "value": "a"},
-            {"type": "keyUp", "value": "a"}, {"type": "keyUp", "value": "\ue03d"},
             {"type": "keyDown", "value": "\ue003"}, {"type": "keyUp", "value": "\ue003"}]}]})
+        session.wait("return document.activeElement===window.__safariTextEditTarget&&window.__safariTextEditTarget.value==='';")
 
     def close_panel(panel):
         close = session.element(f"[data-editor-panel={panel}] [data-panel-close=true]")
@@ -458,9 +531,8 @@ def run_design_guidelines_review(session):
                         return {tag:e.tagName,role:e.getAttribute('role'),label:e.getAttribute('aria-label'),tabIndex:e.tabIndex,
                             documentFocused:document.hasFocus(),outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth,text:e.textContent.trim()};""")
                     assert output["role"] == "region" and output["label"] and output["tabIndex"] == 0, output
-                    output["appearanceChecked"] = output["documentFocused"]
-                    if output["appearanceChecked"]:
-                        assert output["outlineStyle"] != "none" and float(output["outlineWidth"].removesuffix("px")) >= 2, output
+                    assert output["outlineStyle"] != "none" and float(output["outlineWidth"].removesuffix("px")) >= 2, output
+                    output["appearanceChecked"] = True
                     export_geometry = panel_geometry("export")
                     capture("export-focus")
                     close_panel("export")
@@ -664,7 +736,7 @@ def run_design_guidelines_review(session):
                                    "blocking error disables apply", "danger border", "five diagnostics remain reachable",
                                    "Enter opens persistent input example; using it focuses textarea", "example stays open while typing and cannot overwrite nonempty input",
                                    "selected JSON example is complete and accepted", "diagnostics remain associated without live interruption",
-                                   "Enter expands native diagnostic disclosure", "Tab reaches output; appearance checked when window focused",
+                                   "Enter expands native diagnostic disclosure", "Tab reaches output; outline at least 2 px in every case",
                                    "named checkbox rows and Space toggling", "named PNG ranges with px values and arrow-key updates",
                                    "fixed PNG dimensions can be cleared and typed; blur and Enter commit preview size", "empty PNG dimension restores previous value on blur",
                                    "native background click commits dimension blur before click without Tab or Enter", "Enter and Space add separate nodes with retained focus and undo/redo",
@@ -959,6 +1031,7 @@ def run_editor_review(session):
                     session.restart()
                 session.command("POST", "/window/rect", {"width": width, "height": 1000}, check=False)
                 session.navigate(m["path"])
+                session.verify_storage()
 
                 session.js("localStorage.clear(); localStorage.setItem('graph-editor-theme',arguments[0]);", theme)
                 session.refresh()
@@ -972,10 +1045,25 @@ def run_editor_review(session):
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue007"}, {"type": "keyUp", "value": "\ue007"}]}]})
                 session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&p!==document.activeElement&&p.contains(document.activeElement)")
-                session.js("window.__editorTabStart=document.activeElement;")
+                session.js("""document.querySelector('[data-editor-panel=starter] textarea').focus();
+                    window.__editorTabStart=document.activeElement;
+                    window.__editorTabStartInfo={tag:document.activeElement.tagName,html:document.activeElement.outerHTML.slice(0,300)};
+                    window.__editorTabEvents=[];
+                    for(const type of ['keydown','keyup','focusin'])document.addEventListener(type,e=>{
+                        const row={type,key:e.key,code:e.code,ctrl:e.ctrlKey,meta:e.metaKey,shift:e.shiftKey,
+                            target:e.target.tagName,active:document.activeElement.tagName,prevented:e.defaultPrevented,trusted:e.isTrusted,
+                            panel:e.target.closest?.('[data-editor-panel]')?.dataset.editorPanel,
+                            text:e.target.textContent?.trim().slice(0,100)};
+                        window.__editorTabEvents.push(row);queueMicrotask(()=>row.prevented=e.defaultPrevented);
+                    },true);""")
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue004"}, {"type": "keyUp", "value": "\ue004"}]}]})
                 session.wait("return document.activeElement!==window.__editorTabStart&&document.querySelector('[data-editor-panel=starter]')?.contains(document.activeElement)")
+                tab_navigation = session.js("return {start:window.__editorTabStartInfo,events:window.__editorTabEvents,inside:document.querySelector('[data-editor-panel=starter]').contains(document.activeElement)};")
+                tab_down = next(e for e in tab_navigation["events"] if e["type"] == "keydown" and e["key"] == "Tab")
+                assert tab_down["target"] == "TEXTAREA" and tab_down["trusted"] and tab_down["prevented"], tab_navigation
+                tab_focus = [e for e in tab_navigation["events"] if e["type"] == "focusin"]
+                assert tab_focus and all(e.get("panel") == "starter" for e in tab_focus), tab_navigation
                 session.command("POST", "/actions", {"actions": [{"type": "key", "id": "keyboard", "actions": [
                     {"type": "keyDown", "value": "\ue00c"}, {"type": "keyUp", "value": "\ue00c"}]}]})
                 session.wait("return !document.querySelector('[data-editor-panel=starter]')")
@@ -993,7 +1081,7 @@ def run_editor_review(session):
                 if mobile:
                     session.activate(session.button(m["color"]))
                 session.activate(session.button(m["green"]))
-                session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph')).nodes[0].color==='green'")
+                session.wait("return JSON.parse(localStorage.getItem('graph-editor-graph'))?.nodes?.[0]?.color==='green'")
                 if mobile:
                     range_key(session, "\ue00c")
                     session.wait("return !document.querySelector('[role=radiogroup]')")
@@ -1023,7 +1111,7 @@ def run_editor_review(session):
                 session.wait("return document.querySelectorAll('button.ge-select-node-hitbox').length===4")
                 restored = session.js("return JSON.parse(localStorage.getItem('graph-editor-graph'))")
                 assert restored["nodes"][0]["color"] == "green" and restored["nodes"][0]["x"] == graph["nodes"][0]["x"]
-                results.append({"locale": locale, "theme": theme, "requestedWindowWidth": width, "viewport": dimensions, "checks": ["keyboard Enter opens panel", "Tab focus", "Escape and opener restoration", "text input after reopening", "import", "node color", "drag", "JSON export data", "PNG preview", "reload persistence", "geometry"]})
+                results.append({"locale": locale, "theme": theme, "requestedWindowWidth": width, "viewport": dimensions, "tabNavigation": tab_navigation, "checks": ["keyboard Enter opens panel", "trusted Tab stays inside the dialog", "Escape and opener restoration", "text input after reopening", "import", "node color", "drag", "JSON export data", "PNG preview", "reload persistence", "geometry"]})
                 print(f"{prefix} {dimensions}: passed", flush=True)
     return results
 
@@ -2259,7 +2347,7 @@ def main():
     summary = None
     if not sys.argv[1:] and not (OUTPUT / "promo-request.json").exists():
         summary = {"status": "running", "runId": time.time_ns(), "capabilities": None,
-                   "results": [], "completedStages": [],
+                   "results": [], "completedStages": [], "focusRecoveries": FOCUS_RECOVERIES, "storageProbes": STORAGE_PROBES,
                    "limits": ["No first-time human participant", "Native file download not checked; exported JSON saved by test runner"]}
         (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
     try:
@@ -2297,12 +2385,12 @@ def main():
             (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
         (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
         stages = [
-            ("responsive-text", run_responsive_text_review, None),
+            ("editor-workflow", run_editor_review, None),
+            ("design-guidelines", run_design_guidelines_review, None),
             ("enlarged-routing", run_enlarged_routing_review, None),
+            ("responsive-text", run_responsive_text_review, None),
             ("multi-selection", run_multi_selection_review, "multi-selection-results.json"),
             ("range-menu", run_range_menu_review, "range-menu-review.json"),
-            ("design-guidelines", run_design_guidelines_review, None),
-            ("editor-workflow", run_editor_review, None),
             ("edge-routing", run_edge_routing_regression, None),
             ("range-selection", run_range_selection, "range-selection-results.json"),
             ("rust-compute", run_rust_compute_review, None),
@@ -2323,7 +2411,7 @@ def main():
         (OUTPUT / "failure.json").write_text(json.dumps({"status": "failed_or_blocked", "error": str(error)}, indent=2))
         if session and not isinstance(error, DriverTimeoutError):
             try:
-                (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {visibility:document.visibilityState,focused:document.hasFocus(),ready:document.querySelector('[data-canvas-ready]')?.getAttribute('data-canvas-ready'),compute:performance.getEntriesByType('mark').filter(e=>e.name.startsWith('graph-compute:')).map(e=>e.name),trace:window.__focusTrace,active:document.activeElement.tagName,input:document.querySelector('textarea')?.value,panels:[...document.querySelectorAll('[data-editor-panel]')].map(e=>({panel:e.dataset.editorPanel,state:e.dataset.panelState})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.textContent,label:e.getAttribute('aria-label'),expanded:e.getAttribute('aria-expanded')}))}"), indent=2))
+                (OUTPUT / "failure-state.json").write_text(json.dumps(session.js("return {visibility:document.visibilityState,focused:document.hasFocus(),ready:document.querySelector('[data-canvas-ready]')?.getAttribute('data-canvas-ready'),compute:performance.getEntriesByType('mark').filter(e=>e.name.startsWith('graph-compute:')).map(e=>e.name),trace:window.__focusTrace,tabStart:window.__editorTabStartInfo,tabEvents:window.__editorTabEvents,active:document.activeElement.tagName,activeHtml:document.activeElement.outerHTML.slice(0,300),activePanel:document.activeElement.closest('[data-editor-panel]')?.dataset.editorPanel,input:document.querySelector('textarea')?.value,panels:[...document.querySelectorAll('[data-editor-panel]')].map(e=>({panel:e.dataset.editorPanel,state:e.dataset.panelState})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.textContent,label:e.getAttribute('aria-label'),expanded:e.getAttribute('aria-expanded')}))}"), indent=2))
                 (OUTPUT / "range-failure-state.json").write_text(json.dumps(session.js("return {events:window.__rangeEvents, nodes:[...document.querySelectorAll('.ge-select-node-hitbox')].map(e=>({label:e.getAttribute('aria-label'),inert:e.closest('[inert]')?.outerHTML.slice(0,400)})), modes:[...document.querySelectorAll('[data-graph-shortcut-target][aria-pressed]')].map(e=>({label:e.getAttribute('aria-label'),pressed:e.getAttribute('aria-pressed')}))}"), indent=2))
                 session.screenshot("failure")
             except Exception:
