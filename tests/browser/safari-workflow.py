@@ -54,6 +54,23 @@ class Session:
         handle = self.command("GET", "/window")
         self.command("POST", "/window", {"handle": handle})
 
+    def verify_storage(self):
+        """Reject a broken native storage backend before testing autosave."""
+        key = "graph-editor-safari-storage-probe"
+        value = str(time.time_ns())
+        self.js("""const key=arguments[0],value=arguments[1];
+            window.__safariStorageProbe={key,value,initial:null,later:null,done:false};
+            localStorage.setItem(key,value);
+            window.__safariStorageProbe.initial=localStorage.getItem(key);
+            window.setTimeout(()=>{window.__safariStorageProbe.later=localStorage.getItem(key);window.__safariStorageProbe.done=true;},250);
+        """, key, value)
+        self.wait("return window.__safariStorageProbe?.done===true")
+        probe = self.js("return {...window.__safariStorageProbe,current:localStorage.getItem(arguments[0]),url:location.href};", key)
+        self.js("localStorage.removeItem(arguments[0]);", key)
+        probe["status"] = "passed" if probe["initial"] == value and probe["later"] == value and probe["current"] == value else "failed"
+        (OUTPUT / "native-storage-preflight.json").write_text(json.dumps(probe, indent=2))
+        assert probe["status"] == "passed", "Safari's native localStorage backend discarded a write before application testing; see native-storage-preflight.json"
+
     @staticmethod
     def request(method, path, data=None):
         payload = None if data is None else json.dumps(data).encode()
@@ -1583,6 +1600,7 @@ def run_multi_selection_review(session):
             session.restart()
         session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
         session.navigate("/en")
+        session.verify_storage()
         # Start a new document after clearing storage; replacing an identical
         # live model would be a no-op and would not establish persistence.
         session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
@@ -1783,6 +1801,81 @@ def run_multi_selection_review(session):
             session.screenshot(f"multi-selection-{variant}-failure")
             raise
     return results
+
+
+def run_enlarged_routing_review(session):
+    """Real rendered edge clearance after a runtime root-text size change."""
+    results = []
+    report = OUTPUT / "enlarged-routing-results.json"
+    fixture = {**RANGE_FIXTURE,
+               "settings": {**RANGE_FIXTURE["settings"], "autoEdgeRouting": True},
+               "nodes": [{"id": "a", "label": "A", "order": 0, "x": -200, "y": 0},
+                         {"id": "b", "label": "B", "order": 1, "x": 200, "y": 0},
+                         {"id": "c", "label": "C", "order": 2, "x": 0, "y": 35}],
+               "edges": [{"id": "ab", "source": "a", "target": "b"}]}
+    try:
+        for theme in ("light", "dark"):
+            if results:
+                session.restart()
+            session.command("POST", "/window/rect", {"width": 1440, "height": 1000}, check=False)
+            session.navigate("/en")
+            session.wait("return !!document.querySelector('[data-canvas-ready=true]')")
+            session.focus_window()
+            session.js("document.documentElement.style.fontSize='16px';")
+            if session.js("return document.documentElement.dataset.theme") != theme:
+                session.activate(session.button("Switch to " + theme + " mode"))
+            session.open_panel("Load a graph", "starter")
+            textarea = session.element('[data-editor-panel=starter] textarea')
+            session.command("POST", f"/element/{textarea}/value", {"text": json.dumps(fixture)})
+            session.wait("return [...document.querySelectorAll('[data-editor-panel=starter] button')].some(e=>e.textContent.trim()==='Apply to graph'&&!e.disabled)")
+            session.activate(session.button("Apply to graph"))
+            session.wait(RANGE_CY + "return cy.nodes().length===3&&cy.edges().length===1&&cy.nodes().every(n=>Math.abs(n.height()-48)<0.01)&&cy.getElementById('ab').data('bow')===0;")
+            baseline = session.js(RANGE_CY + "return cy.nodes().map(n=>({id:n.id(),x:n.position('x'),y:n.position('y')}));")
+            session.js("performance.clearMarks('graph-compute:routing:worker');performance.clearMarks('graph-compute:routing:wasm:routing_node_shape');document.documentElement.style.fontSize='24px';")
+            session.wait(RANGE_CY + "return cy.nodes().every(n=>Math.abs(n.height()-72)<0.01)&&Math.abs(cy.getElementById('ab').data('bow'))>0;")
+            session.wait("return !!document.querySelector('[data-canvas-ready=true]')&&!document.querySelector('[data-editor-panel=starter]')&&document.querySelectorAll('.ge-select-node-hitbox').length===3;")
+            session.wait("return performance.getEntriesByName('graph-compute:routing:worker').length>0&&performance.getEntriesByName('graph-compute:routing:wasm:routing_node_shape').length>0;")
+            enlarged = session.js(RANGE_CY + """
+                const edge=cy.getElementById('ab'),node=cy.getElementById('c');
+                const controls=edge.controlPoints();
+                if(!controls?.length)throw new Error('Enlarged obstacle must produce a rendered curve');
+                const source=edge.sourceEndpoint(),target=edge.targetEndpoint(),p=node.position();
+                const radius=node.height()/2,span=Math.max(0,(node.width()-node.height())/2);
+                const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+                let gap=Infinity;
+                for(let piece=0;piece<controls.length;piece++){
+                    const a=piece===0?source:mid(controls[piece-1],controls[piece]);
+                    const b=piece===controls.length-1?target:mid(controls[piece],controls[piece+1]);
+                    const c=controls[piece];
+                    for(let i=0;i<=2000;i++){
+                        const t=i/2000,u=1-t;
+                        const x=u*u*a.x+2*u*t*c.x+t*t*b.x;
+                        const y=u*u*a.y+2*u*t*c.y+t*t*b.y;
+                        gap=Math.min(gap,Math.hypot(Math.max(0,Math.abs(x-p.x)-span),y-p.y)-radius);
+                    }
+                }
+                return {minimumCurveGapPx:gap,nodeHeight:node.height(),nodeWidth:node.width(),bow:edge.data('bow'),
+                    nodes:cy.nodes().map(n=>({id:n.id(),x:n.position('x'),y:n.position('y')}))};
+            """)
+            assert enlarged["minimumCurveGapPx"] >= 4, enlarged
+            assert enlarged["nodes"] == baseline, "Text resizing must not change model coordinates"
+            session.js(RANGE_CY + "cy.zoom(1);cy.pan({x:container.clientWidth/2,y:450});window.__routingPainted=false;cy.one('render',()=>requestAnimationFrame(()=>window.__routingPainted=true));cy.forceRender();")
+            session.wait("return window.__routingPainted===true")
+            session.screenshot("routing-enlarged-text-" + theme)
+            session.js("document.documentElement.style.fontSize='16px';")
+            session.wait(RANGE_CY + "return cy.nodes().every(n=>Math.abs(n.height()-48)<0.01)&&cy.getElementById('ab').data('bow')===0;")
+            assert session.js(RANGE_CY + "return cy.nodes().map(n=>({id:n.id(),x:n.position('x'),y:n.position('y')}));") == baseline
+            results.append({"theme": theme, "status": "passed", "rootTextSizesPx": [16, 24, 16],
+                            "nodeHeightsPx": [48, 72, 48], "coordinatesPreserved": True,
+                            "workerAndWasmUsed": True, "enlarged": enlarged})
+            report.write_text(json.dumps({"status": "running", "results": results}, indent=2))
+            print("Safari enlarged routing " + theme + ": 48→72→48px, rendered clearance and worker rerouting passed", flush=True)
+        report.write_text(json.dumps({"status": "passed", "results": results,
+                                     "limits": ["Root text size simulation in desktop Safari", "Storage is covered by the separate persistence stages"]}, indent=2))
+        return results
+    except Exception as error:
+        report.write_text(json.dumps({"status": "failed_or_blocked", "results": results, "error": str(error)}, indent=2))
+        raise
 
 
 def run_rust_compute_review(session):
@@ -2237,6 +2330,7 @@ def main():
             (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
         (OUTPUT / "results.json").write_text(json.dumps(summary, indent=2))
         stages = [
+            ("enlarged-routing", run_enlarged_routing_review, None),
             ("multi-selection", run_multi_selection_review, "multi-selection-results.json"),
             ("range-menu", run_range_menu_review, "range-menu-review.json"),
             ("responsive-text", run_responsive_text_review, None),
