@@ -4,7 +4,12 @@ import {
 } from "../../compute/wasm-routing";
 import { getRustKernelReady } from "../../compute/rust-kernel";
 import type { GraphEdge, GraphNode } from "../graph/model";
-import { nodeGeometryWidth, NODE_SIZE_PX } from "../graph/node-size";
+import {
+  nodeGeometryWidth,
+  nodeGeometryHeight,
+  nodeGeometryClearance,
+  NODE_SIZE_PX,
+} from "../graph/node-size";
 import {
   createCurveNodeDistance,
   type EdgeCurveGeometry,
@@ -44,11 +49,12 @@ export function shouldUseRustCurveNodeCollisions(
   for (let index = 0; index < 16; index++) {
     const node = nodes[Math.floor((index * nodes.length) / 16)]!;
     const halfWidth = nodeGeometryWidth(node) / 2;
+    const extra = Math.max(0, (nodeGeometryHeight(node) - NODE_SIZE_PX) / 2);
     if (!(
       node.x + halfWidth < x1 ||
       node.x - halfWidth > x2 ||
-      node.y < y1 ||
-      node.y > y2
+      node.y + extra < y1 ||
+      node.y - extra > y2
     ))
       inside++;
   }
@@ -98,15 +104,19 @@ function countCurveNodeCollisionsJs(
   for (const node of nodes) {
     if (node.id === edge.source || node.id === edge.target) continue;
     const halfWidth = nodeGeometryWidth(node) / 2;
+    const extra = Math.max(0, (nodeGeometryHeight(node) - NODE_SIZE_PX) / 2);
     if (
       node.x + halfWidth < x1 ||
       node.x - halfWidth > x2 ||
-      node.y < y1 ||
-      node.y > y2
+      node.y + extra < y1 ||
+      node.y - extra > y2
     )
       continue;
     if (work) work.units += 1;
-    if (distanceToNode(node) < NODE_SIZE_PX / 2 + 6) count++;
+    if (
+      distanceToNode(node) < nodeGeometryClearance(node, NODE_SIZE_PX / 2 + 6)
+    )
+      count++;
   }
   return count;
 }

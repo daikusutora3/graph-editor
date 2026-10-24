@@ -17,6 +17,10 @@ const suites = [
   { name: "wasm-overlaps", path: "tests/verification/wasm-overlaps.ts" },
   { name: "wasm-routing", path: "tests/verification/wasm-routing.ts" },
   {
+    name: "routing-node-height",
+    path: "tests/verification/routing-node-height.ts",
+  },
+  {
     name: "wasm-routing-collisions",
     path: "tests/verification/wasm-routing-collisions.ts",
   },

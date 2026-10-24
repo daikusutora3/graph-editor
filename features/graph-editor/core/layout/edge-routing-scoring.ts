@@ -1,4 +1,9 @@
-import { nodeGeometryWidth } from "../graph/node-size";
+import {
+  nodeGeometryWidth,
+  nodeGeometryHeight,
+  nodeGeometryClearance,
+  NODE_SIZE_PX,
+} from "../graph/node-size";
 import {
   scoreRustCurveLabelOverlap,
   scoreRustCurveNodeAndShape,
@@ -78,18 +83,22 @@ export function scoreCurveNodeAndShape(
       continue;
     }
 
+    const extra = Math.max(0, (nodeGeometryHeight(node) - NODE_SIZE_PX) / 2);
     if (
       node.x + nodeGeometryWidth(node) / 2 < bounds.x1 ||
       node.x - nodeGeometryWidth(node) / 2 > bounds.x2 ||
-      node.y < bounds.y1 ||
-      node.y > bounds.y2
+      node.y + extra < bounds.y1 ||
+      node.y - extra > bounds.y2
     ) {
       continue;
     }
 
     options.work.units += NODE_CHECK_UNITS;
     const distance = distanceToNode(node);
-    const overlap = Math.max(0, options.nodeClearancePx - distance);
+    const overlap = Math.max(
+      0,
+      nodeGeometryClearance(node, options.nodeClearancePx) - distance,
+    );
 
     if (overlap > 0) {
       collisionCount += 1;

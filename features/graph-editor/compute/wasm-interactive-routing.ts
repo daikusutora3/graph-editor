@@ -1,6 +1,6 @@
 import type { GraphNode } from "../core/graph/model";
 import { isGraphCoordinate } from "../core/graph/graph-coordinates";
-import { NODE_SIZE_PX } from "../core/graph/node-size";
+import { nodeGeometryHeight } from "../core/graph/node-size";
 import type { EdgeCurveGeometry } from "../core/layout/edge-route-geometry";
 import { getRustKernelReady, runRustKernel } from "./rust-kernel";
 
@@ -52,9 +52,19 @@ export function createRustInteractiveRerouteBatch(
   if (!canRustBatchInteractiveReroutes(movedNodes.length, totalEdges))
     return null;
   const nodes = new Float64Array(movedNodes.length * 3);
+  const halfHeights = new Float64Array(movedNodes.length);
   for (const [index, node] of movedNodes.entries()) {
-    const span = Math.max(0, (node.measuredWidth - NODE_SIZE_PX) / 2);
-    if (!bounded(node.x) || !bounded(node.y) || !bounded(span)) return null;
+    const halfHeight = nodeGeometryHeight(node) / 2;
+    const span = Math.max(0, node.measuredWidth / 2 - halfHeight);
+    if (
+      !bounded(node.x) ||
+      !bounded(node.y) ||
+      !bounded(span) ||
+      !bounded(halfHeight) ||
+      halfHeight <= 0
+    )
+      return null;
+    halfHeights[index] = halfHeight;
     nodes[index * 3] = node.x;
     nodes[index * 3 + 1] = node.y;
     nodes[index * 3 + 2] = span;
@@ -80,7 +90,7 @@ export function createRustInteractiveRerouteBatch(
     }
     return runRustKernel(
       "interactive_straight_reroutes",
-      [nodes, edges],
+      [nodes, halfHeights, edges],
       candidates.length,
       [movedNodes.length, candidates.length],
     );

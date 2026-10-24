@@ -51,6 +51,7 @@ export function withMeasuredNodeGeometry(
     ...model,
     nodes: model.nodes.map((node) => ({
       ...node,
+      measuredHeight: palette.nodeSize,
       measuredWidth: measureNodeWidth(
         model.settings.showNodeLabels ? node.label : "",
         palette,

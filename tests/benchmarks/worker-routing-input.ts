@@ -65,7 +65,7 @@ for (const [nodeCount, edgeCount, movedCount] of [
           : { ...node },
       ),
     };
-    const previousNodes = graph.nodes.filter((node) =>
+    const previousNodes = withMeasuredNodeGeometry(graph).nodes.filter((node) =>
       movedNodeIds.has(node.id),
     );
     const job: RoutingJob = {
@@ -74,7 +74,13 @@ for (const [nodeCount, edgeCount, movedCount] of [
       options: { mode: "quality", previousMeta },
       interaction: isCompact
         ? { previousNodes, movedNodeIds }
-        : { nodes: [...positioned.nodes, ...previousNodes], movedNodeIds },
+        : {
+            nodes: [
+              ...withMeasuredNodeGeometry(positioned).nodes,
+              ...previousNodes,
+            ],
+            movedNodeIds,
+          },
     };
     // The existing reply-delta client takes this immutable baseline snapshot.
     const snapshot = new Map(previousMeta);

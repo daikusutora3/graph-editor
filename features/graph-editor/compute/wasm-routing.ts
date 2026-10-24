@@ -1,6 +1,6 @@
 import type { GraphEdge, GraphNode } from "../core/graph/model";
 import { isGraphCoordinate } from "../core/graph/graph-coordinates";
-import { nodeGeometryWidth } from "../core/graph/node-size";
+import { nodeGeometryWidth, nodeGeometryHeight } from "../core/graph/node-size";
 import type {
   EdgeCurveGeometry,
   EdgeCurvePoint,
@@ -9,6 +9,7 @@ import { getRustKernelReady, runRustKernel } from "./rust-kernel";
 
 type NodeSnapshot = {
   data: Float64Array;
+  halfHeights: Float64Array;
   collisionBounded: boolean;
   hasWidePills: boolean;
   records: {
@@ -17,12 +18,13 @@ type NodeSnapshot = {
     y: number;
     label: string;
     measuredWidth: number | undefined;
+    height: number;
   }[];
   indexes: Map<string, number>;
 };
 const snapshots = new WeakMap<GraphNode[], NodeSnapshot>();
 
-/** Ordered IDs, coordinates and effective widths determine the numeric input.
+/** Ordered IDs, coordinates and measured dimensions determine the numeric input.
  * Public helpers may mutate their node array between candidates. */
 function nodeSnapshot(nodes: GraphNode[]) {
   const cached = snapshots.get(nodes);
@@ -38,12 +40,14 @@ function nodeSnapshot(nodes: GraphNode[]) {
         previous.x === node.x &&
         previous.y === node.y &&
         previous.measuredWidth === measuredWidth &&
+        previous.height === nodeGeometryHeight(node) &&
         (measuredWidth != null || previous.label === node.label)
       );
     })
   )
     return cached;
   const data = new Float64Array(nodes.length * 3);
+  const halfHeights = new Float64Array(nodes.length);
   let collisionBounded = true;
   let hasWidePills = false;
   const indexes = new Map<string, number>();
@@ -51,11 +55,14 @@ function nodeSnapshot(nodes: GraphNode[]) {
     data[index * 3] = node.x;
     data[index * 3 + 1] = node.y;
     data[index * 3 + 2] = nodeGeometryWidth(node) / 2;
-    hasWidePills ||= data[index * 3 + 2]! > 24;
+    halfHeights[index] = nodeGeometryHeight(node) / 2;
+    hasWidePills ||= data[index * 3 + 2]! > halfHeights[index]!;
     collisionBounded &&=
       boundedCollisionCoordinate(data[index * 3]!) &&
       boundedCollisionCoordinate(data[index * 3 + 1]!) &&
-      boundedCollisionCoordinate(data[index * 3 + 2]!);
+      boundedCollisionCoordinate(data[index * 3 + 2]!) &&
+      boundedCollisionCoordinate(halfHeights[index]!) &&
+      halfHeights[index]! > 0;
     indexes.set(node.id, index);
     return {
       id: node.id,
@@ -64,9 +71,17 @@ function nodeSnapshot(nodes: GraphNode[]) {
       label: node.label,
       measuredWidth: (node as GraphNode & { measuredWidth?: number })
         .measuredWidth,
+      height: nodeGeometryHeight(node),
     };
   });
-  const snapshot = { data, collisionBounded, hasWidePills, indexes, records };
+  const snapshot = {
+    data,
+    halfHeights,
+    collisionBounded,
+    hasWidePills,
+    indexes,
+    records,
+  };
   snapshots.set(nodes, snapshot);
   return snapshot;
 }
@@ -119,7 +134,7 @@ export function projectRustEdgeObstacles(
   const unitY = dy / length;
   const result = runRustKernel(
     "routing_projected_obstacles",
-    [snapshot.data],
+    [snapshot.data, snapshot.halfHeights],
     10,
     [
       nodes.length,
@@ -175,7 +190,7 @@ export function scoreRustCurveNodeAndShape(
     return null;
   const result = runRustKernel(
     "routing_node_shape",
-    [snapshot.data, packCurve(curve)],
+    [snapshot.data, snapshot.halfHeights, packCurve(curve)],
     3,
     [
       nodes.length,
@@ -225,7 +240,7 @@ export function countRustCurveNodeCollisions(
     return null;
   const result = runRustKernel(
     "routing_node_collisions",
-    [snapshot.data, packCurve(curve)],
+    [snapshot.data, snapshot.halfHeights, packCurve(curve)],
     3,
     [
       nodes.length,
@@ -325,7 +340,7 @@ export function scoreRustLoopObstacles(
   if (!snapshot.collisionBounded) return null;
   const result = runRustKernel(
     "routing_loop_obstacles",
-    [snapshot.data, data],
+    [snapshot.data, snapshot.halfHeights, data],
     nodes.length * 3,
     [
       nodes.length,

@@ -162,7 +162,7 @@ try {
       exports.free_f64(pointer, length);
     },
   };
-  let abiVersion = 2;
+  let abiVersion = 1;
   let missingExport = false;
   WebAssembly.instantiate = (async () => ({
     instance: {
@@ -183,7 +183,7 @@ try {
     "incompatible ABI versions are rejected",
   );
   expect(!getRustKernelReady(), "ABI version mismatch retains the fallback");
-  abiVersion = 1;
+  abiVersion = 2;
   missingExport = true;
   await rejects(
     () => initializeRustKernelFromBytes(bytes),

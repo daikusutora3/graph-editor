@@ -1,6 +1,6 @@
 import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
 import type { EdgeRoutingOverride, GraphNode } from "../graph/model";
-import { nodeGeometryWidth, NODE_SIZE_PX } from "../graph/node-size";
+import { nodeGeometryWidth, nodeGeometryHeight } from "../graph/node-size";
 
 export type EdgeCurveGeometry = {
   controlPointDistancesPx: readonly number[];
@@ -314,7 +314,10 @@ export function createCurveNodeDistance(
   for (const segment of edgeCurveSegments(source, target, curve))
     visit(segment, 0);
   return (node: GraphNode) => {
-    const span = Math.max(0, (nodeGeometryWidth(node) - NODE_SIZE_PX) / 2);
+    const span = Math.max(
+      0,
+      (nodeGeometryWidth(node) - nodeGeometryHeight(node)) / 2,
+    );
     const left = { x: node.x - span, y: node.y };
     const right = { x: node.x + span, y: node.y };
     let minimum = Infinity;

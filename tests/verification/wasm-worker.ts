@@ -54,7 +54,7 @@ import { createVerification } from "./harness";
 const { expect, finish } = createVerification("Wasm worker");
 const childCase = process.argv[2];
 const model: Omit<GraphModel, "nodes"> & {
-  nodes: Array<GraphNode & { measuredWidth?: number }>;
+  nodes: Array<GraphNode & { measuredWidth?: number; measuredHeight?: number }>;
 } = {
   ...createEmptyGraphModel(),
   nodes: [
@@ -65,6 +65,7 @@ const model: Omit<GraphModel, "nodes"> & {
       x: 0,
       y: 0,
       measuredWidth: 240,
+      measuredHeight: 72,
     },
     { id: "b", label: "B", order: 1, x: 24, y: 0 },
     { id: "c", label: "C", order: 2, x: 0, y: 24 },
@@ -157,7 +158,11 @@ function verifyRoutingInteraction() {
   ];
   const measuredModel = {
     ...model,
-    nodes: current.map((node) => ({ ...node, measuredWidth: 999 })),
+    nodes: current.map((node) => ({
+      ...node,
+      measuredWidth: 999,
+      measuredHeight: 72,
+    })),
   };
   const legacy = [...current, ...previous];
   const compact = restoreRoutingInteractionNodes(measuredModel, {
@@ -165,11 +170,16 @@ function verifyRoutingInteraction() {
     movedNodeIds: new Set(["a"]),
   });
   expect(
-    JSON.stringify(compact) === JSON.stringify(legacy) &&
+    JSON.stringify(compact) ===
+      JSON.stringify([...measuredModel.nodes, ...previous]) &&
       new Map(compact.map((node) => [node.id, node])).get("a") ===
         previous[1] &&
-      !compact.some((node) => "measuredWidth" in node),
-    "compact interactions retain obstacle order, both positions, colors, estimated widths and duplicate-id last-wins lookup",
+      compact
+        .slice(0, current.length)
+        .every(
+          (node) => "measuredHeight" in node && node.measuredHeight === 72,
+        ),
+    "compact interactions retain obstacle order, both positions, colors, measured geometry and duplicate-id last-wins lookup",
   );
   expect(
     measuredModel.nodes.every((node) => node.measuredWidth === 999) &&
@@ -511,10 +521,10 @@ async function verifyRealWorker(failFirst: boolean | "abi") {
     const retainedMeasured = await responseFor(7);
     expect(
       "routingDelta" in retainedMeasured &&
-        [...retainedMeasured.routingDelta.values()].every(
-          (value) => value === null,
-        ),
-      "compact Worker selection keeps historical estimated widths while the routing model retains measured widths",
+        retainedMeasured.routingDelta.get("ab") !== null &&
+        retainedMeasured.routingDelta.get("de") === null &&
+        retainedMeasured.routingDelta.get("fg") === null,
+      "compact Worker selection uses measured current capsule geometry while retaining remote routes",
     );
   } finally {
     worker.terminate();
@@ -1473,7 +1483,9 @@ async function verifyClient(scenario: string) {
     const store = createStore();
     const input = {
       ...model,
-      nodes: model.nodes.map(({ measuredWidth: _width, ...node }) => node),
+      nodes: model.nodes.map(
+        ({ measuredWidth: _width, measuredHeight: _height, ...node }) => node,
+      ),
     };
     store.set(syncExternalGraphAtom, input);
     const force = store.set(applyManualLayoutAtom, "force");
@@ -1493,7 +1505,7 @@ async function verifyClient(scenario: string) {
       "Worker force results commit once and clear pending state",
     );
     expect(
-      !JSON.stringify(store.get(graphAtom)).includes("measuredWidth"),
+      !/measured(?:Width|Height)/.test(JSON.stringify(store.get(graphAtom))),
       "transient measured geometry does not enter the persisted editor model",
     );
     store.set(undoAtom);

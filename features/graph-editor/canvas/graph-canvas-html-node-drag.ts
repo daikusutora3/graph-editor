@@ -269,9 +269,12 @@ export function useHtmlNodeDrag({
             controller.signal,
             {
               movedNodeIds: new Set(draggingNodeIdsRef.current),
-              previousNodes: graph.nodes.filter((node) =>
-                draggingNodeIdsRef.current.has(node.id),
-              ),
+              previousNodes: withMeasuredNodeGeometry({
+                ...graph,
+                nodes: graph.nodes.filter((node) =>
+                  draggingNodeIdsRef.current.has(node.id),
+                ),
+              }).nodes,
             },
           ).then((meta) => {
             if (

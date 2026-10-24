@@ -88,7 +88,7 @@ export async function initializeRustKernelFromBytes(bytes: BufferSource) {
     typeof exports.alloc_f64 !== "function" ||
     typeof exports.free_f64 !== "function" ||
     typeof exports.kernel_abi_version !== "function" ||
-    exports.kernel_abi_version() !== 1 ||
+    exports.kernel_abi_version() !== 2 ||
     kernelNames.some((name) => typeof exports[name] !== "function")
   ) {
     throw new RustKernelCompatibilityError("Unsupported graph kernel ABI");

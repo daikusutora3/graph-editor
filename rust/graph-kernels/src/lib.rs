@@ -12,7 +12,7 @@ pub mod routing;
 
 #[no_mangle]
 pub extern "C" fn kernel_abi_version() -> u32 {
-    1
+    2
 }
 
 #[no_mangle]

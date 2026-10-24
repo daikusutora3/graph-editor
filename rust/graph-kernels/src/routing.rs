@@ -323,6 +323,7 @@ fn curve_midpoint(segments: &[Segment], source: Point, target: Point) -> Point {
 #[no_mangle]
 pub unsafe extern "C" fn routing_node_shape(
     nodes_ptr: *const f64,
+    half_heights_ptr: *const f64,
     curve_ptr: *const f64,
     output_ptr: *mut f64,
     node_count: usize,
@@ -335,6 +336,7 @@ pub unsafe extern "C" fn routing_node_shape(
     clearance: f64,
 ) {
     let nodes = slice::from_raw_parts(nodes_ptr, node_count * 3);
+    let half_heights = slice::from_raw_parts(half_heights_ptr, node_count);
     let curve = Curve::from_ptr(curve_ptr);
     let source = Point { x: sx, y: sy };
     let target = Point { x: tx, y: ty };
@@ -356,15 +358,17 @@ pub unsafe extern "C" fn routing_node_shape(
         if i as f64 == source_index || i as f64 == target_index {
             continue;
         }
+        let extra = (half_heights[i] - 24.0).max(0.0);
+        let node_clearance = (clearance + half_heights[i] - 24.0).max(0.0);
         if node[0] + node[2] < min_x
             || node[0] - node[2] > max_x
-            || node[1] < min_y
-            || node[1] > max_y
+            || node[1] + extra < min_y
+            || node[1] - extra > max_y
         {
             continue;
         }
         units += 1.0;
-        let span = (node[2] - 24.0).max(0.0);
+        let span = (node[2] - half_heights[i]).max(0.0);
         let left = Point {
             x: node[0] - span,
             y: node[1],
@@ -380,14 +384,14 @@ pub unsafe extern "C" fn routing_node_shape(
         } else {
             spine_squared
         };
-        let mut minimum = clearance;
+        let mut minimum = node_clearance;
         for piece in &pieces {
             if !piece.cannot_improve(left, right, minimum) {
                 minimum = minimum
                     .min(piece.capsule_distance(left, right, spine_denominator) - piece.error);
             }
         }
-        let overlap = (clearance - minimum).max(0.0);
+        let overlap = (node_clearance - minimum).max(0.0);
         if overlap > 0.0 {
             collisions += 1.0;
             penetration += overlap * overlap;
@@ -417,6 +421,7 @@ pub unsafe extern "C" fn routing_node_shape(
 #[no_mangle]
 pub unsafe extern "C" fn routing_node_collisions(
     nodes_ptr: *const f64,
+    half_heights_ptr: *const f64,
     curve_ptr: *const f64,
     output_ptr: *mut f64,
     node_count: usize,
@@ -428,6 +433,7 @@ pub unsafe extern "C" fn routing_node_collisions(
     ty: f64,
 ) {
     let nodes = slice::from_raw_parts(nodes_ptr, node_count * 3);
+    let half_heights = slice::from_raw_parts(half_heights_ptr, node_count);
     let curve = Curve::from_ptr(curve_ptr);
     let source = Point { x: sx, y: sy };
     let target = Point { x: tx, y: ty };
@@ -454,15 +460,17 @@ pub unsafe extern "C" fn routing_node_collisions(
         if i as f64 == source_index || i as f64 == target_index {
             continue;
         }
+        let extra = (half_heights[i] - 24.0).max(0.0);
+        let node_clearance = half_heights[i] + 6.0;
         if node[0] + node[2] < min_x
             || node[0] - node[2] > max_x
-            || node[1] < min_y
-            || node[1] > max_y
+            || node[1] + extra < min_y
+            || node[1] - extra > max_y
         {
             continue;
         }
         units += 1.0;
-        let span = (node[2] - 24.0).max(0.0);
+        let span = (node[2] - half_heights[i]).max(0.0);
         let left = Point {
             x: node[0] - span,
             y: node[1],
@@ -478,7 +486,7 @@ pub unsafe extern "C" fn routing_node_collisions(
         let tolerance = 1e-7_f64.max(f64::EPSILON * node_scale * 32.0);
         // Distances above this limit cannot collide or trigger the existing
         // ambiguity fallback. Preserve all calculations within that band.
-        let mut minimum = 30.0 + tolerance * 2.0;
+        let mut minimum = node_clearance + tolerance * 2.0;
         let spine_width = right.x - left.x;
         let spine_squared = spine_width * spine_width;
         let spine_denominator = if spine_squared == 0.0 {
@@ -492,10 +500,12 @@ pub unsafe extern "C" fn routing_node_collisions(
                     .min(piece.capsule_distance(left, right, spine_denominator) - piece.error);
             }
         }
-        if (minimum - 30.0).abs() <= tolerance || (!pieces.is_empty() && !minimum.is_finite()) {
+        if (minimum - node_clearance).abs() <= tolerance
+            || (!pieces.is_empty() && !minimum.is_finite())
+        {
             needs_js = true;
         }
-        if minimum < 30.0 {
+        if minimum < node_clearance {
             collisions += 1.0;
         }
     }
@@ -548,6 +558,7 @@ pub unsafe extern "C" fn routing_label_overlap(
 #[no_mangle]
 pub unsafe extern "C" fn routing_loop_obstacles(
     nodes_ptr: *const f64,
+    half_heights_ptr: *const f64,
     points_ptr: *const f64,
     output_ptr: *mut f64,
     node_count: usize,
@@ -560,6 +571,7 @@ pub unsafe extern "C" fn routing_loop_obstacles(
     pill_nodes: u32,
 ) {
     let nodes = slice::from_raw_parts(nodes_ptr, node_count * 3);
+    let half_heights = slice::from_raw_parts(half_heights_ptr, node_count);
     let points = slice::from_raw_parts(points_ptr, point_count * 2);
     let out = slice::from_raw_parts_mut(output_ptr, node_count * 3);
     let point_scale = points
@@ -567,15 +579,21 @@ pub unsafe extern "C" fn routing_loop_obstacles(
         .fold(1.0_f64, |scale, coordinate| scale.max(coordinate.abs()));
     let mut needs_js = false;
     for (index, node) in nodes.chunks_exact(3).enumerate() {
+        let extra = (half_heights[index] - 24.0).max(0.0);
+        let node_clearance = (clearance + half_heights[index] - 24.0).max(0.0);
         let mut score = 0.0;
         let mut units = 0.0;
         let mut collisions = 0.0;
         if pill_nodes == 0 {
             units += 1.0;
         }
-        if !(node[0] < min_x || node[0] > max_x || node[1] < min_y || node[1] > max_y) {
+        if !(node[0] + extra < min_x
+            || node[0] - extra > max_x
+            || node[1] + extra < min_y
+            || node[1] - extra > max_y)
+        {
             let span = if pill_nodes != 0 {
-                (node[2] - 24.0).max(0.0)
+                (node[2] - half_heights[index]).max(0.0)
             } else {
                 0.0
             };
@@ -587,7 +605,7 @@ pub unsafe extern "C" fn routing_loop_obstacles(
             let tolerance = 1e-7_f64.max(f64::EPSILON * scale * 32.0);
             // Only distances below clearance contribute a score or collision.
             // Retain a wider band for the strict-threshold rounding fallback.
-            let mut distance = clearance + tolerance * 2.0;
+            let mut distance = node_clearance + tolerance * 2.0;
             for point in points.chunks_exact(2) {
                 units += 1.0;
                 let dx = if pill_nodes != 0 {
@@ -602,10 +620,10 @@ pub unsafe extern "C" fn routing_loop_obstacles(
                     distance = distance.min(hypot(dx, dy));
                 }
             }
-            needs_js |= (distance - clearance).abs() <= tolerance;
-            let overlap = (clearance - distance).max(0.0);
+            needs_js |= (distance - node_clearance).abs() <= tolerance;
+            let overlap = (node_clearance - distance).max(0.0);
             score = overlap * overlap;
-            if distance < clearance {
+            if distance < node_clearance {
                 collisions = 1.0;
             }
         }
@@ -779,6 +797,7 @@ mod collision_tests {
                         if final_route {
                             routing_node_collisions(
                                 nodes.as_ptr(),
+                                vec![24.0; nodes.len() / 3].as_ptr(),
                                 curve.as_ptr(),
                                 actual.as_mut_ptr(),
                                 nodes.len() / 3,
@@ -792,6 +811,7 @@ mod collision_tests {
                         } else {
                             routing_node_shape(
                                 nodes.as_ptr(),
+                                vec![24.0; nodes.len() / 3].as_ptr(),
                                 curve.as_ptr(),
                                 actual.as_mut_ptr(),
                                 nodes.len() / 3,
@@ -862,6 +882,7 @@ mod collision_tests {
                     unsafe {
                         routing_node_shape(
                             nodes.as_ptr(),
+                            vec![24.0; nodes.len() / 3].as_ptr(),
                             curve.as_ptr(),
                             actual.as_mut_ptr(),
                             nodes.len() / 3,
@@ -908,6 +929,7 @@ mod collision_tests {
                 unsafe {
                     routing_node_collisions(
                         nodes.as_ptr(),
+                        vec![24.0; nodes.len() / 3].as_ptr(),
                         curve.as_ptr(),
                         actual.as_mut_ptr(),
                         nodes.len() / 3,
@@ -939,6 +961,7 @@ mod collision_tests {
         unsafe {
             routing_node_collisions(
                 nodes.as_ptr(),
+                vec![24.0; nodes.len() / 3].as_ptr(),
                 curve.as_ptr(),
                 out.as_mut_ptr(),
                 6,
@@ -962,6 +985,7 @@ mod collision_tests {
         unsafe {
             routing_node_collisions(
                 nodes.as_ptr(),
+                vec![24.0; nodes.len() / 3].as_ptr(),
                 straight.as_ptr(),
                 out.as_mut_ptr(),
                 3,
@@ -977,6 +1001,7 @@ mod collision_tests {
         unsafe {
             routing_node_collisions(
                 nodes.as_ptr(),
+                vec![24.0; nodes.len() / 3].as_ptr(),
                 empty.as_ptr(),
                 out.as_mut_ptr(),
                 3,
@@ -1021,6 +1046,7 @@ mod loop_tests {
         unsafe {
             routing_loop_obstacles(
                 nodes.as_ptr(),
+                vec![24.0; nodes.len() / 3].as_ptr(),
                 points.as_ptr(),
                 output.as_mut_ptr(),
                 nodes.len() / 3,
@@ -1100,5 +1126,122 @@ mod loop_tests {
         }
         assert_eq!(run(&[29.99, 0.0, 24.0], &points, 30.0, true)[2], 1.0);
         assert_eq!(run(&[30.01, 0.0, 24.0], &points, 30.0, true)[2], 0.0);
+    }
+}
+
+#[cfg(test)]
+mod measured_height_tests {
+    use super::{routing_loop_obstacles, routing_node_collisions, routing_node_shape};
+
+    #[test]
+    fn enlarged_circle_keeps_final_collision_ties_on_the_reference_path() {
+        let curve = [1.0, 1.0, 0.0, 0.5];
+        for (y, expected_count, expected_fallback) in
+            [(41.99, 1.0, 0.0), (42.0, 0.0, 1.0), (42.01, 0.0, 0.0)]
+        {
+            let mut output = [0.0; 3];
+            unsafe {
+                routing_node_collisions(
+                    [0.0, y, 36.0].as_ptr(),
+                    [36.0].as_ptr(),
+                    curve.as_ptr(),
+                    output.as_mut_ptr(),
+                    1,
+                    -1.0,
+                    -1.0,
+                    -100.0,
+                    0.0,
+                    100.0,
+                    0.0,
+                );
+            }
+            assert_eq!(output, [expected_count, 1.0, expected_fallback]);
+        }
+    }
+
+    #[test]
+    fn mixed_heights_preserve_the_candidate_gap_and_score() {
+        let nodes = [-20.0, 35.0, 36.0, 20.0, 35.0, 24.0];
+        let curve = [1.0, 1.0, 0.0, 0.5];
+        let mut output = [0.0; 3];
+        unsafe {
+            routing_node_shape(
+                nodes.as_ptr(),
+                [36.0, 24.0].as_ptr(),
+                curve.as_ptr(),
+                output.as_mut_ptr(),
+                2,
+                -1.0,
+                -1.0,
+                -100.0,
+                0.0,
+                100.0,
+                0.0,
+                30.0,
+            );
+        }
+        assert_eq!(output[0], 1.0);
+        assert!((output[1] - 1_049_000.4).abs() < 1e-8);
+        assert_eq!(output[2], 2.0);
+        unsafe {
+            routing_node_collisions(
+                nodes.as_ptr(),
+                [36.0, 24.0].as_ptr(),
+                curve.as_ptr(),
+                output.as_mut_ptr(),
+                2,
+                -1.0,
+                -1.0,
+                -100.0,
+                0.0,
+                100.0,
+                0.0,
+            );
+        }
+        assert_eq!(output, [1.0, 2.0, 0.0]);
+    }
+
+    #[test]
+    fn loop_obstacles_apply_measured_clearance_per_node() {
+        let nodes = [0.0, 35.0, 36.0, 100.0, 35.0, 24.0];
+        let points = [0.0, 0.0, 100.0, 0.0];
+        let mut output = [0.0; 6];
+        unsafe {
+            routing_loop_obstacles(
+                nodes.as_ptr(),
+                [36.0, 24.0].as_ptr(),
+                points.as_ptr(),
+                output.as_mut_ptr(),
+                2,
+                2,
+                30.0,
+                -1000.0,
+                -1000.0,
+                1000.0,
+                1000.0,
+                1,
+            );
+        }
+        assert_eq!(output, [49.0, 2.0, 1.0, 0.0, 2.0, 0.0]);
+        for (y, expected) in [(41.99, 1.0), (42.0, -1.0), (42.01, 0.0)] {
+            unsafe {
+                routing_loop_obstacles(
+                    [0.0, y, 36.0].as_ptr(),
+                    [36.0].as_ptr(),
+                    points.as_ptr(),
+                    output.as_mut_ptr(),
+                    1,
+                    1,
+                    30.0,
+                    -1000.0,
+                    -1000.0,
+                    1000.0,
+                    1000.0,
+                    1,
+                );
+            }
+            assert_eq!(output[2], expected);
+            assert_eq!(output[1], 1.0);
+        }
     }
 }

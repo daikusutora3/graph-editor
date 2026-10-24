@@ -11,7 +11,12 @@ import type {
   GraphNode,
   NodeId,
 } from "../graph/model";
-import { nodeGeometryWidth, NODE_SIZE_PX } from "../graph/node-size";
+import {
+  nodeGeometryWidth,
+  nodeGeometryHeight,
+  nodeGeometryClearance,
+  NODE_SIZE_PX,
+} from "../graph/node-size";
 import { createCurveNodeDistance } from "./edge-route-geometry";
 import type { EdgeRoutingMeta } from "./edge-routing";
 
@@ -25,11 +30,17 @@ export function* interactiveRerouteEdgeIdsTask(
   }
 
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
-  const movedNodes: Array<GraphNode & { measuredWidth: number }> = [];
+  const movedNodes: Array<
+    GraphNode & { measuredWidth: number; measuredHeight?: number }
+  > = [];
   for (const [index, node] of model.nodes.entries()) {
     if (index % 64 === 0) yield;
     if (movedNodeIds.has(node.id))
-      movedNodes.push({ ...node, measuredWidth: nodeGeometryWidth(node) });
+      movedNodes.push({
+        ...node,
+        measuredWidth: nodeGeometryWidth(node),
+        measuredHeight: nodeGeometryHeight(node),
+      });
   }
   const reroute = new Set<EdgeId>();
   // A whole-graph drag marks every valid edge by endpoint membership; there is
@@ -175,13 +186,20 @@ function* routeNeedsObstacleReroute(
   const y2 = Math.max(source.y, target.y) + margin;
   for (const [index, node] of movedNodes.entries()) {
     if (index % 64 === 0) yield;
-    const span = Math.max(0, (node.measuredWidth - NODE_SIZE_PX) / 2);
+    const span = Math.max(
+      0,
+      (node.measuredWidth - nodeGeometryHeight(node)) / 2,
+    );
+    const extra = Math.max(0, (nodeGeometryHeight(node) - NODE_SIZE_PX) / 2);
     if (
       isStraight &&
-      (node.x + span < x1 || node.x - span > x2 || node.y < y1 || node.y > y2)
+      (node.x + span + extra < x1 ||
+        node.x - span - extra > x2 ||
+        node.y + extra < y1 ||
+        node.y - extra > y2)
     )
       continue;
-    if (distanceToNode(node) < 84) {
+    if (distanceToNode(node) < nodeGeometryClearance(node, 84)) {
       return true;
     }
   }
