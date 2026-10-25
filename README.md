@@ -88,7 +88,7 @@ a document and cannot be imported back into the editor; use JSON for backups.
 
 ## Quick Start
 
-Select Node **24.15.0** and install Bun **1.4.2** using the
+Select Node **24.22.1** and install Bun **1.4.4** using the
 [development setup](docs/development.md#local-setup). The launcher also supports
 a checkout-local Bun at `.local-bin/bun`.
 

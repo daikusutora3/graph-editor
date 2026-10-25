@@ -19,10 +19,10 @@
     "cytoscape",
     "nextjs"
   ],
-  "packageManager": "bun@1.4.2",
+  "packageManager": "bun@1.4.4",
   "engines": {
-    "node": "24.15.0",
-    "bun": "1.4.2"
+    "node": "24.22.1",
+    "bun": "1.4.4"
   },
   "scripts": {
     "toolchain:check": "node scripts/toolchain.mjs --check",

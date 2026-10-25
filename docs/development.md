@@ -2,21 +2,21 @@
 
 ## Local setup
 
-Run commands from the repository root. Node is pinned to **24.15.0** in
-[`.node-version`](../.node-version); Bun is pinned to **1.4.2** by
+Run commands from the repository root. Node is pinned to **24.22.1** in
+[`.node-version`](../.node-version); Bun is pinned to **1.4.4** by
 `packageManager` in [`package.json`](../package.json). Use your Node version
 manager to select the pinned Node. The Node type definitions target the same
 24.x runtime family.
 
 Install the exact Bun version from the
-[official release](https://github.com/oven-sh/bun/releases/tag/bun-v1.4.2). Either
+[official release](https://github.com/oven-sh/bun/releases/tag/bun-v1.4.4). Either
 use it on `PATH`, or place the executable at `.local-bin/bun` for this checkout.
 The latter is ignored by Git and does not change the global Bun installation.
 For macOS on Apple Silicon, a repository-local installation is:
 
 ```bash
 bun_download_dir="$(mktemp -d)"
-curl -fL https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-darwin-aarch64.zip -o "$bun_download_dir/bun.zip"
+curl -fL https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-darwin-aarch64.zip -o "$bun_download_dir/bun.zip"
 unzip -q "$bun_download_dir/bun.zip" -d "$bun_download_dir"
 mkdir -p .local-bin
 cp "$bun_download_dir/bun-darwin-aarch64/bun" .local-bin/bun
@@ -301,7 +301,7 @@ changed. To connect validation to publication:
    This protects merges; account for any permitted direct pushes or rule bypass.
 2. Inspect the Worker's existing build and deploy commands in Cloudflare. For a
    Workers Builds connection, use `.node-version`, set the build variable
-   `BUN_VERSION=1.4.2`, and ensure the declared Rust toolchain is installed.
+   `BUN_VERSION=1.4.4`, and ensure the declared Rust toolchain is installed.
    Set `SKIP_DEPENDENCY_INSTALL=1` and use this build command:
    `node scripts/toolchain.mjs install --frozen-lockfile && node scripts/toolchain.mjs run check:all`.
    This runs installation and validation before the following deploy command.

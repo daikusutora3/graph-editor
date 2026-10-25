@@ -33,8 +33,8 @@ Graph Editor 是一个 local-first 的浏览器应用，用来把图论想法快
 
 ## 快速开始
 
-请按照[开发环境设置](docs/development.md#local-setup)准备 Node **24.15.0**
-和 Bun **1.4.2**。启动器也支持此项目目录专用的 `.local-bin/bun`。
+请按照[开发环境设置](docs/development.md#local-setup)准备 Node **24.22.1**
+和 Bun **1.4.4**。启动器也支持此项目目录专用的 `.local-bin/bun`。
 
 ```bash
 node scripts/toolchain.mjs install --frozen-lockfile
