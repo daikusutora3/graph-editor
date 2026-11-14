@@ -72,9 +72,9 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     title: "グラフの読み方と描き方 | Graph Editor",
     description:
       "競プロの入力を貼り付けてグラフにする方法と、TikZ で LaTeX 文書に図を入れる方法を、試せる例つきで説明します。",
-    heading: "グラフの読み方と描き方",
+    heading: "記事",
     indexIntro:
-      "Graph Editor を使った作業の進め方を、具体的な例で説明しています。ボタンの場所など操作の詳細は、使い方ガイドにまとめています。",
+      "Graph Editor を使った作業の進め方を、試せる例つきで説明しています。ボタンの場所など操作の詳細は、使い方ガイドにあります。",
     articlesLink: "記事",
     skipToContent: "記事本文へ移動",
     input: guideExampleCopy.ja.input,
@@ -93,9 +93,9 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     title: "Reading and drawing graphs | Graph Editor",
     description:
       "How to draw a graph from competitive programming input, and how to put a graph diagram in a LaTeX document with TikZ, with examples you can try.",
-    heading: "Reading and drawing graphs",
+    heading: "Articles",
     indexIntro:
-      "Walkthroughs of common tasks in Graph Editor, with examples. For where each control is, see the user guide.",
+      "Walkthroughs of common tasks in Graph Editor, with examples you can try. For where each control is, see the user guide.",
     articlesLink: "Articles",
     skipToContent: "Skip to article content",
     input: guideExampleCopy.en.input,
@@ -114,9 +114,9 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     title: "图的读法与画法 | Graph Editor",
     description:
       "介绍如何粘贴竞赛题的输入直接画出图，以及如何用 TikZ 把图放进 LaTeX 文档，并附有可以试用的示例。",
-    heading: "图的读法与画法",
+    heading: "文章",
     indexIntro:
-      "这里用具体示例介绍 Graph Editor 的常见用法。各个按钮的位置等操作细节，请查看使用指南。",
+      "这里用可以试用的示例介绍 Graph Editor 的常见用法。各个按钮的位置等操作细节，请查看使用指南。",
     articlesLink: "文章",
     skipToContent: "跳转到文章正文",
     input: guideExampleCopy["zh-Hans"].input,

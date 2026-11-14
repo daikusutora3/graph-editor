@@ -12,6 +12,8 @@ export type LinkListItem = {
   meta?: string;
   /** A small picture beside the text. */
   figure?: ReactNode;
+  /** What the page covers, shown as one short line (section titles). */
+  outline?: readonly string[];
 };
 
 /**
@@ -38,11 +40,11 @@ export function LinkList({
             prefetch={false}
             className={cn(
               focusRing,
-              "group flex min-h-12 items-center gap-4 rounded-sm py-3 sm:gap-5",
+              "group flex min-h-12 flex-col gap-3 rounded-sm py-3 sm:flex-row sm:items-center sm:gap-5",
             )}
           >
             {item.figure ? (
-              <span className="w-20 shrink-0 text-[var(--text-2)] sm:w-40">
+              <span className="w-full max-w-64 shrink-0 rounded-lg bg-[var(--fill)] p-2 text-[var(--text-2)] sm:w-48">
                 {item.figure}
               </span>
             ) : null}
@@ -58,6 +60,11 @@ export function LinkList({
               {item.description ? (
                 <span className={cn("block", reading.caption)}>
                   {item.description}
+                </span>
+              ) : null}
+              {item.outline?.length ? (
+                <span className="mt-1.5 block text-xs leading-5 text-[var(--muted)]">
+                  {item.outline.join(" · ")}
                 </span>
               ) : null}
             </span>

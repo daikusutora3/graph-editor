@@ -1,4 +1,6 @@
 import { LinkList } from "@/components/content/LinkList";
+import { TextLink } from "@/components/content/TextLink";
+import { guideCopy } from "@/lib/guide-content";
 import { ArticleThumbnail } from "./ArticleThumbnail";
 import { ContentFooter } from "@/components/content/ContentFooter";
 import {
@@ -7,7 +9,11 @@ import {
   ReadingIntro,
 } from "@/components/content/ReadingLayout";
 import { articleCopy, articlePath, getArticles } from "@/lib/article-content";
-import { getAppPathUrl, type AppLocale } from "@/lib/site-metadata";
+import {
+  appGuidePaths,
+  getAppPathUrl,
+  type AppLocale,
+} from "@/lib/site-metadata";
 
 export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
   const copy = articleCopy[locale];
@@ -34,7 +40,13 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
       structuredData={structuredData}
     >
       <ReadingContainer>
-        <ReadingIntro title={copy.heading} description={copy.indexIntro} />
+        <ReadingIntro title={copy.heading} description={copy.indexIntro}>
+          <p className="mt-2">
+            <TextLink href={appGuidePaths[locale]} arrow>
+              {guideCopy[locale].heading}
+            </TextLink>
+          </p>
+        </ReadingIntro>
         <div id="articles-content" tabIndex={-1} className="outline-none">
           <LinkList
             headingLevel={2}
@@ -44,6 +56,7 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
               description: article.description,
               meta: article.category,
               figure: <ArticleThumbnail article={article} />,
+              outline: article.sections.map((section) => section.title),
             }))}
           />
         </div>
