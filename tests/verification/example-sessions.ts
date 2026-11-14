@@ -171,7 +171,7 @@ try {
     "example editing and reload never access original localStorage",
   );
 
-  location.search = "?example=tree-layout";
+  location.search = "?example=tikz-export";
   const tree = readStoredGraph();
   expect(
     tree?.settings.weighted === true && tree.edges[0]?.weight === "5",
@@ -180,7 +180,7 @@ try {
   scheduleStoredGraphWrite(tree!);
   await flushStoredGraphWrite();
   expect(
-    sessionValues.has(`${EXAMPLE_GRAPH_STORAGE_PREFIX}tree-layout`) &&
+    sessionValues.has(`${EXAMPLE_GRAPH_STORAGE_PREFIX}tikz-export`) &&
       sessionValues.has(`${EXAMPLE_GRAPH_STORAGE_PREFIX}edge-list`),
     "different article examples have separate session slots",
   );
@@ -215,7 +215,7 @@ try {
   holdLock = true;
   scheduleStoredGraphWrite(createEmptyGraphModel());
   const pendingOriginalWrite = flushStoredGraphWrite();
-  location.search = "?example=adjacency-matrix";
+  location.search = "?example=tikz-export";
   readStoredGraph();
   holdLock = false;
   const release = lockRelease as (() => void) | null;
@@ -227,7 +227,7 @@ try {
   );
 
   sessionWriteFails = true;
-  scheduleStoredGraphWrite(createArticleExampleGraph("adjacency-matrix"));
+  scheduleStoredGraphWrite(createArticleExampleGraph("tikz-export"));
   await flushStoredGraphWrite();
   expect(
     getStorageSnapshot().status === "failed" && localWrites === 1,
@@ -242,26 +242,23 @@ try {
 
   sessionReadFails = true;
   expect(
-    readStoredGraph()?.nodes.length === 3 &&
+    readStoredGraph()?.nodes.length === 4 &&
       getStorageSnapshot().status === "unavailable",
     "blocked session storage still opens the trusted example with an unavailable-save notice",
   );
   sessionReadFails = false;
-  sessionValues.set(
-    `${EXAMPLE_GRAPH_STORAGE_PREFIX}adjacency-matrix`,
-    "broken",
-  );
+  sessionValues.set(`${EXAMPLE_GRAPH_STORAGE_PREFIX}tikz-export`, "broken");
   expect(
     readStoredGraph() === null && getStorageSnapshot().status === "invalid",
     "invalid session data is retained for recovery instead of silently replaced",
   );
   expect(
-    sessionValues.get(`${EXAMPLE_GRAPH_STORAGE_PREFIX}adjacency-matrix`) ===
+    sessionValues.get(`${EXAMPLE_GRAPH_STORAGE_PREFIX}tikz-export`) ===
       "broken",
     "invalid example data is not overwritten during hydration",
   );
 
-  location.search = "?example=tikz-export";
+  location.search = "?example=edge-list";
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,
     value: {},

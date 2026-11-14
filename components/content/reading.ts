@@ -30,6 +30,11 @@ export const reading = {
     "list-decimal space-y-3 pl-5 marker:font-semibold marker:text-[var(--muted)]",
   /** Rows separated by hairlines (link lists, shortcut and format tables). */
   rows: "divide-y divide-[var(--hair)] border-y border-[var(--hair)]",
+  /** Code inside running text (`\\input`, `x=1cm`). */
+  inlineCode:
+    "rounded-md bg-[var(--fill)] px-1 py-0.5 font-mono text-[0.9em] text-[var(--text)] [overflow-wrap:anywhere]",
+  /** Code or input that readers can copy. */
+  code: "overflow-x-auto rounded-lg bg-[var(--fill)] px-3 py-2 font-mono text-control leading-6 text-[var(--text)]",
   /** A screenshot or picture on the page. */
   picture: "rounded-xl border border-[var(--line)]",
   /** Text link in running text and link lines. Neutral color, underlined. */

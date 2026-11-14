@@ -9,11 +9,8 @@ import type { ArticleSlug } from "@/lib/article-examples";
 import type { AppLocale } from "@/lib/site-metadata";
 
 export const articleScreenshotSections: Record<ArticleSlug, string> = {
-  "edge-list": "article-import-check",
-  "adjacency-matrix": "article-matrix-check",
-  "tree-layout": "article-tree-root",
-  "tikz-export": "article-tikz-document",
-  "bipartite-graph": "article-bipartite-layout",
+  "edge-list": "article-paste",
+  "tikz-export": "article-tikz-export",
 };
 
 export function ArticleScreenshot({

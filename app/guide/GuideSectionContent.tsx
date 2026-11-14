@@ -100,10 +100,7 @@ export function GuideSectionContent({
               >
                 <dt className="font-medium text-[var(--text)]">{name}</dt>
                 <dd className="min-w-0">
-                  <pre
-                    className="overflow-x-auto rounded-lg bg-[var(--fill)] px-3 py-2 font-mono text-xs leading-6 text-[var(--text)]"
-                    translate="no"
-                  >
+                  <pre className={reading.code} translate="no">
                     <code>{example}</code>
                   </pre>
                 </dd>

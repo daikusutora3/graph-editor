@@ -291,11 +291,13 @@ const sitemap = readText("out/sitemap.xml");
 const sitemapUrls = [...sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(
   ([, entry]) => entry ?? "",
 );
+// Editor and guide in each language, plus the article index and articles.
+const expectedSitemapUrls = locales.length * 2 + articleRoutes.length;
 expect(
-  sitemapUrls.length === 24 &&
+  sitemapUrls.length === expectedSitemapUrls &&
     new Set(sitemapUrls.map((entry) => entry.match(/<loc>(.*?)<\/loc>/)?.[1]))
-      .size === 24,
-  "sitemap.xml should contain 24 distinct editor, guide and article URLs",
+      .size === expectedSitemapUrls,
+  `sitemap.xml should contain ${expectedSitemapUrls} distinct editor, guide and article URLs`,
 );
 expect(sitemap.includes(SITE_URL), "sitemap.xml should include SITE_URL");
 for (const locale of Object.keys(appLocalePaths) as AppLocale[]) {
@@ -367,7 +369,10 @@ for (const locale of locales) {
           (section) =>
             html.includes(`id="${section.id}"`) &&
             section.paragraphs.every((paragraph) =>
-              html.includes(escaped(paragraph)),
+              // Backticks mark inline code and are not shown.
+              html
+                .replace(/<[^>]+>/g, "")
+                .includes(escaped(paragraph.replaceAll("`", ""))),
             ),
         ) &&
         html.includes(`<code>${escaped(article.example.input)}</code>`) &&
@@ -522,6 +527,19 @@ for (const page of ["out/guide.html", "out/en/guide.html"]) {
       `_redirects should consolidate HTML and trailing-slash variants for ${route}`,
     );
   }
+  // Removed articles keep their old links working.
+  for (const prefix of ["", "/en", "/zh-hans"]) {
+    for (const [slug, target] of [
+      ["adjacency-matrix", `${prefix}/articles/edge-list`],
+      ["tree-layout", `${prefix}/guide`],
+      ["bipartite-graph", `${prefix}/guide`],
+    ]) {
+      expect(
+        redirects.includes(`${prefix}/articles/${slug} ${target} 301`),
+        `_redirects should send the removed ${prefix}/articles/${slug} to ${target}`,
+      );
+    }
+  }
 }
 
 const headers = readText("out/_headers");
@@ -536,7 +554,7 @@ expect(
   const pages = collectPageScriptHashes();
   expect(
     articleRoutes.every((route) => pages.some((page) => page.route === route)),
-    "Generated page CSP rules should cover all 18 article routes",
+    "Generated page CSP rules should cover every article route",
   );
   const kernelHeaders = resolveHeaders(rules, RUST_KERNEL_URL);
   expect(

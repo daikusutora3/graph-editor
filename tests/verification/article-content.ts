@@ -2,13 +2,21 @@ import {
   articleCopy,
   articleIndexPath,
   articlePath,
+  articleSamples,
   articleSlugs,
   getArticle,
   getArticleForGuideExample,
   getArticles,
   getArticlesForGuideSection,
 } from "../../lib/article-content";
-import { getArticleExample } from "../../lib/article-examples";
+import {
+  createArticleExampleGraph,
+  getArticleExample,
+} from "../../lib/article-examples";
+import { exportGraph } from "../../features/graph-editor/io/export-graph";
+import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
+import { evaluateGraphInput } from "../../features/graph-editor/io/import-graph";
+import { messagesByLocale } from "../../features/graph-editor/i18n/messages";
 import { guideCopy, guideExampleCopy } from "../../lib/guide-content";
 import { guideExamples } from "../../lib/guide-examples";
 import { type AppLocale } from "../../lib/site-metadata";
@@ -101,22 +109,61 @@ for (const locale of locales) {
   expect(
     getArticleForGuideExample(locale, "edge-list")?.slug === "edge-list" &&
       getArticleForGuideExample(locale, "adjacency-matrix")?.slug ===
-        "adjacency-matrix" &&
+        "edge-list" &&
       getArticleForGuideExample(locale, "weighted-tree")?.slug ===
-        "tree-layout",
-    `${label} guide examples link to their reading articles`,
+        "tikz-export",
+    `${label} guide examples link to the article that covers them`,
   );
   expect(
-    getArticlesForGuideSection(locale, "layouts")
+    getArticlesForGuideSection(locale, "import")
       .map((article) => article.slug)
-      .join(",") === "tree-layout,bipartite-graph",
-    `${label} layout guide links reach the relevant articles`,
+      .join(",") === "edge-list",
+    `${label} import guide links reach the input article`,
   );
   expect(
     getArticlesForGuideSection(locale, "guide-export")
       .map((article) => article.slug)
       .join(",") === "tikz-export",
     `${label} export guide links reach the TikZ article`,
+  );
+}
+
+// The input article labels each sample with a format; the importer must agree.
+for (const locale of locales) {
+  const samples = getArticle(locale, "edge-list")!.sections.flatMap(
+    (section) => section.samples ?? [],
+  );
+  expect(
+    samples.length === Object.keys(articleSamples.formatSamples).length,
+    `${locale}: every format sample is shown`,
+  );
+  for (const sample of samples) {
+    const evaluation = evaluateGraphInput(sample.code, {
+      ...createEmptyGraphModel().settings,
+      format: "auto",
+    });
+    const kind = evaluation.analysis.recommendedFormat;
+    expect(
+      kind !== undefined &&
+        messagesByLocale[locale].starter.formats[kind].toLowerCase() ===
+          sample.title.toLowerCase() &&
+        evaluation.result.model.nodes.length > 0,
+      `${locale}: "${sample.title}" sample is read as that format (got ${kind})`,
+    );
+  }
+}
+
+// The TikZ article quotes the exporter's opening lines; keep them in sync.
+{
+  const tikz = exportGraph(createArticleExampleGraph("tikz-export"), "tikz");
+  const { texSamples } = articleSamples;
+  expect(
+    tikz.includes(texSamples.styles) &&
+      texSamples.preamble
+        .split("\n")
+        .every((line) => tikz.includes(`% ${line}`)) &&
+      tikz.includes("ge label,midway"),
+    "the TikZ article's preamble and style snippets match the exporter output",
   );
 }
 

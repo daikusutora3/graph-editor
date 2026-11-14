@@ -57,8 +57,13 @@ for (const slug of articleSlugs) {
   );
 }
 const sitemapEntries = sitemap();
-assert.equal(sitemapEntries.length, 24);
-assert.equal(new Set(sitemapEntries.map((entry) => entry.url)).size, 24);
+// Editor, guide, and article index in three languages, plus each article.
+const expectedSitemapEntries = 9 + 3 * articleSlugs.length;
+assert.equal(sitemapEntries.length, expectedSitemapEntries);
+assert.equal(
+  new Set(sitemapEntries.map((entry) => entry.url)).size,
+  expectedSitemapEntries,
+);
 const escaped = (text: string) =>
   renderToStaticMarkup(<Fragment>{text}</Fragment>);
 const attribute = (tag: string, name: string) =>
@@ -207,11 +212,13 @@ for (const locale of locales) {
         `${context}: ${section.id} is reachable`,
       );
       assert(view.markup.includes(escaped(section.title)));
-      for (const paragraph of section.paragraphs) {
-        assert(view.markup.includes(escaped(paragraph)));
-      }
-      for (const point of section.points ?? []) {
-        assert(view.markup.includes(escaped(point)));
+      // Backticks mark inline code; the reader sees the text without them.
+      const text = view.markup.replace(/<[^>]+>/g, "");
+      for (const line of [...section.paragraphs, ...(section.points ?? [])]) {
+        assert(
+          text.includes(escaped(line.replaceAll("`", ""))),
+          `${context}: "${line.slice(0, 30)}" is rendered`,
+        );
       }
     }
     assert(
@@ -377,5 +384,5 @@ function markupContractForGuide(html: string) {
 }
 
 console.log(
-  "Articles: 18 localized static pages, SSR content, reachable guide links, accessible examples and metadata passed",
+  `Articles: ${3 * (articleSlugs.length + 1)} localized static pages, SSR content, reachable guide links, accessible examples and metadata passed`,
 );

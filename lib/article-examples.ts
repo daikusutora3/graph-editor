@@ -7,13 +7,7 @@ import type { GraphModel } from "@/features/graph-editor/core/graph/model";
 import type { ImportFormat } from "@/features/graph-editor/io/import-utils";
 import { guideExamples } from "./guide-examples";
 
-export const articleSlugs = [
-  "edge-list",
-  "adjacency-matrix",
-  "tree-layout",
-  "tikz-export",
-  "bipartite-graph",
-] as const;
+export const articleSlugs = ["edge-list", "tikz-export"] as const;
 
 export type ArticleSlug = (typeof articleSlugs)[number];
 export type GuideExampleId = (typeof guideExamples)[number]["id"];
@@ -23,13 +17,13 @@ export type ArticleExample = {
   input: string;
   format: ImportFormat;
   weighted: boolean;
-  guideExampleId: GuideExampleId | null;
+  /** The guide example this article reuses, so both show the same input. */
+  guideExampleId: GuideExampleId;
   nodes: readonly (readonly [string | number, number, number])[];
   edges: readonly (readonly [string | number, string | number, number?])[];
 };
 
 const edgeList = guideExamples[0];
-const matrix = guideExamples[1];
 const tree = guideExamples[2];
 
 const articleExamples: Record<ArticleSlug, ArticleExample> = {
@@ -40,46 +34,12 @@ const articleExamples: Record<ArticleSlug, ArticleExample> = {
     weighted: false,
     guideExampleId: edgeList.id,
   },
-  "adjacency-matrix": {
-    ...matrix,
-    id: "adjacency-matrix",
-    format: "adjacency-matrix",
-    weighted: false,
-    guideExampleId: matrix.id,
-  },
-  "tree-layout": {
+  "tikz-export": {
     ...tree,
-    id: "tree-layout",
+    id: "tikz-export",
     format: "contest-edge-list",
     weighted: true,
     guideExampleId: tree.id,
-  },
-  "tikz-export": {
-    ...edgeList,
-    id: "tikz-export",
-    format: "contest-edge-list",
-    weighted: false,
-    guideExampleId: edgeList.id,
-  },
-  "bipartite-graph": {
-    id: "bipartite-graph",
-    input: "A 1\nA 2\nB 2\nB 3",
-    format: "edge-pairs",
-    weighted: false,
-    guideExampleId: null,
-    nodes: [
-      ["A", 65, 55],
-      ["B", 65, 135],
-      ["1", 235, 25],
-      ["2", 235, 95],
-      ["3", 235, 165],
-    ],
-    edges: [
-      ["A", "1"],
-      ["A", "2"],
-      ["B", "2"],
-      ["B", "3"],
-    ],
   },
 };
 
@@ -95,7 +55,7 @@ export function createArticleExampleGraph(slug: ArticleSlug): GraphModel {
   const example = articleExamples[slug];
   return {
     ...createEmptyGraphModel({
-      indexBase: example.guideExampleId ? 1 : 0,
+      indexBase: 1,
       weighted: example.weighted,
     }),
     nodes: example.nodes.map(([label, x, y], order) =>

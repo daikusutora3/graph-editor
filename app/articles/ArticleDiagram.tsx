@@ -26,12 +26,6 @@ export function ArticleGraphDrawing({ example }: { example: Example }) {
   const nodes = new Map(example.nodes.map((node) => [String(node[0]), node]));
   return (
     <g strokeLinecap="round" strokeLinejoin="round">
-      {example.id === "bipartite-graph" ? (
-        <g fill="var(--fill)" stroke="var(--line)">
-          <rect x="35" y="5" width="60" height="180" rx="24" />
-          <rect x="205" y="5" width="60" height="180" rx="24" />
-        </g>
-      ) : null}
       {example.edges.map(([source, target, weight]) => {
         const from = nodes.get(String(source));
         const to = nodes.get(String(target));

@@ -8,38 +8,20 @@ export const articleScreenshotCaptions: Record<
   ja: {
     "edge-list":
       "「読み込み」に辺リストを貼り付けると、右側に図が出ます。N=4、M=4 と辺のつながりを確認してから「グラフに反映」を押します。",
-    "adjacency-matrix":
-      "行列を貼り付けると、この例は N=3、M=3 の三角形になります。右側のプレビューで、行列と辺の対応を確かめられます。",
-    "tree-layout":
-      "「配置」で「木」を選んだ結果です。頂点 1 を根にすると、2 と 3 がその下に並び、4 は 3 の下に置かれます。辺の重みも残ります。",
     "tikz-export":
       "「書き出し」の形式で「TikZ (TeX)」を選びます。生成されたコードをコピーするか、「.tex で保存」でファイルにできます。",
-    "bipartite-graph":
-      "「配置」で「二部」を選んだ結果です。A・B と 1・2・3 が左右に分かれ、どの頂点がつながっているかを追いやすくなります。",
   },
   en: {
     "edge-list":
       "Paste the edge list into Load and the graph appears on the right. Check N=4, M=4 and the connections, then apply it.",
-    "adjacency-matrix":
-      "Pasting this matrix produces a triangle with N=3 and M=3. Compare the preview with the entries in the matrix.",
-    "tree-layout":
-      "The Tree layout places root 1 above vertices 2 and 3, with vertex 4 below 3. Edge weights are preserved.",
     "tikz-export":
       "Choose TikZ (TeX) in Export. Copy the generated code or save it as a .tex file.",
-    "bipartite-graph":
-      "The Bipartite layout separates A and B from 1, 2 and 3, making the connections between the groups easier to follow.",
   },
   "zh-Hans": {
     "edge-list":
       "在“加载”中粘贴边列表，右侧会显示图。确认 N=4、M=4 和连边后再应用。",
-    "adjacency-matrix":
-      "粘贴此矩阵后，会得到 N=3、M=3 的三角形。可在预览中检查矩阵与边的对应关系。",
-    "tree-layout":
-      "选择“树”布局后的结果：以顶点 1 为根，2 和 3 位于下方，4 位于 3 的下方。边权仍然保留。",
     "tikz-export":
       "在“导出”中选择“TikZ (TeX)”。可以复制生成的代码，也可以保存为 .tex 文件。",
-    "bipartite-graph":
-      "选择“二分图”布局后的结果。A、B 与 1、2、3 分在左右两侧，两组之间的连边一目了然。",
   },
 };
 

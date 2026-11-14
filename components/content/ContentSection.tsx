@@ -1,6 +1,22 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { reading } from "./reading";
+
+/** Running text where `backticks` mark code, as written in the content files. */
+export function InlineText({ text }: { text: string }) {
+  let offset = 0;
+  return text.split("`").map((part, position) => {
+    const key = offset;
+    offset += part.length + 1;
+    return position % 2 === 1 ? (
+      <code key={key} className={reading.inlineCode} translate="no">
+        {part}
+      </code>
+    ) : (
+      <Fragment key={key}>{part}</Fragment>
+    );
+  });
+}
 
 /**
  * A titled section of a reading page. `id` makes it a contents target; the

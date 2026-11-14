@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { ContentCopyButton } from "@/components/content/ContentCopyButton";
 import { ContentExample } from "@/components/content/ContentExample";
 import { ContentFooter } from "@/components/content/ContentFooter";
-import { ContentSection } from "@/components/content/ContentSection";
+import {
+  ContentSection,
+  InlineText,
+} from "@/components/content/ContentSection";
 import { LinkList } from "@/components/content/LinkList";
 import {
   ReadingPage,
@@ -24,6 +28,7 @@ import {
   articlePath,
   getArticle,
   type ArticleContent,
+  type ArticleSample,
 } from "@/lib/article-content";
 import {
   APP_NAME,
@@ -167,12 +172,22 @@ export function ArticlePage({
                 ) : null}
                 <div className={cn("mt-4 space-y-5", reading.body)}>
                   {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
+                    <p key={paragraph}>
+                      <InlineText text={paragraph} />
+                    </p>
                   ))}
+                  {section.samples?.length ? (
+                    <ArticleSamples
+                      samples={section.samples}
+                      labels={{ ...copy, copy: copy.copySample }}
+                    />
+                  ) : null}
                   {section.points?.length ? (
                     <ul className={reading.list}>
                       {section.points.map((point) => (
-                        <li key={point}>{point}</li>
+                        <li key={point}>
+                          <InlineText text={point} />
+                        </li>
                       ))}
                     </ul>
                   ) : null}
@@ -188,16 +203,14 @@ export function ArticlePage({
               >
                 <ArticleDiagram example={article.example} />
               </ContentExample>
-              {article.example.guideExampleId ? (
-                <p className="mt-3 text-sm">
-                  <TextLink
-                    href={`${appGuidePaths[locale]}#${article.example.guideExampleId}`}
-                    arrow
-                  >
-                    {copy.sameExampleGuideLabel}
-                  </TextLink>
-                </p>
-              ) : null}
+              <p className="mt-3 text-sm">
+                <TextLink
+                  href={`${appGuidePaths[locale]}#${article.example.guideExampleId}`}
+                  arrow
+                >
+                  {copy.sameExampleGuideLabel}
+                </TextLink>
+              </p>
             </ContentSection>
             <ContentSection id="article-related" title={copy.relatedTitle}>
               <LinkList
@@ -220,5 +233,39 @@ export function ArticlePage({
         </ReadingBody>
       </ReadingContainer>
     </ReadingPage>
+  );
+}
+
+/** Inputs or code snippets, each with a title, an optional note, and a copy button. */
+function ArticleSamples({
+  samples,
+  labels,
+}: {
+  samples: readonly ArticleSample[];
+  labels: { copy: string; copySuccess: string; copyFailure: string };
+}) {
+  return (
+    <div className="space-y-5">
+      {samples.map((sample) => (
+        <div key={sample.title} className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-x-3">
+            <h3 className="text-sm leading-6 font-semibold text-[var(--text)]">
+              {sample.title}
+            </h3>
+            <ContentCopyButton
+              text={sample.code}
+              title={sample.title}
+              labels={labels}
+            />
+          </div>
+          {sample.note ? (
+            <p className={reading.caption}>{sample.note}</p>
+          ) : null}
+          <pre className={cn("mt-2", reading.code)} translate="no">
+            <code>{sample.code}</code>
+          </pre>
+        </div>
+      ))}
+    </div>
   );
 }

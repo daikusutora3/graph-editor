@@ -12,10 +12,18 @@ export { articleSlugs, type ArticleSlug } from "./article-examples";
 export type ArticleGuideAnchor =
   "guide-import" | "guide-layouts" | "guide-export";
 
+/** A labelled block of input or code that readers can copy. */
+export type ArticleSample = {
+  title: string;
+  code: string;
+  note?: string;
+};
+
 export type ArticleSection = {
   id: string;
   title: string;
   paragraphs: readonly string[];
+  samples?: readonly ArticleSample[];
   points?: readonly string[];
 };
 
@@ -50,6 +58,8 @@ export type ArticleCopy = {
   copy: string;
   copySuccess: string;
   copyFailure: string;
+  /** Visible label of the copy button on code and format samples. */
+  copySample: string;
   exampleTitle: string;
   operationGuideLabel: string;
   sameExampleGuideLabel: string;
@@ -61,10 +71,10 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
   ja: {
     title: "グラフの読み方と描き方 | Graph Editor",
     description:
-      "辺リストや隣接行列の読み方、木や二部グラフの配置、TikZ での書き出しを、具体的な入力例で説明します。どの例も Graph Editor でそのまま試せます。",
+      "競プロの入力を貼り付けてグラフにする方法と、TikZ で LaTeX 文書に図を入れる方法を、試せる例つきで説明します。",
     heading: "グラフの読み方と描き方",
     indexIntro:
-      "入力の読み方や、図を見やすくするコツを例と一緒にまとめています。エディタの操作は、各記事から使い方ガイドの該当箇所に移って確認できます。",
+      "Graph Editor を使った作業の進め方を、具体的な例で説明しています。ボタンの場所など操作の詳細は、使い方ガイドにまとめています。",
     articlesLink: "記事",
     skipToContent: "記事本文へ移動",
     input: guideExampleCopy.ja.input,
@@ -72,6 +82,7 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     copy: guideExampleCopy.ja.copy,
     copySuccess: guideExampleCopy.ja.copySuccess,
     copyFailure: guideExampleCopy.ja.copyFailure,
+    copySample: "コピー",
     exampleTitle: "入力例と図",
     operationGuideLabel: "操作方法",
     sameExampleGuideLabel: "ガイドで同じ例を見る",
@@ -81,10 +92,10 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
   en: {
     title: "Reading and drawing graphs | Graph Editor",
     description:
-      "How to read edge lists and adjacency matrices, lay out trees and bipartite graphs, and export diagrams to TikZ, with small examples you can try in Graph Editor.",
+      "How to draw a graph from competitive programming input, and how to put a graph diagram in a LaTeX document with TikZ, with examples you can try.",
     heading: "Reading and drawing graphs",
     indexIntro:
-      "Short articles on reading graph input and making diagrams easier to read. Each one links to the part of the user guide that covers the editor steps.",
+      "Walkthroughs of common tasks in Graph Editor, with examples. For where each control is, see the user guide.",
     articlesLink: "Articles",
     skipToContent: "Skip to article content",
     input: guideExampleCopy.en.input,
@@ -92,6 +103,7 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     copy: guideExampleCopy.en.copy,
     copySuccess: guideExampleCopy.en.copySuccess,
     copyFailure: guideExampleCopy.en.copyFailure,
+    copySample: "Copy",
     exampleTitle: "Input and diagram",
     operationGuideLabel: "Editor steps",
     sameExampleGuideLabel: "See this example in the guide",
@@ -101,10 +113,10 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
   "zh-Hans": {
     title: "图的读法与画法 | Graph Editor",
     description:
-      "用具体的输入示例讲解边列表和邻接矩阵的读法、树和二分图的布局，以及如何导出为 TikZ。每个示例都可以直接在 Graph Editor 中试用。",
+      "介绍如何粘贴竞赛题的输入直接画出图，以及如何用 TikZ 把图放进 LaTeX 文档，并附有可以试用的示例。",
     heading: "图的读法与画法",
     indexIntro:
-      "这里整理了输入数据的读法和让图更易读的方法，每篇都配有示例。编辑器的具体操作可以从文章跳到使用指南的对应部分查看。",
+      "这里用具体示例介绍 Graph Editor 的常见用法。各个按钮的位置等操作细节，请查看使用指南。",
     articlesLink: "文章",
     skipToContent: "跳转到文章正文",
     input: guideExampleCopy["zh-Hans"].input,
@@ -112,6 +124,7 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     copy: guideExampleCopy["zh-Hans"].copy,
     copySuccess: guideExampleCopy["zh-Hans"].copySuccess,
     copyFailure: guideExampleCopy["zh-Hans"].copyFailure,
+    copySample: "复制",
     exampleTitle: "输入示例与图",
     operationGuideLabel: "操作方法",
     sameExampleGuideLabel: "在指南中查看这个示例",
@@ -125,22 +138,42 @@ function localizedExample(
   slug: ArticleSlug,
 ): ArticleExample {
   const example = getArticleExample(slug)!;
-  const bipartiteResults: Record<AppLocale, string> = {
-    ja: "左の A、B と右の 1、2、3 を結ぶ、5 頂点、4 辺の二部グラフです。",
-    en: "A bipartite graph with 5 vertices and 4 edges, connecting A and B on the left to 1, 2, and 3 on the right.",
-    "zh-Hans":
-      "一个有 5 个顶点、4 条边的二分图，连接左侧的 A、B 与右侧的 1、2、3。",
-  };
   const index = guideExamples.findIndex(
     (entry) => entry.id === example.guideExampleId,
   );
   return {
     ...example,
-    result: example.guideExampleId
-      ? guideExampleCopy[locale].examples[index]!.result
-      : bipartiteResults[locale],
+    result: guideExampleCopy[locale].examples[index]!.result,
   };
 }
+
+/** Inputs shown in the format list. Every one is checked against the importer. */
+const formatSamples = {
+  contest: "4 4\n1 2\n2 3\n2 4\n3 4",
+  pairs: "1 2\n2 3\n2 4\n3 4",
+  tree: "4\n1 2\n1 3\n3 4",
+  parents: "5\n1 1 2 2",
+  adjacencyList: "1: 2 3\n2: 3",
+  matrix: "0 1 1\n1 0 1\n1 1 0",
+} as const;
+
+/** TeX snippets shown in the TikZ article. Every one is compiled in a test document. */
+const texSamples = {
+  preamble: "\\usepackage{tikz}\n\\usetikzlibrary{arrows.meta,shapes.misc}",
+  figure: (caption: string) =>
+    `\\begin{figure}[htbp]\n  \\centering\n  \\input{graph.tex}\n  \\caption{${caption}}\n  \\label{fig:graph}\n\\end{figure}`,
+  standalone:
+    "\\documentclass[tikz,border=2pt]{standalone}\n\\usetikzlibrary{arrows.meta,shapes.misc}\n\\begin{document}\n\\input{graph.tex}\n\\end{document}",
+  spacing: "\\begin{tikzpicture}[x=0.8cm,y=0.8cm,",
+  resize:
+    "\\usepackage{graphicx} % preamble\n\\resizebox{0.6\\linewidth}{!}{\\input{graph.tex}}",
+  styles:
+    "\\begin{tikzpicture}[x=1cm,y=1cm,\n  ge vertex/.style={draw,line width=0.6pt,inner sep=2pt,outer sep=0.3pt,font=\\small},\n  ge edge/.style={line width=0.6pt},\n  ge label/.style={fill=white,text=black,inner sep=1.5pt,font=\\small}]",
+  japanese:
+    "\\usepackage{luatexja}\n\\usepackage{tikz}\n\\usetikzlibrary{arrows.meta,shapes.misc}",
+} as const;
+
+export const articleSamples = { formatSamples, texSamples };
 
 type ArticleText = Omit<ArticleContent, "example" | "guide">;
 
@@ -149,565 +182,491 @@ const articleText: Record<AppLocale, readonly ArticleText[]> = {
     {
       slug: "edge-list",
       category: "入力と描画",
-      title: "辺リストからグラフを描く",
+      title: "競プロの入力を貼り付けてグラフにする",
       description:
-        "先頭行の頂点数・辺数と、続く各行が表す辺を、4 頂点の例で読んでいきます。",
+        "競技プログラミングの問題に出てくるグラフの入力を、貼り付けるだけで図にする方法です。読み込める形式と、うまく読めないときの直し方もまとめました。",
       introduction:
-        "問題文に並んだ数字は、そのままだとグラフの形がつかみにくいものです。ガイドと同じ 4 頂点・4 辺の入力を図にして、各行がどの辺になるかを見ていきます。",
+        "グラフの問題で入力例を図にしたいときは、入力をそのまま Graph Editor に貼り付けてください。辺リスト・木・親配列・隣接リスト・隣接行列のどれでも、形式と頂点番号の始まりを自動で判定して図にします。",
       sections: [
         {
-          id: "article-header",
-          title: "先頭行は頂点数と辺数",
+          id: "article-paste",
+          title: "貼り付けて反映するまで",
           paragraphs: [
-            "先頭行の「4 4」は、頂点が 4 個、辺が 4 本という意味です。頂点の番号は 1 から 4 で、続く 4 行がそれぞれ 1 本の辺を表します。",
-            "ただし、この先頭行がない辺リストもあります。「1 2」で始まっていても、それが頂点数と辺数なのか最初の辺なのかは数字だけでは決まりません。問題文の入力形式を見て判断してください。",
+            "エディタの「読み込み」を開いて、問題の入力例を貼り付けます。形式は自動で判定され、右側のプレビューに図と頂点数・辺数が表示されます。合っていれば「グラフに反映」を押します。",
+            "頂点番号が 0 始まりか 1 始まりかも、入力に出てくる番号から判断します。4 頂点の入力に「4」があれば 1 始まり、「0」があれば 0 始まりです。どちらもないとき（番号の大きい頂点が孤立しているときなど）は、「設定」の「番号」に従います。",
           ],
         },
         {
-          id: "article-connections",
-          title: "1 行が 1 本の辺",
+          id: "article-formats",
+          title: "読み込める形式",
           paragraphs: [
-            "「1 2」は頂点 1 と 2 を結ぶ辺です。「2 3」と「2 4」で頂点 2 は 3 と 4 にもつながり、最後の「3 4」で 2・3・4 が三角形になります。",
-            "この例は無向グラフなので、「1 2」と「2 1」は同じ辺です。有向グラフの場合は、どちらが始点でどちらが終点かも問題文で確かめてください。",
+            "次の形式を読み込めます。例はどれも 1 始まりです。どの形式でも、多重辺や自己ループはそのまま読み込みます。",
+          ],
+          samples: [
+            {
+              title: "頂点数・辺数つき辺リスト",
+              note: "1 行目が「N M」、続く M 行が辺です。3 列目に数を書くと重みになります。",
+              code: formatSamples.contest,
+            },
+            {
+              title: "辺の組リスト",
+              note: "頂点数の行がない辺リストです。頂点は「A B」のように文字で書いてもかまいません。",
+              code: formatSamples.pairs,
+            },
+            {
+              title: "木の辺リスト",
+              note: "1 行目が頂点数 N、続く N−1 行が辺です。重み付き親配列と同じ形にも見えるため、「形式」で選び直すことがあります。",
+              code: formatSamples.tree,
+            },
+            {
+              title: "親配列",
+              note: "1 行目が頂点数、2 行目が頂点 2, 3, … の親です。根から子へ向かう有向の木として読み込みます。",
+              code: formatSamples.parents,
+            },
+            {
+              title: "隣接リスト",
+              note: "「頂点: つながる頂点 …」を 1 行に 1 頂点ずつ書きます。",
+              code: formatSamples.adjacencyList,
+            },
+            {
+              title: "隣接行列",
+              note: "N 行 N 列で書きます。番号が書かれていないので、頂点番号は「設定」の「番号」に従います。",
+              code: formatSamples.matrix,
+            },
+          ],
+        },
+        {
+          id: "article-settings",
+          title: "向きと重みを合わせる",
+          paragraphs: [
+            "辺リストは無向グラフとして読み込みます。有向グラフの問題なら「設定」で「有向」に切り替えてください。親配列と、対称でない隣接行列は自動で有向になります。",
+            "辺リストの 3 列目や、隣接行列の 1 以外の値は重みとして読み込み、辺の上に表示します。",
+          ],
+        },
+        {
+          id: "article-troubleshooting",
+          title: "うまく読めないとき",
+          paragraphs: [
+            "読み込めない、または図がおかしいときは、次の点を確かめてください。",
           ],
           points: [
-            "頂点 2 には辺が 3 本、頂点 1 には 1 本だけつながっています。",
-            "頂点をドラッグして動かしても、どの頂点同士がつながっているかは変わりません。",
-          ],
-        },
-        {
-          id: "article-import-check",
-          title: "反映する前にプレビューを見る",
-          paragraphs: [
-            "Graph Editor の読み込み画面では、反映する前に形式・頂点数・辺数がプレビューに出ます。この入力なら「頂点数・辺数つき辺リスト」、4 頂点、4 辺と出ていれば正しく読めています。",
-            "番号が 0 始まりか 1 始まりか、有向か無向かもここで合わせておきます。入力を書き換えて試すときは、先頭行の辺数も実際の行数に合わせて直してください。",
+            "入力全体ではなく、グラフの部分だけを貼り付けます。先頭にテストケースの数がある入力や、辺のあとにクエリが続く入力は、そのままでは形式を判定できません。",
+            "先頭行に頂点数と辺数以外の値（「N M K」の K など）があると、辺の組リストとして読まれてしまいます。K を消して「N M」にしてください。",
+            "読み方が 1 つに決まらないときは「反映する形式を選択してください」と表示されます。「形式」で正しい形式を選びます。",
+            "読み込めるのは 1,000 頂点・5,000 辺までです。",
           ],
         },
       ],
-      relatedSlugs: ["adjacency-matrix", "tree-layout"],
-    },
-    {
-      slug: "adjacency-matrix",
-      category: "入力と描画",
-      title: "隣接行列を図で読み解く",
-      description:
-        "0 と 1 の表から頂点のつながりを読み、対称な行列が無向グラフになる理由を図で確かめます。",
-      introduction:
-        "グラフは辺の一覧だけでなく、表の形でも書けます。ガイドと同じ 3 頂点の隣接行列を使って、表のどこが図のどの辺に当たるかを見ていきます。",
-      sections: [
-        {
-          id: "article-rows-columns",
-          title: "行と列は頂点を表す",
-          paragraphs: [
-            "この入力は 3 行 3 列の表で、行も列も頂点 1、2、3 に対応します。1 行 2 列が 1 なら頂点 1 と 2 の間に辺があり、0 なら辺はありません。",
-            "左上から右下への対角線は、頂点とそれ自身の組です。この例では対角線がすべて 0 なので、自己ループはありません。",
-          ],
-        },
-        {
-          id: "article-symmetry",
-          title: "1 が 6 個なのに辺が 3 本の理由",
-          paragraphs: [
-            "無向グラフでは、1 行 2 列と 2 行 1 列が同じ辺を指します。この例で対角線以外にある 6 個の 1 は、対称な位置どうしで 2 個ずつ組になるので、辺は 3 本です。",
-            "その 3 本は 1–2、1–3、2–3 で、図は三角形になります。有向グラフの行列は対称とは限らず、1 行 2 列と 2 行 1 列は別々の辺として読みます。",
-          ],
-        },
-        {
-          id: "article-matrix-check",
-          title: "表と図を見比べる",
-          paragraphs: [
-            "Graph Editor で試すときは、形式に「隣接行列」を選び、設定を無向・番号 1 始まりにします。プレビューが 3 頂点・3 辺になっていれば、各行にある 2 個の 1 が、その頂点から出ている 2 本の辺に対応しています。",
-            "頂点の位置は配置方法によって変わります。三角形の向きや並び順ではなく、どの頂点同士がつながっているかを見てください。",
-          ],
-        },
-      ],
-      relatedSlugs: ["edge-list", "bipartite-graph"],
-    },
-    {
-      slug: "tree-layout",
-      category: "図の作り方",
-      title: "木を見やすく配置する",
-      description:
-        "根にする頂点を選んで、枝分かれと辺の重みが読み取りやすい木の図にします。",
-      introduction:
-        "同じ木でも、どの頂点を根にするかで見え方はかなり変わります。ガイドの重み付きの木を例に、つながりは変えずに読みやすい配置を選ぶ方法を紹介します。",
-      sections: [
-        {
-          id: "article-tree-structure",
-          title: "4 頂点の木と辺の重み",
-          paragraphs: [
-            "先頭行の「4 3」は 4 頂点・3 辺という意味で、辺は 1–2、1–3、3–4 です。すべての頂点がつながっていて閉路もないので、このグラフは木です。",
-            "各行の 3 つ目の数字 5、2、7 は辺の重みです。距離やコストを表す値で、図の中での高さや階層の深さとは関係ありません。",
-          ],
-        },
-        {
-          id: "article-tree-root",
-          title: "根を変えると枝分かれが変わる",
-          paragraphs: [
-            "頂点 1 を根にすると、その下に 2 と 3 が並び、4 は 3 の下に来ます。頂点 3 を根にすると、下に 1 と 4 が並び、2 は 1 の下に来ます。辺は同じでも、親子関係は根によって変わります。",
-            "Graph Editor では、頂点を 1 つ選んでから「配置」の「木」を押すと、その頂点が根になります。根を何度変えても、辺のつながりと重みはそのままです。",
-          ],
-        },
-        {
-          id: "article-tree-spacing",
-          title: "ラベルが重ならないように整える",
-          paragraphs: [
-            "自動で配置したあとは、頂点番号と辺の重みが重なっていないかを見ます。詰まっているところは頂点をドラッグして広げます。図を小さくして使うなら、その大きさでも文字が読めるかを確かめてください。",
-            "閉路があるグラフでは「木」の配置は使えません。選べないときは表示される理由を読み、グラフに合った別の配置を選んでください。",
-          ],
-        },
-      ],
-      relatedSlugs: ["edge-list", "tikz-export"],
+      relatedSlugs: ["tikz-export"],
     },
     {
       slug: "tikz-export",
       category: "資料づくり",
-      title: "グラフの図を TikZ で書き出す",
+      title: "グラフの図を TikZ で LaTeX 文書に入れる",
       description:
-        "図のラベルと余白を整えてから TikZ で書き出し、LaTeX のレポートや論文に入れる手順です。",
+        "Graph Editor で描いたグラフを TikZ のコードで書き出し、レポートや論文に入れる手順です。大きさの調整、日本語のラベル、よくあるエラーもまとめました。",
       introduction:
-        "Graph Editor で整えた図は、TikZ のコードとして TeX 文書にそのまま入れられます。ガイドの辺リストを例に、図の準備から文書での仕上がりの確認までを順に説明します。",
+        "Graph Editor の図は TikZ のコードとして書き出せます。画像と違って文書のフォントで組まれ、拡大しても粗くなりません。重み付きの木を例に、書き出してから文書に入れるまでを説明します。",
       sections: [
         {
-          id: "article-tikz-prepare",
-          title: "書き出す前に図を整える",
+          id: "article-tikz-export",
+          title: "TikZ で書き出す",
           paragraphs: [
-            "入力例を読み込んだら、頂点の位置、ラベル、辺の形を整えます。特定の頂点を目立たせたいときは、色だけでなくラベルや本文の説明でも区別できるようにしておくと、白黒で印刷しても伝わります。",
-            "あとで図を直せるように、Graph Editor の JSON も保存しておきます。JSON には位置や色も残るので、同じ図を開き直して手直しできます。",
+            "図を整えたら「書き出し」を開き、形式で「TikZ (TeX)」を選びます。コードをコピーするか、「.tex で保存」でファイルにします。",
+            "書き出されるのは `tikzpicture` 環境だけで、`\\documentclass` などは含みません。頂点の位置・色・ラベル、辺の曲がり方、重み、有向グラフの矢印が入り、図の幅と高さはおよそ 12 cm 以内に収まるように縮められます。",
+            "TikZ のコードは Graph Editor に読み込み直せません。あとで図を直すなら、JSON も一緒に保存しておいてください。",
           ],
         },
         {
           id: "article-tikz-document",
-          title: "コードとパッケージを文書に入れる",
+          title: "文書に入れる",
           paragraphs: [
-            "「書き出し」で形式を「TikZ (TeX)」にして、コードをコピーするか .tex ファイルを保存します。出力の先頭のコメントに必要なパッケージが書かれているので、文書のプリアンブルに追加します。",
-            "コードは図を置きたい場所に貼り付けます。日本語のラベルを使うなら、ガイドにあるとおり LuaLaTeX と luatexja でコンパイルしてください。そのほかの Unicode 文字にも、対応したエンジンとフォントが必要です。",
+            "必要なパッケージはコードの先頭のコメントに書いてあります。プリアンブルに次の 2 行を加えたうえで、コードを本文に貼り付けるか、保存した .tex ファイルを `\\input` で読み込みます。",
+          ],
+          samples: [
+            { title: "プリアンブル", code: texSamples.preamble },
+            {
+              title: "本文（graph.tex として保存した場合）",
+              note: "キャプションを付けるときは figure 環境に入れます。",
+              code: texSamples.figure("重み付きの木"),
+            },
+            {
+              title: "図だけを PDF にする",
+              note: "スライドなどほかのソフトで使うときは、standalone クラスで図だけの PDF を作れます。",
+              code: texSamples.standalone,
+            },
           ],
         },
         {
-          id: "article-tikz-check",
-          title: "本文の幅と文字の大きさを確かめる",
+          id: "article-tikz-size",
+          title: "大きさと見た目を調整する",
           paragraphs: [
-            "コンパイルしたら、図が本文の幅に収まっているか、頂点ラベルや重みが読める大きさかを見ます。図全体を縮小すると文字も一緒に小さくなるので、PDF で仕上がりを見ながら大きさを決めてください。",
-            "ラベルが重なるときは、Graph Editor に戻って頂点の間隔を広げ、もう一度書き出します。書き出し画面の詳しい操作は、ガイドの「書き出しと保存」にあります。",
+            "頂点の間隔だけを狭めたいときは、コード冒頭の `x=1cm,y=1cm` を小さくします。縮むのは座標だけなので、頂点の円や文字の大きさは変わりません。",
+            "本文の幅に合わせるなら `\\resizebox` で包みます。この方法では文字も一緒に縮むので、小さくしすぎないようにしてください。",
+            "見た目はコード冒頭の 3 つのスタイルで決まっています。`ge vertex` が頂点、`ge edge` が辺、`ge label` が重みです。たとえば `ge vertex` の `font=\\small` を `font=\\footnotesize` にすると、すべての頂点の文字が小さくなります。",
+          ],
+          samples: [
+            { title: "間隔だけを狭める", code: texSamples.spacing },
+            { title: "幅に合わせて縮める", code: texSamples.resize },
+            { title: "冒頭のスタイル", code: texSamples.styles },
+          ],
+        },
+        {
+          id: "article-tikz-japanese",
+          title: "日本語のラベルを使う",
+          paragraphs: [
+            "頂点や重みに日本語を使うときは、LuaLaTeX でコンパイルし、プリアンブルに `luatexja` を加えます。`ltjsarticle` など LuaTeX-ja 用のクラスなら、追加は要りません。",
+            "ラベルは文字としてそのまま出力され、`\\` や `$` などの記号は自動でエスケープされます。ラベルに `$x_1$` と書いても数式にはなりません。",
+          ],
+          samples: [
+            { title: "LuaLaTeX のプリアンブル", code: texSamples.japanese },
+          ],
+        },
+        {
+          id: "article-tikz-errors",
+          title: "よくあるエラー",
+          paragraphs: [
+            "コンパイルが止まったら、まずプリアンブルの 2 行がそろっているかを確かめてください。よく出るエラーと原因は次のとおりです。",
+          ],
+          points: [
+            "`Unknown arrow tip kind 'Stealth'`：`\\usetikzlibrary` に `arrows.meta` がありません。有向グラフの矢印に使います。",
+            "`I do not know the key '/tikz/rounded rectangle'`：`shapes.misc` がありません。ラベルの長い頂点に使います。",
+            "beamer で `\\usetikzlibrary` の行が `Undefined control sequence` になる：beamer は tikz を読み込まないので、`\\usepackage{tikz}` も書きます。",
+            "`Unicode character … not set up for use with LaTeX`：pdfLaTeX で日本語をコンパイルしています。LuaLaTeX と `luatexja` を使ってください。",
           ],
         },
       ],
-      relatedSlugs: ["edge-list", "tree-layout"],
-    },
-    {
-      slug: "bipartite-graph",
-      category: "グラフの基礎",
-      title: "二部グラフを具体例で理解する",
-      description:
-        "2 つのグループの間だけを辺が結ぶグラフを例に、二部グラフの条件と配置を説明します。",
-      introduction:
-        "人と担当できる仕事のように、2 種類のものの対応関係を図にしたい場面があります。A・B と 1・2・3 の例を使って、二部グラフがどういうものかを見ていきます。",
-      sections: [
-        {
-          id: "article-bipartite-groups",
-          title: "頂点を 2 つのグループに分ける",
-          paragraphs: [
-            "この図では、左に A と B、右に 1、2、3 を置いています。A は 1 と 2 に、B は 2 と 3 につながっています。辺はすべて左右をまたいでいて、同じ側の頂点同士を結ぶ辺はありません。",
-            "このように、どの辺も両端が別のグループになるよう頂点を 2 つに分けられるグラフを二部グラフと呼びます。2 つのグループの頂点数は違っていてもかまいません。",
-          ],
-        },
-        {
-          id: "article-bipartite-meaning",
-          title: "辺が表す対応を読む",
-          paragraphs: [
-            "A と B を人、1、2、3 を仕事とすると、辺は「この人はこの仕事を担当できる」という組を表します。仕事 2 は両方の人とつながっているので、どちらでも担当できます。辺はあくまで候補で、実際に誰が何を担当するかまでは決めていません。",
-            "左右に分けて並べると、こうした候補を比べやすくなります。左右がそれぞれ何を表しているかは、ラベルや説明文で書き添えてください。",
-          ],
-        },
-        {
-          id: "article-bipartite-layout",
-          title: "配置で二部グラフかどうかを確かめる",
-          paragraphs: [
-            "Graph Editor では、この入力を「辺の組リスト」として読み込み、「配置」の「二部」を選びます。頂点をあとから動かしても、2 つに分けられるという性質は変わりません。",
-            "三角形のように辺の数が奇数の閉路があると、どう分けても同じグループの中に辺が残ります。そういうグラフは二部グラフではないので、「二部」の配置は選べません。",
-          ],
-        },
-      ],
-      relatedSlugs: ["adjacency-matrix", "tree-layout"],
+      relatedSlugs: ["edge-list"],
     },
   ],
   en: [
     {
       slug: "edge-list",
       category: "Input and drawing",
-      title: "Draw a graph from an edge list",
+      title: "Paste competitive programming input to draw a graph",
       description:
-        "What the count line at the top means, and how each following line becomes an edge, using a four-vertex example.",
+        "Turn the graph input from a competitive programming problem into a diagram by pasting it. Covers the supported formats and what to do when the input isn't read correctly.",
       introduction:
-        "A list of number pairs is hard to picture as a graph. This article draws the guide's four-vertex, four-edge input and walks through which line becomes which edge.",
+        "When you want to see what a problem's sample graph looks like, paste the input into Graph Editor as it is. Edge lists, trees, parent arrays, adjacency lists, and adjacency matrices are all detected automatically, along with whether vertices are numbered from 0 or 1.",
       sections: [
         {
-          id: "article-header",
-          title: "The first line gives the counts",
+          id: "article-paste",
+          title: "From pasting to applying",
           paragraphs: [
-            "The first line, 4 4, means four vertices and four edges. The vertices are numbered 1 to 4, and each of the next four lines is one edge.",
-            "Not every edge list has this line. If the input starts with 1 2, the numbers alone don't tell you whether that is a count or the first edge, so go by the input format in the problem statement.",
+            "Open Load in the editor and paste the sample input. The format is detected automatically, and the preview on the right shows the graph with its vertex and edge counts. If it looks right, press Apply to graph.",
+            "Whether vertices start at 0 or 1 is also worked out from the numbers in the input. If a four-vertex input contains 4, it is 1-based; if it contains 0, it is 0-based. If neither appears, for example when the highest-numbered vertex is isolated, the Index setting is used.",
           ],
         },
         {
-          id: "article-connections",
-          title: "One line, one edge",
+          id: "article-formats",
+          title: "Supported formats",
           paragraphs: [
-            "1 2 is an edge between vertices 1 and 2. 2 3 and 2 4 connect vertex 2 to 3 and 4 as well, and the last line, 3 4, closes a triangle on 2, 3, and 4.",
-            "The graph is undirected, so 1 2 and 2 1 are the same edge. For a directed graph, check in the problem statement which number is the start and which is the end.",
+            "These formats can be loaded. All examples are 1-based. Multiple edges and self-loops are kept as they are in every format.",
+          ],
+          samples: [
+            {
+              title: "Edge list with counts",
+              note: "The first line is N M, followed by M edges. A third number on a line becomes the edge weight.",
+              code: formatSamples.contest,
+            },
+            {
+              title: "Edge pair list",
+              note: "An edge list without the count line. Vertices can also be names, such as A B.",
+              code: formatSamples.pairs,
+            },
+            {
+              title: "Tree edge list",
+              note: "The first line is the vertex count N, followed by N−1 edges. It can look the same as a weighted parent list, so you may need to choose the format yourself.",
+              code: formatSamples.tree,
+            },
+            {
+              title: "Parent list",
+              note: "The first line is the vertex count, and the second gives the parents of vertices 2, 3, and so on. It is loaded as a directed tree from the root to the children.",
+              code: formatSamples.parents,
+            },
+            {
+              title: "Adjacency list",
+              note: "One vertex per line, written as vertex: neighbours.",
+              code: formatSamples.adjacencyList,
+            },
+            {
+              title: "Adjacency matrix",
+              note: "N rows and N columns. Because the matrix has no vertex numbers, numbering follows the Index setting.",
+              code: formatSamples.matrix,
+            },
+          ],
+        },
+        {
+          id: "article-settings",
+          title: "Direction and weights",
+          paragraphs: [
+            "Edge lists are loaded as undirected graphs. For a directed problem, switch to Directed in Settings. Parent lists and asymmetric adjacency matrices become directed automatically.",
+            "A third number in an edge list, or a value other than 1 in an adjacency matrix, is loaded as a weight and shown on the edge.",
+          ],
+        },
+        {
+          id: "article-troubleshooting",
+          title: "When the input isn't read correctly",
+          paragraphs: [
+            "If the input can't be loaded or the graph looks wrong, check the following.",
           ],
           points: [
-            "Vertex 2 has three edges; vertex 1 has only one.",
-            "Dragging a vertex somewhere else doesn't change which vertices it is connected to.",
-          ],
-        },
-        {
-          id: "article-import-check",
-          title: "Check the preview before applying",
-          paragraphs: [
-            "When you load data in Graph Editor, the preview shows the detected format and the vertex and edge counts before anything is applied. For this input it should say edge list with counts, four vertices, and four edges.",
-            "This is also the place to set whether numbering starts at 0 or 1 and whether the graph is directed. If you edit the input, remember to update the edge count on the first line too.",
+            "Paste only the graph, not the whole input. Input that starts with a number of test cases, or has queries after the edges, can't be detected as it is.",
+            "If the first line has more than the vertex and edge counts, such as N M K, it is read as an edge pair list. Remove K so the line is just N M.",
+            "If the input can be read in more than one way, the editor asks you to choose a format. Pick the right one under Format.",
+            "Up to 1,000 vertices and 5,000 edges can be loaded.",
           ],
         },
       ],
-      relatedSlugs: ["adjacency-matrix", "tree-layout"],
-    },
-    {
-      slug: "adjacency-matrix",
-      category: "Input and drawing",
-      title: "Read an adjacency matrix as a graph",
-      description:
-        "Read connections from a table of 0s and 1s, and see why a symmetric matrix describes an undirected graph.",
-      introduction:
-        "A graph can be written as a table instead of a list of edges. Using the guide's three-vertex matrix, this article shows which cell of the table becomes which edge.",
-      sections: [
-        {
-          id: "article-rows-columns",
-          title: "Rows and columns are vertices",
-          paragraphs: [
-            "The input is a 3 × 3 table, and both the rows and the columns stand for vertices 1, 2, and 3. A 1 in row 1, column 2 means there is an edge between vertices 1 and 2; a 0 means there isn't.",
-            "The diagonal from top left to bottom right pairs each vertex with itself. It is all 0s here, so there are no self-loops.",
-          ],
-        },
-        {
-          id: "article-symmetry",
-          title: "Six 1s, but only three edges",
-          paragraphs: [
-            "In an undirected graph, row 1, column 2 and row 2, column 1 describe the same edge. The six 1s off the diagonal pair up across it, so there are three edges.",
-            "Those edges are 1–2, 1–3, and 2–3, which makes a triangle. A directed graph's matrix doesn't have to be symmetric, and the two cells are read as separate edges.",
-          ],
-        },
-        {
-          id: "article-matrix-check",
-          title: "Compare the table and the diagram",
-          paragraphs: [
-            "To try it in Graph Editor, choose adjacency matrix as the format, and set the graph to Undirected with numbering starting at 1. The preview should show three vertices and three edges, and the two 1s in each row match the two edges at that vertex.",
-            "Where the vertices end up depends on the layout. Look at which pairs are connected, not at which way the triangle points.",
-          ],
-        },
-      ],
-      relatedSlugs: ["edge-list", "bipartite-graph"],
-    },
-    {
-      slug: "tree-layout",
-      category: "Making diagrams",
-      title: "Arrange a tree for a readable diagram",
-      description:
-        "Pick a root and lay out a tree so its branches and edge weights are easy to read.",
-      introduction:
-        "The same tree can look quite different depending on which vertex is the root. Using the guide's weighted tree, this article shows how to pick a readable layout without changing any connections.",
-      sections: [
-        {
-          id: "article-tree-structure",
-          title: "A four-vertex tree with weights",
-          paragraphs: [
-            "The first line, 4 3, means four vertices and three edges, and the edges are 1–2, 1–3, and 3–4. Everything is connected and there are no cycles, so the graph is a tree.",
-            "The third number on each line, 5, 2, and 7, is the edge weight. It stands for something like a distance or a cost, and has nothing to do with how high or deep a vertex sits in the drawing.",
-          ],
-        },
-        {
-          id: "article-tree-root",
-          title: "A different root, different branches",
-          paragraphs: [
-            "With vertex 1 as the root, 2 and 3 hang below it and 4 hangs below 3. With vertex 3 as the root, 1 and 4 hang below it and 2 hangs below 1. The edges are the same; only the parent-child relationships change.",
-            "In Graph Editor, select a vertex and then choose Tree under Layout to make it the root. You can switch roots as often as you like; the edges and weights stay the same.",
-          ],
-        },
-        {
-          id: "article-tree-spacing",
-          title: "Keep labels from overlapping",
-          paragraphs: [
-            "After the automatic layout, look for vertex labels and weights that overlap and drag vertices apart where it's crowded. If the diagram will be shown small, make sure the text is still readable at that size.",
-            "Tree layout isn't available for a graph with cycles. If it's disabled, the editor shows why; pick a layout that suits the graph instead.",
-          ],
-        },
-      ],
-      relatedSlugs: ["edge-list", "tikz-export"],
+      relatedSlugs: ["tikz-export"],
     },
     {
       slug: "tikz-export",
       category: "Reports and documents",
-      title: "Export a graph diagram as TikZ",
+      title: "Put a graph diagram in a LaTeX document with TikZ",
       description:
-        "Tidy up labels and spacing, export to TikZ, and put the diagram in a LaTeX report or paper.",
+        "Export a graph from Graph Editor as TikZ code and include it in a report or paper, with notes on sizing, Japanese labels, and common errors.",
       introduction:
-        "A diagram you arrange in Graph Editor can go straight into a TeX document as TikZ code. Using the guide's edge list, this article goes from preparing the diagram to checking it in the compiled document.",
+        "Graph Editor can export a diagram as TikZ code. Unlike an image, it is typeset in your document's font and stays sharp at any size. Using a weighted tree as the example, this article goes from exporting to placing the diagram in a document.",
       sections: [
         {
-          id: "article-tikz-prepare",
-          title: "Tidy the diagram before exporting",
+          id: "article-tikz-export",
+          title: "Export as TikZ",
           paragraphs: [
-            "Load the example and adjust vertex positions, labels, and edge shapes. If you want a vertex to stand out, mark it with a label or mention it in the text as well as giving it a colour, so it still works in black and white.",
-            "Save a Graph Editor JSON file too. It keeps positions and colours, so you can reopen the same diagram later and make changes.",
+            "When the diagram is ready, open Export and choose TikZ (TeX) as the format. Copy the code, or use Save as .tex to get a file.",
+            "Only the `tikzpicture` environment is exported, without `\\documentclass` or other setup. It includes vertex positions, colours, and labels, edge curves, weights, and arrows for directed graphs, and the drawing is scaled to fit within roughly 12 cm.",
+            "TikZ code can't be loaded back into Graph Editor. If you might change the diagram later, save a JSON file as well.",
           ],
         },
         {
           id: "article-tikz-document",
-          title: "Add the code and packages to your document",
+          title: "Add it to your document",
           paragraphs: [
-            "In Export, choose TikZ (TeX), then copy the code or save a .tex file. The comments at the top of the output list the packages it needs; add them to your preamble.",
-            "Paste the code where you want the diagram. Japanese labels need LuaLaTeX and luatexja, as the guide explains, and other Unicode text needs an engine and fonts that support it.",
+            "The packages the code needs are listed in its opening comments. Add these two lines to your preamble, then paste the code into the document or load the saved .tex file with `\\input`.",
+          ],
+          samples: [
+            { title: "Preamble", code: texSamples.preamble },
+            {
+              title: "Document body (saved as graph.tex)",
+              note: "Put it in a figure environment if you want a caption.",
+              code: texSamples.figure("A weighted tree"),
+            },
+            {
+              title: "Make a PDF of just the diagram",
+              note: "To use the diagram in slides or other software, the standalone class produces a PDF containing only the diagram.",
+              code: texSamples.standalone,
+            },
           ],
         },
         {
-          id: "article-tikz-check",
-          title: "Check the width and text size",
+          id: "article-tikz-size",
+          title: "Adjust size and style",
           paragraphs: [
-            "After compiling, check that the diagram fits within the text width and that labels and weights are large enough to read. Scaling the whole diagram scales the text with it, so settle on a size while looking at the PDF.",
-            "If labels overlap, go back to Graph Editor, spread the vertices out, and export again. The guide's Export and save section covers the export options in detail.",
+            "To bring vertices closer together, reduce `x=1cm,y=1cm` at the start of the code. Only the coordinates shrink; vertex circles and text keep their size.",
+            "To fit the text width, wrap the diagram in `\\resizebox`. This scales the text too, so don't shrink it too far.",
+            "The look comes from three styles at the start of the code: `ge vertex` for vertices, `ge edge` for edges, and `ge label` for weights. For example, changing `font=\\small` to `font=\\footnotesize` in `ge vertex` makes every vertex label smaller.",
+          ],
+          samples: [
+            { title: "Reduce spacing only", code: texSamples.spacing },
+            { title: "Scale to a width", code: texSamples.resize },
+            { title: "Styles at the start", code: texSamples.styles },
+          ],
+        },
+        {
+          id: "article-tikz-japanese",
+          title: "Japanese labels",
+          paragraphs: [
+            "For Japanese vertex labels or weights, compile with LuaLaTeX and add `luatexja` to the preamble. LuaTeX-ja classes such as `ltjsarticle` need nothing extra.",
+            "Labels are exported as plain text, and characters such as `\\` and `$` are escaped automatically. Writing `$x_1$` in a label will not produce maths.",
+          ],
+          samples: [{ title: "LuaLaTeX preamble", code: texSamples.japanese }],
+        },
+        {
+          id: "article-tikz-errors",
+          title: "Common errors",
+          paragraphs: [
+            "If compilation stops, first check that both preamble lines are there. These are the errors you are most likely to see.",
+          ],
+          points: [
+            "`Unknown arrow tip kind 'Stealth'`: `arrows.meta` is missing from `\\usetikzlibrary`. It draws the arrows of directed graphs.",
+            "`I do not know the key '/tikz/rounded rectangle'`: `shapes.misc` is missing. It is used for vertices with long labels.",
+            "`Undefined control sequence` on the `\\usetikzlibrary` line in beamer: beamer doesn't load tikz, so add `\\usepackage{tikz}` as well.",
+            "`Unicode character … not set up for use with LaTeX`: the document has Japanese text and is compiled with pdfLaTeX. Use LuaLaTeX with `luatexja`.",
           ],
         },
       ],
-      relatedSlugs: ["edge-list", "tree-layout"],
-    },
-    {
-      slug: "bipartite-graph",
-      category: "Graph basics",
-      title: "Understand bipartite graphs through an example",
-      description:
-        "What makes a graph bipartite and how to lay one out, using a graph whose edges only run between two groups.",
-      introduction:
-        "Sometimes you want to draw how two kinds of things match up, like people and the jobs they can do. This article uses A and B on one side and 1, 2, and 3 on the other to show what a bipartite graph is.",
-      sections: [
-        {
-          id: "article-bipartite-groups",
-          title: "Divide the vertices into two groups",
-          paragraphs: [
-            "A and B are on the left, and 1, 2, and 3 are on the right. A connects to 1 and 2, and B connects to 2 and 3. Every edge crosses from one side to the other; no edge joins two vertices on the same side.",
-            "A graph is bipartite if you can split its vertices into two groups so that every edge has one end in each group. The two groups don't need to be the same size.",
-          ],
-        },
-        {
-          id: "article-bipartite-meaning",
-          title: "What the edges mean",
-          paragraphs: [
-            "If A and B are people and 1, 2, and 3 are jobs, an edge means that person can do that job. Job 2 is connected to both people, so either of them can take it. The edges only show who could do what, not who actually does it.",
-            "Putting the two groups on opposite sides makes these options easy to compare. Use labels or a caption to say what each side stands for.",
-          ],
-        },
-        {
-          id: "article-bipartite-layout",
-          title: "Use the layout to check for two groups",
-          paragraphs: [
-            "In Graph Editor, load this input as an edge pair list, then choose Bipartite under Layout. Moving vertices around afterwards doesn't change whether the graph splits into two groups.",
-            "If the graph has a cycle with an odd number of edges, such as a triangle, some edge always ends up inside one group no matter how you split it. Such a graph isn't bipartite, so the Bipartite layout can't be chosen.",
-          ],
-        },
-      ],
-      relatedSlugs: ["adjacency-matrix", "tree-layout"],
+      relatedSlugs: ["edge-list"],
     },
   ],
   "zh-Hans": [
     {
       slug: "edge-list",
       category: "输入与绘图",
-      title: "用边列表绘制图形",
+      title: "粘贴竞赛题的输入，直接画出图",
       description:
-        "用 4 个顶点的例子，看懂首行的顶点数、边数，以及后面每一行对应的边。",
+        "把竞赛编程题目中的图输入粘贴进来就能画成图。本文还整理了支持的格式，以及读取不正确时的处理方法。",
       introduction:
-        "题目里给出的一串数字，单看很难想象出图的样子。本文把指南中 4 个顶点、4 条边的输入画出来，逐行说明每一行对应哪条边。",
+        "想看看题目样例中的图长什么样时，把输入原样粘贴到 Graph Editor 即可。边列表、树、父节点列表、邻接表和邻接矩阵都能自动识别，编号从 0 还是从 1 开始也会自动判断。",
       sections: [
         {
-          id: "article-header",
-          title: "首行是顶点数和边数",
+          id: "article-paste",
+          title: "从粘贴到应用",
           paragraphs: [
-            "首行的 4 4 表示有 4 个顶点、4 条边。顶点编号为 1 到 4，后面的 4 行各表示一条边。",
-            "不过，也有边列表没有这一行。如果输入以 1 2 开头，光看数字无法判断它是顶点数和边数还是第一条边，需要以题目给出的输入格式为准。",
+            "在编辑器中打开“加载”，粘贴题目的样例输入。格式会自动识别，右侧预览会显示图以及顶点数和边数。确认无误后点击“应用到图”。",
+            "编号从 0 还是从 1 开始，也会根据输入中出现的编号来判断。4 个顶点的输入中出现 4 就是从 1 开始，出现 0 就是从 0 开始。两者都没有出现时（例如编号最大的顶点是孤立点），按“设置”中的“编号”处理。",
           ],
         },
         {
-          id: "article-connections",
-          title: "一行就是一条边",
+          id: "article-formats",
+          title: "支持的格式",
           paragraphs: [
-            "1 2 是连接顶点 1 和 2 的边。2 3 和 2 4 让顶点 2 也连到 3 和 4，最后的 3 4 使 2、3、4 构成一个三角形。",
-            "这个例子是无向图，所以 1 2 和 2 1 是同一条边。如果是有向图，还要根据题目确认哪个是起点、哪个是终点。",
+            "可以读取以下格式，示例均从 1 开始编号。所有格式都会原样保留重边和自环。",
           ],
+          samples: [
+            {
+              title: "带顶点数和边数的边列表",
+              note: "第一行是 N M，后面 M 行是边。写第三个数时作为边权。",
+              code: formatSamples.contest,
+            },
+            {
+              title: "边对列表",
+              note: "没有顶点数那一行的边列表。顶点也可以用 A B 这样的名称。",
+              code: formatSamples.pairs,
+            },
+            {
+              title: "树边列表",
+              note: "第一行是顶点数 N，后面 N−1 行是边。它和带权父节点列表看起来可能一样，有时需要在“格式”中手动选择。",
+              code: formatSamples.tree,
+            },
+            {
+              title: "父节点列表",
+              note: "第一行是顶点数，第二行依次是顶点 2、3……的父节点。会读取为从根指向子节点的有向树。",
+              code: formatSamples.parents,
+            },
+            {
+              title: "邻接表",
+              note: "每行一个顶点，写成“顶点: 相邻顶点……”。",
+              code: formatSamples.adjacencyList,
+            },
+            {
+              title: "邻接矩阵",
+              note: "N 行 N 列。矩阵里没有顶点编号，因此编号按“设置”中的“编号”处理。",
+              code: formatSamples.matrix,
+            },
+          ],
+        },
+        {
+          id: "article-settings",
+          title: "方向和边权",
+          paragraphs: [
+            "边列表按无向图读取。如果题目是有向图，请在“设置”中切换为“有向”。父节点列表和不对称的邻接矩阵会自动成为有向图。",
+            "边列表的第三列，以及邻接矩阵中不为 1 的值，会作为边权读取并显示在边上。",
+          ],
+        },
+        {
+          id: "article-troubleshooting",
+          title: "读取不正确时",
+          paragraphs: ["无法加载或图看起来不对时，请检查以下几点。"],
           points: [
-            "顶点 2 连着 3 条边，顶点 1 只连着 1 条。",
-            "把顶点拖到别处，它和哪些顶点相连并不会改变。",
-          ],
-        },
-        {
-          id: "article-import-check",
-          title: "应用前先看预览",
-          paragraphs: [
-            "在 Graph Editor 中加载数据时，应用之前会在预览里显示识别出的格式、顶点数和边数。这个输入应显示为“带顶点数和边数的边列表”、4 个顶点、4 条边。",
-            "编号从 0 还是从 1 开始、图是否有向，也在这里设置好。修改输入试验时，记得把首行的边数改成实际的行数。",
+            "只粘贴图的部分，而不是整个输入。开头带测试用例数的输入，或边后面还有查询的输入，原样粘贴无法识别格式。",
+            "如果第一行除了顶点数和边数还有别的值（例如 N M K 中的 K），会被当作边对列表读取。请删掉 K，只保留 N M。",
+            "输入有多种读法时，编辑器会提示选择格式。请在“格式”中选择正确的一项。",
+            "最多可以读取 1,000 个顶点和 5,000 条边。",
           ],
         },
       ],
-      relatedSlugs: ["adjacency-matrix", "tree-layout"],
-    },
-    {
-      slug: "adjacency-matrix",
-      category: "输入与绘图",
-      title: "用图形理解邻接矩阵",
-      description:
-        "从 0 和 1 组成的表格中读出连接关系，并看看为什么对称矩阵对应无向图。",
-      introduction:
-        "图除了写成边的列表，也可以写成表格。本文用指南中 3 个顶点的邻接矩阵，说明表格中的哪一格对应图中的哪条边。",
-      sections: [
-        {
-          id: "article-rows-columns",
-          title: "行和列都代表顶点",
-          paragraphs: [
-            "这个输入是 3 行 3 列的表格，行和列都对应顶点 1、2、3。第 1 行第 2 列是 1，表示顶点 1 和 2 之间有边；是 0 则表示没有边。",
-            "从左上到右下的对角线是顶点与自身的组合。本例对角线全是 0，所以没有自环。",
-          ],
-        },
-        {
-          id: "article-symmetry",
-          title: "6 个 1，为什么只有 3 条边",
-          paragraphs: [
-            "在无向图中，第 1 行第 2 列和第 2 行第 1 列表示同一条边。本例对角线以外的 6 个 1 关于对角线两两对称，所以一共是 3 条边。",
-            "这 3 条边是 1–2、1–3、2–3，画出来是一个三角形。有向图的矩阵不一定对称，第 1 行第 2 列和第 2 行第 1 列要当作两条不同的边来读。",
-          ],
-        },
-        {
-          id: "article-matrix-check",
-          title: "对照表格和图",
-          paragraphs: [
-            "在 Graph Editor 中试用时，格式选“邻接矩阵”，并设为无向、编号从 1 开始。预览应显示 3 个顶点、3 条边，每行的两个 1 正好对应该顶点的两条边。",
-            "顶点的位置取决于布局方式。要看的是哪些顶点相连，而不是三角形朝哪个方向。",
-          ],
-        },
-      ],
-      relatedSlugs: ["edge-list", "bipartite-graph"],
-    },
-    {
-      slug: "tree-layout",
-      category: "图形制作",
-      title: "让树的布局更清晰",
-      description: "选一个顶点作为根，把树排成分支和边权都容易看清的样子。",
-      introduction:
-        "同一棵树，选不同的顶点作根，看起来会很不一样。本文以指南中的带权树为例，介绍如何在不改变连接的前提下选出更易读的布局。",
-      sections: [
-        {
-          id: "article-tree-structure",
-          title: "4 个顶点的带权树",
-          paragraphs: [
-            "首行的 4 3 表示 4 个顶点、3 条边，边是 1–2、1–3、3–4。所有顶点连通且没有环，所以这个图是一棵树。",
-            "每行的第三个数 5、2、7 是边权，表示距离或成本之类的值，与顶点在图中的高低或层次深度无关。",
-          ],
-        },
-        {
-          id: "article-tree-root",
-          title: "换一个根，分支就不同",
-          paragraphs: [
-            "以顶点 1 为根时，2 和 3 在它下面，4 在 3 下面。以顶点 3 为根时，1 和 4 在它下面，2 在 1 下面。边没有变，变的只是父子关系。",
-            "在 Graph Editor 中先选中一个顶点，再点“布局”里的“树”，这个顶点就会成为根。根可以随意更换，边和边权都保持不变。",
-          ],
-        },
-        {
-          id: "article-tree-spacing",
-          title: "别让标签重叠",
-          paragraphs: [
-            "自动布局之后，看看顶点编号和边权有没有重叠，拥挤的地方可以拖动顶点拉开。如果图要缩小使用，也要确认在那个尺寸下文字仍然看得清。",
-            "有环的图不能使用“树”布局。无法选择时，编辑器会显示原因，请改用适合这个图的其他布局。",
-          ],
-        },
-      ],
-      relatedSlugs: ["edge-list", "tikz-export"],
+      relatedSlugs: ["tikz-export"],
     },
     {
       slug: "tikz-export",
       category: "报告与文档",
-      title: "将图形导出为 TikZ",
-      description: "整理好标签和间距后导出为 TikZ，放进 LaTeX 报告或论文。",
+      title: "用 TikZ 把图放进 LaTeX 文档",
+      description:
+        "把 Graph Editor 中画好的图导出为 TikZ 代码，放进报告或论文。也介绍了尺寸调整、日文标签和常见错误。",
       introduction:
-        "在 Graph Editor 中排好的图，可以作为 TikZ 代码直接放进 TeX 文档。本文以指南中的边列表为例，从整理图形一直讲到在编译后的文档里检查效果。",
+        "Graph Editor 可以把图导出为 TikZ 代码。和图片不同，它会使用文档的字体排版，放大也不会模糊。本文以带权树为例，从导出一直讲到放进文档。",
       sections: [
         {
-          id: "article-tikz-prepare",
-          title: "导出前先整理图形",
+          id: "article-tikz-export",
+          title: "导出为 TikZ",
           paragraphs: [
-            "加载示例后，调整顶点位置、标签和边的形状。想突出某个顶点时，除了颜色，也用标签或正文说明加以区分，这样黑白打印时也能看明白。",
-            "顺便保存一份 Graph Editor JSON。它会保留位置和颜色，以后可以重新打开同一张图继续修改。",
+            "图整理好后，打开“导出”，格式选择“TikZ (TeX)”。可以复制代码，也可以用“保存为 .tex”保存成文件。",
+            "导出的只有 `tikzpicture` 环境，不包含 `\\documentclass` 等内容。顶点的位置、颜色和标签，边的弯曲、边权以及有向图的箭头都会保留，整张图会缩放到大约 12 cm 以内。",
+            "TikZ 代码无法重新加载到 Graph Editor。如果以后还要修改，请同时保存一份 JSON。",
           ],
         },
         {
           id: "article-tikz-document",
-          title: "把代码和宏包加入文档",
+          title: "放进文档",
           paragraphs: [
-            "在“导出”中选择“TikZ (TeX)”，复制代码或保存 .tex 文件。输出开头的注释列出了需要的宏包，把它们加到导言区。",
-            "把代码粘贴到要放图的位置。日文标签需要按指南使用 LuaLaTeX 和 luatexja；中文等其他 Unicode 字符也需要支持它们的引擎和字体。",
+            "代码开头的注释列出了需要的宏包。在导言区加上下面两行，然后把代码粘贴到正文，或用 `\\input` 读取保存的 .tex 文件。",
+          ],
+          samples: [
+            { title: "导言区", code: texSamples.preamble },
+            {
+              title: "正文（保存为 graph.tex 时）",
+              note: "需要标题时，放进 figure 环境。",
+              code: texSamples.figure("带权树"),
+            },
+            {
+              title: "只把图做成 PDF",
+              note: "要在幻灯片等其他软件中使用时，可以用 standalone 文档类生成只包含图的 PDF。",
+              code: texSamples.standalone,
+            },
           ],
         },
         {
-          id: "article-tikz-check",
-          title: "检查宽度和文字大小",
+          id: "article-tikz-size",
+          title: "调整尺寸和样式",
           paragraphs: [
-            "编译后，看看图是否在正文宽度以内，顶点标签和边权是否足够大。整体缩放时文字也会一起变小，所以请对照 PDF 的效果决定尺寸。",
-            "如果标签重叠，回到 Graph Editor 把顶点拉开，再导出一次。导出界面的详细操作见指南的“导出与保存”。",
+            "只想缩小顶点间距时，把代码开头的 `x=1cm,y=1cm` 改小。缩小的只是坐标，顶点的圆和文字大小不变。",
+            "要适应正文宽度，可以用 `\\resizebox` 包起来。这种方法会连文字一起缩小，请不要缩得太小。",
+            "外观由代码开头的三个样式决定：`ge vertex` 是顶点，`ge edge` 是边，`ge label` 是边权。例如把 `ge vertex` 中的 `font=\\small` 改为 `font=\\footnotesize`，所有顶点的文字都会变小。",
+          ],
+          samples: [
+            { title: "只缩小间距", code: texSamples.spacing },
+            { title: "按宽度缩放", code: texSamples.resize },
+            { title: "开头的样式", code: texSamples.styles },
+          ],
+        },
+        {
+          id: "article-tikz-japanese",
+          title: "使用中日文标签",
+          paragraphs: [
+            "顶点或边权中有日文时，用 LuaLaTeX 编译，并在导言区加上 `luatexja`。使用 `ltjsarticle` 等 LuaTeX-ja 文档类时不需要另外添加。中文等其他字符同样需要支持它们的引擎和字体。",
+            "标签按普通文字原样导出，`\\`、`$` 等符号会自动转义。在标签里写 `$x_1$` 不会变成公式。",
+          ],
+          samples: [{ title: "LuaLaTeX 导言区", code: texSamples.japanese }],
+        },
+        {
+          id: "article-tikz-errors",
+          title: "常见错误",
+          paragraphs: [
+            "编译中断时，先确认导言区的两行是否都在。常见的错误和原因如下。",
+          ],
+          points: [
+            "`Unknown arrow tip kind 'Stealth'`：`\\usetikzlibrary` 中缺少 `arrows.meta`。它用于有向图的箭头。",
+            "`I do not know the key '/tikz/rounded rectangle'`：缺少 `shapes.misc`。它用于标签较长的顶点。",
+            "在 beamer 中 `\\usetikzlibrary` 那一行报 `Undefined control sequence`：beamer 不会加载 tikz，需要再写上 `\\usepackage{tikz}`。",
+            "`Unicode character … not set up for use with LaTeX`：正在用 pdfLaTeX 编译含有中日文的文档。请改用 LuaLaTeX 等支持这些字符的引擎。",
           ],
         },
       ],
-      relatedSlugs: ["edge-list", "tree-layout"],
-    },
-    {
-      slug: "bipartite-graph",
-      category: "图论基础",
-      title: "通过具体示例理解二分图",
-      description: "以边只连接两组之间的图为例，说明什么是二分图以及如何布局。",
-      introduction:
-        "有时需要把两类事物之间的对应关系画成图，比如人和他们能做的工作。本文用一侧的 A、B 和另一侧的 1、2、3，说明二分图是什么。",
-      sections: [
-        {
-          id: "article-bipartite-groups",
-          title: "将顶点分成两组",
-          paragraphs: [
-            "左边是 A 和 B，右边是 1、2、3。A 连到 1 和 2，B 连到 2 和 3。每条边都跨越左右两侧，同一侧的顶点之间没有边。",
-            "如果能把顶点分成两组，使每条边的两端分别在不同的组，这个图就叫二分图。两组的顶点数不必相同。",
-          ],
-        },
-        {
-          id: "article-bipartite-meaning",
-          title: "边表示什么",
-          paragraphs: [
-            "把 A、B 看作人，1、2、3 看作工作，边就表示“这个人能做这项工作”。工作 2 和两个人都相连，所以谁都可以做。边只表示可能的人选，并没有决定实际由谁来做。",
-            "把两组分在左右两侧，这些可能性就很容易比较。两侧分别代表什么，请用标签或说明文字写清楚。",
-          ],
-        },
-        {
-          id: "article-bipartite-layout",
-          title: "用布局确认能否分成两组",
-          paragraphs: [
-            "在 Graph Editor 中把这个输入按“边对列表”加载，再选择“布局”里的“二分图”。之后再移动顶点，也不会改变它能否分成两组。",
-            "如果图中有三角形这样边数为奇数的环，无论怎么分，总会有一条边落在同一组内。这样的图不是二分图，因此不能选择“二分图”布局。",
-          ],
-        },
-      ],
-      relatedSlugs: ["adjacency-matrix", "tree-layout"],
+      relatedSlugs: ["edge-list"],
     },
   ],
 };
 
 const articleGuideAnchors: Record<ArticleSlug, ArticleGuideAnchor> = {
   "edge-list": "guide-import",
-  "adjacency-matrix": "guide-import",
-  "tree-layout": "guide-layouts",
   "tikz-export": "guide-export",
-  "bipartite-graph": "guide-layouts",
+};
+
+/** Which article each guide example points readers to. */
+const guideExampleArticles: Record<GuideExampleId, ArticleSlug> = {
+  "edge-list": "edge-list",
+  "adjacency-matrix": "edge-list",
+  "weighted-tree": "tikz-export",
 };
 
 function articlesForLocale(locale: AppLocale): readonly ArticleContent[] {
@@ -771,7 +730,5 @@ export function getArticleForGuideExample(
   locale: AppLocale,
   exampleId: GuideExampleId,
 ): ArticleContent | undefined {
-  return getArticles(locale).find(
-    (article) => article.example.guideExampleId === exampleId,
-  );
+  return getArticle(locale, guideExampleArticles[exampleId]);
 }
