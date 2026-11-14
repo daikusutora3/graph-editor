@@ -39,29 +39,33 @@ const treeEdges = [
   [2, 4],
 ] as const;
 
+/**
+ * Small illustrations of an operation. A section shows only the panels that
+ * help (`steps`), each with a plain caption, so the text stays the main content.
+ */
 export function GuideOperationVisual({
   id,
   locale,
+  steps,
 }: {
   id: string;
   locale: AppLocale;
+  steps: readonly number[];
 }) {
   const captions = guideVisualCopy[locale].captions[id];
   if (!captions) return null;
+  const shown = steps.filter((index) => captions[index] !== undefined);
   return (
     <div
       className={cn(
-        "mt-5 grid gap-4 sm:gap-5",
-        captions.length === 4
-          ? "@min-[40rem]/reading:grid-cols-2"
-          : "@min-[40rem]/reading:grid-cols-3",
+        "grid gap-4",
+        shown.length > 1
+          ? "grid-cols-1 @min-[32rem]/reading:grid-cols-2"
+          : "max-w-[22rem]",
       )}
     >
-      {captions.map((caption, index) => (
-        <figure
-          key={caption}
-          className="grid min-w-0 grid-cols-[min(12rem,40%)_minmax(0,1fr)] items-center gap-3 @min-[40rem]/reading:block"
-        >
+      {shown.map((index) => (
+        <figure key={captions[index]} className="min-w-0">
           <svg
             viewBox="0 0 240 156"
             aria-hidden="true"
@@ -84,16 +88,8 @@ export function GuideOperationVisual({
             />
             <Operation id={id} step={index} />
           </svg>
-          <figcaption className="flex min-h-11 items-start gap-2 text-sm leading-6 font-medium @min-[40rem]/reading:items-center @min-[40rem]/reading:px-1 @min-[40rem]/reading:pt-2">
-            {id === "export" || id === "appearance" ? null : (
-              <span
-                className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--fill)] text-meta text-[var(--muted)]"
-                aria-hidden="true"
-              >
-                {index + 1}
-              </span>
-            )}
-            {caption}
+          <figcaption className="pt-2 text-sm leading-6 text-[var(--muted)]">
+            {captions[index]}
           </figcaption>
         </figure>
       ))}

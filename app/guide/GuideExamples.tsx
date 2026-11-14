@@ -1,4 +1,3 @@
-import { Disclosure } from "@/components/ui/Disclosure";
 import { guideVisualCopy } from "@/lib/guide-visual-content";
 import Image from "next/image";
 import { RelatedLinks } from "@/components/content/RelatedLinks";
@@ -33,6 +32,9 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
             title={text.title}
             className="mt-6 scroll-mt-36 sm:mt-8 sm:scroll-mt-28"
           >
+            <p className="mt-2 text-sm leading-7 text-[var(--text-2)]">
+              {text.description}
+            </p>
             <ContentExample
               input={example.input}
               title={text.title}
@@ -50,20 +52,11 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
                 />
               </div>
             </ContentExample>
-            <Disclosure
-              title={guideVisualCopy[locale].details}
-              variant="compact"
-              className="mt-2"
-            >
-              <p>{copy.instruction}</p>
-              <p className="mt-2">{text.description}</p>
-              <p className="mt-2">{text.result}</p>
-            </Disclosure>
             {article ? (
               <RelatedLinks
                 title={articleCopy[locale].relatedTitle}
                 label={`${text.title}: ${articleCopy[locale].relatedTitle}`}
-                className="mt-5"
+                className="mt-3"
                 links={[
                   {
                     href: articlePath(locale, article.slug),

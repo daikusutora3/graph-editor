@@ -13,16 +13,9 @@ const CYCLE_POINTS = [
   [25, 24],
 ] as const;
 
-export function EmptyStateIllustration({
-  method,
-  tone = "accent",
-}: {
-  method: StartMethod;
-  tone?: "accent" | "neutral";
-}) {
-  const activeStroke = tone === "neutral" ? "currentColor" : "var(--accent)";
-  const activeFill =
-    tone === "neutral" ? "var(--fill-2)" : "var(--accent-fill)";
+export function EmptyStateIllustration({ method }: { method: StartMethod }) {
+  const activeStroke = "var(--accent)";
+  const activeFill = "var(--accent-fill)";
   if (method === "paste") {
     return (
       <span

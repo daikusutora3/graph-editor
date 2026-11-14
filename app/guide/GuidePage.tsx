@@ -127,14 +127,14 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
               >
                 <GuideSectionContent section={section} locale={locale} />
                 {section.id === "shortcuts" ? (
-                  <p className="mt-4 text-xs leading-6 text-[var(--muted)]">
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
                     {copy.shortcutsNote}
                   </p>
                 ) : null}
                 <RelatedLinks
                   title={articleCopy[locale].relatedTitle}
                   label={`${section.navTitle}: ${articleCopy[locale].relatedTitle}`}
-                  className="mt-5"
+                  className="mt-4"
                   links={getArticlesForGuideSection(locale, section.id).map(
                     (article) => ({
                       href: articlePath(locale, article.slug),

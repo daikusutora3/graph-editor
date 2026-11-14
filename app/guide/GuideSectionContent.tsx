@@ -1,12 +1,27 @@
-import { GuideOperationVisual } from "./GuideOperationVisual";
-import { guideVisualCopy } from "@/lib/guide-visual-content";
-import type { AppLocale } from "@/lib/site-metadata";
-import { Callout } from "@/components/ui/Callout";
-import { Disclosure } from "@/components/ui/Disclosure";
 import type { GuideSection } from "@/lib/guide-content";
+import type { AppLocale } from "@/lib/site-metadata";
+import { GuideOperationVisual } from "./GuideOperationVisual";
 import { bodyText, readingMeasure } from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
 
+/**
+ * Which illustration panels a topic shows. Only panels that clarify the text
+ * are used; topics that read fine as text (keyboard shortcuts) have none.
+ */
+const sectionFigures: Readonly<Record<string, readonly number[]>> = {
+  import: [1],
+  draw: [1],
+  appearance: [0],
+  layouts: [2],
+  export: [0, 1, 2, 3],
+  touch: [1],
+};
+
+/**
+ * One guide topic as plain reference content: a one-line summary, an
+ * illustration where it helps, then the steps and notes in full. Nothing is
+ * collapsed, so readers can scan the page and find an operation quickly.
+ */
 export function GuideSectionContent({
   section,
   locale,
@@ -14,28 +29,56 @@ export function GuideSectionContent({
   section: GuideSection;
   locale: AppLocale;
 }) {
+  const figures = sectionFigures[section.id];
   return (
-    <>
-      {section.description ? (
-        <p className={cn("mt-3", bodyText, readingMeasure)}>
-          {section.description}
-        </p>
+    <div className={cn("mt-3 space-y-5", bodyText, readingMeasure)}>
+      {section.description ? <p>{section.description}</p> : null}
+
+      {figures ? (
+        <GuideOperationVisual id={section.id} locale={locale} steps={figures} />
       ) : null}
-      <GuideOperationVisual id={section.id} locale={locale} />
+
+      {section.steps ? (
+        <ol className="list-decimal space-y-3 pl-5 marker:font-semibold marker:text-[var(--muted)]">
+          {section.steps.map((step) => (
+            <li key={step.title} className="pl-1">
+              <span className="font-semibold text-[var(--text)]">
+                {step.title}
+              </span>
+              <span className="block">{step.description}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+
+      {section.paragraphs?.map((paragraph) => (
+        <p key={paragraph}>{paragraph}</p>
+      ))}
+
+      {section.items ? (
+        <ul className="list-disc space-y-2 pl-5 marker:text-[var(--muted)]">
+          {section.items.map((item) => (
+            <li key={item} className="pl-1">
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {section.shortcuts ? (
-        <dl className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-x-8 rounded-xl bg-[var(--panel-solid)] px-4">
+        <dl className="divide-y divide-[var(--hair)] border-y border-[var(--hair)] text-sm">
           {section.shortcuts.map((shortcut) => (
             <div
               key={shortcut.action}
-              className="grid content-start gap-2 py-3"
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-2.5"
             >
-              <dt className="text-base leading-7">{shortcut.action}</dt>
+              <dt className="min-w-0 text-[var(--text)]">{shortcut.action}</dt>
               <dd className="flex flex-wrap gap-1.5">
                 {shortcut.keys.map((key) => (
                   <kbd
                     key={key}
                     translate="no"
-                    className="rounded-md border border-[var(--line)] bg-[var(--fill)] px-2 py-1 font-mono text-xs leading-5 text-[var(--text-2)]"
+                    className="rounded-md bg-[var(--fill)] px-1.5 py-0.5 font-mono text-xs leading-5 text-[var(--text-2)]"
                   >
                     {key}
                   </kbd>
@@ -45,76 +88,41 @@ export function GuideSectionContent({
           ))}
         </dl>
       ) : null}
-      <Disclosure
-        variant="compact"
-        title={guideVisualCopy[locale].details}
-        className="mt-3"
-      >
-        {section.paragraphs?.map((paragraph) => (
-          <p key={paragraph} className="mt-4 text-[var(--text-2)]">
-            {paragraph}
-          </p>
-        ))}
-        {section.steps ? (
-          <ol className="mt-5 space-y-4">
-            {section.steps.map((step, index) => (
-              <li
-                key={step.title}
-                className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 gap-y-1"
+
+      {section.table ? (
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text)]">
+            {section.table.title}
+          </h3>
+          <dl className="mt-2 divide-y divide-[var(--hair)] border-y border-[var(--hair)]">
+            {section.table.rows.map(([name, example]) => (
+              <div
+                key={name}
+                className="grid min-w-0 gap-2 py-3 text-sm sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-6"
               >
-                <span
-                  aria-hidden="true"
-                  className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--fill)] text-xs font-semibold text-[var(--muted)]"
-                >
-                  {index + 1}
-                </span>
-                <h3 className="min-w-0 font-medium text-[var(--text)]">
-                  {step.title}
-                </h3>
-                <p className="col-span-2 text-[var(--text-2)] sm:col-span-1 sm:col-start-2">
-                  {step.description}
-                </p>
-              </li>
+                <dt className="font-medium text-[var(--text)]">{name}</dt>
+                <dd className="min-w-0">
+                  <pre
+                    className="overflow-x-auto rounded-lg bg-[var(--fill)] px-3 py-2 font-mono text-xs leading-6 text-[var(--text)]"
+                    translate="no"
+                  >
+                    <code>{example}</code>
+                  </pre>
+                </dd>
+              </div>
             ))}
-          </ol>
-        ) : null}
-        {section.items ? (
-          <ul className="mt-4 list-disc space-y-2 pl-5 text-[var(--text-2)] marker:text-[var(--muted)]">
-            {section.items.map((item) => (
-              <li key={item} className="pl-1">
-                {item}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {section.table ? (
-          <Disclosure title={section.table.title} className="mt-5">
-            <dl className="divide-y divide-[var(--hair)]">
-              {section.table.rows.map(([name, example]) => (
-                <div
-                  key={name}
-                  className="grid min-w-0 gap-2 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-6"
-                >
-                  <dt className="text-base leading-7 font-medium">{name}</dt>
-                  <dd className="min-w-0">
-                    <pre
-                      className="overflow-x-auto rounded-lg bg-[var(--fill)] p-3 font-mono text-xs leading-6"
-                      translate="no"
-                    >
-                      <code>{example}</code>
-                    </pre>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </Disclosure>
-        ) : null}
-        {section.note ? (
-          <Callout title={section.note.title} className="mt-5">
-            <p>{section.note.text}</p>
-          </Callout>
-        ) : null}
-      </Disclosure>
-    </>
+          </dl>
+        </div>
+      ) : null}
+
+      {section.note ? (
+        <div>
+          <h3 className="text-base font-semibold text-[var(--text)]">
+            {section.note.title}
+          </h3>
+          <p className="mt-1">{section.note.text}</p>
+        </div>
+      ) : null}
+    </div>
   );
 }

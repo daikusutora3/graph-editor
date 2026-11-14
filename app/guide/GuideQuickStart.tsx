@@ -1,11 +1,10 @@
-import { Disclosure } from "@/components/ui/Disclosure";
-import { guideVisualCopy } from "@/lib/guide-visual-content";
-import { ContentCard, ContentCardGrid } from "@/components/content/ContentCard";
 import { ContentSection } from "@/components/ui/ContentSection";
-import { EmptyStateIllustration } from "@/features/graph-editor/ui/chrome/EmptyStateIllustration";
+import { focusRing } from "@/components/ui/styles";
 import { guideCopy } from "@/lib/guide-content";
 import type { AppLocale } from "@/lib/site-metadata";
+import { cn } from "@/lib/utils";
 
+/** The three ways to start, each pointing to the section that explains it. */
 export function GuideQuickStart({ locale }: { locale: AppLocale }) {
   const copy = guideCopy[locale];
   return (
@@ -13,49 +12,25 @@ export function GuideQuickStart({ locale }: { locale: AppLocale }) {
       id="guide-start"
       title={copy.quickStartTitle}
       description={copy.quickStartIntro}
-      className="@container/guide-start"
     >
-      <ContentCardGrid className="mt-5">
+      <ul className="mt-4 divide-y divide-[var(--hair)] border-y border-[var(--hair)]">
         {copy.quickStartCards.map((card) => (
-          <ContentCard
-            key={card.id}
-            href={`#guide-${card.targetId}`}
-            title={card.title}
-            description={card.description}
-            actionLabel={
-              card.id === "data" ? copy.examplesLink : copy.quickStartAction
-            }
-            illustration={
-              <EmptyStateIllustration
-                method={card.id === "data" ? "paste" : card.id}
-                tone="neutral"
-              />
-            }
-          />
-        ))}
-      </ContentCardGrid>
-      <Disclosure
-        variant="compact"
-        title={guideVisualCopy[locale].details}
-        className="mt-3"
-      >
-        <div className="grid gap-6">
-          {copy.quickStartCards.map((card) => (
-            <div key={card.id} className="min-w-0">
-              <h3 className="mb-2 font-medium text-[var(--text)]">
+          <li key={card.id}>
+            <a
+              href={`#guide-${card.targetId}`}
+              className={cn(
+                focusRing,
+                "group flex min-h-12 flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3 text-sm leading-6 sm:text-base",
+              )}
+            >
+              <span className="font-semibold text-[var(--text)] group-hover:text-[var(--accent-text)]">
                 {card.title}
-              </h3>
-              <ol className="list-decimal space-y-2 pl-4">
-                {card.steps.map((step) => (
-                  <li key={step} className="pl-1">
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
-        </div>
-      </Disclosure>
+              </span>
+              <span className="text-[var(--muted)]">{card.description}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
     </ContentSection>
   );
 }

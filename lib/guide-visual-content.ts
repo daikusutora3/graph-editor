@@ -5,15 +5,13 @@ export const guideVisualCopy: Record<
   {
     intro: string;
     exampleInstruction: string;
-    details: string;
     captions: Record<string, readonly string[]>;
   }
 > = {
   ja: {
-    intro: "入力・編集・配置・保存の手順を図で確認できます。",
+    intro: "読み込み・編集・配置・書き出しの操作をまとめています。",
     exampleInstruction:
-      "「無向」と「1-indexed」を選び、入力例をコピーして「読み込み」に貼り付け、「グラフに反映」を押します。",
-    details: "操作手順と注意点",
+      "設定を「無向」「1-indexed」にしてから、入力例をコピーして「読み込み」に貼り付け、「グラフに反映」を押します。",
     captions: {
       import: ["入力を貼り付ける", "プレビューを確認", "グラフに反映"],
       draw: [
@@ -41,10 +39,9 @@ export const guideVisualCopy: Record<
     },
   },
   en: {
-    intro: "Follow the diagrams to import, edit, arrange, and save a graph.",
+    intro: "How to load, edit, arrange, and export graphs.",
     exampleInstruction:
-      "Set Undirected and 1-indexed. Copy an example, paste it into Load, then apply.",
-    details: "Detailed steps and notes",
+      "Set the graph to Undirected and 1-indexed, copy an example, paste it into Load, and apply it.",
     captions: {
       import: ["Paste the input", "Check the preview", "Apply to the graph"],
       draw: [
@@ -76,10 +73,9 @@ export const guideVisualCopy: Record<
     },
   },
   "zh-Hans": {
-    intro: "通过图示查看导入、编辑、布局和保存的操作。",
+    intro: "汇总了加载、编辑、布局和导出图的操作。",
     exampleInstruction:
-      "设为无向、1-indexed，然后复制输入例 → 导入 → 应用到图。",
-    details: "详细步骤与注意事项",
+      "把设置改为无向、1-indexed，复制示例，粘贴到“加载”后点“应用到图”。",
     captions: {
       import: ["粘贴输入", "检查预览", "应用到图"],
       draw: ["在顶点模式中放置点", "在边模式中选择两个点", "在选择模式中拖动"],

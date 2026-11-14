@@ -83,7 +83,7 @@ export function ReadingPage({
       id={topId}
       data-reading
       className={cn(
-        "min-h-dvh bg-[var(--bg)] [overflow-wrap:anywhere] text-[var(--text)]",
+        "min-h-dvh bg-[var(--panel-solid)] [overflow-wrap:anywhere] text-[var(--text)]",
         readingStyles.page,
       )}
     >

@@ -1,7 +1,7 @@
-import { ArrowRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { insetFocusRing } from "@/components/ui/styles";
+import { focusRing } from "@/components/ui/styles";
 
+/** A single quiet line of related links: "Related  Title · Title". */
 export function RelatedLinks({
   title,
   label = title,
@@ -16,27 +16,30 @@ export function RelatedLinks({
   if (links.length === 0) return null;
 
   return (
-    <nav aria-label={label} className={cn("min-w-0", className)}>
-      <p className="mb-2 text-xs font-medium text-[var(--muted)]">{title}</p>
-      <ul className={cn("grid gap-2", links.length > 1 && "sm:grid-cols-2")}>
-        {links.map((link) => (
-          <li key={link.href} className="min-w-0">
+    <nav
+      aria-label={label}
+      className={cn(
+        "flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-sm",
+        className,
+      )}
+    >
+      <span className="text-[var(--muted)]">{title}</span>
+      <ul className="contents">
+        {links.map((link, index) => (
+          <li key={link.href} className="inline-flex items-baseline gap-2">
+            {index > 0 ? (
+              <span aria-hidden="true" className="text-[var(--disabled)]">
+                ·
+              </span>
+            ) : null}
             <a
               href={link.href}
               className={cn(
-                "group/related flex h-full min-h-12 items-center gap-3 rounded-xl bg-[var(--fill)] px-4 py-3 text-sm leading-6 text-[var(--text-2)] transition-colors hover:bg-[var(--panel-solid)] hover:text-[var(--text)] motion-reduce:transition-none",
-                insetFocusRing,
+                focusRing,
+                "rounded-sm text-[var(--accent-text)] underline-offset-4 hover:underline",
               )}
             >
-              <BookOpen
-                className="size-4 shrink-0 text-[var(--muted)]"
-                aria-hidden="true"
-              />
-              <span className="min-w-0 flex-1 font-medium">{link.title}</span>
-              <ArrowRight
-                className="size-4 shrink-0 text-[var(--muted)]"
-                aria-hidden="true"
-              />
+              {link.title}
             </a>
           </li>
         ))}

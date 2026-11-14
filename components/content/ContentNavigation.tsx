@@ -41,7 +41,7 @@ export function ContentHeader({
         data-content-header
         className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--panel-solid)]"
       >
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-[var(--reading-gutter)] py-2">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-1 gap-y-1 px-[var(--reading-gutter)] py-2 min-[320px]:flex-nowrap sm:gap-x-3">
           <a
             href={appLocalePaths[locale]}
             aria-label={APP_NAME}
@@ -51,9 +51,11 @@ export function ContentHeader({
             )}
           >
             <BrandLogo size={28} />
-            <span translate="no">{APP_NAME}</span>
+            <span translate="no" className="hidden sm:inline">
+              {APP_NAME}
+            </span>
           </a>
-          <div className="order-3 flex w-full min-w-0 flex-wrap items-center justify-between gap-1 md:order-none md:w-auto md:justify-center md:gap-2">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1 md:flex-none md:justify-center md:gap-2">
             <nav
               aria-label={copy.navigation}
               className="flex shrink-0 items-center gap-1"
@@ -88,7 +90,7 @@ export function ContentHeader({
                 {copy.articles}
               </Link>
             </nav>
-            <div className="flex shrink-0 items-center">
+            <div className="ml-auto flex shrink-0 items-center md:ml-0">
               <ContentLanguageMenu
                 preserveGuideSection={section === "guide"}
                 label={copy.languages}
@@ -119,11 +121,11 @@ function ContentEditorLink({ locale }: { locale: AppLocale }) {
       aria-label={contentNavigationCopy[locale].editor}
       className={cn(
         actionStyles,
-        "shrink-0 justify-center text-sm whitespace-nowrap",
+        "min-w-11 shrink-0 justify-center text-sm whitespace-nowrap max-sm:px-2",
       )}
     >
       <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-      <span className="max-[319px]:sr-only">
+      <span className="hidden sm:inline">
         {contentNavigationCopy[locale].editor}
       </span>
     </a>
