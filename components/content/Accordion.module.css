@@ -1,20 +1,14 @@
-.disclosure[open] > .summary {
-  background: var(--fill);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.disclosure[open] > .summary > .chevron {
+.item[open] > .summary > .chevron {
   transform: rotate(180deg);
 }
 
 @supports (interpolate-size: allow-keywords) and selector(::details-content) and
   (transition-behavior: allow-discrete) {
-  .disclosure {
+  .item {
     interpolate-size: allow-keywords;
   }
 
-  .disclosure::details-content {
+  .item::details-content {
     block-size: 0;
     opacity: 0;
     overflow: clip;
@@ -24,13 +18,13 @@
       content-visibility 200ms allow-discrete;
   }
 
-  .disclosure[open]::details-content {
+  .item[open]::details-content {
     block-size: auto;
     opacity: 1;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .disclosure::details-content {
+    .item::details-content {
       transition: none;
     }
   }

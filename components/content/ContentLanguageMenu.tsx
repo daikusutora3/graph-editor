@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown, Languages } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { actionStyles } from "@/components/ui/styles";
+import { reading } from "./reading";
 import type { AppLocale } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
 import { menuStyle } from "@/components/ui/surfaces";
@@ -60,7 +60,7 @@ export function ContentLanguageMenu({
       <details ref={ref} className="group relative">
         <summary
           className={cn(
-            actionStyles,
+            reading.action,
             "min-w-11 cursor-pointer list-none justify-center gap-1.5 text-xs [&::-webkit-details-marker]:hidden",
           )}
           aria-label={`${label}: ${currentName}`}
@@ -86,7 +86,7 @@ export function ContentLanguageMenu({
               lang={option.locale}
               aria-current={option.locale === current ? "page" : undefined}
               className={cn(
-                actionStyles,
+                reading.action,
                 "w-full justify-between text-sm aria-[current=page]:bg-[var(--fill)] aria-[current=page]:font-semibold",
               )}
             >

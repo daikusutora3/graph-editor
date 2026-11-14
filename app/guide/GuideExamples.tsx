@@ -1,7 +1,9 @@
 import { guideVisualCopy } from "@/lib/guide-visual-content";
 import Image from "next/image";
 import { RelatedLinks } from "@/components/content/RelatedLinks";
-import { ContentSection } from "@/components/ui/ContentSection";
+import { ContentSection } from "@/components/content/ContentSection";
+import { reading } from "@/components/content/reading";
+import { cn } from "@/lib/utils";
 import { ContentExample } from "@/components/content/ContentExample";
 import { guideExamples } from "@/lib/guide-examples";
 import { guideExampleCopy } from "@/lib/guide-content";
@@ -30,11 +32,9 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
             headingId={example.id}
             headingLevel={3}
             title={text.title}
-            className="mt-6 scroll-mt-36 sm:mt-8 sm:scroll-mt-28"
+            className="mt-6 sm:mt-8"
           >
-            <p className="mt-2 text-sm leading-7 text-[var(--text-2)]">
-              {text.description}
-            </p>
+            <p className={cn("mt-2", reading.body)}>{text.description}</p>
             <ContentExample
               input={example.input}
               title={text.title}

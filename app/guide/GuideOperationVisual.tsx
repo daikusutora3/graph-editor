@@ -1,3 +1,4 @@
+import { reading } from "@/components/content/reading";
 import {
   Circle,
   MousePointer2,
@@ -88,7 +89,7 @@ export function GuideOperationVisual({
             />
             <Operation id={id} step={index} />
           </svg>
-          <figcaption className="pt-2 text-sm leading-6 text-[var(--muted)]">
+          <figcaption className={cn("pt-2", reading.caption)}>
             {captions[index]}
           </figcaption>
         </figure>

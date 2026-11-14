@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { figureCaption } from "@/components/ui/styles";
+import { reading } from "@/components/content/reading";
+import { cn } from "@/lib/utils";
 import {
   articleScreenshotCaptions,
   articleScreenshotInterfaceNotes,
@@ -24,14 +25,17 @@ export function ArticleScreenshot({
 }) {
   const caption = articleScreenshotCaptions[locale][slug];
   return (
-    <figure className="@container/article-shot mt-5 space-y-3">
+    <figure className="@container/article-shot mt-5 space-y-2">
       <Image
         unoptimized
         src={`/articles/screenshots/${slug}-mobile.jpg`}
         alt={caption}
         width={375}
         height={812}
-        className="mx-auto h-auto w-full max-w-[375px] rounded-xl border border-[var(--line)] @min-[40rem]/article-shot:hidden"
+        className={cn(
+          reading.picture,
+          "mx-auto h-auto w-full max-w-[375px] @min-[40rem]/article-shot:hidden",
+        )}
       />
       <Image
         unoptimized
@@ -39,9 +43,12 @@ export function ArticleScreenshot({
         alt={caption}
         width={853}
         height={954}
-        className="hidden h-auto w-full rounded-xl border border-[var(--line)] @min-[40rem]/article-shot:block"
+        className={cn(
+          reading.picture,
+          "hidden h-auto w-full @min-[40rem]/article-shot:block",
+        )}
       />
-      <figcaption className={figureCaption}>
+      <figcaption className={reading.caption}>
         {caption}
         {articleScreenshotInterfaceNotes[locale]}
       </figcaption>

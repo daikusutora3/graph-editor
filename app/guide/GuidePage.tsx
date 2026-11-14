@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import { GuideExamples } from "./GuideExamples";
 import { ContentFooter } from "@/components/content/ContentFooter";
 import {
@@ -10,9 +9,10 @@ import {
 import { GuideQuickStart } from "./GuideQuickStart";
 import { GuideSectionContent } from "./GuideSectionContent";
 import { RelatedLinks } from "@/components/content/RelatedLinks";
-import { ActionLink } from "@/components/ui/ActionLink";
-import { Accordion } from "@/components/ui/Accordion";
-import { ContentSection } from "@/components/ui/ContentSection";
+import { Accordion } from "@/components/content/Accordion";
+import { ContentSection } from "@/components/content/ContentSection";
+import { reading } from "@/components/content/reading";
+import { TextLink } from "@/components/content/TextLink";
 import {
   articleCopy,
   articlePath,
@@ -34,6 +34,7 @@ import {
   SITE_URL,
   type AppLocale,
 } from "@/lib/site-metadata";
+import { cn } from "@/lib/utils";
 
 const legacySectionIds: Readonly<Record<string, string>> = {
   import: "guide-section-0",
@@ -127,7 +128,7 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
               >
                 <GuideSectionContent section={section} locale={locale} />
                 {section.id === "shortcuts" ? (
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  <p className={cn("mt-3", reading.caption)}>
                     {copy.shortcutsNote}
                   </p>
                 ) : null}
@@ -161,16 +162,11 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                   <>
                     <p>{entry.answer}</p>
                     {index === 0 ? (
-                      <ActionLink
-                        href={articlePath(locale, "edge-list")}
-                        className="mt-3 text-sm"
-                      >
-                        {getArticle(locale, "edge-list")!.title}
-                        <ArrowRight
-                          className="size-4 shrink-0"
-                          aria-hidden="true"
-                        />
-                      </ActionLink>
+                      <p className="mt-3">
+                        <TextLink href={articlePath(locale, "edge-list")} arrow>
+                          {getArticle(locale, "edge-list")!.title}
+                        </TextLink>
+                      </p>
                     ) : null}
                   </>
                 ),

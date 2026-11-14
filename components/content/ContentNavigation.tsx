@@ -1,7 +1,7 @@
 import { ArrowLeft, BookOpen, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { BrandLogo } from "@/features/graph-editor/ui/brand/BrandLogo";
-import { actionStyles, focusRing } from "@/components/ui/styles";
+import { focusRing } from "@/components/ui/control-styles";
 import { contentNavigationCopy } from "@/lib/content-navigation";
 import {
   APP_NAME,
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { ContentLanguageMenu } from "./ContentLanguageMenu";
 import { ContentStickyHeader } from "./ContentStickyHeader";
 import { ContentThemeToggle } from "./ContentThemeToggle";
-import { ContextGuideLink } from "./ContextGuideLink";
+import { reading } from "./reading";
 
 type ReadingSection = "articles" | "guide";
 const languages = ["ja", "en", "zh-Hans"] as const;
@@ -31,7 +31,7 @@ export function ContentHeader({
 }) {
   const copy = contentNavigationCopy[locale];
   const navClass = cn(
-    actionStyles,
+    reading.action,
     "px-2 text-sm max-[319px]:gap-1 max-[319px]:px-1 max-sm:gap-1.5 max-sm:px-1.5 max-sm:text-control sm:px-3",
     "aria-[current=page]:bg-[var(--fill)] aria-[current=page]:font-semibold aria-[current=page]:text-[var(--text)]",
   );
@@ -60,26 +60,15 @@ export function ContentHeader({
               aria-label={copy.navigation}
               className="flex shrink-0 items-center gap-1"
             >
-              {section === "guide" ? (
-                <a
-                  href={`${appGuidePaths[locale]}#guide-start`}
-                  aria-current="page"
-                  className={navClass}
-                >
-                  <BookOpen className="size-4 shrink-0" aria-hidden="true" />
-                  {copy.guide}
-                </a>
-              ) : (
-                <ContextGuideLink
-                  locale={locale}
-                  target="guide-start"
-                  label={copy.guide}
-                  navigation
-                  className={navClass}
-                >
-                  <BookOpen className="size-4 shrink-0" aria-hidden="true" />
-                </ContextGuideLink>
-              )}
+              <Link
+                href={`${appGuidePaths[locale]}#guide-start`}
+                prefetch={false}
+                aria-current={section === "guide" ? "page" : undefined}
+                className={navClass}
+              >
+                <BookOpen className="size-4 shrink-0" aria-hidden="true" />
+                {copy.guide}
+              </Link>
               <Link
                 href={appArticlePaths[locale]}
                 prefetch={false}
@@ -120,7 +109,7 @@ function ContentEditorLink({ locale }: { locale: AppLocale }) {
       href={appLocalePaths[locale]}
       aria-label={contentNavigationCopy[locale].editor}
       className={cn(
-        actionStyles,
+        reading.action,
         "min-w-11 shrink-0 justify-center text-sm whitespace-nowrap max-sm:px-2",
       )}
     >

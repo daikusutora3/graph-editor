@@ -19,7 +19,7 @@ export const articleScreenshotCaptions: Record<
   },
   en: {
     "edge-list":
-      "Paste the edge list into Load. Check N=4, M=4 and the connections in the preview, then apply the graph.",
+      "Paste the edge list into Load and the graph appears on the right. Check N=4, M=4 and the connections, then apply it.",
     "adjacency-matrix":
       "Pasting this matrix produces a triangle with N=3 and M=3. Compare the preview with the entries in the matrix.",
     "tree-layout":
@@ -31,7 +31,7 @@ export const articleScreenshotCaptions: Record<
   },
   "zh-Hans": {
     "edge-list":
-      "在“导入”中粘贴边列表。确认 N=4、M=4 和预览中的连边，再应用到画布。",
+      "在“加载”中粘贴边列表，右侧会显示图。确认 N=4、M=4 和连边后再应用。",
     "adjacency-matrix":
       "粘贴此矩阵后，会得到 N=3、M=3 的三角形。可在预览中检查矩阵与边的对应关系。",
     "tree-layout":
@@ -39,7 +39,7 @@ export const articleScreenshotCaptions: Record<
     "tikz-export":
       "在“导出”中选择“TikZ (TeX)”。可以复制生成的代码，也可以保存为 .tex 文件。",
     "bipartite-graph":
-      "选择“二分”布局后的结果。A、B 与 1、2、3 分别排列在左右两侧，便于查看两组之间的连边。",
+      "选择“二分图”布局后的结果。A、B 与 1、2、3 分在左右两侧，两组之间的连边一目了然。",
   },
 };
 

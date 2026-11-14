@@ -70,10 +70,21 @@ const rules: Rule[] = [
   },
   {
     id: "raw-button",
-    // Editor UI composes the shared controls; content pages use actionStyles/cards.
+    // Editor UI composes the shared controls; reading pages use components/content.
     scope: /^features\//,
     pattern: /<(?:button|a)(?:\s|>|$)/,
     fix: "use Button, IconButton, LinkButton, ActionRow, Segment, or OptionToggle",
+  },
+  {
+    id: "reading-recipe",
+    // Guide and article pages are plain documents built from shared recipes.
+    scope: /^(?:app\/(?:guide|articles)|components\/content)\//,
+    pattern: (line) =>
+      !line.includes("reading.") &&
+      /\b(?:divide-y|list-disc|list-decimal|leading-\[|text-\[clamp|text-\[var\(--accent)/.test(
+        line,
+      ),
+    fix: "use the reading recipes (reading.body / list / steps / rows / link) from components/content/reading.ts",
   },
   {
     id: "elevation-shadow",
@@ -84,6 +95,8 @@ const rules: Rule[] = [
 
 // Exceptions must say why. Keep this list short.
 const allowed: Record<string, string[]> = {
+  // The reading recipes themselves.
+  "components/content/reading.ts": ["reading-recipe"],
   // The PNG export previews are rendered on white by design (they show the exported file).
   "app/guide/GuideExamples.tsx": ["palette-color"],
   // The start-card illustration draws a tiny "text file" as artwork, not a UI surface.

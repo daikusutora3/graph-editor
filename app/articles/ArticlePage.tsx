@@ -1,34 +1,34 @@
-import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { ContentExample } from "@/components/content/ContentExample";
+import { ContentFooter } from "@/components/content/ContentFooter";
+import { ContentSection } from "@/components/content/ContentSection";
+import { LinkList } from "@/components/content/LinkList";
 import {
   ReadingPage,
   ReadingContainer,
   ReadingIntro,
   ReadingBody,
 } from "@/components/content/ReadingLayout";
-import { ArticleCover } from "./ArticleCover";
-import { ContentCardGrid } from "@/components/content/ContentCard";
-import { ActionLink } from "@/components/ui/ActionLink";
-import { ArticleCard } from "./ArticleCard";
+import { RelatedLinks } from "@/components/content/RelatedLinks";
+import { TextLink } from "@/components/content/TextLink";
+import { reading } from "@/components/content/reading";
+import { focusRing } from "@/components/ui/control-styles";
 import { ArticleDiagram } from "./ArticleDiagram";
 import {
   ArticleScreenshot,
   articleScreenshotSections,
 } from "./ArticleScreenshot";
-import { ContentFooter } from "@/components/content/ContentFooter";
-import { ContextGuideLink } from "@/components/content/ContextGuideLink";
-import { ContentSection } from "@/components/ui/ContentSection";
-import { actionStyles, bodyText, readingMeasure } from "@/components/ui/styles";
 import {
   articleCopy,
   articleIndexPath,
+  articlePath,
   getArticle,
   type ArticleContent,
 } from "@/lib/article-content";
 import {
   APP_NAME,
   appAuthorStructuredData,
+  appGuidePaths,
   appLocaleMetadata,
   getAppArticleUrl,
   getAppLocaleUrl,
@@ -118,32 +118,41 @@ export function ArticlePage({
       structuredData={structuredData}
     >
       <ReadingContainer>
-        <ArticleCover article={article} />
-        <nav
-          aria-label={copy.articlesLink}
-          className="mb-5 flex min-w-0 flex-wrap items-center gap-x-1 text-sm text-[var(--muted)]"
+        <ReadingIntro
+          title={article.title}
+          description={article.introduction}
+          before={
+            <nav
+              aria-label={copy.articlesLink}
+              className="mb-3 flex flex-wrap items-center gap-x-2 text-sm text-[var(--muted)]"
+            >
+              <Link
+                href={articleIndexPath(locale)}
+                prefetch={false}
+                className={cn(
+                  focusRing,
+                  "inline-flex min-h-11 items-center rounded-sm hover:text-[var(--text)] sm:min-h-0",
+                )}
+              >
+                {copy.articlesLink}
+              </Link>
+              <span aria-hidden="true" className="text-[var(--disabled)]">
+                /
+              </span>
+              <span>{article.category}</span>
+            </nav>
+          }
         >
-          <Link
-            href={articleIndexPath(locale)}
-            prefetch={false}
-            className={cn(actionStyles, "-ml-3 active:bg-[var(--fill-2)]")}
-          >
-            {copy.articlesLink}
-          </Link>
-          <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-          <span className="py-2">{article.category}</span>
-        </nav>
-        <ReadingIntro title={article.title} description={article.introduction}>
-          <div className="mt-4 flex min-w-0 flex-wrap items-center gap-x-3 text-sm">
-            <span className="text-xs text-[var(--muted)]">
-              {copy.operationGuideLabel}
-            </span>
-            <ContextGuideLink
-              locale={locale}
-              target={article.guide.sectionId}
-              label={article.guide.label}
-            />
-          </div>
+          <RelatedLinks
+            title={copy.operationGuideLabel}
+            className="mt-4"
+            links={[
+              {
+                href: `${appGuidePaths[locale]}#${article.guide.sectionId}`,
+                title: article.guide.label,
+              },
+            ]}
+          />
         </ReadingIntro>
         <ReadingBody id="article-content" locale={locale} entries={entries}>
           <div className="space-y-10 sm:space-y-14">
@@ -156,12 +165,12 @@ export function ArticlePage({
                 {section.id === articleScreenshotSections[article.slug] ? (
                   <ArticleScreenshot slug={article.slug} locale={locale} />
                 ) : null}
-                <div className={cn("mt-4 space-y-5", bodyText, readingMeasure)}>
+                <div className={cn("mt-4 space-y-5", reading.body)}>
                   {section.paragraphs.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
                   {section.points?.length ? (
-                    <ul className="list-disc space-y-2 pl-5 marker:text-[var(--muted)]">
+                    <ul className={reading.list}>
                       {section.points.map((point) => (
                         <li key={point}>{point}</li>
                       ))}
@@ -180,33 +189,31 @@ export function ArticlePage({
                 <ArticleDiagram example={article.example} />
               </ContentExample>
               {article.example.guideExampleId ? (
-                <div className="mt-3">
-                  <ContextGuideLink
-                    locale={locale}
-                    target={article.example.guideExampleId}
-                    label={copy.sameExampleGuideLabel}
-                  />
-                </div>
+                <p className="mt-3 text-sm">
+                  <TextLink
+                    href={`${appGuidePaths[locale]}#${article.example.guideExampleId}`}
+                    arrow
+                  >
+                    {copy.sameExampleGuideLabel}
+                  </TextLink>
+                </p>
               ) : null}
             </ContentSection>
             <ContentSection id="article-related" title={copy.relatedTitle}>
-              <ContentCardGrid className="mt-5" columns={2}>
-                {related.map((relatedArticle) => (
-                  <ArticleCard
-                    key={relatedArticle.slug}
-                    article={relatedArticle}
-                    locale={locale}
-                    headingLevel={3}
-                  />
-                ))}
-              </ContentCardGrid>
-              <ActionLink
-                href={articleIndexPath(locale)}
-                className="mt-4 -ml-3 text-sm active:bg-[var(--fill-2)]"
-              >
-                {copy.allArticles}
-                <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
-              </ActionLink>
+              <LinkList
+                className="mt-4"
+                items={related.map((relatedArticle) => ({
+                  href: articlePath(locale, relatedArticle.slug),
+                  title: relatedArticle.title,
+                  description: relatedArticle.description,
+                  meta: relatedArticle.category,
+                }))}
+              />
+              <p className="mt-4 text-sm">
+                <TextLink href={articleIndexPath(locale)} arrow>
+                  {copy.allArticles}
+                </TextLink>
+              </p>
             </ContentSection>
           </div>
           <ContentFooter locale={locale} topId="articles-top" />

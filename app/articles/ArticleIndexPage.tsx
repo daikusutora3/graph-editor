@@ -1,5 +1,5 @@
-import { ContentCardGrid } from "@/components/content/ContentCard";
-import { ArticleCard } from "./ArticleCard";
+import { LinkList } from "@/components/content/LinkList";
+import { ArticleThumbnail } from "./ArticleThumbnail";
 import { ContentFooter } from "@/components/content/ContentFooter";
 import {
   ReadingPage,
@@ -35,11 +35,18 @@ export function ArticleIndexPage({ locale }: { locale: AppLocale }) {
     >
       <ReadingContainer>
         <ReadingIntro title={copy.heading} description={copy.indexIntro} />
-        <ContentCardGrid id="articles-content" tabIndex={-1} className="mt-8">
-          {articles.map((article) => (
-            <ArticleCard key={article.slug} article={article} locale={locale} />
-          ))}
-        </ContentCardGrid>
+        <div id="articles-content" tabIndex={-1} className="outline-none">
+          <LinkList
+            headingLevel={2}
+            items={articles.map((article) => ({
+              href: articlePath(locale, article.slug),
+              title: article.title,
+              description: article.description,
+              meta: article.category,
+              figure: <ArticleThumbnail article={article} />,
+            }))}
+          />
+        </div>
         <ContentFooter locale={locale} topId="articles-top" />
       </ReadingContainer>
     </ReadingPage>

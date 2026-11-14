@@ -4,7 +4,8 @@ import type { AppLocale } from "@/lib/site-metadata";
 import { ContentContents } from "./ContentContents";
 import { ContentHeader } from "./ContentNavigation";
 import readingStyles from "./ReadingLayout.module.css";
-import { bodyText, readingMeasure, focusRing } from "@/components/ui/styles";
+import { focusRing } from "@/components/ui/control-styles";
+import { reading } from "./reading";
 import { cn } from "@/lib/utils";
 
 export function ReadingContainer({ children }: { children: ReactNode }) {
@@ -18,18 +19,20 @@ export function ReadingContainer({ children }: { children: ReactNode }) {
 export function ReadingIntro({
   title,
   description,
+  before,
   children,
 }: {
   title: string;
   description: string;
+  /** A short line above the title (breadcrumb). */
+  before?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <header className="mb-8 sm:mb-10">
-      <h1 className="max-w-3xl text-[clamp(1.625rem,1.125rem+2.5vw,2.25rem)] leading-tight font-semibold tracking-tight text-balance">
-        {title}
-      </h1>
-      <p className={cn("mt-4", bodyText, readingMeasure)}>{description}</p>
+      {before}
+      <h1 className={reading.title}>{title}</h1>
+      <p className={cn("mt-4", reading.body)}>{description}</p>
       {children}
     </header>
   );

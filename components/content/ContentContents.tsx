@@ -1,4 +1,4 @@
-import { focusRing } from "@/components/ui/styles";
+import { focusRing } from "@/components/ui/control-styles";
 import { cn } from "@/lib/utils";
 import styles from "./ReadingLayout.module.css";
 

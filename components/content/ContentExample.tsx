@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { figureCaption } from "@/components/ui/styles";
+import { reading } from "./reading";
 import { cn } from "@/lib/utils";
 import { ContentCopyButton } from "./ContentCopyButton";
 
@@ -26,9 +26,7 @@ export function ContentExample({
     <div className="mt-4 grid min-w-0 overflow-hidden rounded-xl border border-[var(--line)] @min-[32rem]/reading:grid-cols-2">
       <div className="min-w-0 bg-[var(--fill)] px-4 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 py-2">
-          <p className="text-sm font-medium text-[var(--muted)]">
-            {labels.input}
-          </p>
+          <p className={reading.label}>{labels.input}</p>
           <ContentCopyButton text={input} title={title} labels={labels} />
         </div>
         <pre
@@ -39,12 +37,10 @@ export function ContentExample({
         </pre>
       </div>
       <figure className="min-w-0 border-t border-[var(--line)] bg-[var(--panel-solid)] p-4 @min-[32rem]/reading:border-t-0 @min-[32rem]/reading:border-l">
-        <p className="text-sm font-medium text-[var(--muted)]">
-          {labels.result}
-        </p>
+        <p className={reading.label}>{labels.result}</p>
         <div className="mt-3 flex items-center justify-center">{children}</div>
         {caption ? (
-          <figcaption className={cn("mt-3", figureCaption)}>
+          <figcaption className={cn("mt-3", reading.caption)}>
             {caption}
           </figcaption>
         ) : null}

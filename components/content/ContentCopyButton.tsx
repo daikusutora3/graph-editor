@@ -2,7 +2,7 @@
 
 import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { actionStyles } from "@/components/ui/styles";
+import { reading } from "./reading";
 import { cn } from "@/lib/utils";
 
 export function ContentCopyButton({
@@ -60,10 +60,7 @@ export function ContentCopyButton({
         disabled={status === "busy"}
         aria-busy={status === "busy"}
         aria-label={`${buttonLabel}: ${title}`}
-        className={cn(
-          actionStyles,
-          "text-sm active:bg-[var(--fill-2)] disabled:opacity-60",
-        )}
+        className={cn(reading.action, "text-sm disabled:opacity-60")}
       >
         {status === "copied" ? (
           <Check className="size-3.5 text-[var(--text)]" aria-hidden="true" />

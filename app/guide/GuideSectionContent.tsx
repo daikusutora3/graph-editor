@@ -1,7 +1,7 @@
 import type { GuideSection } from "@/lib/guide-content";
 import type { AppLocale } from "@/lib/site-metadata";
 import { GuideOperationVisual } from "./GuideOperationVisual";
-import { bodyText, readingMeasure } from "@/components/ui/styles";
+import { reading } from "@/components/content/reading";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,7 +31,7 @@ export function GuideSectionContent({
 }) {
   const figures = sectionFigures[section.id];
   return (
-    <div className={cn("mt-3 space-y-5", bodyText, readingMeasure)}>
+    <div className={cn("mt-3 space-y-5", reading.body)}>
       {section.description ? <p>{section.description}</p> : null}
 
       {figures ? (
@@ -39,7 +39,7 @@ export function GuideSectionContent({
       ) : null}
 
       {section.steps ? (
-        <ol className="list-decimal space-y-3 pl-5 marker:font-semibold marker:text-[var(--muted)]">
+        <ol className={reading.steps}>
           {section.steps.map((step) => (
             <li key={step.title} className="pl-1">
               <span className="font-semibold text-[var(--text)]">
@@ -56,7 +56,7 @@ export function GuideSectionContent({
       ))}
 
       {section.items ? (
-        <ul className="list-disc space-y-2 pl-5 marker:text-[var(--muted)]">
+        <ul className={reading.list}>
           {section.items.map((item) => (
             <li key={item} className="pl-1">
               {item}
@@ -66,7 +66,7 @@ export function GuideSectionContent({
       ) : null}
 
       {section.shortcuts ? (
-        <dl className="divide-y divide-[var(--hair)] border-y border-[var(--hair)] text-sm">
+        <dl className={cn(reading.rows, "text-sm")}>
           {section.shortcuts.map((shortcut) => (
             <div
               key={shortcut.action}
@@ -91,10 +91,8 @@ export function GuideSectionContent({
 
       {section.table ? (
         <div>
-          <h3 className="text-base font-semibold text-[var(--text)]">
-            {section.table.title}
-          </h3>
-          <dl className="mt-2 divide-y divide-[var(--hair)] border-y border-[var(--hair)]">
+          <h3 className={reading.subheading}>{section.table.title}</h3>
+          <dl className={cn("mt-2", reading.rows)}>
             {section.table.rows.map(([name, example]) => (
               <div
                 key={name}
@@ -117,9 +115,7 @@ export function GuideSectionContent({
 
       {section.note ? (
         <div>
-          <h3 className="text-base font-semibold text-[var(--text)]">
-            {section.note.title}
-          </h3>
+          <h3 className={reading.subheading}>{section.note.title}</h3>
           <p className="mt-1">{section.note.text}</p>
         </div>
       ) : null}

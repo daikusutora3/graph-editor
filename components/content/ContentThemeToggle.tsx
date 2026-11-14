@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useThemeMode } from "@/features/graph-editor/ui/theme/theme";
-import { actionStyles } from "@/components/ui/styles";
+import { reading } from "./reading";
 import { cn } from "@/lib/utils";
 
 export function ContentThemeToggle({
@@ -19,7 +19,7 @@ export function ContentThemeToggle({
       aria-label={label}
       title={label}
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className={cn(actionStyles, "min-w-11 shrink-0 justify-center px-3")}
+      className={cn(reading.action, "min-w-11 shrink-0 justify-center px-3")}
     >
       <Icon className="size-4" aria-hidden="true" />
     </button>

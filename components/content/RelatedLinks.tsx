@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { focusRing } from "@/components/ui/styles";
+import { reading } from "./reading";
 
 /** A single quiet line of related links: "Related  Title · Title". */
 export function RelatedLinks({
@@ -32,13 +32,7 @@ export function RelatedLinks({
                 ·
               </span>
             ) : null}
-            <a
-              href={link.href}
-              className={cn(
-                focusRing,
-                "rounded-sm text-[var(--accent-text)] underline-offset-4 hover:underline",
-              )}
-            >
+            <a href={link.href} className={reading.link}>
               {link.title}
             </a>
           </li>
