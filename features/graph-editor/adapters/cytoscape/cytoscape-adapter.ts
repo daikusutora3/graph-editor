@@ -276,6 +276,15 @@ function edgeRoutingDataChanged(
   );
 }
 
+/**
+ * The text a node draws. While a node is renamed, the inline editor writes the
+ * draft into `displayLabel` so the node itself shows and sizes to it; when
+ * editing ends it is reset with this function from the model's label.
+ */
+export function nodeDisplayLabel(label: string, showNodeLabels: boolean) {
+  return showNodeLabels ? label : "";
+}
+
 function nodeToCytoscapeElement(
   node: GraphNode,
   showNodeLabels: boolean,
@@ -286,7 +295,7 @@ function nodeToCytoscapeElement(
     data: {
       id: encodeCytoscapeId(node.id),
       label: node.label,
-      displayLabel: showNodeLabels ? node.label : "",
+      displayLabel: nodeDisplayLabel(node.label, showNodeLabels),
       order: node.order,
       color: node.color ?? "paper",
     } satisfies CytoscapeNodeData,
@@ -385,12 +394,6 @@ export function createGraphCanvasStylesheet(
         "text-wrap": "none",
         "underlay-shape": "round-rectangle",
         "underlay-corner-radius": `${palette.nodeSize / 2 + 5}px`,
-      }),
-    },
-    {
-      selector: "node.label-editing",
-      style: cytoscapeStyle({
-        content: "",
       }),
     },
     {

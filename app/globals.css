@@ -516,13 +516,16 @@
   background: var(--accent-ring);
 }
 
-.ge-inline-edit-input-node {
+/* The canvas node itself draws the draft text and resizes to it; this field
+   only supplies the caret and selection on top, so it has no visible face. */
+.ge-inline-edit-input-node,
+.ge-inline-edit-input-node.ge-inline-edit-input-error {
   height: calc(var(--canvas-node-size) * var(--ge-inline-edit-zoom));
   border-radius: 9999px;
-  background: var(--ge-edit-bg, var(--canvas-node));
-  box-shadow: 0 0 0 2px var(--ge-edit-border, var(--canvas-node-border)) !important;
+  background: transparent;
+  box-shadow: none !important;
   padding-inline: var(--ge-inline-edit-padding);
-  color: var(--ge-edit-text, var(--canvas-node-text));
+  color: transparent;
   font-size: calc(var(--canvas-node-font) * var(--ge-inline-edit-zoom));
   font-weight: 600;
   line-height: 1;
@@ -544,6 +547,10 @@
 .ge-inline-edit-input-error {
   color: var(--danger);
   box-shadow: 0 0 0 2px var(--danger) !important;
+}
+
+.ge-inline-edit-input-node.ge-inline-edit-input-error {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 45%, transparent) !important;
 }
 
 .ge-inline-edit-error {

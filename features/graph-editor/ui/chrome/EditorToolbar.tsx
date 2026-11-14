@@ -27,6 +27,7 @@ import {
   Kbd,
   focusRing,
   pressFeedback,
+  splitGroup,
   splitStart,
 } from "@/components/ui/controls";
 import type { ThemeMode } from "../theme/theme";
@@ -200,7 +201,15 @@ function DesktopToolbar({
       )}
     >
       {editorModes.map(({ mode: itemMode, keyHint, icon: Icon }) => (
-        <div key={itemMode} className="flex items-center">
+        <div
+          key={itemMode}
+          className={cn(
+            "flex items-center",
+            itemMode === "select" &&
+              showRangeMenu &&
+              splitGroup(mode === "select"),
+          )}
+        >
           <Button
             active={mode === itemMode}
             aria-label={messages.toolbar.modes[itemMode].label}
@@ -430,7 +439,15 @@ export function MobileBottomBar({
     >
       <div className="flex max-w-full flex-wrap items-center justify-center">
         {editorModes.map(({ mode: itemMode, icon: Icon }) => (
-          <div key={itemMode} className="flex shrink-0 items-center rounded-xl">
+          <div
+            key={itemMode}
+            className={cn(
+              "flex shrink-0 items-center rounded-xl",
+              itemMode === "select" &&
+                showRangeMenu &&
+                cn(splitGroup(mode === "select"), "rounded-xl"),
+            )}
+          >
             <MobileBarButton
               active={mode === itemMode}
               caption={messages.toolbar.modes[itemMode].label}

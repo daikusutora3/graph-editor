@@ -91,7 +91,7 @@ export function RangeSelectionMenu({
         active={mode === "select"}
         disabled={panel !== null}
         className={cn(
-          splitEnd,
+          splitEnd(mode === "select"),
           "h-11 w-6 touch:w-7",
           above && "rounded-r-xl touch:rounded-r-xl",
         )}

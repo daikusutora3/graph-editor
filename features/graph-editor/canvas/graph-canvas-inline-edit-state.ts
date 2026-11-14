@@ -1,6 +1,7 @@
 "use client";
 
 import type { Core } from "cytoscape";
+import { nodeDisplayLabel } from "../adapters/cytoscape/cytoscape-adapter";
 import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
 import type { MutableRefObject } from "react";
 import {
@@ -279,6 +280,32 @@ export function useGraphInlineEdit({
     };
   }, [cyRef, editingElementId]);
 
+  // Rename the node in place: the canvas node itself shows the draft and
+  // resizes to it, and the edit field on top only provides the caret. When the
+  // edit ends, the node goes back to the model's label (new on commit, old on
+  // cancel), so there is never a second, stale shape.
+  const renamingNodeId =
+    inlineEdit?.kind === "node-label" ? inlineEdit.nodeId : null;
+  const draftLabel = inlineEdit?.kind === "node-label" ? inlineEdit.value : "";
+  const showNodeLabels = graph.settings.showNodeLabels;
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || !renamingNodeId) return;
+
+    const node = getCytoscapeElement(cy, renamingNodeId);
+    if (node.empty()) return;
+
+    node.data("displayLabel", draftLabel);
+    return () => {
+      if (!node.removed()) {
+        node.data(
+          "displayLabel",
+          nodeDisplayLabel(String(node.data("label") ?? ""), showNodeLabels),
+        );
+      }
+    };
+  }, [cyRef, draftLabel, renamingNodeId, showNodeLabels]);
+
   const position = inlineEdit
     ? readInlineEditPosition(inlineEdit, nodeHitboxes, edgeLabelHitboxes)
     : null;
@@ -287,10 +314,6 @@ export function useGraphInlineEdit({
         edit: inlineEdit,
         minZoom: MIN_CANVAS_ZOOM,
         maxZoom: MAX_CANVAS_ZOOM,
-        nodeColor:
-          inlineEdit.kind === "node-label"
-            ? graph.nodes.find((node) => node.id === inlineEdit.nodeId)?.color
-            : undefined,
         zoomPercent,
       })
     : undefined;

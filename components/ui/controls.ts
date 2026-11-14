@@ -15,6 +15,7 @@ export {
   pressFeedback,
   rowControl,
   splitEnd,
+  splitGroup,
   splitStart,
 } from "./control-styles";
 export { menuStyle, surface, textStyle } from "./surfaces";

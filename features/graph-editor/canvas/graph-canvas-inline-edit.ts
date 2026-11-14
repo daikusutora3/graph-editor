@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 
-import type { GraphColor } from "../core/graph/model";
 import { clamp } from "../core/graph/graph-utils";
 import type { InlineEditTarget } from "./graph-canvas-types";
 
@@ -81,13 +80,11 @@ export function inlineEditCssProperties({
   edit,
   maxZoom,
   minZoom,
-  nodeColor,
   zoomPercent,
 }: {
   edit: InlineEditTarget;
   maxZoom: number;
   minZoom: number;
-  nodeColor?: GraphColor;
   zoomPercent: number;
 }): CSSProperties {
   const zoom = clamp(zoomPercent / 100, minZoom, maxZoom);
@@ -110,27 +107,12 @@ export function inlineEditCssProperties({
     minWidth,
     Math.ceil(textWidth + padding * 2 + CARET_ROOM),
   );
-  const colorVars: Record<string, string | undefined> =
-    isNode && nodeColor && nodeColor !== "paper"
-      ? {
-          "--ge-edit-bg": `var(--canvas-node-${nodeColor})`,
-          "--ge-edit-text":
-            nodeColor === "black"
-              ? "#f8fafc"
-              : nodeColor === "white"
-                ? "#111827"
-                : undefined,
-          "--ge-edit-border":
-            nodeColor === "black" ? "var(--canvas-edge)" : undefined,
-        }
-      : {};
 
   const style: Record<string, string | number | undefined> = {
     maxWidth: `calc(100% - ${INLINE_EDIT_CANVAS_INSET * 2}px)`,
     width,
     "--ge-inline-edit-zoom": String(zoom),
     "--ge-inline-edit-padding": `${padding}px`,
-    ...colorVars,
   };
 
   return style as CSSProperties;

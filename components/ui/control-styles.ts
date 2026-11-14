@@ -37,10 +37,22 @@ export function segmentItem(selected: boolean) {
 }
 
 /**
- * Split button: a main action joined to a small menu trigger. Put `splitStart`
- * on the main button and `splitEnd` on the trigger; the trigger draws a thin
- * seam in the current text color so the two halves read as separate targets.
+ * Split button: a main action joined to a small menu trigger, read as one unit.
+ * Wrap both in `splitGroup(active)` (shared hover and active fill), put
+ * `splitStart` on the main button and `splitEnd(active)` on the trigger. The
+ * seam between the halves only shows while active, like other "label ⌄" buttons.
  */
+export function splitGroup(active: boolean) {
+  return cn(
+    "flex items-stretch rounded-lg transition-colors",
+    active ? "bg-[var(--accent-fill)]" : "hover:bg-[var(--fill)]",
+  );
+}
 export const splitStart = "rounded-r-none touch:rounded-r-none";
-export const splitEnd =
-  "rounded-l-none border-l border-[color-mix(in_srgb,currentColor_24%,transparent)] touch:rounded-l-none";
+export function splitEnd(active: boolean) {
+  return cn(
+    "rounded-l-none touch:rounded-l-none",
+    active &&
+      "border-l border-[color-mix(in_srgb,currentColor_24%,transparent)]",
+  );
+}

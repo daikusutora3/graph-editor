@@ -7,6 +7,7 @@ import cytoscape, { type Core } from "cytoscape";
 
 import {
   createGraphCanvasStylesheet,
+  nodeDisplayLabel,
   computeCytoscapeEdgeRoutingMeta,
   createCytoscapeRoutingTask,
   graphModelToCytoscapeElements,
@@ -726,6 +727,42 @@ function verifySelectionAndArrowStyles() {
     selector: string;
     style: Record<string, unknown>;
   }>;
+  expect(
+    !stylesheet.some((rule) => rule.selector === "node.label-editing"),
+    "a node being renamed stays visible; it draws the draft itself",
+  );
+  const styledCy = cytoscape({
+    elements: graphModelToCytoscapeElements(graphFixture()),
+    headless: true,
+    styleEnabled: true,
+    style: stylesheet,
+    layout: { name: "preset", fit: false },
+  });
+  try {
+    const renamed = styledCy.getElementById("a");
+    renamed.select();
+    const width = () => parseFloat(String(renamed.style("width")));
+    const original = width();
+    renamed.data("displayLabel", "feafeafeafeaf");
+    const long = width();
+    renamed.data("displayLabel", "fe");
+    const short = width();
+    renamed.data(
+      "displayLabel",
+      nodeDisplayLabel(String(renamed.data("label")), true),
+    );
+    expect(
+      long > original && short < long && width() === original,
+      "the renamed node resizes with the draft and returns to its model label",
+    );
+    expect(
+      nodeDisplayLabel("A", false) === "" &&
+        nodeDisplayLabel("A", true) === "A",
+      "restoring respects the show-labels setting",
+    );
+  } finally {
+    styledCy.destroy();
+  }
   expect(
     stylesheet.find((rule) => rule.selector === "edge:loop")?.style[
       "control-point-step-size"
