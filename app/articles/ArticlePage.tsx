@@ -18,6 +18,7 @@ import { TextLink } from "@/components/content/TextLink";
 import { reading } from "@/components/content/reading";
 import { focusRing } from "@/components/ui/control-styles";
 import { ArticleDiagram } from "./ArticleDiagram";
+import { ArticleThumbnail } from "./ArticleThumbnail";
 import {
   ArticleScreenshot,
   articleScreenshotSections,
@@ -203,7 +204,7 @@ export function ArticlePage({
               >
                 <ArticleDiagram example={article.example} />
               </ContentExample>
-              <p className="mt-3 text-sm">
+              <p className="mt-2">
                 <TextLink
                   href={`${appGuidePaths[locale]}#${article.example.guideExampleId}`}
                   arrow
@@ -212,21 +213,26 @@ export function ArticlePage({
                 </TextLink>
               </p>
             </ContentSection>
-            <ContentSection id="article-related" title={copy.relatedTitle}>
+            <ContentSection
+              id="article-related"
+              title={copy.relatedTitle}
+              className="max-w-3xl"
+              action={
+                <TextLink href={articleIndexPath(locale)} arrow>
+                  {copy.allArticles}
+                </TextLink>
+              }
+            >
               <LinkList
-                className="mt-4"
+                className="mt-3"
                 items={related.map((relatedArticle) => ({
                   href: articlePath(locale, relatedArticle.slug),
                   title: relatedArticle.title,
                   description: relatedArticle.description,
                   meta: relatedArticle.category,
+                  figure: <ArticleThumbnail article={relatedArticle} />,
                 }))}
               />
-              <p className="mt-4 text-sm">
-                <TextLink href={articleIndexPath(locale)} arrow>
-                  {copy.allArticles}
-                </TextLink>
-              </p>
             </ContentSection>
           </div>
           <ContentFooter locale={locale} topId="articles-top" />

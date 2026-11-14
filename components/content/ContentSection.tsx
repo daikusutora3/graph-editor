@@ -27,6 +27,7 @@ export function ContentSection({
   headingId = id ? `${id}-title` : undefined,
   anchorId,
   title,
+  action,
   description,
   children,
   headingLevel = 2,
@@ -37,6 +38,8 @@ export function ContentSection({
   /** An extra anchor kept for old links to this section. */
   anchorId?: string;
   title: ReactNode;
+  /** A short link beside the heading ("All articles →"). */
+  action?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
   headingLevel?: 2 | 3;
@@ -53,16 +56,19 @@ export function ContentSection({
       {anchorId ? (
         <span id={anchorId} className="block" aria-hidden="true" />
       ) : null}
-      <Heading
-        id={headingId}
-        tabIndex={headingId ? -1 : undefined}
-        className={cn(
-          "outline-none",
-          headingLevel === 3 ? reading.subheading : reading.heading,
-        )}
-      >
-        {title}
-      </Heading>
+      <div className="flex flex-wrap items-center justify-between gap-x-4">
+        <Heading
+          id={headingId}
+          tabIndex={headingId ? -1 : undefined}
+          className={cn(
+            "outline-none",
+            headingLevel === 3 ? reading.subheading : reading.heading,
+          )}
+        >
+          {title}
+        </Heading>
+        {action}
+      </div>
       {description ? (
         <p className={cn("mt-3", reading.body)}>{description}</p>
       ) : null}

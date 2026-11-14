@@ -42,7 +42,7 @@ export function LinkList({
             )}
           >
             {item.figure ? (
-              <span className="w-28 shrink-0 text-[var(--text-2)] sm:w-40">
+              <span className="w-20 shrink-0 text-[var(--text-2)] sm:w-40">
                 {item.figure}
               </span>
             ) : null}

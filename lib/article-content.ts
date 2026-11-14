@@ -87,7 +87,7 @@ export const articleCopy: Record<AppLocale, ArticleCopy> = {
     operationGuideLabel: "操作方法",
     sameExampleGuideLabel: "ガイドで同じ例を見る",
     relatedTitle: "関連記事",
-    allArticles: "記事一覧へ",
+    allArticles: "すべての記事",
   },
   en: {
     title: "Reading and drawing graphs | Graph Editor",

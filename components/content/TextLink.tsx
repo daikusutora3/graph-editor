@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { reading } from "./reading";
 
-/** An underlined text link; `arrow` marks a link that moves to another page. */
+/**
+ * A link outside running text. `arrow` marks a standalone link to another
+ * page; it is quieter than an inline link and ends with an arrow.
+ */
 export function TextLink({
   href,
   children,
@@ -20,11 +23,7 @@ export function TextLink({
     <Link
       href={href}
       prefetch={false}
-      className={cn(
-        reading.link,
-        arrow && "inline-flex items-center gap-1",
-        className,
-      )}
+      className={cn(arrow ? reading.quietLink : reading.link, className)}
     >
       {children}
       {arrow ? (

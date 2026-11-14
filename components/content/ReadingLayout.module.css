@@ -7,22 +7,6 @@
   scroll-margin-top: calc(var(--reading-header-height) + 24px);
 }
 
-.contents {
-  container-type: inline-size;
-}
-
-@container (min-width: 20rem) {
-  .contentsList {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@container (min-width: 36rem) {
-  .contentsList {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (min-width: 1024px) {
   .contents {
     position: sticky;
@@ -31,7 +15,7 @@
   }
 
   .contentsList {
-    max-height: calc(100dvh - var(--reading-header-height) - 48px);
+    max-height: calc(100dvh - var(--reading-header-height) - 72px);
     overflow-y: auto;
     overscroll-behavior: contain;
   }

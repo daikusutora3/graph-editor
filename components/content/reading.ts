@@ -42,6 +42,11 @@ export const reading = {
     focusRing,
     "rounded-sm font-medium text-[var(--text)] underline decoration-[var(--muted)] decoration-1 underline-offset-4 transition-colors hover:decoration-current",
   ),
+  /** Standalone link to another page or place ("All articles →", footer links). */
+  quietLink: cn(
+    focusRing,
+    "inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm font-medium text-[var(--text-2)] underline-offset-4 transition-colors hover:text-[var(--text)] hover:underline",
+  ),
   /** Quiet button-like link or button in the header, footer, and examples. */
   action: cn(
     focusRing,

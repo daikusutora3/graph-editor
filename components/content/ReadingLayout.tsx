@@ -50,7 +50,7 @@ export function ReadingBody({
   children: ReactNode;
 }) {
   return (
-    <div className="min-w-0 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
+    <div className="min-w-0 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-12">
       <ContentContents
         title={contentNavigationCopy[locale].contents}
         entries={entries}
