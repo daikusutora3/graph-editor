@@ -39,7 +39,6 @@ import { resolveNodeOverlaps } from "../../features/graph-editor/layouts/resolve
 import {
   applyManualLayoutAtom,
   layoutPendingAtom,
-  resetEditorSessionAtom,
 } from "../../features/graph-editor/shell/state/editor-actions";
 import {
   graphAtom,
@@ -164,7 +163,6 @@ function verifyRoutingInteraction() {
       measuredHeight: 72,
     })),
   };
-  const legacy = [...current, ...previous];
   const compact = restoreRoutingInteractionNodes(measuredModel, {
     previousNodes: previous,
     movedNodeIds: new Set(["a"]),
@@ -183,12 +181,8 @@ function verifyRoutingInteraction() {
   );
   expect(
     measuredModel.nodes.every((node) => node.measuredWidth === 999) &&
-      compact !== current &&
-      restoreRoutingInteractionNodes(measuredModel, {
-        nodes: legacy,
-        movedNodeIds: new Set(["a"]),
-      }) === legacy,
-    "interaction restoration preserves the measured route model and the legacy full-node contract",
+      compact !== current,
+    "interaction restoration preserves the measured route model",
   );
 }
 
@@ -1558,14 +1552,6 @@ async function verifyClient(scenario: string) {
     expect(
       !store.get(layoutPendingAtom),
       "latest Worker completion clears pending state",
-    );
-    const reset = store.set(applyManualLayoutAtom, "force");
-    store.set(resetEditorSessionAtom);
-    expect(
-      (await reset).status === "rejected" &&
-        store.get(historyAtom).length === 0 &&
-        !store.get(layoutPendingAtom),
-      "session reset cancels Worker computation without a later commit",
     );
     store.set(syncExternalGraphAtom, input);
     uninstallStorageFlushListeners();

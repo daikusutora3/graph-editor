@@ -3,10 +3,12 @@ import { createStore } from "jotai/vanilla";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
+  GRAPH_MAX_JSON_CHARS,
+  GRAPH_MAX_EDGES,
+  GRAPH_MAX_NODES,
+} from "../../features/graph-editor/core/graph/graph-limits";
+import {
   GRAPH_STORAGE_KEY,
-  MAX_STORED_GRAPH_CHARS,
-  MAX_STORED_GRAPH_EDGES,
-  MAX_STORED_GRAPH_NODES,
   parseStoredGraph,
   serializeStoredGraphForWrite,
 } from "../../features/graph-editor/adapters/browser/stored-graph";
@@ -115,7 +117,7 @@ function verifyStoredGraphSizeLimit() {
     nodes: [
       {
         id: "oversized",
-        label: "x".repeat(MAX_STORED_GRAPH_CHARS),
+        label: "x".repeat(GRAPH_MAX_JSON_CHARS),
         order: 0,
         x: 0,
         y: 0,
@@ -134,7 +136,7 @@ function verifyStoredGraphSizeLimit() {
 
   const tooManyNodes = {
     ...createEmptyGraphModel(),
-    nodes: Array.from({ length: MAX_STORED_GRAPH_NODES + 1 }, (_, index) => ({
+    nodes: Array.from({ length: GRAPH_MAX_NODES + 1 }, (_, index) => ({
       id: `n${index}`,
       label: String(index),
       order: index,
@@ -154,7 +156,7 @@ function verifyStoredGraphSizeLimit() {
 
   const tooManyEdges = {
     ...graphFixture(),
-    edges: Array.from({ length: MAX_STORED_GRAPH_EDGES + 1 }, (_, index) => ({
+    edges: Array.from({ length: GRAPH_MAX_EDGES + 1 }, (_, index) => ({
       id: `e${index}`,
       source: "a",
       target: "b",

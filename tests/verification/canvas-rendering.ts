@@ -17,7 +17,7 @@ import {
   readEdgeLabelHitboxes,
   readRenderedEdgeLabelPosition,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
-import { reconcileEdgeLabelHitboxes } from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
+import { createEdgeLabelHitboxSnapshot } from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
 import {
   applyCytoscapeRoutingMeta,
   graphModelToCytoscapeElements,
@@ -1021,8 +1021,10 @@ function verifySizedLoopGeometry() {
       "resized loops must retain current bounds around the renderer midpoint",
     );
     const enlarged = readEdgeLabelHitboxes(cy, graph);
+    const edgeSnapshot = createEdgeLabelHitboxSnapshot();
+    const previousHitboxes = edgeSnapshot.reset(hitboxes);
     expect(
-      reconcileEdgeLabelHitboxes(hitboxes, enlarged) !== hitboxes,
+      edgeSnapshot.reset(enlarged) !== previousHitboxes,
       "loop geometry changes must reach memoized pointer overlays",
     );
     routes.set("loop", { ...automatic, loopStepSizePx: undefined });
@@ -1206,13 +1208,14 @@ function verifyLabelDimensions() {
       readEdgeLabelHitboxes(cy, graph)[0]!.label === "1",
       "hitbox text must use the displayed explicit label before the fallback weight",
     );
+    const edgeSnapshot = createEdgeLabelHitboxSnapshot();
+    const previousHitboxes = edgeSnapshot.reset(hitboxes);
     expect(
-      reconcileEdgeLabelHitboxes(
-        hitboxes,
+      edgeSnapshot.reset(
         hitboxes.map((hitbox) =>
           hitbox.id === "ab" ? { ...hitbox, labelHeight: 60 } : hitbox,
         ),
-      ) !== hitboxes,
+      ) !== previousHitboxes,
       "reconciliation must propagate changes to rendered label dimensions",
     );
   } finally {

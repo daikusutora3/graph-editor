@@ -10,7 +10,6 @@ export function ContextGuideLink({
   target,
   label,
   className,
-  ariaCurrent,
   children,
   navigation = false,
 }: {
@@ -18,7 +17,6 @@ export function ContextGuideLink({
   target: string;
   label: string;
   className?: string;
-  ariaCurrent?: "page";
   children?: ReactNode;
   navigation?: boolean;
 }) {
@@ -26,8 +24,7 @@ export function ContextGuideLink({
     <Link
       href={`${appGuidePaths[locale]}#${target}`}
       prefetch={false}
-      aria-current={ariaCurrent}
-      className={cn(actionStyles(), "max-w-full", className)}
+      className={cn(actionStyles, "max-w-full", className)}
     >
       {children}
       {label}

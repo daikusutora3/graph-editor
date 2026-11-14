@@ -47,21 +47,9 @@ export function canonicalPreviousBow(
 export function edgeHasVisibleLabel(edge: GraphEdge) {
   return Boolean(edge.label || edge.weight);
 }
-export function edgeLabelClearance(edge: GraphEdge, otherEdge: GraphEdge) {
-  const labelLength = Math.max(
-    edgeLabelText(edge).length,
-    edgeLabelText(otherEdge).length,
-  );
-
-  return 34 + labelLength * 4;
-}
-export function edgeLabelText(edge: GraphEdge) {
+function edgeLabelText(edge: GraphEdge) {
   return edge.label ?? edge.weight ?? "";
 }
-export function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 export function edgeLabelSize(edge: GraphEdge, work?: RoutingWork) {
   const cached = work?.labelSizes?.get(edge.id);
   if (cached) return cached;

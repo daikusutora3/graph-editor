@@ -59,7 +59,8 @@ mock.module(
   }),
 );
 
-const { Button, Select } = await import("../../components/ui/controls.ts");
+const { Button, IconButton, Select } =
+  await import("../../components/ui/controls.ts");
 const { SampleGalleryPane } =
   await import("../../features/graph-editor/ui/samples/SampleGalleryPane.tsx");
 
@@ -102,8 +103,8 @@ for (locale of ["ja", "en", "zh-Hans"]) {
   const clearSearch = findElement(
     searched,
     (element) =>
-      element.type === "button" &&
-      element.props["aria-label"] === messages.samples.clearSearch,
+      element.type === IconButton &&
+      element.props.label === messages.samples.clearSearch,
   );
   assert(clearSearch);
   activeElement = clearSearch;

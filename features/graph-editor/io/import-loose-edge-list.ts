@@ -8,24 +8,18 @@ import {
   MAX_IMPORT_EDGES,
   MAX_IMPORT_NODES,
   type ImportOptions,
-  type ParsedLine,
   readImportSettings,
 } from "./import-utils";
-import {
-  createImportSource,
-  inferEdgeListWeightKind,
-  type ImportSource,
-} from "./import-source";
+import { inferEdgeListWeightKind, type ImportSource } from "./import-source";
 import type { NodeId } from "../core/graph/model";
-import type { ImportResult, ImportWarning } from "./import-types";
+import type { ImportResult } from "./import-types";
 import { importTextLimitWarning } from "./import-text-limits";
 
 export function tryImportLooseEdgeList(
-  lines: ParsedLine[],
+  source: ImportSource,
   options: ImportOptions,
-  preparedSource?: ImportSource,
 ): ImportResult | null {
-  const { rows } = preparedSource ?? createImportSource(lines);
+  const { lines, rows } = source;
 
   if (
     rows.length === 0 ||
@@ -60,7 +54,6 @@ export function tryImportLooseEdgeList(
     uniqueLabels.add(row[0]!);
     uniqueLabels.add(row[1]!);
   }
-  const labels = [...uniqueLabels];
   const nodeCount = uniqueLabels.size;
 
   if (nodeCount > MAX_IMPORT_NODES) {
@@ -74,35 +67,26 @@ export function tryImportLooseEdgeList(
     );
   }
 
-  const settings = readImportSettings(
-    {
-      ...options,
-      indexBase: detectIndexBase(labels, options.indexBase),
-      weightKind: inferEdgeListWeightKind(rows, options.weightKind),
-    },
-    { weighted: Boolean(hasWeights || options.weighted) },
-  );
+  const settings = readImportSettings({
+    ...options,
+    indexBase: detectIndexBase(uniqueLabels, options.indexBase),
+    weightKind: inferEdgeListWeightKind(rows, options.weightKind),
+    weighted: Boolean(hasWeights || options.weighted),
+  });
   const model = createEmptyGraphModel(settings);
   const idByLabel = new Map<string, NodeId>();
-  const warnings: ImportWarning[] = [];
-
-  rows.forEach(([sourceLabel, targetLabel, weight]) => {
-    if (sourceLabel === undefined || targetLabel === undefined) {
-      return;
-    }
-
-    const edgeWeight = weight ?? "1";
+  rows.forEach((row) => {
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
-        source: ensureNodeByLabel(model, idByLabel, sourceLabel),
-        target: ensureNodeByLabel(model, idByLabel, targetLabel),
-        weight: settings.weighted ? edgeWeight : undefined,
+        source: ensureNodeByLabel(model, idByLabel, row[0]!),
+        target: ensureNodeByLabel(model, idByLabel, row[1]!),
+        weight: settings.weighted ? (row[2] ?? "1") : undefined,
       }),
     );
   });
 
   arrangeNodes(model);
 
-  return { model, warnings, format: "Edge list", formatKind: "edge-pairs" };
+  return { model, warnings: [], format: "Edge list", formatKind: "edge-pairs" };
 }

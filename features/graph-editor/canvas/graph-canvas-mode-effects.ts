@@ -11,10 +11,7 @@ import type {
   EditorMode,
   SelectionState,
 } from "../shell/state/editor-state";
-import {
-  createEmptyEdgeDraft,
-  createEmptySelection,
-} from "../shell/state/editor-state";
+import { createEmptySelection } from "../shell/state/editor-state";
 
 import type { GraphContextMenuTarget } from "./graph-canvas-types";
 import type { InlineEditTarget } from "./graph-canvas-types";
@@ -26,7 +23,7 @@ type GraphCanvasModeEffectsOptions = {
   edgeDraft: EdgeDraft;
   graph: GraphModel;
   mode: EditorMode;
-  setContextMenuTarget: Dispatch<SetStateAction<GraphContextMenuTarget | null>>;
+  setContextMenuTarget: (target: GraphContextMenuTarget | null) => void;
   setEdgeDraft: AtomSetter<EdgeDraft>;
   setInlineEdit: Dispatch<SetStateAction<InlineEditTarget | null>>;
   setSelection: AtomSetter<SelectionState>;
@@ -63,7 +60,7 @@ export function useGraphCanvasModeEffects({
     }
 
     if (mode !== "edge") {
-      setEdgeDraft(createEmptyEdgeDraft());
+      setEdgeDraft(null);
       cy.nodes(".edge-source").removeClass("edge-source");
     }
   }, [cyRef, mode, setEdgeDraft, setSelection]);
@@ -77,28 +74,10 @@ export function useGraphCanvasModeEffects({
 
     cy.nodes(".edge-source").removeClass("edge-source");
 
-    if (edgeDraft.sourceNodeId) {
-      getCytoscapeElement(cy, edgeDraft.sourceNodeId).addClass("edge-source");
+    if (edgeDraft) {
+      getCytoscapeElement(cy, edgeDraft).addClass("edge-source");
     }
-  }, [cyRef, edgeDraft.sourceNodeId]);
-
-  useEffect(() => {
-    if (edgeDraft.message?.kind !== "success") {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setEdgeDraft((currentDraft) =>
-        currentDraft.message?.kind === "success"
-          ? { ...currentDraft, message: null }
-          : currentDraft,
-      );
-    }, 1500);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [edgeDraft.message, setEdgeDraft]);
+  }, [cyRef, edgeDraft]);
 
   useEffect(() => {
     setContextMenuTarget(null);

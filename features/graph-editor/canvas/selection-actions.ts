@@ -11,6 +11,20 @@ import {
 import type { Messages } from "../i18n/messages";
 import type { GraphModel } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
+import type { SyncContextSelectionTarget } from "./graph-canvas-types";
+
+export function selectionForTarget(
+  target: SyncContextSelectionTarget,
+  selection: SelectionState,
+): SelectionState {
+  if (target.kind === "node" && selection.nodeIds.includes(target.nodeId))
+    return selection;
+  if (target.kind === "edge" && selection.edgeIds.includes(target.edgeId))
+    return selection;
+  return target.kind === "node"
+    ? { nodeIds: [target.nodeId], edgeIds: [] }
+    : { nodeIds: [], edgeIds: [target.edgeId] };
+}
 
 export type SelectionActionId =
   "edit" | "reverse" | "bend-left" | "bend-right" | "reset-curve" | "delete";

@@ -1,6 +1,5 @@
 import {
   articleCopy,
-  articleGuidePath,
   articleIndexPath,
   articlePath,
   articleSlugs,
@@ -12,11 +11,7 @@ import {
 import { getArticleExample } from "../../lib/article-examples";
 import { guideCopy, guideExampleCopy } from "../../lib/guide-content";
 import { guideExamples } from "../../lib/guide-examples";
-import {
-  appGuidePaths,
-  appLocalePaths,
-  type AppLocale,
-} from "../../lib/site-metadata";
+import { type AppLocale } from "../../lib/site-metadata";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification(
@@ -71,32 +66,25 @@ for (const locale of locales) {
     );
     expect(
       guideCopy[locale].sections.some(
-        (section) => `guide-${section.id}` === article.guideAnchor,
+        (section) => `guide-${section.id}` === article.guide.sectionId,
       ),
       `${context} operation links target current guide sections`,
     );
     expect(
-      articleGuidePath(locale, slug) ===
-        `${appGuidePaths[locale]}#${article.guideAnchor}`,
-      `${context} operation route keeps its locale and anchor`,
-    );
-    expect(
-      articlePath(locale, slug) === `${articleIndexPath(locale)}/${slug}` &&
-        appLocalePaths[locale] === appLocalePaths[locale],
-      `${context} article and editor routes keep their locale`,
+      articlePath(locale, slug) === `${articleIndexPath(locale)}/${slug}`,
+      `${context} article route keeps its locale`,
     );
     expect(
       article.example.input === seed.input &&
-        article.example.code === seed.input &&
         article.example.nodes === seed.nodes &&
         article.example.edges === seed.edges &&
         article.example.format === seed.format &&
         article.example.weighted === seed.weighted,
       `${context} editor and article use one trusted example`,
     );
-    if (article.canonicalGuideExampleId) {
+    if (article.example.guideExampleId) {
       const index = guideExamples.findIndex(
-        (example) => example.id === article.canonicalGuideExampleId,
+        (example) => example.id === article.example.guideExampleId,
       );
       const shared = guideExamples[index]!;
       expect(
@@ -106,11 +94,6 @@ for (const locale of locales) {
           article.example.result ===
             guideExampleCopy[locale].examples[index]!.result,
         `${context} shared input and diagram match the guide exactly`,
-      );
-      expect(
-        articleGuidePath(locale, slug, "example") ===
-          `${appGuidePaths[locale]}#${shared.id}`,
-        `${context} shared-example link uses the stable guide example anchor`,
       );
     }
   }

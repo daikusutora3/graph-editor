@@ -3,7 +3,6 @@ import { atom } from "jotai";
 import type { GraphClipboardPayload } from "../../io/clipboard";
 import type { EditorLayout, EditorPanel } from "./editor-layout";
 import {
-  createEmptyEdgeDraft,
   createEmptySelection,
   type EdgeDraft,
   type EditorMode,
@@ -16,7 +15,7 @@ export const selectionAtom = atom<SelectionState>(createEmptySelection());
 export const editorModeAtom = atom<EditorMode>("select");
 export const rangeSelectionFilterAtom = atom<RangeSelectionFilter>("all");
 
-export const edgeDraftAtom = atom<EdgeDraft>(createEmptyEdgeDraft());
+export const edgeDraftAtom = atom<EdgeDraft>(null);
 
 export const graphClipboardAtom = atom<GraphClipboardPayload | null>(null);
 

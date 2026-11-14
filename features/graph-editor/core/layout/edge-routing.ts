@@ -1,4 +1,5 @@
 import { MAX_BOW_PX } from "../graph/edge-routing-overrides";
+import { edgePairKey } from "../graph/edge-constraints";
 import type {
   ResolvedEdgeRoutingOptions,
   RoutingWork,
@@ -9,14 +10,17 @@ import {
   projectRustEdgeObstacles,
   type ProjectedObstacleCluster,
 } from "../../compute/wasm-routing";
-import { clamp } from "./edge-routing-shared";
-import { compareCurvePreference } from "./edge-routing-scoring";
+import { clamp } from "../graph/graph-utils";
 import {
+  compareCurvePreference,
   scoreCurveNodeAndShape,
   scoreCurveLabelOverlap,
 } from "./edge-routing-scoring";
-import { edgeHasVisibleLabel, edgeLabelSize } from "./edge-routing-shared";
-import { canonicalPreviousBow } from "./edge-routing-shared";
+import {
+  canonicalPreviousBow,
+  edgeHasVisibleLabel,
+  edgeLabelSize,
+} from "./edge-routing-shared";
 import type {
   EdgeId,
   GraphEdge,
@@ -226,7 +230,7 @@ function* routingTask(
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
 
   for (const edge of model.edges) {
-    const key = routeEdgeKey(edge);
+    const key = edgePairKey(edge.source, edge.target, false);
     const group = routeGroups.get(key);
 
     if (group) {
@@ -813,10 +817,6 @@ function orderParallelEdges(
   });
 }
 
-export function shouldAvoidNodesForEdgeRouting(model: GraphModel) {
-  return resolveRoutingMode(model, "quality") === "quality";
-}
-
 export function resolveRoutingMode(
   model: GraphModel,
   requestedMode: EdgeRoutingMode,
@@ -1284,12 +1284,6 @@ function canonicalRoutingEdge(edge: GraphEdge): GraphEdge {
   };
 }
 
-export function routeEdgeKey(edge: GraphEdge) {
-  return edge.source <= edge.target
-    ? JSON.stringify([edge.source, edge.target])
-    : JSON.stringify([edge.target, edge.source]);
-}
-
 function getDuplicateKeys(model: GraphModel) {
   const edgeCounts = new Map<string, number>();
   const duplicateKeys = new Set<string>();
@@ -1308,11 +1302,7 @@ function getDuplicateKeys(model: GraphModel) {
 }
 
 function duplicateEdgeKey(model: GraphModel, edge: GraphEdge) {
-  if (model.settings.directed) {
-    return JSON.stringify([edge.source, edge.target]);
-  }
-
-  return routeEdgeKey(edge);
+  return edgePairKey(edge.source, edge.target, model.settings.directed);
 }
 
 export { defaultEdgeRoutingMeta };

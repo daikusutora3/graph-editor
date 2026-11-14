@@ -109,6 +109,21 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     const controller = new AbortController();
     let sourceCache = cacheRef.current;
     let task: ReturnType<typeof createEdgeRoutingTask> | null = null;
+    const pendingOptions = () => {
+      const current = cacheRef.current;
+      const pending =
+        current?.key === cacheKey
+          ? edgeRoutingProgress(current.meta).pendingEdgeIds
+          : null;
+      if (pending && !pending.length) return null;
+      return {
+        ...edgeRoutingOptions,
+        previousMeta: pending
+          ? current!.meta
+          : readPreviousAutomaticRoutingMeta(graph, routingSnapshotRef.current),
+        rerouteEdgeIds: pending ? new Set(pending) : null,
+      };
+    };
     const restartFallback = () => {
       if (cancelled || cacheRef.current !== sourceCache || !task) return;
       task = null;
@@ -117,22 +132,9 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
     const refine = () => {
       if (cancelled || cacheRef.current !== sourceCache) return;
       if (!task) {
-        const current = cacheRef.current;
-        const pending =
-          current?.key === cacheKey
-            ? edgeRoutingProgress(current.meta).pendingEdgeIds
-            : null;
-        if (pending && !pending.length) return;
-        task = createEdgeRoutingTask(measuredGraph, {
-          ...edgeRoutingOptions,
-          previousMeta: pending
-            ? current!.meta
-            : readPreviousAutomaticRoutingMeta(
-                graph,
-                routingSnapshotRef.current,
-              ),
-          rerouteEdgeIds: pending ? new Set(pending) : null,
-        });
+        const options = pendingOptions();
+        if (!options) return;
+        task = createEdgeRoutingTask(measuredGraph, options);
       }
       const deadline = performance.now() + 4;
       let step = task.next();
@@ -148,24 +150,11 @@ export function useEdgeRoutingMeta(graph: GraphModel) {
       frame = requestAnimationFrame(refine);
     };
     const start = async () => {
-      const current = cacheRef.current;
-      const pending =
-        current?.key === cacheKey
-          ? edgeRoutingProgress(current.meta).pendingEdgeIds
-          : null;
-      if (pending && !pending.length) return;
+      const options = pendingOptions();
+      if (!options) return;
       const result = await computeRoutingInWorker(
         measuredGraph,
-        {
-          ...edgeRoutingOptions,
-          previousMeta: pending
-            ? current!.meta
-            : readPreviousAutomaticRoutingMeta(
-                graph,
-                routingSnapshotRef.current,
-              ),
-          rerouteEdgeIds: pending ? new Set(pending) : null,
-        },
+        options,
         controller.signal,
       );
       if (cancelled || cacheRef.current !== sourceCache) return;

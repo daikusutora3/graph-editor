@@ -41,18 +41,14 @@ function starter(inputText: string, options: ImportOptions = {}): StarterState {
     preview: result,
     previewPending: false,
     visibleIssues: result.warnings,
-    issues: [],
     importFormat: options.format ?? "auto",
     fileReadState: IDLE_FILE_READ_STATE,
-    open: true,
-    tab: "paste",
     close: () => {},
     cancelFileRead: () => {},
     readFile: async () => {},
     applyText: () => {},
     setImportFormat: () => {},
     setInput: () => {},
-    setTab: () => {},
   };
 }
 
@@ -185,13 +181,21 @@ for (const [value, status] of cases) {
           value.preview?.status === "failure"),
       "blocking errors mark the field invalid; warnings remain applicable",
     );
+    const unescape = (text?: string) =>
+      text?.replaceAll("&#x27;", "'").replaceAll("&quot;", '"');
+    const placeholder = unescape(input?.match(/placeholder="([^"]*)"/)?.[1]);
+    const guide = messages.starter.formatGuides[value.importFormat];
     assert(
-      !input?.includes("placeholder="),
-      "input examples remain available outside the field",
+      placeholder?.startsWith(`${guide}\n\n`) &&
+        placeholder.endsWith(
+          `${messages.starter.exampleLabel}\n${value.inputExample}`,
+        ),
+      "the empty field explains the selected format before its example",
     );
-    assert(
-      body.includes("data-import-example"),
-      "format examples are always reachable",
+    assert.equal(
+      unescape(input?.match(/data-example="([^"]*)"/)?.[1]),
+      value.inputExample,
+      "the bare example stays available for tooling",
     );
     const diagnostics = body.match(/<div\b[^>]*data-import-issues[^>]*>/)?.[0];
     if (diagnostics) {

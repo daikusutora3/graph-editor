@@ -6,7 +6,6 @@ import type {
 } from "../../features/graph-editor/core/graph/model";
 import { computeEdgeRouting } from "../../features/graph-editor/core/layout/edge-routing";
 import { edgeCurveMidpoint } from "../../features/graph-editor/core/layout/edge-route-geometry";
-import { edgeLabelClearance } from "../../features/graph-editor/core/layout/edge-routing-shared";
 import { createVerification } from "./harness";
 
 const { expect, finish } = createVerification("Algorithmic samples");
@@ -132,7 +131,13 @@ for (const autoEdgeRouting of [false, true]) {
     );
     for (const zoom of [1, 1.5]) {
       const separation = Math.abs(first.x - second.x) * zoom;
-      const required = edgeLabelClearance(opposing[0], opposing[1]) * zoom;
+      const required =
+        (34 +
+          Math.max(
+            ...opposing.map((edge) => (edge.label ?? edge.weight ?? "").length),
+          ) *
+            4) *
+        zoom;
       expect(
         separation >= required,
         `Opposite weight labels must retain clear horizontal space at ${zoom * 100}% with automatic routing ${autoEdgeRouting}`,

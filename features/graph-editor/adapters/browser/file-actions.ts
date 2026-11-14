@@ -8,12 +8,7 @@ export function downloadBlob(blob: Blob, fileName: string) {
   link.click();
   link.remove();
 
-  const revoke = () => URL.revokeObjectURL(blobUrl);
-  const fallbackId = window.setTimeout(revoke, 60_000);
-  window.setTimeout(() => {
-    window.clearTimeout(fallbackId);
-    revoke();
-  }, 1_000);
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1_000);
 }
 
 export function ensurePngBlob(blob: Blob) {

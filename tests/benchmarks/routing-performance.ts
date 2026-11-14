@@ -10,7 +10,7 @@ import {
   computeEdgeRouting,
   createEdgeRoutingTask,
 } from "../../features/graph-editor/core/layout/edge-routing";
-import { exportTikz } from "../../features/graph-editor/io/export-tikz";
+import { exportGraph } from "../../features/graph-editor/io/export-graph";
 
 const ITERATIONS = 5;
 const SLICE_MS = 4;
@@ -71,7 +71,7 @@ for (const [name, nodeCount, edgeCount, longLabels] of [
       previousMeta: measuredPrevious,
     }),
   );
-  measure(`${name}: TikZ export`, () => exportTikz(graph));
+  measure(`${name}: TikZ export`, () => exportGraph(graph, "tikz"));
 }
 
 for (const [name, spacing, longLabels] of [

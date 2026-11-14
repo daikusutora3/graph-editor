@@ -17,12 +17,6 @@ import {
   preparePreviewGeometry,
   type PreparedPreviewGeometry,
 } from "./preview-geometry";
-export {
-  createPreviewEdgePath,
-  getModelBounds,
-  preparePreviewGeometry,
-  type PreviewGeometryWork,
-} from "./preview-geometry";
 
 type SampleGraphPreviewProps = {
   model: GraphModel;

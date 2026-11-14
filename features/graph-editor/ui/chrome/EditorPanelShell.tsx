@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -24,10 +24,14 @@ type EditorPanelShellProps = {
   footer?: ReactNode;
   layout: EditorLayout;
   meta?: string;
+  /** Shows a back arrow before the title for panels reached from another panel. */
+  back?: { label: string; onClick: () => void };
   onClose: () => void;
   panel: EditorPanel;
   state: "open" | "closing";
   title: string;
+  /** Fixed modal height so the body can grow to fill it (same as a child-scrolled panel). */
+  tall?: boolean;
   width?: number;
 };
 
@@ -48,9 +52,11 @@ export function EditorPanelShell({
   footer,
   layout,
   meta,
+  back,
   onClose,
   panel,
   state,
+  tall = false,
   title,
   width,
 }: EditorPanelShellProps) {
@@ -239,7 +245,7 @@ export function EditorPanelShell({
           data-editor-panel={panel}
           className={cn(
             "flex min-h-0 flex-col overflow-hidden",
-            scrollOwner === "child" &&
+            (scrollOwner === "child" || tall) &&
               !fullscreen &&
               "h-[min(760px,calc(var(--ge-viewport-height,100dvh)-80px))]",
             mobileSheet
@@ -250,7 +256,7 @@ export function EditorPanelShell({
                     : "max-h-[calc(var(--ge-viewport-height,100dvh)*0.84)] rounded-t-[20px]",
                 )
               : cn(
-                  "ge-popover ge-panel rounded-xl backdrop-blur-[16px]",
+                  "ge-popover ge-panel rounded-xl",
                   modal
                     ? "ge-modal-panel max-h-[calc(var(--ge-viewport-height,100dvh)-80px)]"
                     : "max-h-[calc(var(--ge-viewport-height,100dvh)-100px)]",
@@ -274,8 +280,24 @@ export function EditorPanelShell({
               <span className="h-1 w-9 rounded-full bg-[var(--fill-2)]" />
             </div>
           ) : null}
-          <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--hair)] pr-2 pl-4">
-            <span className="flex min-w-0 items-baseline gap-2.5">
+          <div
+            className={cn(
+              "flex h-12 shrink-0 items-center justify-between border-b border-[var(--hair)] pr-2",
+              back ? "pl-2" : "pl-4",
+            )}
+          >
+            {back ? (
+              <IconButton
+                label={back.label}
+                size="md"
+                tooltipSide="bottom-start"
+                className="mr-1 text-[var(--muted)] hover:text-[var(--text)]"
+                onClick={back.onClick}
+              >
+                <ArrowLeft className="size-4" aria-hidden="true" />
+              </IconButton>
+            ) : null}
+            <span className="mr-auto flex min-w-0 items-baseline gap-2.5">
               <h2 className="truncate text-sm font-bold text-[var(--text)]">
                 {title}
               </h2>

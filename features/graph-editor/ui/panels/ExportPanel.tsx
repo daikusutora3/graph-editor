@@ -5,10 +5,10 @@ import { memo, useId, useMemo } from "react";
 
 import {
   Button,
-  ControlRow,
   Notice,
   PanelActions,
   Select,
+  fieldLabel,
 } from "@/components/ui/controls";
 
 import { integrityCopy } from "../../i18n/integrity-copy";
@@ -20,20 +20,20 @@ import {
 import { useI18n } from "../../i18n/I18nProvider";
 import type { CopyState } from "../io/graph-io-types";
 import { useExportLineLayout } from "../io/use-export-line-layout";
+import { surface, textStyle } from "@/components/ui/surfaces";
+import { cn } from "@/lib/utils";
 
 export function ExportPanelBody({
   exportFormat,
   exportText,
   exportWarning,
-  mobile,
-  pending = false,
+  pending,
   onExportFormatChange,
 }: {
   exportFormat: GraphExportFormat;
   exportText: string;
   exportWarning?: string;
-  mobile: boolean;
-  pending?: boolean;
+  pending: boolean;
   onExportFormatChange: (format: GraphExportFormat) => void;
 }) {
   const { messages, locale } = useI18n();
@@ -50,15 +50,14 @@ export function ExportPanelBody({
 
   return (
     <>
-      <ControlRow
-        htmlFor={formatId}
-        label={messages.exportPanel.formatAria}
-        layout="stacked"
-      >
+      <div className="flex min-w-0 items-center gap-3">
+        <label htmlFor={formatId} className={fieldLabel}>
+          {messages.starter.formatLabel}
+        </label>
         <Select
           id={formatId}
           aria-label={messages.exportPanel.formatAria}
-          className={mobile ? "h-11" : undefined}
+          containerClassName="min-w-0 flex-1"
           value={exportFormat}
           onChange={(event) =>
             onExportFormatChange(event.target.value as GraphExportFormat)
@@ -70,73 +69,74 @@ export function ExportPanelBody({
             </option>
           ))}
         </Select>
-      </ControlRow>
+      </div>
       {exportWarning ? <Notice>{exportWarning}</Notice> : null}
-      {exportFormat === "tikz" ? (
-        <p className="shrink-0 text-xs leading-[1.5] text-[var(--muted)]">
-          {messages.exportPanel.tikzNote}
-        </p>
-      ) : exportFormat === "json" ? (
-        <p className="shrink-0 text-xs leading-[1.5] text-[var(--muted)]">
-          {messages.exportPanel.jsonNote}
-        </p>
-      ) : (
-        <p className="text-xs text-[var(--muted)]">
-          {integrityCopy[locale].textNote}
-        </p>
-      )}
-      <div className="grid min-h-[200px] grid-cols-[max-content_minmax(0,1fr)] rounded-lg border border-[var(--line)] bg-[var(--bg)] py-3">
+      <div className="flex min-h-0 flex-col gap-1.5">
         <div
-          aria-hidden="true"
-          className="min-w-7 pr-2 text-right font-mono text-control leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
+          className={cn(
+            surface.inset,
+            "grid min-h-[240px] grid-cols-[max-content_minmax(0,1fr)] content-start py-3",
+          )}
         >
-          <ExportText lines={lineNumbers} />
+          <div
+            aria-hidden="true"
+            className="min-w-7 pr-2 text-right font-mono text-control leading-[1.6] whitespace-pre text-[var(--muted)] tabular-nums select-none"
+          >
+            <ExportText lines={lineNumbers} />
+          </div>
+          <pre
+            ref={lineLayout.ref}
+            role="region"
+            tabIndex={0}
+            aria-busy={pending || lineLayout.pending}
+            aria-label={messages.exportPanel.exportedAria(
+              messages.exportPanel.formats[exportFormat],
+            )}
+            className="ge-focus ge-focus-inset m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono text-control leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
+          >
+            {lineLayout.pending ? (
+              <span className="text-[var(--muted)]">
+                {messages.exportPanel.preparing}
+              </span>
+            ) : lineLayout.layout ? (
+              <span
+                className="relative block h-[1lh]"
+                style={{ width: lineLayout.layout.width }}
+              >
+                {lineLayout.layout.chunks.map((chunk) => (
+                  <span
+                    key={chunk.x}
+                    data-export-line-chunk
+                    className="absolute top-0 h-[1lh]"
+                    style={{
+                      left: chunk.x,
+                      width: chunk.width,
+                      contentVisibility: "auto",
+                      containIntrinsicSize: `auto ${chunk.width}px auto 1lh`,
+                    }}
+                  >
+                    {chunk.text}
+                  </span>
+                ))}
+              </span>
+            ) : exportText ? (
+              <ExportText lines={lines} wide />
+            ) : (
+              <span className="text-[var(--muted)]">
+                {pending
+                  ? messages.exportPanel.preparing
+                  : messages.exportPanel.emptyPlaceholder}
+              </span>
+            )}
+          </pre>
         </div>
-        <pre
-          ref={lineLayout.ref}
-          role="region"
-          tabIndex={0}
-          aria-busy={pending || lineLayout.pending}
-          aria-label={messages.exportPanel.exportedAria(
-            messages.exportPanel.formats[exportFormat],
-          )}
-          className="ge-focus ge-focus-inset m-0 overflow-x-auto border-l border-[var(--hair)] pl-2.5 font-mono text-control leading-[1.6] whitespace-pre text-[var(--text)] tabular-nums"
-        >
-          {lineLayout.pending ? (
-            <span className="text-[var(--muted)]">
-              {messages.exportPanel.preparing}
-            </span>
-          ) : lineLayout.layout ? (
-            <span
-              className="relative block h-[1lh]"
-              style={{ width: lineLayout.layout.width }}
-            >
-              {lineLayout.layout.chunks.map((chunk) => (
-                <span
-                  key={chunk.x}
-                  data-export-line-chunk
-                  className="absolute top-0 h-[1lh]"
-                  style={{
-                    left: chunk.x,
-                    width: chunk.width,
-                    contentVisibility: "auto",
-                    containIntrinsicSize: `auto ${chunk.width}px auto 1lh`,
-                  }}
-                >
-                  {chunk.text}
-                </span>
-              ))}
-            </span>
-          ) : exportText ? (
-            <ExportText lines={lines} wide />
-          ) : (
-            <span className="text-[var(--muted)]">
-              {pending
-                ? messages.exportPanel.preparing
-                : messages.exportPanel.emptyPlaceholder}
-            </span>
-          )}
-        </pre>
+        <p className={cn(textStyle.note, "shrink-0")}>
+          {exportFormat === "tikz"
+            ? messages.exportPanel.tikzNote
+            : exportFormat === "json"
+              ? messages.exportPanel.jsonNote
+              : integrityCopy[locale].textNote}
+        </p>
       </div>
     </>
   );

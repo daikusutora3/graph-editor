@@ -90,15 +90,7 @@ export type GraphIntent =
     }
   | {
       type: "add-edge";
-      input: {
-        id: EdgeId;
-        source: NodeId;
-        target: NodeId;
-        weight?: string;
-        label?: string;
-        color?: GraphColor;
-        routing?: EdgeRoutingOverride;
-      };
+      input: GraphEdge;
     }
   | {
       type: "delete-selection";

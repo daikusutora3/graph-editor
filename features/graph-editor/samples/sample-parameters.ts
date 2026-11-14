@@ -1,8 +1,4 @@
-import type { GraphModel, GraphSettings } from "../core/graph/model";
-import {
-  createParameterizedSampleGraph,
-  type SampleGraphKind,
-} from "./sample-graphs";
+import type { SampleGraphKind } from "./sample-graphs";
 
 export type SampleParameterLabelKey =
   | "nodes"
@@ -25,12 +21,11 @@ export type SampleParameterLabelKey =
   | "seed";
 
 export type SampleParameter = {
-  key: string;
-  labelKey: SampleParameterLabelKey;
+  key: SampleParameterLabelKey;
   defaultValue: number;
   min: number;
   max: number;
-  step?: number;
+  step: number;
 };
 
 export type SampleParameterValues = Readonly<Record<string, string | number>>;
@@ -45,7 +40,7 @@ const parameter = (
   min: number,
   max: number,
   step = 1,
-): SampleParameter => ({ key, labelKey: key, defaultValue, min, max, step });
+): SampleParameter => ({ key, defaultValue, min, max, step });
 
 const nodes = (defaultValue: number, min = 1, max = 1000) =>
   parameter("nodes", defaultValue, min, max);
@@ -105,7 +100,7 @@ export function normalizeSampleParameters(
       typeof input === "string" ? normalizeSampleParameterInput(input) : input;
     const parsed = numericInput === "" ? Number.NaN : Number(numericInput);
     const value = Number.isFinite(parsed) ? parsed : definition.defaultValue;
-    const step = definition.step ?? 1;
+    const step = definition.step;
     normalized[definition.key] = Math.min(
       definition.max,
       Math.max(definition.min, Math.round(value / step) * step),
@@ -142,16 +137,4 @@ export function normalizeSampleParameters(
     normalized.edges = Math.max(minEdges, Math.min(maxEdges, normalized.edges));
   }
   return normalized;
-}
-
-export function createConfiguredSampleGraph(
-  kind: SampleGraphKind,
-  values: SampleParameterValues = {},
-  settings: Partial<GraphSettings> = {},
-): GraphModel {
-  return createParameterizedSampleGraph(
-    kind,
-    normalizeSampleParameters(kind, values),
-    settings,
-  );
 }

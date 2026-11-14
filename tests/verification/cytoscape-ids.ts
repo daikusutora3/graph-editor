@@ -186,7 +186,7 @@ function verifyEditorLifecycle() {
     const sync = syncCytoscapeElements(
       cy,
       graphModelToCytoscapeElements(graph, { edgeRoutingMeta: routes }),
-      { skipNodePositionIds },
+      skipNodePositionIds,
     );
     refreshCytoscapeGeometry(sync.changedElements);
     renderer.flushRenderedStyleQueue();

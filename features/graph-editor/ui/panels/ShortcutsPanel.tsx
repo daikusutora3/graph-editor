@@ -52,9 +52,9 @@ export function ShortcutsPanel({ platform }: { platform: ShortcutPlatform }) {
     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-x-7 gap-y-4">
       {groups.map((group) => (
         <div key={group.title} className="flex flex-col gap-1">
-          <div className="pb-1 text-meta font-bold tracking-[0.06em] text-[var(--muted)]">
+          <h3 className="pb-1 text-meta font-semibold text-[var(--muted)]">
             {group.title}
-          </div>
+          </h3>
           {group.rows.map(([label, key]) => (
             <div
               key={label}

@@ -55,7 +55,6 @@ const sliders = renderToStaticMarkup(
       max={100}
       step={1}
       value={20}
-      unit=""
       presets={[10, 20]}
       onChange={() => {}}
     />
@@ -70,12 +69,17 @@ ranges.forEach((range, index) => {
   assert.equal(attribute(labels[index]!, "for"), attribute(range, "id"));
 });
 assert.equal(attribute(ranges[0]!, "aria-valuetext"), "400 px");
-assert.equal(attribute(ranges[1]!, "aria-valuetext"), "20");
+assert.equal(attribute(ranges[1]!, "aria-valuetext"), "20 px");
 assert.deepEqual(
   openingTags(sliders, "button").map((button) =>
     attribute(button, "aria-label"),
   ),
-  ["Image size: 200 px", "Image size: 800 px", "Padding: 10", "Padding: 20"],
+  [
+    "Image size: 200 px",
+    "Image size: 800 px",
+    "Padding: 10 px",
+    "Padding: 20 px",
+  ],
 );
 
 const toggles = renderToStaticMarkup(
@@ -83,7 +87,6 @@ const toggles = renderToStaticMarkup(
     <OptionToggle
       checked
       label="Grid snapping"
-      description="Align nodes with the grid while dragging."
       icon={
         <svg>
           <title>Decorative grid</title>
@@ -96,21 +99,11 @@ const toggles = renderToStaticMarkup(
 );
 const checkboxes = openingTags(toggles, "button");
 assert.equal(checkboxes.length, 2);
-assert.equal(
-  referencedText(toggles, attribute(checkboxes[0]!, "aria-labelledby")),
-  "Grid snapping",
-);
-assert.equal(
-  referencedText(toggles, attribute(checkboxes[0]!, "aria-describedby")),
-  "Align nodes with the grid while dragging.",
-);
-assert.equal(
-  referencedText(toggles, attribute(checkboxes[1]!, "aria-labelledby")),
-  "Node labels",
-);
+assert.equal(attribute(checkboxes[0]!, "aria-label"), "Grid snapping");
+assert.equal(attribute(checkboxes[1]!, "aria-label"), "Node labels");
 assert.notEqual(
-  attribute(checkboxes[0]!, "aria-labelledby"),
-  attribute(checkboxes[1]!, "aria-labelledby"),
+  attribute(checkboxes[0]!, "aria-label"),
+  attribute(checkboxes[1]!, "aria-label"),
   "multiple toggles retain separate accessible names",
 );
 assert.equal(attribute(checkboxes[1]!, "aria-describedby"), undefined);

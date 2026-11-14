@@ -20,7 +20,6 @@ type WorkerLane = "interactive" | "heavy";
 type Pending = {
   complete: (result: ComputeValue | null) => void;
   cleanup: () => void;
-  kind: ComputeJob["kind"];
   job: ComputeJob;
   owner: Worker;
   restoreRouting?: (delta: RoutingDelta) => Map<string, EdgeRoutingMeta>;
@@ -157,7 +156,7 @@ function getWorker(lane: WorkerLane) {
               throw new Error("Missing Worker result");
             result = response.result;
           }
-          if (!isComputeResult(request.kind, result))
+          if (!isComputeResult(request.job.kind, result))
             throw new Error("Invalid Worker result");
           if (
             !response.kernels ||
@@ -172,7 +171,7 @@ function getWorker(lane: WorkerLane) {
           completeRequest(response.id, request, result);
           consecutiveFailures = 0;
           retryAfter = 0;
-          recordCompletion(request.kind, kernels);
+          recordCompletion(request.job.kind, kernels);
         } catch {
           failWorker(true);
         }
@@ -279,7 +278,6 @@ function run(
     }, 120_000);
     pending.set(id, {
       complete,
-      kind: job.kind,
       job: snapshot,
       owner: active,
       restoreRouting: previous

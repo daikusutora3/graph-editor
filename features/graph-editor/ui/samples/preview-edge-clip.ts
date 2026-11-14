@@ -1,6 +1,7 @@
-import type {
-  EdgeCurvePoint,
-  QuadraticCurveSegment,
+import {
+  quadraticPoint,
+  type EdgeCurvePoint,
+  type QuadraticCurveSegment,
 } from "../../core/layout/edge-route-geometry";
 
 type PreviewTargetPill = {
@@ -46,20 +47,6 @@ export function clipPreviewEdgeAtTarget(
   }
 
   return segments;
-}
-
-function quadraticPoint(segment: QuadraticCurveSegment, parameter: number) {
-  const inverse = 1 - parameter;
-  return {
-    x:
-      inverse * inverse * segment.start.x +
-      2 * inverse * parameter * segment.control.x +
-      parameter * parameter * segment.end.x,
-    y:
-      inverse * inverse * segment.start.y +
-      2 * inverse * parameter * segment.control.y +
-      parameter * parameter * segment.end.y,
-  };
 }
 
 function interpolate(a: EdgeCurvePoint, b: EdgeCurvePoint, parameter: number) {

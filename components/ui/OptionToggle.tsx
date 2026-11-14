@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { type ReactNode, useId } from "react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -9,34 +9,23 @@ import { controlIcon, focusRing, pressFeedback } from "./control-styles";
 
 export function OptionToggle({
   checked,
-  description,
-  disabled = false,
   icon,
   label,
   onChange,
 }: {
   checked: boolean;
-  description?: string;
-  disabled?: boolean;
   icon?: ReactNode;
   label: string;
   onChange: (checked: boolean) => void;
 }) {
-  const id = useId();
-  const labelId = `${id}-label`;
-  const descriptionId = description ? `${id}-description` : undefined;
-
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={checked}
-      aria-labelledby={labelId}
-      aria-describedby={descriptionId}
-      disabled={disabled}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        disabled && "cursor-default opacity-50",
         "flex min-h-11 w-full items-center gap-3 rounded-lg px-1 text-left text-control font-medium text-[var(--text-2)] transition-colors enabled:hover:bg-[var(--fill)]",
         focusRing,
         pressFeedback,
@@ -63,17 +52,7 @@ export function OptionToggle({
         </span>
       ) : null}
       <span className="flex min-w-0 flex-col">
-        <span id={labelId} className="whitespace-normal">
-          {label}
-        </span>
-        {description ? (
-          <span
-            id={descriptionId}
-            className="text-xs font-medium text-[var(--muted)]"
-          >
-            {description}
-          </span>
-        ) : null}
+        <span className="whitespace-normal">{label}</span>
       </span>
     </button>
   );

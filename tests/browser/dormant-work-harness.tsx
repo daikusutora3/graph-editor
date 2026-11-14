@@ -33,7 +33,7 @@ import {
 import { StorageNotice } from "../../features/graph-editor/ui/chrome/StorageNotice";
 import { useGraphStarterState } from "../../features/graph-editor/workflows/starter/graph-starter-state";
 
-const calls = { input: 0, stored: 0, key: 0 };
+const calls = { input: 0, stored: 0 };
 Object.assign(globalThis, {
   IS_REACT_ACT_ENVIRONMENT: true,
   recordDormantWork: (kind: keyof typeof calls) => calls[kind]++,
@@ -66,7 +66,6 @@ export async function verifyDormantWork() {
   let starter: ReturnType<typeof useGraphStarterState> | undefined;
   let changeLocale: ReturnType<typeof useI18n>["setLocale"] | undefined;
   let closed = 0;
-  const textareaRef = { current: null };
   const assert = (condition: boolean, message: string) => {
     if (!condition) throw new Error(message);
   };
@@ -75,7 +74,7 @@ export async function verifyDormantWork() {
     return starter!;
   };
   const resetCalls = () => {
-    calls.input = calls.stored = calls.key = 0;
+    calls.input = calls.stored = 0;
   };
   const settle = async () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 175)));
@@ -91,7 +90,6 @@ export async function verifyDormantWork() {
       open,
       previewEnabled,
       onClose: () => closed++,
-      textareaRef,
     });
     useLayoutEffect(() => {
       starter = value;
@@ -172,10 +170,7 @@ export async function verifyDormantWork() {
     await setSettings(false);
     await setSettings(true);
     await settle();
-    assert(
-      calls.input === 0 && calls.key === 0,
-      "closed starter skips parsing and serializing retained input keys",
-    );
+    assert(calls.input === 0, "closed starter skips parsing retained input");
     assert(current().inputText === validInput, "closed input remains retained");
 
     await renderStarter(true, true);
@@ -189,10 +184,7 @@ export async function verifyDormantWork() {
     await act(async () => current().setInput(invalidInput));
     await settle();
     await setSettings(false);
-    assert(
-      calls.input === 0 && calls.key === 0,
-      "sample view skips large invalid paste parsing",
-    );
+    assert(calls.input === 0, "sample view skips large invalid paste parsing");
     await renderStarter(true, true);
     assert(calls.input === 1, "returning to paste evaluates retained input");
     assert(
@@ -216,7 +208,7 @@ export async function verifyDormantWork() {
     await act(async () => current().applyText());
     assert(
       closed === 1 &&
-        current().issues.length > 0 &&
+        current().visibleIssues.length > 0 &&
         store.get(graphAtom) === appliedGraph,
       "invalid Apply leaves the graph and error feedback intact",
     );

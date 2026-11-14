@@ -16,7 +16,7 @@ export const articleSlugs = [
 ] as const;
 
 export type ArticleSlug = (typeof articleSlugs)[number];
-type GuideExampleId = (typeof guideExamples)[number]["id"];
+export type GuideExampleId = (typeof guideExamples)[number]["id"];
 
 export type ArticleExample = {
   id: ArticleSlug;

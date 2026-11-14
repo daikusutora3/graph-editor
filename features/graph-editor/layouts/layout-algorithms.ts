@@ -4,15 +4,14 @@ import { stableHypot } from "../compute/numeric";
 
 import type { GraphModel, NodeId } from "../core/graph/model";
 import {
-  componentOrder,
+  bipartiteColoring,
   connectedComponents,
   degreeMap,
-  directedAdjacency,
+  graphAdjacency,
   orderedNodeIds,
   orderIndex,
   prioritizeRoot,
   stronglyConnectedComponents,
-  undirectedAdjacency,
 } from "../core/graph/graph-analysis";
 import {
   circleRadiusForSpacing,
@@ -28,7 +27,7 @@ import {
   pseudoRandom,
 } from "./layout-geometry";
 
-export const LAYOUT_TARGET_EDGE_LENGTH = 124;
+const LAYOUT_TARGET_EDGE_LENGTH = 124;
 export const FORCE_LAYOUT_NODE_LIMIT = 300;
 export function layoutGrid(nodeIds: NodeId[]) {
   const columns = Math.ceil(Math.sqrt(nodeIds.length));
@@ -82,9 +81,7 @@ export function* createForceLayoutTask(
     });
 
     for (const edge of validEdges) {
-      const index = componentByNode.get(edge[0]);
-      if (index !== undefined && index === componentByNode.get(edge[1]))
-        edgesByComponent[index]!.push(edge);
+      edgesByComponent[componentByNode.get(edge[0])!]!.push(edge);
     }
     const groups: Array<Record<NodeId, { x: number; y: number }>> = [];
     for (const [index, component] of components.entries()) {
@@ -93,10 +90,7 @@ export function* createForceLayoutTask(
 
       groups.push(
         componentEdges.length === 0
-          ? layoutCircle(
-              component,
-              component.length <= 1 ? 0 : LAYOUT_NODE_CLEARANCE,
-            )
+          ? layoutCircle(component, 0)
           : yield* createForceComponentTask(component, componentEdges),
       );
     }
@@ -227,9 +221,7 @@ export function* createForceComponentTask(
 }
 export function layoutBfs(model: GraphModel, rootNodeId?: NodeId) {
   const nodeIds = orderedNodeIds(model);
-  const adjacency = model.settings.directed
-    ? directedAdjacency(model)
-    : undirectedAdjacency(model);
+  const adjacency = graphAdjacency(model, model.settings.directed);
   const order = orderIndex(nodeIds);
   const visited = new Set<NodeId>();
   const rank = new Map<NodeId, number>();
@@ -269,8 +261,8 @@ export function layoutBfs(model: GraphModel, rootNodeId?: NodeId) {
 }
 export function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
   const nodeIds = orderedNodeIds(model);
-  const adjacency = undirectedAdjacency(model);
-  const components = connectedComponents(model);
+  const adjacency = graphAdjacency(model, false);
+  const components = connectedComponents(model, adjacency);
   const order = orderIndex(nodeIds);
   const positions = new Map<NodeId, { x: number; y: number }>();
   const leafGap = 112;
@@ -278,11 +270,8 @@ export function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
   let nextComponentX = 0;
 
   for (const component of components) {
-    const componentSet = new Set(component);
     const root =
-      rootNodeId && componentSet.has(rootNodeId)
-        ? rootNodeId
-        : [...component].sort((a, b) => order.get(a)! - order.get(b)!)[0];
+      rootNodeId && component.includes(rootNodeId) ? rootNodeId : component[0]!;
     const visited = new Set<NodeId>([root]);
     const children = new Map<NodeId, NodeId[]>(
       component.map((nodeId) => [nodeId, []]),
@@ -341,7 +330,7 @@ export function layoutTree(model: GraphModel, rootNodeId?: NodeId) {
 
   return normalizePositions(Object.fromEntries(positions));
 }
-export function layoutComponents(model: GraphModel) {
+function layoutComponents(model: GraphModel) {
   return packPositionGroups(
     connectedComponents(model).map((component) =>
       component.length <= 4
@@ -358,9 +347,6 @@ export function layoutScc(model: GraphModel) {
   const components = stronglyConnectedComponents(model);
   const componentIndexByNode = new Map<NodeId, number>();
   const order = orderIndex(orderedNodeIds(model));
-  const componentOrders = components.map((component) =>
-    componentOrder(component, order),
-  );
   const outgoing = new Map<number, Set<number>>(
     components.map((_, index) => [index, new Set<number>()]),
   );
@@ -416,10 +402,6 @@ export function layoutScc(model: GraphModel) {
     columns[rank.get(index) ?? 0].push(index);
   });
 
-  columns.forEach((column) => {
-    column.sort((a, b) => componentOrders[a]! - componentOrders[b]!);
-  });
-
   return packPositionColumns(
     columns.map((column) =>
       column.map((componentIndex) => componentLayouts[componentIndex]),
@@ -430,52 +412,25 @@ export function layoutScc(model: GraphModel) {
 }
 export function layoutBipartite(model: GraphModel) {
   const nodeIds = orderedNodeIds(model);
-  const adjacency = undirectedAdjacency(model);
   const order = orderIndex(nodeIds);
-  const color = new Map<NodeId, 0 | 1>();
-  let conflict = false;
+  const adjacency = graphAdjacency(model, false);
+  const color = bipartiteColoring(model, adjacency);
 
-  for (const nodeId of nodeIds) {
-    if (color.has(nodeId)) continue;
-
-    const queue = [nodeId];
-    color.set(nodeId, 0);
-
-    for (let head = 0; head < queue.length; head += 1) {
-      const current = queue[head]!;
-      const currentColor = color.get(current)!;
-      const neighbors = [...(adjacency.get(current) ?? [])].sort(
-        (a, b) => order.get(a)! - order.get(b)!,
-      );
-
-      for (const neighbor of neighbors) {
-        const nextColor = currentColor === 0 ? 1 : 0;
-        const seenColor = color.get(neighbor);
-
-        if (seenColor === undefined) {
-          color.set(neighbor, nextColor);
-          queue.push(neighbor);
-        } else if (seenColor === currentColor) {
-          conflict = true;
-        }
-      }
-    }
-  }
-
-  if (conflict) {
+  if (!color) {
     return currentPositions(model);
   }
 
-  const componentLayouts = connectedComponents(model).map((component) => {
-    const left = component
-      .filter((nodeId) => color.get(nodeId) === 0)
-      .sort((a, b) => order.get(a)! - order.get(b)!);
-    const right = component
-      .filter((nodeId) => color.get(nodeId) === 1)
-      .sort((a, b) => order.get(a)! - order.get(b)!);
+  const componentLayouts = connectedComponents(model, adjacency).map(
+    (component) => {
+      const ordered = [...component].sort(
+        (a, b) => order.get(a)! - order.get(b)!,
+      );
+      const left = ordered.filter((nodeId) => color.get(nodeId) === 0);
+      const right = ordered.filter((nodeId) => color.get(nodeId) === 1);
 
-    return positionColumns([left, right], 180, 92);
-  });
+      return positionColumns([left, right], 180, 92);
+    },
+  );
 
   return packPositionColumns([componentLayouts], 180, LAYOUT_COMPONENT_GAP);
 }
@@ -541,7 +496,6 @@ export function layoutDag(model: GraphModel) {
 export function layoutConcentric(model: GraphModel) {
   const nodeIds = orderedNodeIds(model);
   const degree = degreeMap(model);
-  const order = orderIndex(nodeIds);
   const positions = new Map<NodeId, { x: number; y: number }>();
   const degreeValues = [
     ...new Set(nodeIds.map((nodeId) => degree.get(nodeId)!)),
@@ -556,9 +510,9 @@ export function layoutConcentric(model: GraphModel) {
   let hasPreviousShell = false;
 
   degreeValues.forEach((degreeValue) => {
-    const shell = nodeIds
-      .filter((nodeId) => degree.get(nodeId) === degreeValue)
-      .sort((a, b) => order.get(a)! - order.get(b)!);
+    const shell = nodeIds.filter(
+      (nodeId) => degree.get(nodeId) === degreeValue,
+    );
 
     if (!hasPreviousShell && shell.length === 1) {
       positions.set(shell[0], { x: 0, y: 0 });
@@ -587,7 +541,7 @@ export function layoutConcentric(model: GraphModel) {
 }
 export function layoutRadial(model: GraphModel, rootNodeId?: NodeId) {
   const nodeIds = orderedNodeIds(model);
-  const adjacency = undirectedAdjacency(model);
+  const adjacency = graphAdjacency(model, false);
   const order = orderIndex(nodeIds);
   const visited = new Set<NodeId>();
   const groups: Array<Record<NodeId, { x: number; y: number }>> = [];
@@ -652,7 +606,7 @@ export function layoutRadial(model: GraphModel, rootNodeId?: NodeId) {
 export function layoutLine(model: GraphModel) {
   return layoutPathIds(orderedNodeIds(model));
 }
-export function layoutPathIds(nodeIds: NodeId[]) {
+function layoutPathIds(nodeIds: NodeId[]) {
   return Object.fromEntries(
     nodeIds.map((nodeId, index) => [
       nodeId,
@@ -666,12 +620,12 @@ export function layoutPathIds(nodeIds: NodeId[]) {
 export function layoutSpread(model: GraphModel) {
   return resolveNodeOverlaps(model).positions;
 }
-export function currentPositions(model: GraphModel) {
+function currentPositions(model: GraphModel) {
   return Object.fromEntries(
     model.nodes.map((node) => [node.id, { x: node.x, y: node.y }]),
   ) as Record<NodeId, { x: number; y: number }>;
 }
-export function groupByRank(nodeIds: NodeId[], rank: Map<NodeId, number>) {
+function groupByRank(nodeIds: NodeId[], rank: Map<NodeId, number>) {
   const maxRank = Math.max(0, ...rank.values());
   const columns = Array.from({ length: maxRank + 1 }, () => [] as NodeId[]);
 
@@ -681,7 +635,7 @@ export function groupByRank(nodeIds: NodeId[], rank: Map<NodeId, number>) {
 
   return columns.filter((column) => column.length > 0);
 }
-export function positionColumns(
+function positionColumns(
   columns: NodeId[][],
   columnGap: number,
   rowGap: number,
@@ -703,7 +657,7 @@ export function positionColumns(
 
   return Object.fromEntries(positions);
 }
-export function orderLayerColumns(
+function orderLayerColumns(
   columns: NodeId[][],
   outgoing: Map<NodeId, Set<NodeId>>,
   incoming: Map<NodeId, Set<NodeId>>,

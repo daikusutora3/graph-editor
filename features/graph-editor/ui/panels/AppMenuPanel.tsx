@@ -15,27 +15,14 @@ import {
   getAppLocaleUrl,
 } from "@/lib/site-metadata";
 import { contentNavigationCopy } from "@/lib/content-navigation";
-import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { GitHubLogo, XLogo } from "../brand/social-logos";
-import {
-  ActionRow,
-  Hairline,
-  Kbd,
-  focusRing,
-  rowControl,
-} from "@/components/ui/controls";
+import { ActionRow, Hairline, Kbd } from "@/components/ui/controls";
 import { menuFocusKeyDown } from "../primitives/focus-navigation";
 
 const APP_REPOSITORY_URL = "https://github.com/daikusutora3/graph-editor";
 const APP_ISSUES_URL = `${APP_REPOSITORY_URL}/issues/new`;
-
-const rowClass = cn(
-  rowControl,
-  "px-3 text-[var(--text-2)] hover:bg-[var(--fill)] hover:text-[var(--text)]",
-  focusRing,
-);
 
 export function AppMenuPanel({
   onOpenShortcuts,
@@ -65,7 +52,7 @@ export function AppMenuPanel({
       </MenuLink>
       <ActionRow
         role="menuitem"
-        className="px-3"
+        density="menu"
         icon={
           <Keyboard className="size-4 text-[var(--muted)]" aria-hidden="true" />
         }
@@ -98,22 +85,17 @@ function MenuLink({
   label: string;
 }) {
   return (
-    <a
+    <ActionRow
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       role="menuitem"
-      className={rowClass}
+      density="menu"
+      icon={<span className="text-[var(--muted)]">{children}</span>}
+      trailing={<ArrowUpRight className="size-3.5" aria-hidden="true" />}
     >
-      <span className="grid size-4 place-items-center text-[var(--muted)]">
-        {children}
-      </span>
-      <span className="flex-1">{label}</span>
-      <ArrowUpRight
-        className="size-3.5 text-[var(--faint)]"
-        aria-hidden="true"
-      />
-    </a>
+      {label}
+    </ActionRow>
   );
 }
 

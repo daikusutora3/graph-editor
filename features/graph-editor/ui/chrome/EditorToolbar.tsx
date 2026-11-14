@@ -27,6 +27,7 @@ import {
   Kbd,
   focusRing,
   pressFeedback,
+  splitStart,
 } from "@/components/ui/controls";
 import type { ThemeMode } from "../theme/theme";
 import { editorModes } from "./editor-chrome-state";
@@ -52,11 +53,10 @@ type ThemeProps = {
   onToggleTheme: () => void;
 };
 
-const TOP_BAR_HEIGHT = "min-h-[3.375rem] py-1";
+const TOP_BAR_HEIGHT = "min-h-bar py-1";
 const TOOLBAR_LABEL = "hidden @min-[40rem]/top-toolbar:inline";
 
-const floating =
-  "ge-panel pointer-events-auto flex items-center rounded-[14px] backdrop-blur-[16px]";
+const floating = "ge-panel pointer-events-auto flex items-center rounded-bar";
 
 export function DesktopTopRow({
   onOpenStarter,
@@ -196,7 +196,7 @@ function DesktopToolbar({
       className={cn(
         floating,
         TOP_BAR_HEIGHT,
-        "max-w-full flex-nowrap gap-[2px] px-[6px] backdrop-blur-[24px] [&_[data-range-selection-trigger]]:w-[24px] [&_[data-range-selection-trigger]_svg]:size-[14px]",
+        "max-w-full flex-nowrap gap-[2px] px-[6px]",
       )}
     >
       {editorModes.map(({ mode: itemMode, keyHint, icon: Icon }) => (
@@ -211,7 +211,7 @@ function DesktopToolbar({
               modeButtonClass,
               itemMode === "select" &&
                 showRangeMenu &&
-                "rounded-r-none @min-[40rem]/top-toolbar:pr-1",
+                cn(splitStart, "@min-[40rem]/top-toolbar:pr-2"),
             )}
             onClick={() => onModeChange(itemMode)}
           >
@@ -355,7 +355,11 @@ function MobileTopRail({
         "max-w-full flex-nowrap gap-[2px] px-[4px]",
       )}
     >
-      <ThemeButton theme={theme} iconSize={17} onClick={onToggleTheme} />
+      <ThemeButton
+        caption={messages.chrome.theme}
+        theme={theme}
+        onClick={onToggleTheme}
+      />
       {[
         {
           panel: "starter",
@@ -387,14 +391,11 @@ function MobileTopRail({
           tooltip={label}
           data-editor-panel-trigger={target}
           data-graph-shortcut-target="true"
-          className="h-11 min-w-[44px] flex-col gap-1"
-          style={{ paddingInline: 6 }}
+          layout="stacked"
           onClick={onClick}
         >
-          <Icon className="size-4" aria-hidden="true" />
-          <span className="text-meta leading-none @max-[18rem]/editor:hidden">
-            {text}
-          </span>
+          <Icon className="size-icon-lg" aria-hidden="true" />
+          <span className="@max-[18rem]/editor:hidden">{text}</span>
         </Button>
       ))}
     </div>
@@ -424,7 +425,7 @@ export function MobileBottomBar({
       data-editor-chrome-control="true"
       className={cn(
         floating,
-        "absolute bottom-4 left-1/2 z-[70] min-h-[3.375rem] w-max max-w-[calc(100%-1rem)] -translate-x-1/2 flex-wrap justify-center gap-x-0 gap-y-1 rounded-2xl p-1 backdrop-blur-[24px]",
+        "absolute bottom-4 left-1/2 z-[70] min-h-bar w-max max-w-[calc(100%-1rem)] -translate-x-1/2 flex-wrap justify-center gap-x-0 gap-y-1 rounded-2xl p-1",
       )}
     >
       <div className="flex max-w-full flex-wrap items-center justify-center">
@@ -493,18 +494,39 @@ export function MobileBottomBar({
 }
 
 function ThemeButton({
+  caption,
   iconSize = 16,
-  size = "lg",
   theme,
   onClick,
 }: {
+  /** Short visible label for mobile bars, where tooltips are unavailable. */
+  caption?: string;
   iconSize?: number;
-  size?: "sm" | "md" | "lg";
   theme: ThemeMode;
   onClick: () => void;
 }) {
   const { messages } = useI18n();
   const Icon = theme === "dark" ? Sun : Moon;
+  const label =
+    theme === "dark"
+      ? messages.common.switchLightMode
+      : messages.common.switchDarkMode;
+
+  if (caption) {
+    return (
+      <Button
+        layout="stacked"
+        aria-label={label}
+        tooltip={label}
+        tooltipSide="bottom-end"
+        data-graph-shortcut-target="true"
+        onClick={onClick}
+      >
+        <Icon className="size-icon-lg" aria-hidden="true" />
+        <span>{caption}</span>
+      </Button>
+    );
+  }
 
   return (
     <IconButton
@@ -515,7 +537,6 @@ function ThemeButton({
           ? messages.common.switchLightMode
           : messages.common.switchDarkMode
       }
-      size={size}
       tooltipSide="bottom-end"
       onClick={onClick}
     >
@@ -601,15 +622,16 @@ function MobileBarButton({
       aria-pressed={pressed}
       data-graph-shortcut-target="true"
       disabled={disabled}
+      layout={caption ? "stacked" : "inline"}
       className={cn(
-        "size-11 rounded-xl p-0 touch:p-0",
-        caption && "flex-col gap-0.5",
-        joined && "rounded-r-none",
+        "rounded-xl",
+        !caption && "size-11 p-0 touch:p-0",
+        joined && splitStart,
       )}
       onClick={onClick}
     >
       {children}
-      {caption ? <span className="text-xs leading-none">{caption}</span> : null}
+      {caption ? <span>{caption}</span> : null}
     </Button>
   );
 }

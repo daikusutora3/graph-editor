@@ -14,6 +14,7 @@ import {
 import { focusRing } from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
 import styles from "./ReadingLayout.module.css";
+import { surface } from "@/components/ui/surfaces";
 
 type ContentsEntry = { href: string; title: string };
 
@@ -52,7 +53,8 @@ export function ContentContents({
                   href={entry.href}
                   className={cn(
                     focusRing,
-                    "group flex h-full min-h-12 w-full min-w-0 items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] px-3 py-2.5 text-sm leading-5 text-[var(--text-2)] transition-colors hover:border-[var(--muted)] hover:bg-[var(--fill)] hover:text-[var(--text)] active:bg-[var(--fill-2)] lg:gap-2 lg:rounded-lg lg:px-2.5",
+                    surface.card,
+                    "group flex h-full min-h-12 w-full min-w-0 items-center gap-3 px-3 py-2.5 text-sm leading-5 text-[var(--text-2)] transition-colors hover:border-[var(--muted)] hover:bg-[var(--fill)] hover:text-[var(--text)] active:bg-[var(--fill-2)] lg:gap-2 lg:rounded-lg lg:px-2.5",
                   )}
                 >
                   {Icon && (

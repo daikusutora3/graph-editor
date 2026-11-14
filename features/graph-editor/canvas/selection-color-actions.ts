@@ -1,19 +1,22 @@
 import type { GraphColor } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
+import {
+  setEdgesColorCommand,
+  setNodesColorCommand,
+  setSelectionColorsCommand,
+} from "../core/graph/graph-intents";
 
-type SelectionColorActions = {
-  onSetNodeColor: (nodeIds: string[], color: GraphColor) => void;
-  onSetEdgeColor: (edgeIds: string[], color: GraphColor) => void;
-  onSetSelectionColors: (selection: SelectionState, color: GraphColor) => void;
-};
-
-export function pickSelectionColor(
+export function selectionColorCommand(
   selection: SelectionState,
   kind: "node" | "edge" | "mixed",
   color: GraphColor,
-  actions: SelectionColorActions,
 ) {
-  if (kind === "mixed") actions.onSetSelectionColors(selection, color);
-  else if (kind === "node") actions.onSetNodeColor(selection.nodeIds, color);
-  else actions.onSetEdgeColor(selection.edgeIds, color);
+  if (kind === "node") return setNodesColorCommand(selection.nodeIds, color);
+  if (kind === "edge") return setEdgesColorCommand(selection.edgeIds, color);
+  return setSelectionColorsCommand({
+    nodeIds: selection.nodeIds,
+    edgeIds: selection.edgeIds,
+    nodeColor: color,
+    edgeColor: color,
+  });
 }

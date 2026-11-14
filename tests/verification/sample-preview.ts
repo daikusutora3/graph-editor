@@ -7,21 +7,21 @@ import type {
   GraphColor,
   GraphModel,
 } from "../../features/graph-editor/core/graph/model";
-import { computeEdgeRouting } from "../../features/graph-editor/core/layout/edge-routing";
+import {
+  computeEdgeRouting,
+  defaultEdgeRoutingMeta,
+} from "../../features/graph-editor/core/layout/edge-routing";
 import {
   sampleEdgeCurve,
   edgeCurveSegments,
   type EdgeCurvePoint,
   type QuadraticCurveSegment,
 } from "../../features/graph-editor/core/layout/edge-route-geometry";
-import {
-  getModelBounds,
-  createPreviewEdgePath,
-  SampleGraphPreview,
-} from "../../features/graph-editor/ui/samples/SampleGraphPreview";
+import { SampleGraphPreview } from "../../features/graph-editor/ui/samples/SampleGraphPreview";
 import { previewCurveBounds } from "../../features/graph-editor/ui/samples/preview-curve-bounds";
 import { clipPreviewEdgeAtTarget } from "../../features/graph-editor/ui/samples/preview-edge-clip";
 import {
+  createPreparedPreviewEdgePath,
   preparePreviewGeometry,
   type PreviewGeometryWork,
 } from "../../features/graph-editor/ui/samples/preview-geometry";
@@ -34,6 +34,7 @@ import {
 
 verifyPreviewPaintMatchesCanvas();
 verifyClippingFixtures();
+verifyPreviewEdgePaths();
 verifyPreviewSettings();
 verifyPreparedGeometry();
 
@@ -77,11 +78,11 @@ assert.deepEqual(
 );
 
 const bowedModel = createModel();
-const bounds = getModelBounds(
+const bounds = preparePreviewGeometry(
   bowedModel,
   computeEdgeRouting(bowedModel, { mode: "simple" }),
   true,
-);
+).modelBounds;
 near(bounds.minX, -24);
 near(bounds.width, 148);
 near(bounds.minY, -24);
@@ -93,7 +94,11 @@ const multiCurve = {
   controlPointWeights: [0.2, 0.5, 0.8],
 };
 multiRoutes.set("edge", { ...multiRoutes.get("edge")!, ...multiCurve });
-const multiBounds = getModelBounds(bowedModel, multiRoutes, true);
+const multiBounds = preparePreviewGeometry(
+  bowedModel,
+  multiRoutes,
+  true,
+).modelBounds;
 for (const point of sampleEdgeCurve(
   bowedModel.nodes[0],
   bowedModel.nodes[1],
@@ -209,12 +214,15 @@ verifyRenderedFit(
   },
   "editor",
 );
-assert.deepEqual(getModelBounds(createEmptyGraphModel(), new Map(), true), {
-  minX: -1,
-  minY: -1,
-  width: 2,
-  height: 2,
-});
+assert.deepEqual(
+  preparePreviewGeometry(createEmptyGraphModel(), new Map(), true).modelBounds,
+  {
+    minX: -1,
+    minY: -1,
+    width: 2,
+    height: 2,
+  },
+);
 assert.equal(
   createPreviewEdgePath({
     directed: true,
@@ -624,6 +632,147 @@ function near(actual: number, expected: number) {
     Math.abs(actual - expected) < 1e-8,
     `expected ${expected}, got ${actual}`,
   );
+}
+
+function createPreviewEdgePath({
+  directed,
+  isLoop = false,
+  radius,
+  routing,
+  scale,
+  source,
+  target,
+  targetWidth = radius * 2,
+}: {
+  directed: boolean;
+  isLoop?: boolean;
+  radius: number;
+  routing?: {
+    bowPx: number;
+    controlPointDistancesPx?: readonly number[];
+    controlPointWeights?: readonly number[];
+    loopDirectionDeg: number;
+    loopSweepDeg: number;
+    loopStepSizePx?: number;
+  };
+  scale: number;
+  source: { x: number; y: number };
+  target: { x: number; y: number };
+  targetWidth?: number;
+}) {
+  const model = createEmptyGraphModel();
+  model.settings.directed = directed;
+  model.nodes = [
+    { id: "a", label: "a", order: 0, ...source },
+    ...(isLoop ? [] : [{ id: "b", label: "b", order: 1, ...target }]),
+  ];
+  model.edges = [{ id: "edge", source: "a", target: isLoop ? "a" : "b" }];
+  const route = {
+    ...defaultEdgeRoutingMeta,
+    ...routing,
+    controlPointDistancesPx: (
+      routing?.controlPointDistancesPx ?? [routing?.bowPx ?? 0]
+    ).map((value) => value * scale),
+    controlPointWeights: [...(routing?.controlPointWeights ?? [0.5])],
+  };
+  const prepared = preparePreviewGeometry(
+    model,
+    new Map([["edge", route]]),
+    false,
+  );
+  return createPreparedPreviewEdgePath(prepared.edgeById.get("edge")!, {
+    directed,
+    radius,
+    scale,
+    targetWidth,
+    editorLike: false,
+    toPoint: (x, y) => ({ x, y }),
+  });
+}
+
+function verifyPreviewEdgePaths() {
+  const loopPath = createPreviewEdgePath({
+    directed: true,
+    isLoop: true,
+    radius: 8,
+    routing: { bowPx: 0, loopDirectionDeg: -45, loopSweepDeg: 70 },
+    scale: 1,
+    source: { x: 20, y: 20 },
+    target: { x: 20, y: 20 },
+  });
+
+  const loopCoordinates = loopPath.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  if (
+    !loopPath.includes("C") ||
+    loopCoordinates[2] >= 20 ||
+    loopCoordinates[3] >= 20 ||
+    loopCoordinates[4] >= 20 ||
+    loopCoordinates[5] >= 20
+  ) {
+    throw new Error(
+      "preview self-loop edges should match Cytoscape's loop direction",
+    );
+  }
+
+  const parallelPath = createPreviewEdgePath({
+    directed: false,
+    radius: 8,
+    routing: { bowPx: 36, loopDirectionDeg: -45, loopSweepDeg: 70 },
+    scale: 0.5,
+    source: { x: 0, y: 0 },
+    target: { x: 100, y: 0 },
+  });
+
+  if (!parallelPath.includes("Q")) {
+    throw new Error("preview bowed edges should render as quadratic paths");
+  }
+  const largerLoop = createPreviewEdgePath({
+    directed: true,
+    isLoop: true,
+    radius: 8,
+    routing: {
+      bowPx: 0,
+      loopDirectionDeg: -45,
+      loopSweepDeg: 70,
+      loopStepSizePx: 80,
+    },
+    scale: 1,
+    source: { x: 20, y: 20 },
+    target: { x: 20, y: 20 },
+  });
+  const largerCoordinates = largerLoop.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+  if (
+    Math.abs(
+      Math.hypot(largerCoordinates[2]! - 20, largerCoordinates[3]! - 20) -
+        2 * Math.hypot(loopCoordinates[2]! - 20, loopCoordinates[3]! - 20),
+    ) > 0.03
+  ) {
+    throw new Error(
+      "preview loop controls should grow with the transient loop size",
+    );
+  }
+  const fittedLoop = createPreviewEdgePath({
+    directed: false,
+    isLoop: true,
+    radius: 3,
+    routing: {
+      bowPx: 0,
+      loopDirectionDeg: 0,
+      loopSweepDeg: 70,
+      loopStepSizePx: 180,
+    },
+    scale: 0.1,
+    source: { x: 50, y: 40 },
+    target: { x: 50, y: 40 },
+  });
+  const fittedCoordinates = fittedLoop.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+  if (
+    Math.hypot(fittedCoordinates[2]! - 50, fittedCoordinates[3]! - 40) > 25.21
+  ) {
+    throw new Error(
+      "enlarged preview loops should fit within their scaled control bounds",
+    );
+  }
 }
 
 function verifyClippingFixtures() {

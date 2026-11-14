@@ -5,10 +5,9 @@ import type { ImportFormatKind } from "../io/import-types";
 import type { SampleGraphKind } from "../samples/sample-graphs";
 import type { SampleParameterLabelKey } from "../samples/sample-parameters";
 import type { SampleGraphGroupKey } from "../samples/registry";
+import type { EditorMode } from "../shell/state/editor-state";
 import type { Locale } from "./locale";
 import { appLocaleMetadata } from "@/lib/site-metadata";
-
-type GraphExportFormatLabel = GraphExportFormat;
 
 type Messages = {
   app: {
@@ -26,8 +25,6 @@ type Messages = {
     copying: string;
     saved: string;
     copy: string;
-    lightMode: string;
-    darkMode: string;
     switchLightMode: string;
     switchDarkMode: string;
   };
@@ -40,26 +37,7 @@ type Messages = {
     shareOnX: string;
   };
   toolbar: {
-    quickActions: string;
-    openSidebar: string;
-    closeSidebar: string;
-    groups: {
-      actions: string;
-      layouts: string;
-      edgeAppearance: string;
-      history: string;
-      settings: string;
-    };
-    modes: Record<
-      "select" | "node" | "edge",
-      { label: string; tooltip: string }
-    >;
-    moreLayouts: string;
-    collapseLayouts: string;
-    autoEdgeRouting: {
-      label: string;
-      tooltip: string;
-    };
+    modes: Record<EditorMode, { label: string; tooltip: string }>;
     undo: {
       label: string;
       tooltip: string;
@@ -67,12 +45,6 @@ type Messages = {
     redo: {
       label: string;
       tooltip: string;
-    };
-    clear: {
-      label: string;
-      armedLabel: string;
-      tooltip: string;
-      armedTooltip: string;
     };
   };
   settings: {
@@ -94,9 +66,6 @@ type Messages = {
     language: string;
   };
   starter: {
-    createGraph: string;
-    dialogLabel: string;
-    methodLabel: string;
     paste: string;
     inputLabel: string;
     moreIssues: (count: number) => string;
@@ -108,18 +77,18 @@ type Messages = {
     reviewInput: string;
     fileReadFailed: string;
     fileTooLarge: (limit: number) => string;
-    autoDetectHelp: string;
     formatLabel: string;
     autoFormat: string;
-    pastePlaceholder: string;
     apply: string;
-    applyAs: (format: string) => string;
     applyWithWarnings: string;
     ambiguousTitle: string;
     ambiguousHelp: string;
     needsReview: string;
     detected: (format: string) => string;
     formats: Record<ImportFormatKind, string>;
+    /** How to write each format; shown above the example in the empty input. */
+    formatGuides: Record<ImportFormatKind | "auto", string>;
+    exampleLabel: string;
     preview: string;
     previewEmpty: string;
     previewStats: (nodeCount: number, edgeCount: number) => string;
@@ -130,22 +99,14 @@ type Messages = {
     emptyPlaceholder: string;
     preparing: string;
     exportedAria: (label: string) => string;
-    copyAria: (label: string, state: "idle" | "copied" | "blocked") => string;
-    adjacencyLossWarning: string;
     jsonNote: string;
     tikzNote: string;
-    formats: Record<GraphExportFormatLabel, string>;
+    formats: Record<GraphExportFormat, string>;
   };
   screenshot: {
     title: string;
-    openAria: string;
-    titleIdle: string;
-    copiedAria: string;
-    savedAria: string;
-    blockedAria: string;
     scope: string;
     viewport: string;
-    fullGraph: string;
     natural: string;
     naturalFixed: string;
     canvasWidth: string;
@@ -153,7 +114,6 @@ type Messages = {
     canvasTooSmall: string;
     background: string;
     imageSize: string;
-    longEdgeCustom: string;
     fixedLongEdge: string;
     padding: string;
     black: string;
@@ -164,14 +124,12 @@ type Messages = {
     previewEmpty: string;
     previewFailed: string;
     previewLoading: string;
-    previewNoDimensions: string;
     copyFallbackSaved: string;
     copyFailed: string;
     download: string;
     downloadFailed: string;
     emptyGraph: string;
     downloaded: string;
-    downloading: string;
   };
   canvas: {
     rangeSelection: {
@@ -182,13 +140,11 @@ type Messages = {
       edges: string;
       hint: (modifier: string) => string;
     };
-    fitGraph: string;
     fitGraphTitle: string;
     zoomOut: string;
     resetZoom: (zoomPercent: number) => string;
     zoomIn: string;
     editNodeLabel: string;
-    nodeLabelPlaceholder: string;
     editEdgeWeight: string;
     editEdgeLabel: string;
     editEdgeWeightOf: (value: string) => string;
@@ -203,11 +159,8 @@ type Messages = {
     bendEdgeLeft: string;
     bendEdgeRight: string;
     reverseEdges: string;
-    reverseEdgesTitle: string;
     nodeColor: string;
     edgeColor: string;
-    nodeColorTitle: string;
-    edgeColorTitle: string;
     colorFor: (kind: "node" | "edge", color: string) => string;
     colors: Record<
       | "paper"
@@ -224,9 +177,6 @@ type Messages = {
   contextMenu: {
     nodeMenu: string;
     edgeMenu: string;
-    editNodeLabel: string;
-    editEdgeLabel: string;
-    editWeight: string;
   };
   layouts: Record<
     LayoutKind,
@@ -248,13 +198,8 @@ type Messages = {
     shortcuts: string;
     offsetEdges: string;
     layoutPending: string;
-    graphType: string;
     display: string;
     clear: string;
-    storageSkippedToast: string;
-    clearArmed: string;
-    clearHint: string;
-    clearArmedHint: string;
     saveAs: (extension: string) => string;
     copy: string;
     copied: string;
@@ -279,6 +224,7 @@ type Messages = {
     starterOpenFile: string;
     starterBackToPaste: string;
     starterApply: string;
+    starterApplyHint: (keys: string) => string;
     starterSamplesTitle: string;
     emptyCards: Record<
       "paste" | "sample" | "draw",
@@ -328,21 +274,9 @@ type Messages = {
     >;
   };
   samples: {
-    searchPlaceholder: string;
     searchAria: string;
     clearSearch: string;
     empty: string;
-    sizedKindLabel: string;
-    sizedNodeCountLabel: string;
-    sizedNodeCountAria: string;
-    sizedRowsLabel: string;
-    sizedColumnsLabel: string;
-    sizedBipartiteLeftLabel: string;
-    sizedBipartiteRightLabel: string;
-    sizedKnightMoveXLabel: string;
-    sizedKnightMoveYLabel: string;
-    sizedKnightMoveLabel: string;
-    sizedKnightMoves: Record<"standard" | "long" | "camel", string>;
     category: string;
     allCategories: string;
     clearFilters: string;
@@ -367,7 +301,6 @@ type Messages = {
         }
       >
     >;
-    applyAria: (label: string) => string;
   };
 };
 
@@ -604,8 +537,6 @@ const ja: Messages = {
     copying: "コピー中",
     saved: "保存済み",
     copy: "コピー",
-    lightMode: "ライト",
-    darkMode: "ダーク",
     switchLightMode: "ライトモードに切り替え",
     switchDarkMode: "ダークモードに切り替え",
   },
@@ -618,35 +549,13 @@ const ja: Messages = {
     shareOnX: "Xで共有",
   },
   toolbar: {
-    quickActions: "クイック操作",
-    openSidebar: "サイドバーを開く",
-    closeSidebar: "サイドバーを閉じる",
-    groups: {
-      actions: "操作",
-      layouts: "配置",
-      edgeAppearance: "辺を見やすく",
-      history: "履歴",
-      settings: "設定",
-    },
     modes: {
       select: { label: "選択", tooltip: "Shift+ドラッグで範囲選択" },
       node: { label: "頂点", tooltip: "キャンバスに頂点を追加" },
       edge: { label: "辺", tooltip: "2つの頂点を辺で接続" },
     },
-    moreLayouts: "さらに表示",
-    collapseLayouts: "表示を減らす",
-    autoEdgeRouting: {
-      label: "辺をずらす",
-      tooltip: "同じ場所を通る辺を少し曲げて、1本ずつ見分けやすくします",
-    },
     undo: { label: "戻す", tooltip: "直前の操作を戻す" },
     redo: { label: "進む", tooltip: "戻した操作をやり直す" },
-    clear: {
-      label: "クリア",
-      armedLabel: "もう一度でクリア",
-      tooltip: "エディタを空にする",
-      armedTooltip: "もう一度クリックすると空にします",
-    },
   },
   settings: {
     direction: "向き",
@@ -667,9 +576,6 @@ const ja: Messages = {
     language: "言語",
   },
   starter: {
-    createGraph: "グラフを作成",
-    dialogLabel: "グラフ作成スターター",
-    methodLabel: "開始方法",
     paste: "貼り付け",
     inputLabel: "グラフのデータ",
     moreIssues: (count: number) => `残り${count}件の確認事項を表示`,
@@ -684,13 +590,9 @@ const ja: Messages = {
       "ファイルを読み込めませんでした。入力内容は保持されています。もう一度選択してください。",
     fileTooLarge: (limit: number) =>
       `ファイルが大きすぎます。${limit.toLocaleString("ja-JP")}文字以内にしてください。入力内容は保持されています。`,
-    autoDetectHelp: "対応形式を入力内容から判定します",
     formatLabel: "形式",
     autoFormat: "自動判定",
-    pastePlaceholder:
-      "辺リスト\n4 4\n1 2\n2 3\n2 4\n3 4\n\n隣接リスト\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n隣接行列\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "グラフに反映",
-    applyAs: (format: string) => `${format}として反映`,
     applyWithWarnings: "警告を確認して反映",
     ambiguousTitle: "複数の形式として解釈できます",
     ambiguousHelp: "反映する形式を選択してください。",
@@ -706,6 +608,24 @@ const ja: Messages = {
       "adjacency-matrix": "隣接行列",
       json: "JSON（位置・色・曲げを含む）",
     },
+    formatGuides: {
+      auto: "辺リスト・隣接リスト・隣接行列・JSON などの形式を自動で判定します。形式を選ぶと、その書き方を表示します。",
+      "contest-edge-list":
+        "1行目に「頂点数 辺数」、続く行に辺を「頂点 頂点」で1本ずつ書きます。重み付きは「頂点 頂点 重み」です。",
+      "tree-edge-list":
+        "1行目に頂点数、続く行に木の辺を「頂点 頂点」で1本ずつ（頂点数−1本）書きます。",
+      "parent-list":
+        "1行目に頂点数、2行目に根以外の各頂点の親を、頂点番号の順に空白で区切って書きます。",
+      "weighted-parent-list":
+        "1行目に頂点数、続く行に根以外の各頂点の「親 重み」を、頂点番号の順に1行ずつ書きます。",
+      "edge-pairs":
+        "辺を「頂点 頂点」で1行に1本ずつ書きます。頂点数の行は不要です。",
+      "adjacency-list": "1行に1頂点ずつ「頂点: 隣接する頂点…」を書きます。",
+      "adjacency-matrix":
+        "頂点数と同じ行数・列数の行列を書きます。0 以外の位置に辺を作り、1 以外の値は重みになります。",
+      json: "Graph Editor で書き出した JSON を貼り付けます。頂点の位置・色・曲げも復元します。",
+    },
+    exampleLabel: "例:",
     preview: "プレビュー",
     previewEmpty: "入力待ち",
     previewStats: (nodeCount: number, edgeCount: number) =>
@@ -717,18 +637,10 @@ const ja: Messages = {
     emptyPlaceholder: "グラフを入力すると、ここに出力が表示されます",
     preparing: "書き出しを準備中",
     exportedAria: (label: string) => `書き出した${label}`,
-    copyAria: (label: string, state: "idle" | "copied" | "blocked") =>
-      state === "copied"
-        ? `${label}をコピーしました`
-        : state === "blocked"
-          ? `${label}をコピーできませんでした`
-          : `${label}をコピー`,
     tikzNote:
       "TeX文書に貼り付けるか、保存した .tex を \\input で読み込めます。冒頭コメントのパッケージを追加してください。日本語には LuaLaTeX と luatexja が必要です。ラベルは通常の文字として出力します。",
     jsonNote:
       "位置・色・曲げも含めて保存します。読み込みで完全に復元できます。",
-    adjacencyLossWarning:
-      "多重辺は隣接リスト・隣接行列では完全に表現できない場合があります。完全な書き出しには辺リストを使ってください。",
     formats: {
       "edge-list": "辺リスト",
       "adjacency-list": "隣接リスト",
@@ -739,14 +651,8 @@ const ja: Messages = {
   },
   screenshot: {
     title: "グラフを画像にする",
-    openAria: "PNG書き出しを開く",
-    titleIdle: "PNGとして保存 / コピー",
-    copiedAria: "スクショをコピーしました",
-    savedAria: "スクショを保存しました",
-    blockedAria: "スクショをコピーできませんでした",
     scope: "範囲",
     viewport: "表示中",
-    fullGraph: "グラフ全体",
     natural: "現在倍率",
     naturalFixed: "倍率＋枠指定",
     canvasWidth: "画像の幅 (px)",
@@ -754,7 +660,6 @@ const ja: Messages = {
     canvasTooSmall: "現在の倍率ではグラフが指定サイズに収まりません",
     background: "背景",
     imageSize: "画像サイズ",
-    longEdgeCustom: "カスタム",
     fixedLongEdge: "長辺指定",
     padding: "余白",
     black: "黒",
@@ -765,14 +670,12 @@ const ja: Messages = {
     previewEmpty: "グラフを作成するとプレビューが表示されます",
     previewFailed: "プレビューを作成できませんでした",
     previewLoading: "プレビューを作成中",
-    previewNoDimensions: "-- px",
     copyFallbackSaved: "コピーできなかったためPNGとして保存しました",
     copyFailed: "スクショをクリップボードにコピーできませんでした",
     download: "ダウンロード",
     downloadFailed: "スクショをダウンロードできませんでした",
     emptyGraph: "グラフが空です",
     downloaded: "ダウンロード済み",
-    downloading: "ダウンロード中",
   },
   canvas: {
     rangeSelection: {
@@ -783,14 +686,12 @@ const ja: Messages = {
       edges: "辺だけ",
       hint: (modifier: string) => `${modifier} / Shift + ドラッグ`,
     },
-    fitGraph: "画面外にあるグラフを表示領域に戻す",
     fitGraphTitle: "グラフを表示領域に戻す",
     zoomOut: "表示を縮小",
     resetZoom: (zoomPercent: number) =>
       `表示倍率を100%に戻す。現在 ${zoomPercent}%`,
     zoomIn: "表示を拡大",
     editNodeLabel: "頂点ラベルを編集",
-    nodeLabelPlaceholder: "空欄でラベルなし",
     editEdgeWeight: "辺の重みを編集",
     editEdgeLabel: "辺ラベルを編集",
     editEdgeWeightOf: (value: string) => `辺の重み ${value} を編集`,
@@ -801,7 +702,6 @@ const ja: Messages = {
     connectEdgeTo: (name: string) => `${name}に辺を接続`,
     sourceSelected: (name: string) => `${name}を始点に選択中`,
     inlineEditErrors: {
-      "invalid-number": "数値を入力してください",
       "invalid-graph":
         "入力を保存できません。文字列は256文字以内にしてください",
     },
@@ -809,11 +709,8 @@ const ja: Messages = {
     bendEdgeLeft: "左へ曲げる",
     bendEdgeRight: "右へ曲げる",
     reverseEdges: "向き反転",
-    reverseEdgesTitle: "始点と終点を入れ替え",
     nodeColor: "頂点の色",
     edgeColor: "辺の色",
-    nodeColorTitle: "頂点の色を変更",
-    edgeColorTitle: "辺の色を変更",
     colorFor: (kind: "node" | "edge", color: string) =>
       `${kind === "node" ? "頂点" : "辺"}の色: ${color}`,
     colors: {
@@ -830,9 +727,6 @@ const ja: Messages = {
   contextMenu: {
     nodeMenu: "頂点メニュー",
     edgeMenu: "辺メニュー",
-    editNodeLabel: "頂点ラベルを編集",
-    editEdgeLabel: "辺ラベルを編集",
-    editWeight: "重みを編集",
   },
   layouts: {
     force: {
@@ -919,14 +813,8 @@ const ja: Messages = {
     shortcuts: "キーボードショートカット",
     offsetEdges: "辺をずらして重なりを避ける",
     layoutPending: "配置を計算しています…",
-    graphType: "グラフの種類",
     display: "表示",
-    storageSkippedToast:
-      "このサイズのグラフは自動保存できません。JSON で書き出して保存してください。",
     clear: "グラフをクリア",
-    clearArmed: "本当にクリアする",
-    clearHint: "2 回押して確定",
-    clearArmedHint: "もう一度押す",
     saveAs: (extension: string) => `.${extension} で保存`,
     copy: "コピー",
     copied: "コピーしました",
@@ -952,6 +840,7 @@ const ja: Messages = {
     starterOpenFile: "ファイルを開く",
     starterBackToPaste: "貼り付けに戻る",
     starterApply: "グラフに反映",
+    starterApplyHint: (keys: string) => `${keys} で反映`,
     starterSamplesTitle: "サンプル",
     emptyCards: {
       paste: {
@@ -1013,29 +902,13 @@ const ja: Messages = {
     },
   },
   samples: {
-    searchPlaceholder: "名前・用途で検索（例: BFS、最短路）",
     searchAria: "サンプルを名前やアルゴリズムで検索",
     clearSearch: "検索をクリア",
     empty: "該当するサンプルはありません",
-    sizedKindLabel: "形",
-    sizedNodeCountLabel: "頂点数",
-    sizedNodeCountAria: "生成する頂点数",
-    sizedRowsLabel: "行",
-    sizedColumnsLabel: "列",
-    sizedBipartiteLeftLabel: "左側の頂点数",
-    sizedBipartiteRightLabel: "右側の頂点数",
-    sizedKnightMoveXLabel: "移動 X",
-    sizedKnightMoveYLabel: "移動 Y",
-    sizedKnightMoveLabel: "移動",
-    sizedKnightMoves: {
-      standard: "標準 (1,2)",
-      long: "長距離 (1,3)",
-      camel: "キャメル (2,3)",
-    },
     category: "カテゴリ",
     allCategories: "すべてのカテゴリ",
     clearFilters: "絞り込みをクリア",
-    generationSettings: "生成設定 ▾",
+    generationSettings: "生成設定",
     requiredSettings:
       "有向・重み付きなど、サンプルの特徴に必要な設定は優先されます。",
     fillParameters: "すべての値を入力してください。",
@@ -1103,7 +976,6 @@ const ja: Messages = {
       },
     },
     item: {},
-    applyAria: (label: string) => `${label} のサンプルを入力`,
   },
 } satisfies Messages;
 
@@ -1124,8 +996,6 @@ const en: Messages = {
     copying: "Copying",
     saved: "Saved",
     copy: "Copy",
-    lightMode: "Light",
-    darkMode: "Dark",
     switchLightMode: "Switch to light mode",
     switchDarkMode: "Switch to dark mode",
   },
@@ -1139,36 +1009,13 @@ const en: Messages = {
   },
   toolbar: {
     ...ja.toolbar,
-    quickActions: "Quick actions",
-    openSidebar: "Open sidebar",
-    closeSidebar: "Close sidebar",
-    groups: {
-      actions: "Actions",
-      layouts: "Layouts",
-      edgeAppearance: "Readable edges",
-      history: "History",
-      settings: "Settings",
-    },
     modes: {
       select: { label: "Select", tooltip: "Shift+drag to box select" },
       node: { label: "Node", tooltip: "Add nodes on the canvas" },
       edge: { label: "Edge", tooltip: "Connect two nodes with an edge" },
     },
-    moreLayouts: "Show more",
-    collapseLayouts: "Show fewer",
-    autoEdgeRouting: {
-      label: "Offset edges",
-      tooltip:
-        "Slightly curve edges that share the same path so each edge is easier to tell apart",
-    },
     undo: { label: "Undo", tooltip: "Undo the last action" },
     redo: { label: "Redo", tooltip: "Redo the last undone action" },
-    clear: {
-      label: "Clear",
-      armedLabel: "Click again to clear",
-      tooltip: "Clear the editor",
-      armedTooltip: "Click again to empty the graph",
-    },
   },
   settings: {
     direction: "Direction",
@@ -1189,9 +1036,6 @@ const en: Messages = {
     language: "Language",
   },
   starter: {
-    createGraph: "Create graph",
-    dialogLabel: "Graph starter",
-    methodLabel: "Start method",
     paste: "Paste",
     inputLabel: "Graph data",
     moreIssues: (count: number) => `Show ${count} more items to review`,
@@ -1206,13 +1050,9 @@ const en: Messages = {
       "The file could not be read. Your input is retained. Select the file again to retry.",
     fileTooLarge: (limit: number) =>
       `The file exceeds the ${limit.toLocaleString("en-US")}-character limit. Your input is retained.`,
-    autoDetectHelp: "Detects the supported format from your input.",
     formatLabel: "Format",
     autoFormat: "Auto detect",
-    pastePlaceholder:
-      "Edge list\n4 4\n1 2\n2 3\n2 4\n3 4\n\nAdjacency list\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\nAdjacency matrix\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "Apply to graph",
-    applyAs: (format: string) => `Apply as ${format}`,
     applyWithWarnings: "Apply after reviewing warnings",
     ambiguousTitle: "This input has multiple interpretations",
     ambiguousHelp: "Select the format you want to apply.",
@@ -1228,6 +1068,24 @@ const en: Messages = {
       "adjacency-matrix": "adjacency matrix",
       json: "JSON (positions, colours, bends)",
     },
+    formatGuides: {
+      auto: "Detects edge lists, adjacency lists, adjacency matrices, JSON, and more. Choose a format to see how to write it.",
+      "contest-edge-list":
+        "First line: “vertices edges”. Then one edge per line as “u v”, or “u v weight” for weighted graphs.",
+      "tree-edge-list":
+        "First line: the vertex count. Then one tree edge per line as “u v” (vertex count − 1 lines).",
+      "parent-list":
+        "First line: the vertex count. Second line: the parent of each non-root vertex, in vertex order, separated by spaces.",
+      "weighted-parent-list":
+        "First line: the vertex count. Then “parent weight” for each non-root vertex, one line each, in vertex order.",
+      "edge-pairs":
+        "One edge per line as “u v”. No vertex-count line is needed.",
+      "adjacency-list": "One vertex per line as “v: neighbors…”.",
+      "adjacency-matrix":
+        "A square matrix with one row and column per vertex. Non-zero entries become edges; values other than 1 become weights.",
+      json: "Paste JSON exported from Graph Editor. Positions, colors, and curves are restored.",
+    },
+    exampleLabel: "Example:",
     preview: "Preview",
     previewEmpty: "Waiting for input",
     previewStats: (nodeCount: number, edgeCount: number) =>
@@ -1239,18 +1097,10 @@ const en: Messages = {
     emptyPlaceholder: "Graph output appears here after you create a graph.",
     preparing: "Preparing export",
     exportedAria: (label: string) => `Exported ${label}`,
-    copyAria: (label: string, state: "idle" | "copied" | "blocked") =>
-      state === "copied"
-        ? `${label} copied`
-        : state === "blocked"
-          ? `Could not copy ${label}`
-          : `Copy ${label}`,
     tikzNote:
       "Paste into a TeX document or load the saved .tex with \\input. Add the packages listed in the opening comments. Japanese labels need LuaLaTeX and luatexja; other Unicode needs suitable fonts. Labels are exported as literal text.",
     jsonNote:
       "Includes positions, colours and bends; importing restores the graph exactly.",
-    adjacencyLossWarning:
-      "Parallel edges may not be represented completely in adjacency lists or matrices. Use edge list for a lossless export.",
     formats: {
       "edge-list": "Edge list",
       "adjacency-list": "Adjacency list",
@@ -1261,14 +1111,8 @@ const en: Messages = {
   },
   screenshot: {
     title: "Export graph as image",
-    openAria: "Open PNG export",
-    titleIdle: "Save or copy as PNG",
-    copiedAria: "Screenshot copied",
-    savedAria: "Screenshot saved",
-    blockedAria: "Could not copy screenshot",
     scope: "Scope",
     viewport: "Current view",
-    fullGraph: "Full graph",
     natural: "Current zoom",
     naturalFixed: "Fixed canvas",
     canvasWidth: "Image width (px)",
@@ -1276,7 +1120,6 @@ const en: Messages = {
     canvasTooSmall: "The graph does not fit at the current zoom.",
     background: "Background",
     imageSize: "Image size",
-    longEdgeCustom: "Custom",
     fixedLongEdge: "Fit long edge",
     padding: "Padding",
     black: "Black",
@@ -1287,14 +1130,12 @@ const en: Messages = {
     previewEmpty: "Create a graph to preview the image.",
     previewFailed: "Could not create the preview.",
     previewLoading: "Creating preview",
-    previewNoDimensions: "-- px",
     copyFallbackSaved: "Could not copy, so the PNG was saved instead.",
     copyFailed: "Could not copy the screenshot to the clipboard.",
     download: "Download",
     downloadFailed: "Could not download the screenshot.",
     emptyGraph: "The graph is empty.",
     downloaded: "Downloaded",
-    downloading: "Downloading",
   },
   canvas: {
     rangeSelection: {
@@ -1305,14 +1146,12 @@ const en: Messages = {
       edges: "Edges only",
       hint: (modifier: string) => `${modifier} / Shift + drag`,
     },
-    fitGraph: "Bring off-screen graph back into view",
     fitGraphTitle: "Fit graph to view",
     zoomOut: "Zoom out",
     resetZoom: (zoomPercent: number) =>
       `Reset zoom to 100%. Current zoom is ${zoomPercent}%.`,
     zoomIn: "Zoom in",
     editNodeLabel: "Edit node label",
-    nodeLabelPlaceholder: "Leave blank for no label",
     editEdgeWeight: "Edit edge weight",
     editEdgeLabel: "Edit edge label",
     editEdgeWeightOf: (value: string) => `Edit edge weight ${value}`,
@@ -1323,18 +1162,14 @@ const en: Messages = {
     connectEdgeTo: (name: string) => `Connect edge to ${name}`,
     sourceSelected: (name: string) => `${name} selected as source`,
     inlineEditErrors: {
-      "invalid-number": "Enter a number",
       "invalid-graph": "Cannot save this input. Use at most 256 characters",
     },
     resetEdgeCurve: "Return to automatic routing",
     bendEdgeLeft: "Bend left",
     bendEdgeRight: "Bend right",
     reverseEdges: "Reverse",
-    reverseEdgesTitle: "Swap source and target",
     nodeColor: "Node color",
     edgeColor: "Edge color",
-    nodeColorTitle: "Change node color",
-    edgeColorTitle: "Change edge color",
     colorFor: (kind: "node" | "edge", color: string) =>
       `${kind === "node" ? "Node" : "Edge"} color: ${color}`,
     colors: {
@@ -1351,9 +1186,6 @@ const en: Messages = {
   contextMenu: {
     nodeMenu: "Node menu",
     edgeMenu: "Edge menu",
-    editNodeLabel: "Edit node label",
-    editEdgeLabel: "Edit edge label",
-    editWeight: "Edit weight",
   },
   layouts: {
     force: {
@@ -1441,14 +1273,8 @@ const en: Messages = {
     shortcuts: "Keyboard shortcuts",
     offsetEdges: "Offset overlapping edges",
     layoutPending: "Calculating layout…",
-    graphType: "Graph type",
     display: "Display",
-    storageSkippedToast:
-      "This graph is too large to autosave. Export it as JSON to keep it.",
     clear: "Clear graph",
-    clearArmed: "Really clear",
-    clearHint: "Press twice to confirm",
-    clearArmedHint: "Press again",
     saveAs: (extension: string) => `Save as .${extension}`,
     copy: "Copy",
     copied: "Copied",
@@ -1475,6 +1301,7 @@ const en: Messages = {
     starterOpenFile: "Open file",
     starterBackToPaste: "Back to paste",
     starterApply: "Apply to graph",
+    starterApplyHint: (keys: string) => `${keys} to apply`,
     starterSamplesTitle: "Samples",
     emptyCards: {
       paste: {
@@ -1535,29 +1362,13 @@ const en: Messages = {
     },
   },
   samples: {
-    searchPlaceholder: "Search names or uses (e.g. BFS, shortest path)",
     searchAria: "Search samples by name or algorithm",
     clearSearch: "Clear search",
     empty: "No matching samples",
-    sizedKindLabel: "Shape",
-    sizedNodeCountLabel: "Nodes",
-    sizedNodeCountAria: "Node count to generate",
-    sizedRowsLabel: "Rows",
-    sizedColumnsLabel: "Columns",
-    sizedBipartiteLeftLabel: "Left vertices",
-    sizedBipartiteRightLabel: "Right vertices",
-    sizedKnightMoveXLabel: "Move X",
-    sizedKnightMoveYLabel: "Move Y",
-    sizedKnightMoveLabel: "Move",
-    sizedKnightMoves: {
-      standard: "Standard (1,2)",
-      long: "Long (1,3)",
-      camel: "Camel (2,3)",
-    },
     category: "Category",
     allCategories: "All categories",
     clearFilters: "Clear filters",
-    generationSettings: "Generation settings ▾",
+    generationSettings: "Generation settings",
     requiredSettings:
       "Settings required by a sample, such as direction or weights, take precedence.",
     fillParameters: "Enter a value in every field.",
@@ -1626,7 +1437,6 @@ const en: Messages = {
       },
     },
     item: enSampleItems,
-    applyAria: (label: string) => `Insert the ${label} sample`,
   },
 };
 
@@ -1647,8 +1457,6 @@ const zhHans: Messages = {
     copying: "复制中",
     saved: "已保存",
     copy: "复制",
-    lightMode: "浅色",
-    darkMode: "深色",
     switchLightMode: "切换到浅色模式",
     switchDarkMode: "切换到深色模式",
   },
@@ -1662,35 +1470,13 @@ const zhHans: Messages = {
   },
   toolbar: {
     ...en.toolbar,
-    quickActions: "快速操作",
-    openSidebar: "打开侧边栏",
-    closeSidebar: "关闭侧边栏",
-    groups: {
-      actions: "操作",
-      layouts: "布局",
-      edgeAppearance: "边更易读",
-      history: "历史",
-      settings: "设置",
-    },
     modes: {
       select: { label: "选择", tooltip: "Shift+拖动框选" },
       node: { label: "顶点", tooltip: "在画布上添加顶点" },
       edge: { label: "边", tooltip: "连接两个顶点" },
     },
-    moreLayouts: "再显示",
-    collapseLayouts: "收起部分",
-    autoEdgeRouting: {
-      label: "错开边",
-      tooltip: "将经过同一路径的边稍微弯曲，便于逐条区分",
-    },
     undo: { label: "撤销", tooltip: "撤销上一步操作" },
     redo: { label: "重做", tooltip: "重做已撤销的操作" },
-    clear: {
-      label: "清空",
-      armedLabel: "再次点击清空",
-      tooltip: "清空编辑器",
-      armedTooltip: "再次点击将清空图",
-    },
   },
   settings: {
     direction: "方向",
@@ -1711,9 +1497,6 @@ const zhHans: Messages = {
     language: "语言",
   },
   starter: {
-    createGraph: "创建图",
-    dialogLabel: "图创建面板",
-    methodLabel: "开始方式",
     paste: "粘贴",
     inputLabel: "图数据",
     moreIssues: (count: number) => `显示其余 ${count} 项待确认内容`,
@@ -1727,13 +1510,9 @@ const zhHans: Messages = {
     fileReadFailed: "无法读取文件。已保留当前输入。请重新选择文件后重试。",
     fileTooLarge: (limit: number) =>
       `文件超过 ${limit.toLocaleString("zh-CN")} 个字符的限制。已保留当前输入。`,
-    autoDetectHelp: "根据输入内容检测支持的格式。",
     formatLabel: "格式",
     autoFormat: "自动检测",
-    pastePlaceholder:
-      "边列表\n4 4\n1 2\n2 3\n2 4\n3 4\n\n邻接表\n1: 2\n2: 1 3 4\n3: 2 4\n4: 2 3\n\n邻接矩阵\n0 1 0 0\n1 0 1 1\n0 1 0 1\n0 1 1 0",
     apply: "应用到图",
-    applyAs: (format: string) => `按${format}应用`,
     applyWithWarnings: "确认警告后应用",
     ambiguousTitle: "此输入可按多种格式解释",
     ambiguousHelp: "请选择要应用的格式。",
@@ -1749,6 +1528,23 @@ const zhHans: Messages = {
       "adjacency-matrix": "邻接矩阵",
       json: "JSON（含位置、颜色、弯曲）",
     },
+    formatGuides: {
+      auto: "自动识别边列表、邻接表、邻接矩阵、JSON 等格式。选择格式后会显示其写法。",
+      "contest-edge-list":
+        "第一行写“顶点数 边数”，之后每行写一条边“顶点 顶点”。带权图写“顶点 顶点 权”。",
+      "tree-edge-list":
+        "第一行写顶点数，之后每行写一条树边“顶点 顶点”（共顶点数−1 行）。",
+      "parent-list":
+        "第一行写顶点数，第二行按顶点编号顺序写出每个非根顶点的父节点，用空格分隔。",
+      "weighted-parent-list":
+        "第一行写顶点数，之后按顶点编号顺序，每行写一个非根顶点的“父节点 权”。",
+      "edge-pairs": "每行写一条边“顶点 顶点”。不需要顶点数行。",
+      "adjacency-list": "每行写一个顶点“顶点: 相邻顶点…”。",
+      "adjacency-matrix":
+        "写出行数和列数都等于顶点数的矩阵。非 0 的位置生成边，1 以外的值作为权。",
+      json: "粘贴从 Graph Editor 导出的 JSON。会恢复顶点位置、颜色和弯曲。",
+    },
+    exampleLabel: "示例：",
     preview: "预览",
     previewEmpty: "等待输入",
     previewStats: (nodeCount: number, edgeCount: number) =>
@@ -1760,17 +1556,9 @@ const zhHans: Messages = {
     emptyPlaceholder: "创建图后，输出会显示在这里。",
     preparing: "正在准备导出",
     exportedAria: (label: string) => `已导出的${label}`,
-    copyAria: (label: string, state: "idle" | "copied" | "blocked") =>
-      state === "copied"
-        ? `已复制${label}`
-        : state === "blocked"
-          ? `无法复制${label}`
-          : `复制${label}`,
     tikzNote:
       "粘贴到 TeX 文档，或使用 \\input 加载保存的 .tex 文件。请添加开头注释中列出的宏包。中文等 Unicode 标签需要支持相应字符的引擎和字体。标签作为普通文本导出。",
     jsonNote: "包含位置、颜色和弯曲；导入后可完整还原。",
-    adjacencyLossWarning:
-      "多重边可能无法在邻接表或邻接矩阵中完整表示。请使用边列表进行无损导出。",
     formats: {
       "edge-list": "边列表",
       "adjacency-list": "邻接表",
@@ -1781,14 +1569,8 @@ const zhHans: Messages = {
   },
   screenshot: {
     title: "导出图像",
-    openAria: "打开 PNG 导出",
-    titleIdle: "保存或复制为 PNG",
-    copiedAria: "截图已复制",
-    savedAria: "截图已保存",
-    blockedAria: "无法复制截图",
     scope: "范围",
     viewport: "当前视图",
-    fullGraph: "整个图",
     natural: "当前缩放",
     naturalFixed: "指定画布",
     canvasWidth: "图像宽度 (px)",
@@ -1796,7 +1578,6 @@ const zhHans: Messages = {
     canvasTooSmall: "当前缩放下图形无法放入指定尺寸。",
     background: "背景",
     imageSize: "图像尺寸",
-    longEdgeCustom: "自定义",
     fixedLongEdge: "指定长边",
     padding: "留白",
     black: "黑色",
@@ -1807,14 +1588,12 @@ const zhHans: Messages = {
     previewEmpty: "创建图表后会显示预览。",
     previewFailed: "无法创建预览。",
     previewLoading: "正在创建预览",
-    previewNoDimensions: "-- px",
     copyFallbackSaved: "无法复制，已改为保存 PNG。",
     copyFailed: "无法将截图复制到剪贴板。",
     download: "下载",
     downloadFailed: "无法下载截图。",
     emptyGraph: "图为空。",
     downloaded: "已下载",
-    downloading: "下载中",
   },
   canvas: {
     ...en.canvas,
@@ -1826,13 +1605,11 @@ const zhHans: Messages = {
       edges: "仅边",
       hint: (modifier: string) => `${modifier} / Shift + 拖动`,
     },
-    fitGraph: "将画布外的图移回视图",
     fitGraphTitle: "适应视图",
     zoomOut: "缩小",
     resetZoom: (zoomPercent: number) => `重置为 100%。当前为 ${zoomPercent}%。`,
     zoomIn: "放大",
     editNodeLabel: "编辑顶点标签",
-    nodeLabelPlaceholder: "留空则不显示标签",
     editEdgeWeight: "编辑边权值",
     editEdgeLabel: "编辑边标签",
     editEdgeWeightOf: (value: string) => `编辑边权重 ${value}`,
@@ -1843,18 +1620,14 @@ const zhHans: Messages = {
     connectEdgeTo: (name: string) => `连接到${name}`,
     sourceSelected: (name: string) => `${name}已选为起点`,
     inlineEditErrors: {
-      "invalid-number": "请输入数字",
       "invalid-graph": "无法保存输入。请使用最多256个字符",
     },
     resetEdgeCurve: "恢复自动布线",
     bendEdgeLeft: "向左弯曲",
     bendEdgeRight: "向右弯曲",
     reverseEdges: "反向",
-    reverseEdgesTitle: "交换起点和终点",
     nodeColor: "顶点颜色",
     edgeColor: "边颜色",
-    nodeColorTitle: "更改顶点颜色",
-    edgeColorTitle: "更改边颜色",
     colorFor: (kind: "node" | "edge", color: string) =>
       `${kind === "node" ? "顶点" : "边"}颜色：${color}`,
     colors: {
@@ -1871,9 +1644,6 @@ const zhHans: Messages = {
   contextMenu: {
     nodeMenu: "顶点菜单",
     edgeMenu: "边菜单",
-    editNodeLabel: "编辑顶点标签",
-    editEdgeLabel: "编辑边标签",
-    editWeight: "编辑权值",
   },
   layouts: {
     ...en.layouts,
@@ -1957,13 +1727,8 @@ const zhHans: Messages = {
     shortcuts: "键盘快捷键",
     offsetEdges: "错开重叠的边",
     layoutPending: "正在计算布局…",
-    graphType: "图类型",
     display: "显示",
-    storageSkippedToast: "此图过大，无法自动保存。请导出为 JSON 以保留。",
     clear: "清空图",
-    clearArmed: "确认清空",
-    clearHint: "点击两次确认",
-    clearArmedHint: "再次点击",
     saveAs: (extension: string) => `保存为 .${extension}`,
     copy: "复制",
     copied: "已复制",
@@ -1989,6 +1754,7 @@ const zhHans: Messages = {
     starterOpenFile: "打开文件",
     starterBackToPaste: "返回粘贴",
     starterApply: "应用到图",
+    starterApplyHint: (keys: string) => `${keys} 应用`,
     starterSamplesTitle: "示例",
     emptyCards: {
       paste: { title: "从数据创建", body: "边列表、矩阵、JSON" },
@@ -2040,29 +1806,13 @@ const zhHans: Messages = {
   },
   samples: {
     ...en.samples,
-    searchPlaceholder: "按名称或用途搜索（如 BFS、最短路）",
     searchAria: "按名称或算法搜索示例",
     clearSearch: "清除搜索",
     empty: "没有匹配的示例",
-    sizedKindLabel: "形状",
-    sizedNodeCountLabel: "顶点数",
-    sizedNodeCountAria: "要生成的顶点数",
-    sizedRowsLabel: "行",
-    sizedColumnsLabel: "列",
-    sizedBipartiteLeftLabel: "左侧顶点数",
-    sizedBipartiteRightLabel: "右侧顶点数",
-    sizedKnightMoveXLabel: "移动 X",
-    sizedKnightMoveYLabel: "移动 Y",
-    sizedKnightMoveLabel: "移动",
-    sizedKnightMoves: {
-      standard: "标准 (1,2)",
-      long: "长步 (1,3)",
-      camel: "骆驼 (2,3)",
-    },
     category: "类别",
     allCategories: "所有类别",
     clearFilters: "清除筛选",
-    generationSettings: "生成设置 ▾",
+    generationSettings: "生成设置",
     requiredSettings: "示例所需的方向或权重等设置优先。",
     fillParameters: "请填写所有参数。",
     integerParameters: "请输入非负整数（也可使用全角数字）。",
@@ -2105,7 +1855,6 @@ const zhHans: Messages = {
       small: { label: "小型命名图", note: "用于刻画和染色的小例子" },
     },
     item: zhHansSampleItems,
-    applyAria: (label: string) => `插入 ${label} 示例`,
   },
 };
 

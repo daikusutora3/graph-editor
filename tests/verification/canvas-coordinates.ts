@@ -174,9 +174,7 @@ function verifyRebase() {
     node.position(toCytoscapePosition(cy, dragged));
     const skip = new Set(["__proto__"]);
     withCytoscapeBatch(cy, () =>
-      syncCytoscapeElements(cy, definitions(normal), {
-        skipNodePositionIds: skip,
-      }),
+      syncCytoscapeElements(cy, definitions(normal), skip),
     );
     assert.equal(
       readCytoscapeCoordinateOrigin(cy),

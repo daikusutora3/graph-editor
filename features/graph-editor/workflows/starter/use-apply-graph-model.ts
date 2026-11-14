@@ -8,37 +8,16 @@ import { replaceGraphModelAtom } from "../../shell/state/editor-actions";
 
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
 
-type ApplyGraphModelOptions = {
-  clearEdgeDraft?: boolean;
-  clearSelection?: boolean;
-  fitAfterUpdate?: boolean;
-  selectMode?: boolean;
-};
-
 export function useApplyGraphModel() {
   const replaceGraphModel = useSetAtom(replaceGraphModelAtom);
   const { requestFit } = useGraphCanvasApi();
 
   return useCallback(
-    (
-      model: GraphModel,
-      {
-        clearEdgeDraft = false,
-        clearSelection = false,
-        fitAfterUpdate = false,
-        selectMode = false,
-      }: ApplyGraphModelOptions = {},
-    ) => {
-      const result = replaceGraphModel(model, {
-        clearEdgeDraft,
-        clearSelection,
-        selectMode,
-      });
+    (model: GraphModel) => {
+      const result = replaceGraphModel(model);
 
       if (result.status === "rejected") return false;
-      if (fitAfterUpdate) {
-        requestFit(result.graph);
-      }
+      requestFit(result.graph);
       return true;
     },
     [requestFit, replaceGraphModel],

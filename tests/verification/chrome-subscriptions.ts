@@ -142,7 +142,7 @@ expect(updates.selection === 1, "hints subscribe to selection existence");
 store.set(selectionAtom, { nodeIds: [], edgeIds: [] });
 expect(updates.selection === 2, "hints detect cleared selection");
 
-store.set(edgeDraftAtom, { sourceNodeId: "a" });
+store.set(edgeDraftAtom, "a");
 expect(
   store.get(edgeDraftSourceLabelAtom) === "png",
   "edge hints show the current source label",
@@ -168,7 +168,7 @@ expect(
   store.get(edgeDraftSourceLabelAtom) === "",
   "an empty source label still denotes an existing source",
 );
-store.set(edgeDraftAtom, { sourceNodeId: "missing" });
+store.set(edgeDraftAtom, "missing");
 expect(
   store.get(edgeDraftSourceLabelAtom) === null,
   "missing source nodes are absent",

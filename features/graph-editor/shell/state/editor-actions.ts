@@ -1,6 +1,5 @@
 import { withMeasuredNodeGeometry } from "../../adapters/browser/node-geometry";
 import { createOverlapTask } from "../../layouts/resolve-node-overlaps";
-import { createMoveNodesCommand } from "../../core/graph/graph-intents";
 import { atom } from "jotai";
 import {
   computeLayoutInWorker,
@@ -10,6 +9,7 @@ import { withRustKernelSuppressed } from "../../compute/rust-kernel";
 
 import { createEmptyGraphModel } from "../../core/graph/graph-factory";
 import {
+  createMoveNodesCommand,
   replaceModelCommand,
   reverseEdgesCommand,
   updateSettingsCommand,
@@ -21,11 +21,7 @@ import {
   type LayoutKind,
 } from "../../layouts/manual-layouts";
 import { edgeDraftAtom, editorModeAtom, selectionAtom } from "./editor-atoms";
-import {
-  createEmptyEdgeDraft,
-  createEmptySelection,
-  type EditorMode,
-} from "./editor-state";
+import { createEmptySelection } from "./editor-state";
 import { graphAtom, graphRevisionAtom } from "./graph-atoms";
 import {
   acceptStorageBaseline,
@@ -33,56 +29,23 @@ import {
   scheduleStoredGraphWrite,
   flushStoredGraphWrite,
 } from "../../adapters/browser/stored-graph";
-import {
-  commandErrorAtom,
-  clearHistoryAtom,
-  executeCommandAtom,
-} from "./history-atoms";
+import { commandErrorAtom, executeCommandAtom } from "./history-atoms";
 
-type ReplaceGraphOptions = {
-  clearEdgeDraft?: boolean;
-  clearSelection?: boolean;
-  selectMode?: boolean;
-};
 const layoutControllerAtom = atom<AbortController | null>(null);
-
-export const resetEditorSessionAtom = atom(null, (get, set) => {
-  get(layoutControllerAtom)?.abort();
-  set(layoutControllerAtom, null);
-  set(layoutRequestAtom, null);
-  set(layoutPendingRequestAtom, null);
-  set(editorModeAtom, "select");
-  set(selectionAtom, createEmptySelection());
-  set(edgeDraftAtom, createEmptyEdgeDraft());
-  set(clearHistoryAtom);
-});
 
 export const clearInteractionStateAtom = atom(null, (_get, set) => {
   set(selectionAtom, createEmptySelection());
-  set(edgeDraftAtom, createEmptyEdgeDraft());
-});
-
-export const setEditorModeAtom = atom(null, (_get, set, mode: EditorMode) => {
-  set(editorModeAtom, mode);
+  set(edgeDraftAtom, null);
 });
 
 export const replaceGraphModelAtom = atom(
   null,
-  (_get, set, model: GraphModel, options: ReplaceGraphOptions = {}) => {
+  (_get, set, model: GraphModel) => {
     const result = set(executeCommandAtom, replaceModelCommand(model));
     if (result.status === "rejected") return result;
 
-    if (options.selectMode) {
-      set(editorModeAtom, "select");
-    }
-
-    if (options.clearSelection) {
-      set(selectionAtom, createEmptySelection());
-    }
-
-    if (options.clearEdgeDraft) {
-      set(edgeDraftAtom, createEmptyEdgeDraft());
-    }
+    set(editorModeAtom, "select");
+    set(clearInteractionStateAtom);
     return result;
   },
 );
@@ -94,46 +57,52 @@ export const clearGraphAtom = atom(null, (get, set) => {
     return;
   }
 
-  set(replaceGraphModelAtom, createEmptyGraphModel(graph.settings), {
-    clearEdgeDraft: true,
-    clearSelection: true,
-    selectMode: true,
-  });
+  set(replaceGraphModelAtom, createEmptyGraphModel(graph.settings));
 });
 
-const layoutRequestAtom = atom<symbol | null>(null);
-const layoutPendingRequestAtom = atom<symbol | null>(null);
 export const layoutPendingAtom = atom(
-  (get) => get(layoutPendingRequestAtom) !== null,
+  (get) => get(layoutControllerAtom) !== null,
 );
 
 export const applyManualLayoutAtom = atom(
   null,
-  (get, set, kind: LayoutKind) => {
+  (
+    get,
+    set,
+    kind: LayoutKind,
+    options?: {
+      signal?: AbortSignal;
+      rootNodeId?: string | null;
+      selectMode?: boolean;
+    },
+  ) => {
+    if (options?.signal?.aborted) {
+      return { status: "rejected" as const, message: "Layout cancelled" };
+    }
     get(layoutControllerAtom)?.abort();
+    set(layoutControllerAtom, null);
     const graph = get(graphAtom);
     const revision = get(graphRevisionAtom);
     const selection = get(selectionAtom);
     const rootNodeId =
-      selection.nodeIds.length === 1 ? selection.nodeIds[0] : undefined;
+      options?.rootNodeId === null
+        ? undefined
+        : (options?.rootNodeId ??
+          (selection.nodeIds.length === 1 ? selection.nodeIds[0] : undefined));
 
-    set(editorModeAtom, "select");
-    const request = Symbol();
-    set(layoutRequestAtom, request);
-    set(
-      layoutPendingRequestAtom,
-      kind === "spread" || kind === "force" ? request : null,
-    );
+    if (options?.selectMode !== false) set(editorModeAtom, "select");
     const measured = withMeasuredNodeGeometry(graph);
     if (kind === "spread" || kind === "force") {
       return (async () => {
         const controller = new AbortController();
+        const abort = () => controller.abort();
+        options?.signal?.addEventListener("abort", abort, { once: true });
+        if (options?.signal?.aborted) controller.abort();
         set(layoutControllerAtom, controller);
         const superseded = () =>
           controller.signal.aborted ||
           get(graphAtom) !== graph ||
-          get(graphRevisionAtom) !== revision ||
-          get(layoutRequestAtom) !== request;
+          get(graphRevisionAtom) !== revision;
         const task =
           kind === "spread"
             ? createOverlapTask(measured)
@@ -141,7 +110,7 @@ export const applyManualLayoutAtom = atom(
         const nextFallbackStep = () =>
           withRustKernelSuppressed(() => task.next());
         try {
-          const computed =
+          let computed =
             kind === "spread"
               ? await computeOverlapsInWorker(measured, controller.signal)
               : await computeLayoutInWorker(
@@ -155,16 +124,7 @@ export const applyManualLayoutAtom = atom(
               status: "rejected" as const,
               message: "Layout superseded",
             };
-          if (computed) {
-            if (!("positions" in computed))
-              return set(executeCommandAtom, computed);
-            const command = set(
-              executeCommandAtom,
-              createMoveNodesCommand("Resolve overlaps", computed.positions),
-            );
-            return { ...command, overlap: computed };
-          }
-          while (true) {
+          while (!computed) {
             if (superseded()) {
               return {
                 status: "rejected" as const,
@@ -176,29 +136,25 @@ export const applyManualLayoutAtom = atom(
             while (!step.done && performance.now() < deadline)
               step = nextFallbackStep();
             if (step.done) {
-              if (!("positions" in step.value)) {
-                return set(executeCommandAtom, step.value);
-              }
-              const command = set(
-                executeCommandAtom,
-                createMoveNodesCommand(
-                  "Resolve overlaps",
-                  step.value.positions,
-                ),
-              );
-              return { ...command, overlap: step.value };
+              computed = step.value;
+              break;
             }
 
             // eslint-disable-next-line no-await-in-loop
             await new Promise<void>((resolve) => setTimeout(resolve, 0));
           }
+          if (!("positions" in computed))
+            return set(executeCommandAtom, computed);
+          const command = set(
+            executeCommandAtom,
+            createMoveNodesCommand("Resolve overlaps", computed.positions),
+          );
+          return { ...command, overlap: computed };
         } finally {
+          options?.signal?.removeEventListener("abort", abort);
           controller.abort();
           if (get(layoutControllerAtom) === controller)
             set(layoutControllerAtom, null);
-          if (get(layoutPendingRequestAtom) === request) {
-            set(layoutPendingRequestAtom, null);
-          }
         }
       })();
     }

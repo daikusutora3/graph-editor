@@ -87,7 +87,7 @@ export function GuideOperationVisual({
           <figcaption className="flex min-h-11 items-start gap-2 text-sm leading-6 font-medium @min-[40rem]/reading:items-center @min-[40rem]/reading:px-1 @min-[40rem]/reading:pt-2">
             {id === "export" || id === "appearance" ? null : (
               <span
-                className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--fill)] text-[11px] text-[var(--muted)]"
+                className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--fill)] text-meta text-[var(--muted)]"
                 aria-hidden="true"
               >
                 {index + 1}

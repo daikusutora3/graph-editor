@@ -282,7 +282,7 @@ function nodeToCytoscapeElement(
 ): ElementDefinition {
   return {
     group: "nodes",
-    classes: [nodeColorClass(node.color)].filter(Boolean).join(" "),
+    classes: [colorClass(node.color)].filter(Boolean).join(" "),
     data: {
       id: encodeCytoscapeId(node.id),
       label: node.label,
@@ -308,7 +308,7 @@ function edgeToCytoscapeElement(
     classes: [
       directed ? "directed" : "",
       routingMeta.duplicate ? "multi" : "",
-      edgeColorClass(edge.color),
+      colorClass(edge.color),
     ]
       .filter(Boolean)
       .join(" "),
@@ -633,10 +633,6 @@ function cytoscapeStyle(
   return style as Css.Node | Css.Edge | Css.Core;
 }
 
-function edgeColorClass(color: GraphColor | undefined) {
-  return color && color !== "paper" ? `color-${color}` : "";
-}
-
-function nodeColorClass(color: GraphColor | undefined) {
+function colorClass(color: GraphColor | undefined) {
   return color && color !== "paper" ? `color-${color}` : "";
 }

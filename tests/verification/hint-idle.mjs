@@ -63,9 +63,7 @@ const { editorModeAtom, selectionAtom } = await import(
 const { graphAtom, syncExternalGraphAtom } = await import(
   feature("shell/state/graph-atoms.ts")
 );
-const { HINT_STORAGE_PREFIX, HINTS_RESET_EVENT } = await import(
-  feature("ui/chrome/hint-storage.ts")
-);
+
 store.set(syncExternalGraphAtom, {
   ...store.get(graphAtom),
   nodes: [{ id: "a", label: "A", order: 0, x: 0, y: 0 }],
@@ -251,7 +249,7 @@ assert.equal(
 );
 store.set(selectionAtom, { nodeIds: ["a"], edgeIds: [] });
 hint.flush();
-assert.equal(stored.get(`${HINT_STORAGE_PREFIX}select`), "1");
+assert.equal(stored.get("graph-editor-hint-learned:select"), "1");
 assert.equal(
   activityListeners(),
   0,
@@ -261,14 +259,6 @@ assert.equal(timers.size, 0);
 store.set(selectionAtom, { nodeIds: [], edgeIds: [] });
 hint.flush();
 assert.equal(activityListeners(), 0, "A learned hint remains dormant");
-stored.delete(`${HINT_STORAGE_PREFIX}select`);
-dispatch(HINTS_RESET_EVENT);
-assert.equal(hint.flush(), null);
-assert.equal(
-  activityListeners(),
-  4,
-  "Resetting hints re-arms only the currently useful hint",
-);
 hint.unmount();
 assert.equal(activityListeners(), 0);
 assert.equal(timers.size, 0);

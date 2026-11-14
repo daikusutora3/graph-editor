@@ -66,10 +66,28 @@ export function isStructuredEdgeListHeader(
     header.length === 3 &&
     header.every((token) => /^\d+$/.test(token)) &&
     dataRows.length === Number(header[1]) &&
-    dataRows.length > 0 &&
     dataRows.every((row) => row.length === 3) &&
     dataRows.some((row) => !Number.isFinite(Number(row[2])))
   );
+}
+
+export function looksLikeWeightedEdgePairs(
+  rows: string[][],
+  matrixSize: number,
+) {
+  let zeroBased = true;
+  let oneBased = true;
+  for (const row of rows) {
+    if (row.length !== 3 || Number(row[2]) === 0) return false;
+    for (let index = 0; index < 2; index += 1) {
+      const value = Number(row[index]);
+      if (!Number.isInteger(value)) return false;
+      zeroBased &&= value >= 0 && value < matrixSize;
+      oneBased &&= value >= 1 && value <= matrixSize;
+    }
+  }
+
+  return !zeroBased && !oneBased;
 }
 
 export function inferEdgeListWeightKind(
@@ -118,7 +136,6 @@ function readNumericMatrix(rows: string[][]): NumericImportMatrix | null {
   if (size < 1 || rows.some((row) => row.length !== size)) return null;
   const values: number[][] = [];
   let isSymmetric = true;
-  let hasZeroValue = false;
   let hasWeightedValue = false;
   let directedEdgeCount = 0;
   let undirectedEdgeCount = 0;
@@ -131,9 +148,7 @@ function readNumericMatrix(rows: string[][]): NumericImportMatrix | null {
       numericRow.push(value);
       if (target < source && value !== values[target]?.[source])
         isSymmetric = false;
-      if (value === 0) {
-        hasZeroValue = true;
-      } else {
+      if (value !== 0) {
         directedEdgeCount += 1;
         if (target >= source) undirectedEdgeCount += 1;
         if (value !== 1) hasWeightedValue = true;
@@ -144,9 +159,7 @@ function readNumericMatrix(rows: string[][]): NumericImportMatrix | null {
   return {
     size,
     values,
-    isBinary: !hasWeightedValue,
     isSymmetric,
-    hasZeroValue,
     hasWeightedValue,
     directedEdgeCount,
     undirectedEdgeCount,

@@ -22,7 +22,6 @@ import {
   layoutPendingAtom,
   clearGraphAtom,
   reverseAllDirectedEdgesAtom,
-  setEditorModeAtom,
   updateGraphSettingsAtom,
 } from "../../shell/state/editor-actions";
 import {
@@ -53,7 +52,6 @@ import { DesktopTopRow, MobileBottomBar, MobileTopRow } from "./EditorToolbar";
 import { StorageNotice } from "./StorageNotice";
 import { EmptyState } from "./EmptyState";
 import { useTimedState } from "../hooks/use-timed-state";
-import { STORAGE_SKIPPED_EVENT } from "../../adapters/browser/stored-graph";
 import { AppMenuPanel } from "../panels/AppMenuPanel";
 import { ExportPanelBody, ExportPanelFooter } from "../panels/ExportPanel";
 import type { CopyState } from "../io/graph-io-types";
@@ -71,7 +69,6 @@ import {
   StarterPasteBody,
   StarterPasteFooter,
   StarterSampleBody,
-  StarterSampleFooter,
 } from "../panels/StarterPanel";
 import { useThemeMode } from "../theme/theme";
 
@@ -98,7 +95,7 @@ export function EditorChrome() {
   const mode = useAtomValue(editorModeAtom);
   const canUndo = useAtomValue(canUndoAtom);
   const canRedo = useAtomValue(canRedoAtom);
-  const setMode = useSetAtom(setEditorModeAtom);
+  const setMode = useSetAtom(editorModeAtom);
   const undo = useSetAtom(undoAtom);
   const redo = useSetAtom(redoAtom);
   const applyManualLayout = useSetAtom(applyManualLayoutAtom);
@@ -129,7 +126,6 @@ export function EditorChrome() {
   const [toast, setToast] = useTimedState<string | null>(null, 4000);
   const [starterView, setStarterView] = useState<StarterView>("paste");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const isGraphEmpty = graphIsEmpty;
   const exportVisible = panel === "export" || visiblePanel === "export";
   const exportResult = useGraphExport(graph, exportFormat, exportVisible);
   const exportText = exportResult.text;
@@ -139,7 +135,7 @@ export function EditorChrome() {
       : "idle";
   const screenshot = useGraphIOScreenshot({
     graphRevision,
-    isGraphEmpty,
+    isGraphEmpty: graphIsEmpty,
     previewEnabled: panel === "png" || visiblePanel === "png",
     theme,
   });
@@ -147,7 +143,6 @@ export function EditorChrome() {
     open: panel === "starter",
     previewEnabled: visiblePanel === "starter" && starterView === "paste",
     onClose: close,
-    textareaRef,
   });
 
   useEffect(() => {
@@ -218,16 +213,8 @@ export function EditorChrome() {
     });
   }, [store, updateGraphSettings]);
 
-  useEffect(() => {
-    const onSkipped = () => setToast(messages.chrome.storageSkippedToast);
-
-    window.addEventListener(STORAGE_SKIPPED_EVENT, onSkipped);
-
-    return () => window.removeEventListener(STORAGE_SKIPPED_EVENT, onSkipped);
-  }, [messages.chrome.storageSkippedToast, setToast]);
-
   const handleClear = useCallback(() => {
-    if (isGraphEmpty) {
+    if (graphIsEmpty) {
       setClearArmed(false);
       return;
     }
@@ -245,7 +232,7 @@ export function EditorChrome() {
     clearArmed,
     clearGraph,
     close,
-    isGraphEmpty,
+    graphIsEmpty,
     messages.chrome,
     setClearArmed,
     setToast,
@@ -382,7 +369,6 @@ export function EditorChrome() {
               exportWarning={
                 exportResult.blocked ? integrity.exportBlocked : undefined
               }
-              mobile={mobile}
               onExportFormatChange={(format) => {
                 setExportFormat(format);
               }}
@@ -399,7 +385,7 @@ export function EditorChrome() {
               <PngPanelFooter
                 copyState={screenshot.copyState}
                 downloadState={screenshot.downloadState}
-                isGraphEmpty={isGraphEmpty}
+                isGraphEmpty={graphIsEmpty}
                 onCopy={screenshot.copy}
                 onDownload={screenshot.download}
               />
@@ -409,27 +395,18 @@ export function EditorChrome() {
               background={screenshot.effectiveBackground}
               canvasHeightPx={screenshot.canvasHeightPx}
               canvasWidthPx={screenshot.canvasWidthPx}
-              longEdgePx={
-                screenshot.longEdgePreset === "custom"
-                  ? screenshot.customLongEdgePx
-                  : screenshot.longEdgePreset
-              }
+              longEdgePx={screenshot.longEdgePx}
               mobile={mobile}
               notice={screenshot.copyMessage || screenshot.downloadMessage}
-              paddingPx={
-                screenshot.paddingPreset === "custom"
-                  ? screenshot.customPaddingPx
-                  : screenshot.paddingPreset
-              }
+              paddingPx={screenshot.paddingPx}
               preview={screenshot.preview}
               scope={screenshot.scope}
               solidBackground={screenshot.solidBackground}
-              theme={theme}
               onBackgroundChange={screenshot.setBackground}
               onCanvasHeightChange={screenshot.setCanvasHeightPx}
               onCanvasWidthChange={screenshot.setCanvasWidthPx}
-              onLongEdgeChange={screenshot.setCustomLongEdgePx}
-              onPaddingChange={screenshot.setCustomPaddingPx}
+              onLongEdgeChange={screenshot.setLongEdgePx}
+              onPaddingChange={screenshot.setPaddingPx}
               onScopeChange={screenshot.setScope}
             />
           </EditorPanelShell>
@@ -438,7 +415,9 @@ export function EditorChrome() {
         return starterView === "paste" ? (
           <EditorPanelShell
             {...shellProps}
+            tall
             title={messages.chrome.starterTitle}
+            width={760}
             footer={
               <StarterPasteFooter
                 starter={starter}
@@ -451,14 +430,13 @@ export function EditorChrome() {
         ) : (
           <EditorPanelShell
             {...shellProps}
+            back={{
+              label: messages.chrome.starterBackToPaste,
+              onClick: () => setStarterView("paste"),
+            }}
             scrollOwner="child"
             title={messages.chrome.starterSamplesTitle}
-            width={680}
-            footer={
-              <StarterSampleFooter
-                onBackToPaste={() => setStarterView("paste")}
-              />
-            }
+            width={760}
           >
             <StarterSampleBody onSampleApplied={close} />
           </EditorPanelShell>

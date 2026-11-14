@@ -142,14 +142,15 @@ const sharedAnalysis = JSON.stringify(
 );
 for (const weightKind of ["number", "string", "number"] as const) {
   const options = { weighted: true, weightKind };
-  const imported = tryImportAdjacencyList(
-    sharedAdjacencyLines,
-    options,
-    sharedAdjacencySource,
-  );
+  const imported = tryImportAdjacencyList(sharedAdjacencySource, options);
   expect(
     JSON.stringify(imported) ===
-      JSON.stringify(tryImportAdjacencyList(sharedAdjacencyLines, options)) &&
+      JSON.stringify(
+        tryImportAdjacencyList(
+          createImportSource(sharedAdjacencyLines),
+          options,
+        ),
+      ) &&
       imported?.model.edges.length === 4 &&
       JSON.stringify(
         imported.warnings.map((warning) =>

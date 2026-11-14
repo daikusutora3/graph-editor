@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { createStore } from "jotai/vanilla";
 
-import { pickSelectionColor } from "../../features/graph-editor/canvas/selection-color-actions";
+import { selectionColorCommand } from "../../features/graph-editor/canvas/selection-color-actions";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import {
   replaceModelCommand,
   setEdgesColorCommand,
   setNodesColorCommand,
-  setSelectionColorsCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
 import type {
   GraphColor,
@@ -16,7 +15,6 @@ import type {
 } from "../../features/graph-editor/core/graph/model";
 import { graphAtom } from "../../features/graph-editor/shell/state/graph-atoms";
 import {
-  clearHistoryAtom,
   commandErrorAtom,
   executeCommandAtom,
   futureAtom,
@@ -47,7 +45,7 @@ function harness(model = fixture()) {
     store.set(executeCommandAtom, replaceModelCommand(model)).status,
     "applied",
   );
-  store.set(clearHistoryAtom);
+  store.set(historyAtom, []);
   const commands: GraphIntent[] = [];
   const execute = (command: GraphIntent) => {
     commands.push(command);
@@ -58,15 +56,6 @@ function harness(model = fixture()) {
       execute(setNodesColorCommand(nodeIds, color)),
     onSetEdgeColor: (edgeIds: string[], color: GraphColor) =>
       execute(setEdgesColorCommand(edgeIds, color)),
-    onSetSelectionColors: (selection: SelectionState, color: GraphColor) =>
-      execute(
-        setSelectionColorsCommand({
-          nodeIds: selection.nodeIds,
-          edgeIds: selection.edgeIds,
-          nodeColor: color,
-          edgeColor: color,
-        }),
-      ),
   };
   const pick = (selection: SelectionState, color: GraphColor) => {
     const graph = store.get(graphAtom);
@@ -74,15 +63,16 @@ function harness(model = fixture()) {
     const edgeIds = new Set(selection.edgeIds);
     const nodes = graph.nodes.filter((node) => nodeIds.has(node.id));
     const edges = graph.edges.filter((edge) => edgeIds.has(edge.id));
-    return pickSelectionColor(
-      selection,
-      nodes.length > 0 && edges.length > 0
-        ? "mixed"
-        : nodes.length > 0
-          ? "node"
-          : "edge",
-      color,
-      actions,
+    return execute(
+      selectionColorCommand(
+        selection,
+        nodes.length > 0 && edges.length > 0
+          ? "mixed"
+          : nodes.length > 0
+            ? "node"
+            : "edge",
+        color,
+      ),
     );
   };
   return { store, commands, pick, actions };

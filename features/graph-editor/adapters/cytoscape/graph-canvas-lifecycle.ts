@@ -12,7 +12,7 @@ import { withCytoscapeBatch } from "./cytoscape-batch";
 import type { GraphModel } from "../../core/graph/model";
 import type { SelectionState } from "../../core/view/types";
 import type { EditorMode } from "../../shell/state/editor-state";
-import type { GraphCanvasChrome } from "../../core/view/types";
+import type { EditorLayout } from "../../core/view/types";
 
 import {
   centerGraphOrigin,
@@ -40,7 +40,7 @@ type UseGraphCanvasLifecycleOptions = {
   containerRef: RefObject<HTMLDivElement | null>;
   cyRef: MutableRefObject<Core | null>;
   elements: ReturnType<typeof graphModelToCytoscapeElements>;
-  chrome: GraphCanvasChrome;
+  layout: EditorLayout;
   graph: GraphModel;
   mode: EditorMode;
   selection: SelectionState;
@@ -62,7 +62,7 @@ export function useGraphCanvasLifecycle({
   containerRef,
   cyRef,
   elements,
-  chrome,
+  layout,
   graph,
   mode,
   selection,
@@ -92,7 +92,7 @@ export function useGraphCanvasLifecycle({
   const setZoomPercentRef = useRef(setZoomPercent);
   const notifyViewportSignatureRef = useRef(notifyViewportSignature);
   const notifyExportScaleSignatureRef = useRef(notifyExportScaleSignature);
-  const chromeRef = useRef(chrome);
+  const layoutRef = useRef(layout);
   const updateRenderedHitboxesRef = useRef(updateRenderedHitboxes);
   const panRenderedHitboxesRef = useRef(panRenderedHitboxes);
   arrowScaleRef.current = graph.settings.arrowScale;
@@ -100,7 +100,7 @@ export function useGraphCanvasLifecycle({
   setZoomPercentRef.current = setZoomPercent;
   notifyViewportSignatureRef.current = notifyViewportSignature;
   notifyExportScaleSignatureRef.current = notifyExportScaleSignature;
-  chromeRef.current = chrome;
+  layoutRef.current = layout;
   updateRenderedHitboxesRef.current = updateRenderedHitboxes;
   panRenderedHitboxesRef.current = panRenderedHitboxes;
 
@@ -250,9 +250,9 @@ export function useGraphCanvasLifecycle({
         : undefined;
 
       if (cy.elements().length > 0) {
-        fitGraphToAvailableViewport(cy, chromeRef.current, insets);
+        fitGraphToAvailableViewport(cy, layoutRef.current, insets);
       } else {
-        centerGraphOrigin(cy, chromeRef.current, insets);
+        centerGraphOrigin(cy, layoutRef.current, insets);
       }
 
       updateRenderedHitboxesRef.current(cy);
@@ -261,9 +261,11 @@ export function useGraphCanvasLifecycle({
 
     const synced = withSuppressedSelectionSync(suppressSelectionSyncRef, () =>
       withCytoscapeBatch(cy, () => {
-        const result = syncCytoscapeElements(cy, elements, {
-          skipNodePositionIds: draggingNodeIdsRef.current,
-        });
+        const result = syncCytoscapeElements(
+          cy,
+          elements,
+          draggingNodeIdsRef.current,
+        );
         syncCytoscapeSelection(cy, selectionRef.current);
         return result;
       }),
@@ -329,7 +331,7 @@ export function useGraphCanvasLifecycle({
     resizeCytoscapeCanvas(cy);
     flushRenderedHitboxesRef.current(cy);
     setZoomPercentRef.current(readZoomPercent(cy));
-  }, [cyRef, chrome]);
+  }, [cyRef, layout]);
 
   useEffect(() => {
     const cy = cyRef.current;

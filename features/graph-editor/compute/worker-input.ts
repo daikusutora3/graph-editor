@@ -9,10 +9,7 @@ export function hasComputeJobCoordinates(job: ComputeJob) {
     )
       return false;
     if (job.kind !== "routing" || !job.interaction) return true;
-    const previous =
-      "previousNodes" in job.interaction
-        ? job.interaction.previousNodes
-        : job.interaction.nodes;
+    const previous = job.interaction.previousNodes;
     return Array.isArray(previous) && hasGraphCoordinatePositions(previous);
   } catch {
     return false;

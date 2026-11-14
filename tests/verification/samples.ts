@@ -1,17 +1,11 @@
 import {
   createSampleGraph,
-  createSizedSampleGraph,
-  getSizedSampleGraphMaxNodes,
-  sampleGraphDefinitions,
   sampleGraphKinds,
-  sizedSampleGraphKinds,
   type SampleGraphKind,
-} from "../../features/graph-editor/samples";
+} from "../../features/graph-editor/samples/sample-graphs";
+import { createConfiguredSampleGraph } from "./sample-graph-helper";
+import { sampleGraphGroups } from "../../features/graph-editor/samples/registry";
 import { sampleExpectations } from "./sample-expectations";
-import {
-  createPopularSampleGraph,
-  popularSampleGraphKinds,
-} from "../../features/graph-editor/samples/basic-samples";
 import type {
   GraphModel,
   NodeId,
@@ -21,7 +15,6 @@ import {
   isBipartite,
   isDirectedAcyclic,
 } from "../../features/graph-editor/core/graph/graph-analysis";
-import { createPreviewEdgePath } from "../../features/graph-editor/ui/samples/SampleGraphPreview";
 import { createVerification } from "./harness";
 
 type IndexedGraph = {
@@ -31,8 +24,8 @@ type IndexedGraph = {
 };
 
 const { fail, finish } = createVerification("Sample");
-const definitionKinds = sampleGraphDefinitions.map(
-  (definition) => definition.kind,
+const definitionKinds = sampleGraphGroups.flatMap((group) =>
+  group.samples.map((sample) => sample.kind),
 );
 const definitionKindSet = new Set(definitionKinds);
 
@@ -41,7 +34,6 @@ if (definitionKindSet.size !== definitionKinds.length) {
 }
 
 for (const kind of sampleGraphKinds) {
-  if (kind === "empty") continue;
   if (!definitionKindSet.has(kind)) {
     fail(`definition registry is missing sample kind: ${kind}`);
   }
@@ -53,29 +45,7 @@ for (const kind of definitionKinds) {
   }
 }
 
-for (const definition of sampleGraphDefinitions) {
-  if (!sampleGraphKinds.includes(definition.kind)) {
-    fail(`definition contains unknown sample kind: ${definition.kind}`);
-  }
-}
-
 const models = new Map<SampleGraphKind, GraphModel>();
-
-for (const settings of [
-  {},
-  { directed: true, weighted: true, indexBase: 0 as const },
-  { allowSelfLoops: true, allowMultiEdges: true, autoEdgeRouting: true },
-  { showNodeLabels: false, arrowScale: 2, weighted: true },
-]) {
-  for (const kind of popularSampleGraphKinds) {
-    if (
-      JSON.stringify(createPopularSampleGraph(kind, settings)) !==
-      JSON.stringify(createSampleGraph(kind, settings))
-    ) {
-      fail(`${kind}: starter sample differs from the gallery sample`);
-    }
-  }
-}
 
 for (const kind of sampleGraphKinds) {
   const model = createSampleGraph(kind, {
@@ -242,7 +212,6 @@ for (const kind of sampleGraphKinds) {
 
 verifyNamedSampleGeometry(models);
 verifyPlatonicEmbeddings(models);
-verifyPreviewEdgePaths();
 verifySizedSampleGraphs();
 
 finish(`Sample verification passed (${sampleGraphKinds.length} kinds)`);
@@ -338,99 +307,33 @@ function hasRotationalSymmetry(
   });
 }
 
-function verifyPreviewEdgePaths() {
-  const loopPath = createPreviewEdgePath({
-    directed: true,
-    isLoop: true,
-    radius: 8,
-    routing: { bowPx: 0, loopDirectionDeg: -45, loopSweepDeg: 70 },
-    scale: 1,
-    source: { x: 20, y: 20 },
-    target: { x: 20, y: 20 },
-  });
-
-  const loopCoordinates = loopPath.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
-  if (
-    !loopPath.includes("C") ||
-    loopCoordinates[2] >= 20 ||
-    loopCoordinates[3] >= 20 ||
-    loopCoordinates[4] >= 20 ||
-    loopCoordinates[5] >= 20
-  ) {
-    fail("preview self-loop edges should match Cytoscape's loop direction");
-  }
-
-  const parallelPath = createPreviewEdgePath({
-    directed: false,
-    radius: 8,
-    routing: { bowPx: 36, loopDirectionDeg: -45, loopSweepDeg: 70 },
-    scale: 0.5,
-    source: { x: 0, y: 0 },
-    target: { x: 100, y: 0 },
-  });
-
-  if (!parallelPath.includes("Q")) {
-    fail("preview bowed edges should render as quadratic paths");
-  }
-  const largerLoop = createPreviewEdgePath({
-    directed: true,
-    isLoop: true,
-    radius: 8,
-    routing: {
-      bowPx: 0,
-      loopDirectionDeg: -45,
-      loopSweepDeg: 70,
-      loopStepSizePx: 80,
-    },
-    scale: 1,
-    source: { x: 20, y: 20 },
-    target: { x: 20, y: 20 },
-  });
-  const largerCoordinates = largerLoop.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
-  if (
-    Math.abs(
-      Math.hypot(largerCoordinates[2]! - 20, largerCoordinates[3]! - 20) -
-        2 * Math.hypot(loopCoordinates[2]! - 20, loopCoordinates[3]! - 20),
-    ) > 0.03
-  ) {
-    fail("preview loop controls should grow with the transient loop size");
-  }
-  const fittedLoop = createPreviewEdgePath({
-    directed: false,
-    isLoop: true,
-    radius: 3,
-    routing: {
-      bowPx: 0,
-      loopDirectionDeg: 0,
-      loopSweepDeg: 70,
-      loopStepSizePx: 180,
-    },
-    scale: 0.1,
-    source: { x: 50, y: 40 },
-    target: { x: 50, y: 40 },
-  });
-  const fittedCoordinates = fittedLoop.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
-  if (
-    Math.hypot(fittedCoordinates[2]! - 50, fittedCoordinates[3]! - 40) > 25.21
-  ) {
-    fail(
-      "enlarged preview loops should fit within their scaled control bounds",
-    );
-  }
-}
-
 function verifySizedSampleGraphs() {
-  const largeTree = createSizedSampleGraph("tree", 127, { indexBase: 0 });
+  const largeTree = createConfiguredSampleGraph(
+    "tree",
+    { nodes: 127 },
+    { indexBase: 0 },
+  );
   if (largeTree.nodes.length !== 127) {
     fail("tree: typed node counts above 64 must not silently create 64 nodes");
   }
 
-  for (const kind of sizedSampleGraphKinds) {
-    const model = createSizedSampleGraph(kind, 11, {
-      directed: false,
-      weighted: false,
-      indexBase: 0,
-    });
+  for (const kind of [
+    "path",
+    "cycle",
+    "complete",
+    "star",
+    "tree",
+    "crown",
+  ] as const) {
+    const model = createConfiguredSampleGraph(
+      kind,
+      { nodes: 11 },
+      {
+        directed: false,
+        weighted: false,
+        indexBase: 0,
+      },
+    );
 
     verifyModelIntegrity(`${kind} sized`, model);
 
@@ -441,9 +344,13 @@ function verifySizedSampleGraphs() {
   }
 
   for (const requestedCount of [0, 1, 2]) {
-    const cycle = createSizedSampleGraph("cycle", requestedCount, {
-      directed: false,
-    });
+    const cycle = createConfiguredSampleGraph(
+      "cycle",
+      { nodes: requestedCount },
+      {
+        directed: false,
+      },
+    );
     verifyModelIntegrity(`cycle requested ${requestedCount}`, cycle);
     if (
       cycle.nodes.length !== 3 ||
@@ -457,9 +364,13 @@ function verifySizedSampleGraphs() {
   }
 
   for (const requestedCount of [0, 1, 3, 11, 999999]) {
-    const crown = createSizedSampleGraph("crown", requestedCount, {
-      directed: false,
-    });
+    const crown = createConfiguredSampleGraph(
+      "crown",
+      { nodes: requestedCount },
+      {
+        directed: false,
+      },
+    );
     const partSize = crown.nodes.length / 2;
     const left = crown.nodes.filter((node) => node.id.startsWith("l"));
     const right = crown.nodes.filter((node) => node.id.startsWith("r"));
@@ -500,41 +411,46 @@ function verifySizedSampleGraphs() {
     }
   }
 
-  const complete = createSizedSampleGraph("complete", 7, { indexBase: 0 });
+  const complete = createConfiguredSampleGraph(
+    "complete",
+    { nodes: 7 },
+    { indexBase: 0 },
+  );
   if (complete.edges.length !== 21) {
     fail("complete: sized sample should create K7");
   }
 
-  const star = createSizedSampleGraph("star", 7, { indexBase: 0 });
+  const star = createConfiguredSampleGraph(
+    "star",
+    { nodes: 7 },
+    { indexBase: 0 },
+  );
   if (star.edges.length !== 6) {
     fail("star: sized sample node count should include the center");
   }
 
-  const customGrid = createSizedSampleGraph(
+  const customGrid = createConfiguredSampleGraph(
     "grid",
-    15,
-    { indexBase: 0 },
     { columns: 5, rows: 3 },
+    { indexBase: 0 },
   );
   if (customGrid.nodes.length !== 15 || customGrid.edges.length !== 22) {
     fail("grid: sized sample should support explicit rows and columns");
   }
 
-  const customKnight = createSizedSampleGraph(
+  const customKnight = createConfiguredSampleGraph(
     "knight",
-    20,
+    { columns: 5, moveX: 1, moveY: 3, rows: 4 },
     { indexBase: 0 },
-    { columns: 5, knightMove: "long", rows: 4 },
   );
   if (customKnight.nodes.length !== 20 || customKnight.edges.length !== 20) {
-    fail("knight: sized sample should support custom move presets");
+    fail("knight: sample should support custom moves");
   }
 
-  const arbitraryKnight = createSizedSampleGraph(
+  const arbitraryKnight = createConfiguredSampleGraph(
     "knight",
-    64,
+    { columns: 8, moveX: 3, moveY: 4, rows: 8 },
     { indexBase: 0 },
-    { columns: 8, knightMoveX: 3, knightMoveY: 4, rows: 8 },
   );
   const knightIds = nodePositionByOrder(arbitraryKnight).map((node) => node.id);
   const firstKnightTargets = new Set(
@@ -550,11 +466,10 @@ function verifySizedSampleGraphs() {
     fail("knight: sized sample should support an arbitrary (3,4) move");
   }
 
-  const unevenBipartite = createSizedSampleGraph(
+  const unevenBipartite = createConfiguredSampleGraph(
     "bipartite",
-    8,
+    { left: 3, right: 5 },
     { indexBase: 0 },
-    { bipartiteLeft: 3, bipartiteRight: 5 },
   );
   if (
     unevenBipartite.nodes.length !== 8 ||
@@ -563,30 +478,42 @@ function verifySizedSampleGraphs() {
     fail("bipartite: sized sample should support two partition sizes");
   }
 
-  const tooSmall = createSizedSampleGraph("path", 0, { indexBase: 0 });
+  const tooSmall = createConfiguredSampleGraph(
+    "path",
+    { nodes: 0 },
+    { indexBase: 0 },
+  );
   if (tooSmall.nodes.length !== 1) {
     fail("sized sample node count should clamp values below the minimum");
   }
 
-  const maxPathNodes = getSizedSampleGraphMaxNodes("path");
-  const tooLarge = createSizedSampleGraph("path", maxPathNodes + 1, {
-    indexBase: 0,
-  });
+  const maxPathNodes = 1000;
+  const tooLarge = createConfiguredSampleGraph(
+    "path",
+    { nodes: maxPathNodes + 1 },
+    {
+      indexBase: 0,
+    },
+  );
   if (tooLarge.nodes.length !== maxPathNodes) {
     fail("sized sample node count should clamp values above the maximum");
   }
 
-  const completeMaxNodes = getSizedSampleGraphMaxNodes("complete");
-  const completeTooLarge = createSizedSampleGraph(
+  const completeMaxNodes = 100;
+  const completeTooLarge = createConfiguredSampleGraph(
     "complete",
-    completeMaxNodes + 1,
+    { nodes: completeMaxNodes + 1 },
     { indexBase: 0 },
   );
   if (completeTooLarge.nodes.length !== completeMaxNodes) {
     fail("dense sized samples should keep edge counts under the maximum");
   }
 
-  const invalid = createSizedSampleGraph("path", Number.NaN, { indexBase: 0 });
+  const invalid = createConfiguredSampleGraph(
+    "path",
+    { nodes: Number.NaN },
+    { indexBase: 0 },
+  );
   if (invalid.nodes.length !== 6) {
     fail("sized sample node count should fall back when input is not finite");
   }

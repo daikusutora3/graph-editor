@@ -10,15 +10,14 @@ import {
   MIN_CANVAS_ZOOM,
   nextCanvasButtonZoomLevel,
   readZoomPercent,
-  ZOOM_STEP,
 } from "../adapters/cytoscape/graph-canvas-viewport";
 
-import type { GraphCanvasChrome } from "./graph-canvas-types";
+import type { EditorLayout } from "../core/view/types";
 import { readEditorChromeInsets } from "../adapters/browser/editor-chrome-insets";
 
 type GraphCanvasViewportActionsOptions = {
   canZoom: boolean;
-  chrome: GraphCanvasChrome;
+  layout: EditorLayout;
   cyRef: MutableRefObject<Core | null>;
   flushRenderedHitboxes: (cy: Core) => void;
   setZoomPercent: (zoomPercent: number) => void;
@@ -26,7 +25,7 @@ type GraphCanvasViewportActionsOptions = {
 
 export function useGraphCanvasViewportActions({
   canZoom,
-  chrome,
+  layout,
   cyRef,
   flushRenderedHitboxes,
   setZoomPercent,
@@ -46,20 +45,19 @@ export function useGraphCanvasViewportActions({
       return;
     }
 
-    cy.resize();
     const container = cy.container();
     fitGraphToAvailableViewport(
       cy,
-      chrome,
+      layout,
       container
         ? readEditorChromeInsets(container, { includeCanvasControls: true })
         : undefined,
     );
     syncViewportAfterZoom(cy);
-  }, [chrome, cyRef, syncViewportAfterZoom]);
+  }, [layout, cyRef, syncViewportAfterZoom]);
 
   const zoomCanvas = useCallback(
-    (delta: number) => {
+    (direction: -1 | 1) => {
       const cy = cyRef.current;
       const container = cy?.container();
 
@@ -67,13 +65,11 @@ export function useGraphCanvasViewportActions({
         return;
       }
 
-      const direction = Math.sign(delta);
-
-      if (direction === 0) {
-        return;
-      }
-
-      zoomCanvasToLevel(cy, nextCanvasButtonZoomLevel(cy.zoom(), direction));
+      zoomCanvasToLevel(
+        cy,
+        container,
+        nextCanvasButtonZoomLevel(cy.zoom(), direction),
+      );
       syncViewportAfterZoom(cy);
     },
     [canZoom, cyRef, syncViewportAfterZoom],
@@ -87,10 +83,7 @@ export function useGraphCanvasViewportActions({
       return;
     }
 
-    const rect = container.getBoundingClientRect();
-
-    cy.zoom({ level: 1, renderedPosition: centerOfRect(rect) });
-
+    zoomCanvasToLevel(cy, container, 1);
     syncViewportAfterZoom(cy);
   }, [canZoom, cyRef, syncViewportAfterZoom]);
 
@@ -100,17 +93,10 @@ export function useGraphCanvasViewportActions({
     minZoom: MIN_CANVAS_ZOOM,
     resetCanvasZoom,
     zoomCanvas,
-    zoomStep: ZOOM_STEP,
   };
 }
 
-function zoomCanvasToLevel(cy: Core, level: number) {
-  const container = cy.container();
-
-  if (!container) {
-    return;
-  }
-
+function zoomCanvasToLevel(cy: Core, container: HTMLElement, level: number) {
   cy.zoom({
     level,
     renderedPosition: centerOfRect(container.getBoundingClientRect()),

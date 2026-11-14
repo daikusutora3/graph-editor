@@ -8,7 +8,7 @@ import {
 import type { NumericImportMatrix } from "../io/import-types";
 
 const encoder = new TextEncoder();
-const headerLength = 8;
+const headerLength = 5;
 
 export function readRustNumericMatrix(
   lines: ParsedLine[],
@@ -45,15 +45,13 @@ export function readRustNumericMatrix(
     performance.clearMarks("graph-compute:import:wasm");
     performance.mark("graph-compute:import:wasm");
   }
-  const count = Math.min(output[6]!, capacity);
+  const count = Math.min(output[3]!, capacity);
   return {
     size,
-    isBinary: output[1] === 1,
-    isSymmetric: output[2] === 1,
-    hasZeroValue: output[3] === 1,
-    hasWeightedValue: output[4] === 1,
-    directedEdgeCount: output[6]!,
-    undirectedEdgeCount: output[7]!,
+    isSymmetric: output[1] === 1,
+    hasWeightedValue: output[2] === 1,
+    directedEdgeCount: output[3]!,
+    undirectedEdgeCount: output[4]!,
     entries: Array.from({ length: count }, (_, index) => ({
       source: output[headerLength + index * 3]!,
       target: output[headerLength + index * 3 + 1]!,

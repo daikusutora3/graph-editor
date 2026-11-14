@@ -1,6 +1,5 @@
 import {
   layoutPoint,
-  orderedNodeIds,
   withNodePositions,
   gridPositions,
   circlePositions,
@@ -13,8 +12,10 @@ import {
   createGridGraph,
 } from "./basic-samples";
 import { createEmptyGraphModel, createNode } from "../core/graph/graph-factory";
+import { orderedNodeIds } from "../core/graph/graph-analysis";
 import type { GraphModel, GraphSettings, NodeId } from "../core/graph/model";
 import { algorithmicSampleFactories } from "./algorithmic-samples";
+import { normalizeSampleParameters } from "./sample-parameters";
 
 type Point = { x: number; y: number };
 type SampleGraphFactory = (settings: Partial<GraphSettings>) => GraphModel;
@@ -927,12 +928,6 @@ function areDisjoint(first: number[], second: number[]): boolean {
   return intersectionSize(first, second) === 0;
 }
 
-function createEmptySampleGraph(
-  settings: Partial<GraphSettings> = {},
-): GraphModel {
-  return createEmptyGraphModel(settings);
-}
-
 function createEdgelessGraph(
   nodeCount = 6,
   settings: Partial<GraphSettings> = {},
@@ -1061,7 +1056,7 @@ function createKnightGraph(
   rows = 4,
   columns = 4,
   settings: Partial<GraphSettings> = {},
-  moves: readonly (readonly [number, number])[] = KNIGHT_MOVE_PRESETS.standard,
+  moves: readonly (readonly [number, number])[] = STANDARD_KNIGHT_MOVES,
 ): GraphModel {
   const edges: Array<readonly [number, number]> = [];
   const seenEdges = new Set<string>();
@@ -1285,49 +1280,6 @@ function createPrismGraph(settings: Partial<GraphSettings> = {}): GraphModel {
     ],
     settings,
   );
-}
-
-function createCrownGraph(
-  partSize = 4,
-  settings: Partial<GraphSettings> = {},
-): GraphModel {
-  const model = createEmptyGraphModel(settings);
-  const leftIds: NodeId[] = [];
-  const rightIds: NodeId[] = [];
-
-  for (let index = 0; index < partSize; index += 1) {
-    const leftId = `l${index}`;
-    const rightId = `r${index}`;
-    leftIds.push(leftId);
-    rightIds.push(rightId);
-    model.nodes.push(
-      createNode({
-        id: leftId,
-        label: String(model.nodes.length + model.settings.indexBase),
-        order: model.nodes.length,
-        x: -160,
-        y: (index - (partSize - 1) / 2) * 86,
-      }),
-      createNode({
-        id: rightId,
-        label: String(model.nodes.length + 1 + model.settings.indexBase),
-        order: model.nodes.length + 1,
-        x: 160,
-        y: (index - (partSize - 1) / 2) * 86,
-      }),
-    );
-  }
-
-  let edgeIndex = 0;
-  leftIds.forEach((source, sourceIndex) => {
-    rightIds.forEach((target, targetIndex) => {
-      if (sourceIndex === targetIndex) return;
-      addUnitEdge(model, edgeIndex, source, target);
-      edgeIndex += 1;
-    });
-  });
-
-  return model;
 }
 
 function createPetersenGraph(
@@ -2254,6 +2206,7 @@ function createGeneralizedPetersenGraph(
   for (let index = 0; index < vertexCount; index += 1) {
     const outerId = `o${index}`;
     const innerId = `i${index}`;
+    const outerPoint = layoutPoint(index, vertexCount);
     outerIds.push(outerId);
     innerIds.push(innerId);
     model.nodes.push(
@@ -2261,14 +2214,14 @@ function createGeneralizedPetersenGraph(
         id: outerId,
         label: String(model.nodes.length + model.settings.indexBase),
         order: model.nodes.length,
-        ...layoutPoint(index, vertexCount),
+        ...outerPoint,
       }),
       createNode({
         id: innerId,
         label: String(model.nodes.length + 1 + model.settings.indexBase),
         order: model.nodes.length + 1,
-        x: Math.round(layoutPoint(index, vertexCount).x * 0.5),
-        y: Math.round(layoutPoint(index, vertexCount).y * 0.5),
+        x: Math.round(outerPoint.x * 0.5),
+        y: Math.round(outerPoint.y * 0.5),
       }),
     );
   }
@@ -2515,408 +2468,125 @@ function createDodecahedralGraph(
 
 const sampleGraphFactories = {
   ...algorithmicSampleFactories,
-  empty: (settings) => createEmptySampleGraph(settings),
-  path: (settings) => createPathGraph(6, settings),
-  cycle: (settings) => createCycleGraph(6, settings),
-  edgeless: (settings) => createEdgelessGraph(6, settings),
-  star: (settings) => createStarGraph(5, settings),
-  tree: (settings) => createTreeGraph(7, settings),
-  complete: (settings) => createCompleteGraph(5, settings),
-  bipartite: (settings) => createBipartiteGraph(3, 3, settings),
+  path: null,
+  cycle: null,
+  edgeless: null,
+  star: null,
+  tree: null,
+  complete: null,
+  bipartite: null,
   multipartite: (settings) =>
     createCompleteMultipartiteGraph([1, 2, 3], settings),
-  grid: (settings) => createGridGraph(3, 3, settings),
-  disconnected: (settings) => createDisconnectedGraph(settings),
-  wheel: (settings) => createWheelGraph(6, settings),
-  ladder: (settings) => createLadderGraph(4, settings),
-  cube: (settings) => createCubeGraph(settings),
-  prism: (settings) => createPrismGraph(settings),
-  crown: (settings) => createCrownGraph(5, settings),
-  knight: (settings) => createKnightGraph(4, 4, settings),
-  petersen: (settings) => createPetersenGraph(settings),
-  house: (settings) => createHouseGraph(settings),
-  butterfly: (settings) => createButterflyGraph(settings),
-  claw: (settings) => createClawGraph(settings),
-  diamond: (settings) => createDiamondGraph(settings),
-  paw: (settings) => createPawGraph(settings),
-  bull: (settings) => createBullGraph(settings),
-  gem: (settings) => createGemGraph(settings),
-  fan: (settings) => createFanGraph(5, settings),
-  friendship: (settings) => createFriendshipGraph(3, settings),
-  turan: (settings) => createTuranGraph(8, 3, settings),
-  hypercube: (settings) => createHypercubeGraph(4, settings),
-  houseX: (settings) => createHouseXGraph(settings),
-  tetrahedral: (settings) => createTetrahedralGraph(settings),
-  octahedral: (settings) => createOctahedralGraph(settings),
-  icosahedral: (settings) => createIcosahedralGraph(settings),
-  heawood: (settings) => createHeawoodGraph(settings),
-  caterpillar: (settings) => createCaterpillarGraph(5, settings),
-  chordal: (settings) => createChordalGraph(settings),
-  interval: (settings) => createIntervalGraph(settings),
-  split: (settings) => createSplitGraph(settings),
-  cograph: (settings) => createCographGraph(settings),
-  threshold: (settings) => createThresholdGraph(settings),
-  line: (settings) => createLineGraph(settings),
-  permutation: (settings) => createPermutationGraph(settings),
-  comparability: (settings) => createComparabilityGraph(settings),
-  chain: (settings) => createChainGraph(settings),
-  distanceHereditary: (settings) => createDistanceHereditaryGraph(settings),
-  planar: (settings) => createPlanarGraph(settings),
-  outerplanar: (settings) => createOuterplanarGraph(settings),
-  block: (settings) => createBlockGraph(settings),
-  cactus: (settings) => createCactusGraph(settings),
-  seriesParallel: (settings) => createSeriesParallelGraph(settings),
-  partialKTree: (settings) => createPartialKTreeGraph(settings),
-  circle: (settings) => createCircleGraph(settings),
-  circularArc: (settings) => createCircularArcGraph(settings),
-  unitDisk: (settings) => createUnitDiskGraph(settings),
+  grid: null,
+  disconnected: createDisconnectedGraph,
+  wheel: null,
+  ladder: null,
+  cube: createCubeGraph,
+  prism: createPrismGraph,
+  crown: null,
+  knight: null,
+  petersen: createPetersenGraph,
+  house: createHouseGraph,
+  butterfly: createButterflyGraph,
+  claw: createClawGraph,
+  diamond: createDiamondGraph,
+  paw: createPawGraph,
+  bull: createBullGraph,
+  gem: createGemGraph,
+  fan: null,
+  friendship: null,
+  turan: null,
+  hypercube: null,
+  houseX: createHouseXGraph,
+  tetrahedral: createTetrahedralGraph,
+  octahedral: createOctahedralGraph,
+  icosahedral: createIcosahedralGraph,
+  heawood: createHeawoodGraph,
+  caterpillar: null,
+  chordal: createChordalGraph,
+  interval: createIntervalGraph,
+  split: createSplitGraph,
+  cograph: createCographGraph,
+  threshold: createThresholdGraph,
+  line: createLineGraph,
+  permutation: createPermutationGraph,
+  comparability: createComparabilityGraph,
+  chain: createChainGraph,
+  distanceHereditary: createDistanceHereditaryGraph,
+  planar: createPlanarGraph,
+  outerplanar: createOuterplanarGraph,
+  block: createBlockGraph,
+  cactus: createCactusGraph,
+  seriesParallel: createSeriesParallelGraph,
+  partialKTree: createPartialKTreeGraph,
+  circle: createCircleGraph,
+  circularArc: createCircularArcGraph,
+  unitDisk: createUnitDiskGraph,
   mycielski: (settings) => createMycielskiGraph(4, settings),
   kneser: (settings) => createKneserGraph(6, 2, settings),
-  johnson: (settings) => createJohnsonGraph(settings),
-  paley: (settings) => createPaleyGraph(settings),
-  generalizedPetersen: (settings) =>
-    createGeneralizedPetersenGraph(7, 2, settings),
-  clebsch: (settings) => createClebschGraph(settings),
-  dag: (settings) => createDagGraph(settings),
-  sccDemo: (settings) => createSccDemoGraph(settings),
-  flowNetwork: (settings) => createFlowNetworkGraph(settings),
-  weighted: (settings) => createWeightedGraph(settings),
-  barbell: (settings) => createBarbellGraph(settings),
-  mobiusLadder: (settings) => createMobiusLadderGraph(settings),
+  johnson: createJohnsonGraph,
+  paley: createPaleyGraph,
+  generalizedPetersen: null,
+  clebsch: createClebschGraph,
+  dag: createDagGraph,
+  sccDemo: createSccDemoGraph,
+  flowNetwork: createFlowNetworkGraph,
+  weighted: createWeightedGraph,
+  barbell: createBarbellGraph,
+  mobiusLadder: createMobiusLadderGraph,
   grotzsch: (settings) => createMycielskiGraph(5, settings),
-  moserSpindle: (settings) => createMoserSpindleGraph(settings),
-  dodecahedral: (settings) => createDodecahedralGraph(settings),
-  randomTree: (settings) => createRandomTreeGraph(12, 1, settings),
-  randomDag: (settings) => createRandomDagGraph(12, 18, 1, settings),
-  randomConnected: (settings) =>
-    createRandomConnectedGraph(12, 18, 1, settings),
-} satisfies Record<string, SampleGraphFactory>;
+  moserSpindle: createMoserSpindleGraph,
+  dodecahedral: createDodecahedralGraph,
+  randomTree: null,
+  randomDag: null,
+  randomConnected: null,
+} satisfies Record<string, SampleGraphFactory | null>;
 
 export const sampleGraphKinds = Object.keys(
   sampleGraphFactories,
 ) as SampleGraphKind[];
 
-export const SIZED_SAMPLE_GRAPH_MIN_NODES = 1;
-export const SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES = 1000;
-const SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES = 5000;
-export const sizedSampleGraphKinds = [
-  "path",
-  "cycle",
-  "edgeless",
-  "complete",
-  "star",
-  "tree",
-  "grid",
-  "bipartite",
-  "crown",
-  "knight",
-] as const satisfies readonly SampleGraphKind[];
+type SizedSampleGraphKind =
+  "path" | "cycle" | "complete" | "star" | "tree" | "crown";
 
-export type SizedSampleGraphKind = (typeof sizedSampleGraphKinds)[number];
-export type SizedKnightMoveKind = keyof typeof KNIGHT_MOVE_PRESETS;
-
-export type SizedSampleGraphOptions = {
-  bipartiteLeft?: number;
-  bipartiteRight?: number;
-  columns?: number;
-  knightMove?: SizedKnightMoveKind;
-  knightMoveX?: number;
-  knightMoveY?: number;
-  rows?: number;
-};
-
-export const sizedKnightMoveKinds = [
-  "standard",
-  "long",
-  "camel",
-] as const satisfies readonly SizedKnightMoveKind[];
-
-const KNIGHT_MOVE_PRESETS = {
-  standard: [
-    [1, 2],
-    [2, 1],
-  ],
-  long: [
-    [1, 3],
-    [3, 1],
-  ],
-  camel: [
-    [2, 3],
-    [3, 2],
-  ],
-} as const;
-
-export function isSizedSampleGraphKind(
-  kind: SampleGraphKind,
-): kind is SizedSampleGraphKind {
-  return (sizedSampleGraphKinds as readonly SampleGraphKind[]).includes(kind);
-}
+const STANDARD_KNIGHT_MOVES = [
+  [1, 2],
+  [2, 1],
+] as const;
 
 export function createSampleGraph(
   kind: SampleGraphKind,
   settings: Partial<GraphSettings> = {},
 ): GraphModel {
-  const model = sampleGraphFactories[kind](settings);
-  return applyPreferredSampleLayout(kind, model);
-}
-
-export function createSizedSampleGraph(
-  kind: SizedSampleGraphKind,
-  nodeCount: number,
-  settings: Partial<GraphSettings> = {},
-  options: SizedSampleGraphOptions = {},
-): GraphModel {
-  const count = clampSizedSampleNodeCount(kind, nodeCount);
-  const model = createSizedSampleGraphModel(kind, count, settings, options);
-
-  if (kind === "grid" || kind === "knight") {
-    const { columns } = sizedGridDimensions(count, options);
-    return withNodePositions(
-      model,
-      gridPositions(orderedNodeIds(model), columns),
+  const factory = sampleGraphFactories[kind];
+  if (!factory)
+    return createParameterizedSampleGraph(
+      kind,
+      normalizeSampleParameters(kind),
+      settings,
     );
-  }
-
-  return applyPreferredSampleLayout(kind, model);
-}
-
-export function getSizedSampleGraphMaxNodes(kind: SizedSampleGraphKind) {
-  switch (kind) {
-    case "complete":
-      return maxCompleteGraphNodesForEdgeLimit(
-        SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES,
-      );
-    case "bipartite":
-      return maxBalancedBipartiteNodesForEdgeLimit(
-        SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES,
-      );
-    case "crown":
-      return maxCrownGraphNodesForEdgeLimit(SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES);
-    default:
-      return SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES;
-  }
-}
-
-export function clampSizedSampleNodeCount(
-  kind: SizedSampleGraphKind,
-  nodeCount: number,
-) {
-  if (!Number.isFinite(nodeCount)) {
-    return 6;
-  }
-
-  const minNodes = kind === "cycle" ? 3 : kind === "crown" ? 4 : 1;
-  const rounded =
-    kind === "crown" ? Math.round(nodeCount / 2) * 2 : Math.round(nodeCount);
-  return Math.min(
-    getSizedSampleGraphMaxNodes(kind),
-    Math.max(minNodes, rounded),
-  );
+  return applyPreferredSampleLayout(kind, factory(settings));
 }
 
 function createSizedSampleGraphModel(
   kind: SizedSampleGraphKind,
   nodeCount: number,
   settings: Partial<GraphSettings>,
-  options: SizedSampleGraphOptions = {},
 ) {
   switch (kind) {
     case "path":
       return createPathGraph(nodeCount, settings);
     case "cycle":
       return createCycleGraph(nodeCount, settings);
-    case "edgeless":
-      return createEdgelessGraph(nodeCount, settings);
     case "complete":
       return createCompleteGraph(nodeCount, settings);
     case "star":
       return createStarGraph(Math.max(0, nodeCount - 1), settings);
     case "tree":
       return createTreeGraph(nodeCount, settings);
-    case "grid":
-      return createSizedGridGraph(nodeCount, settings, options);
-    case "bipartite":
-      if (hasCustomBipartiteSizes(options)) {
-        return createBipartiteGraph(
-          options.bipartiteLeft!,
-          options.bipartiteRight!,
-          settings,
-        );
-      }
-      return createBipartiteGraph(
-        Math.ceil(nodeCount / 2),
-        Math.floor(nodeCount / 2),
-        settings,
-      );
     case "crown":
       return createExactCrownGraph(nodeCount, settings);
-    case "knight":
-      return createSizedKnightGraph(nodeCount, settings, options);
   }
-}
-
-function createSizedGridGraph(
-  nodeCount: number,
-  settings: Partial<GraphSettings>,
-  options: SizedSampleGraphOptions,
-) {
-  if (!hasCustomGridDimensions(options)) {
-    return createExactGridGraph(nodeCount, settings);
-  }
-
-  const { columns, rows } = sizedGridDimensions(nodeCount, options);
-  return createGridGraph(rows, columns, settings);
-}
-
-function createExactGridGraph(
-  nodeCount: number,
-  settings: Partial<GraphSettings>,
-) {
-  const { columns, rows } = gridDimensionsForNodeCount(nodeCount);
-  const edges: Array<readonly [number, number]> = [];
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const source = row * columns + column;
-
-      if (source >= nodeCount) {
-        continue;
-      }
-
-      const right = source + 1;
-      const down = source + columns;
-
-      if (column + 1 < columns && right < nodeCount) {
-        edges.push([source, right]);
-      }
-      if (down < nodeCount) {
-        edges.push([source, down]);
-      }
-    }
-  }
-
-  return createGraphFromEdges(nodeCount, edges, settings);
-}
-
-function createSizedKnightGraph(
-  nodeCount: number,
-  settings: Partial<GraphSettings>,
-  options: SizedSampleGraphOptions,
-) {
-  if (!hasCustomGridDimensions(options)) {
-    return createExactKnightGraph(nodeCount, settings);
-  }
-
-  const { columns, rows } = sizedGridDimensions(nodeCount, options);
-  const moves: readonly (readonly [number, number])[] = hasCustomKnightMove(
-    options,
-  )
-    ? [
-        [options.knightMoveX!, options.knightMoveY!],
-        [options.knightMoveY!, options.knightMoveX!],
-      ]
-    : KNIGHT_MOVE_PRESETS[options.knightMove ?? "standard"];
-  const model = createKnightGraph(rows, columns, settings, moves);
-
-  return withNodePositions(
-    model,
-    gridPositions(orderedNodeIds(model), columns),
-  );
-}
-
-function createExactKnightGraph(
-  nodeCount: number,
-  settings: Partial<GraphSettings>,
-) {
-  const { columns, rows } = gridDimensionsForNodeCount(nodeCount);
-  const edges: Array<readonly [number, number]> = [];
-  const moves = [
-    [1, 2],
-    [2, 1],
-  ] as const;
-  const indexOf = (row: number, column: number) => row * columns + column;
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const source = indexOf(row, column);
-
-      if (source >= nodeCount) {
-        continue;
-      }
-
-      for (const [dr, dc] of moves) {
-        for (const rowSign of [-1, 1]) {
-          for (const columnSign of [-1, 1]) {
-            const targetRow = row + dr * rowSign;
-            const targetColumn = column + dc * columnSign;
-            const target = indexOf(targetRow, targetColumn);
-
-            if (
-              targetRow < 0 ||
-              targetRow >= rows ||
-              targetColumn < 0 ||
-              targetColumn >= columns ||
-              target >= nodeCount ||
-              source >= target
-            ) {
-              continue;
-            }
-
-            edges.push([source, target]);
-          }
-        }
-      }
-    }
-  }
-
-  return createGraphFromEdges(nodeCount, edges, settings);
-}
-
-function sizedGridDimensions(
-  nodeCount: number,
-  options: SizedSampleGraphOptions,
-) {
-  if (hasCustomGridDimensions(options)) {
-    return {
-      columns: options.columns ?? 1,
-      rows: options.rows ?? 1,
-    };
-  }
-
-  return gridDimensionsForNodeCount(nodeCount);
-}
-
-function hasCustomGridDimensions(options: SizedSampleGraphOptions) {
-  return (
-    Number.isInteger(options.rows) &&
-    Number.isInteger(options.columns) &&
-    (options.rows ?? 0) > 0 &&
-    (options.columns ?? 0) > 0 &&
-    (options.rows ?? 1) * (options.columns ?? 1) <=
-      SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES
-  );
-}
-
-function hasCustomBipartiteSizes(options: SizedSampleGraphOptions) {
-  const left = options.bipartiteLeft ?? 0;
-  const right = options.bipartiteRight ?? 0;
-  return (
-    Number.isInteger(left) &&
-    Number.isInteger(right) &&
-    left > 0 &&
-    right > 0 &&
-    left + right <= SIZED_SAMPLE_GRAPH_DEFAULT_MAX_NODES &&
-    left * right <= SIZED_SAMPLE_GRAPH_DENSE_MAX_EDGES
-  );
-}
-
-function hasCustomKnightMove(options: SizedSampleGraphOptions) {
-  return (
-    Number.isInteger(options.knightMoveX) &&
-    Number.isInteger(options.knightMoveY) &&
-    (options.knightMoveX ?? 0) > 0 &&
-    (options.knightMoveY ?? 0) > 0
-  );
 }
 
 function createExactCrownGraph(
@@ -2937,25 +2607,6 @@ function createExactCrownGraph(
   return model;
 }
 
-function gridDimensionsForNodeCount(nodeCount: number) {
-  const columns = Math.max(1, Math.ceil(Math.sqrt(nodeCount)));
-  const rows = Math.max(1, Math.ceil(nodeCount / columns));
-
-  return { columns, rows };
-}
-
-function maxCompleteGraphNodesForEdgeLimit(maxEdges: number) {
-  return Math.floor((1 + Math.sqrt(1 + 8 * maxEdges)) / 2);
-}
-
-function maxBalancedBipartiteNodesForEdgeLimit(maxEdges: number) {
-  return Math.floor(2 * Math.sqrt(maxEdges));
-}
-
-function maxCrownGraphNodesForEdgeLimit(maxEdges: number) {
-  return 2 * Math.floor((1 + Math.sqrt(1 + 4 * maxEdges)) / 2);
-}
-
 export function createParameterizedSampleGraph(
   kind: SampleGraphKind,
   values: Readonly<Record<string, number>>,
@@ -2968,7 +2619,10 @@ export function createParameterizedSampleGraph(
     case "star":
     case "tree":
     case "crown":
-      return createSizedSampleGraph(kind, values.nodes, settings);
+      return applyPreferredSampleLayout(
+        kind,
+        createSizedSampleGraphModel(kind, values.nodes, settings),
+      );
     case "edgeless": {
       const model = createEdgelessGraph(values.nodes, settings);
       return withNodePositions(model, gridPositions(orderedNodeIds(model)));

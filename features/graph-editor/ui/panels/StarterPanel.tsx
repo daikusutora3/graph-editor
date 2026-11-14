@@ -3,8 +3,8 @@ import {
   BookOpen,
   CircleAlert,
   FileInput,
-  ArrowUpRight,
-  ChevronDown,
+  FolderOpen,
+  LayoutGrid,
 } from "lucide-react";
 import {
   Component,
@@ -18,15 +18,20 @@ import {
   useState,
 } from "react";
 
-import { Button, ChoiceButton, Select } from "@/components/ui/controls";
+import {
+  Button,
+  ChoiceButton,
+  LinkButton,
+  Select,
+  fieldLabel,
+  fieldSurface,
+} from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 import { contentNavigationCopy } from "@/lib/content-navigation";
 import { appGuidePaths } from "@/lib/site-metadata";
-import { focusRing } from "@/components/ui/styles";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { integrityCopy } from "../../i18n/integrity-copy";
-import { inputGuidanceCopy } from "../../i18n/input-guidance-copy";
 import { formatImportWarning } from "../../i18n/import-warning-messages";
 import type {
   ImportAnalysis,
@@ -43,6 +48,8 @@ import {
 } from "../../workflows/starter/starter-input-status";
 import { SAMPLE_GALLERY_GRID_CLASS } from "../samples/sample-gallery-layout";
 import { SampleGraphPreview } from "../samples/SampleGraphPreview";
+import { useShortcutPlatform } from "../hooks/shortcut-platform";
+import { surface } from "@/components/ui/surfaces";
 
 function createSampleGallery() {
   return lazy(() =>
@@ -73,7 +80,6 @@ export function StarterPasteBody({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const { locale, messages } = useI18n();
-  const guidance = inputGuidanceCopy[locale];
   const inputId = useId();
   const formatId = useId();
   const helpId = useId();
@@ -109,120 +115,124 @@ export function StarterPasteBody({
               ? messages.starter.needsReview
               : messages.chrome.starterWaiting;
 
+  const guideHref = `${appGuidePaths[locale]}#${importFormat === "adjacency-matrix" ? "adjacency-matrix" : ["auto", "contest-edge-list", "edge-pairs"].includes(importFormat) ? "edge-list" : "guide-import"}`;
+  const statusTone =
+    hasIssues && inputText.trim()
+      ? issueSeverity === "error"
+        ? "text-[var(--danger)]"
+        : "text-[var(--warning-text)]"
+      : "text-[var(--muted)]";
+
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <div className="min-w-0 flex-1 basis-[220px]">
-          <label
-            htmlFor={inputId}
-            className="text-control font-semibold text-[var(--text)]"
-          >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <label htmlFor={formatId} className={fieldLabel}>
+          {messages.starter.formatLabel}
+        </label>
+        <Select
+          id={formatId}
+          value={importFormat}
+          containerClassName="min-w-0 flex-1 @min-[560px]/editor:w-[15rem] @min-[560px]/editor:flex-none"
+          onChange={(event) =>
+            starter.setImportFormat(event.target.value as ImportFormat)
+          }
+        >
+          <option value="auto">{messages.starter.autoFormat}</option>
+          {importFormatOptions.map((format) => (
+            <option key={format} value={format}>
+              {messages.starter.formats[format]}
+            </option>
+          ))}
+        </Select>
+        <LinkButton
+          href={guideHref}
+          external
+          newTabLabel={`${contentNavigationCopy[locale].inputHelp}, ${contentNavigationCopy[locale].newTab}`}
+          className="-mr-1 ml-auto"
+          icon={<BookOpen className="size-3.5" aria-hidden="true" />}
+        >
+          {messages.appMenu.guide}
+        </LinkButton>
+        <p id={helpId} className="sr-only">
+          {messages.chrome.starterHelp}
+        </p>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <label htmlFor={inputId} className={fieldLabel}>
             {messages.starter.inputLabel}
           </label>
-          <p
-            id={helpId}
-            className="mt-1 text-xs leading-relaxed text-[var(--muted)]"
-          >
-            {messages.chrome.starterHelp}
-          </p>
-        </div>
-        <div className="flex max-w-full flex-wrap items-center gap-2">
-          <label
-            htmlFor={formatId}
-            className="text-xs font-semibold text-[var(--text-2)]"
-          >
-            {messages.starter.formatLabel}
-          </label>
-          <Select
-            id={formatId}
-            value={importFormat}
-            containerClassName="w-[10.5rem]"
-            onChange={(event) =>
-              starter.setImportFormat(event.target.value as ImportFormat)
-            }
-          >
-            <option value="auto">{messages.starter.autoFormat}</option>
-            {importFormatOptions.map((format) => (
-              <option key={format} value={format}>
-                {messages.starter.formats[format]}
-              </option>
-            ))}
-          </Select>
           <span
             role="status"
             aria-live="polite"
             className={cn(
-              "font-mono text-meta font-semibold whitespace-nowrap",
-              hasIssues && inputText.trim()
-                ? issueSeverity === "error"
-                  ? "text-[var(--danger)]"
-                  : "text-[var(--warning-text)]"
-                : "text-[var(--muted)]",
+              "min-w-0 truncate font-mono text-meta font-semibold",
+              statusTone,
             )}
           >
             {meta}
           </span>
         </div>
-      </div>
-      <details
-        data-import-example
-        className="group rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3"
-      >
-        <summary className="ge-focus flex min-h-11 cursor-pointer items-center gap-2 rounded-md text-control font-semibold text-[var(--text-2)]">
-          <ChevronDown
-            aria-hidden="true"
-            className="size-3.5 shrink-0 text-[var(--muted)] transition-transform group-open:rotate-180"
-          />
-          {guidance.example}
-          <span className="min-w-0 text-xs font-normal text-[var(--muted)]">
-            {
-              messages.starter.formats[
-                importFormat === "auto" ? "contest-edge-list" : importFormat
-              ]
+        <div className="ge-paste-grid grid min-h-[352px] flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-3 sm:min-h-[260px] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:grid-rows-1">
+          <textarea
+            ref={textareaRef}
+            id={inputId}
+            name="graph-input"
+            value={inputText}
+            aria-describedby={`${helpId}${visibleIssues.length > 0 ? ` ${issuesId}` : ""}`}
+            aria-invalid={
+              issueSeverity === "error" && Boolean(inputText.trim())
+                ? true
+                : undefined
             }
-          </span>
-        </summary>
-        <div className="flex flex-col items-start gap-2 pb-3">
-          <p className="text-xs leading-relaxed text-[var(--muted)]">
-            {guidance.exampleHelp}
-          </p>
-          <pre
-            tabIndex={0}
-            aria-label={guidance.example}
-            className="ge-focus ge-focus-inset max-h-48 w-full overflow-auto rounded-md bg-[var(--fill)] p-3 font-mono text-control leading-relaxed text-[var(--text)]"
+            placeholder={`${messages.starter.formatGuides[importFormat]}\n\n${messages.starter.exampleLabel}\n${starter.inputExample}`}
+            data-example={starter.inputExample}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => starter.setInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (isStarterApplyShortcut(event.nativeEvent)) {
+                event.preventDefault();
+                if (canApply) {
+                  starter.applyText();
+                }
+              }
+            }}
+            className={cn(
+              "ge-focus ge-scrollbar h-full min-h-[220px] w-full resize-none rounded-lg px-3.5 py-3 font-mono text-sm leading-[1.6] text-[var(--text)] outline-none placeholder:text-[var(--muted)]",
+              fieldSurface,
+            )}
+          />
+          <div
+            aria-label={messages.starter.preview}
+            className={cn(
+              "ge-paste-preview",
+              surface.inset,
+              "grid min-h-[160px] place-items-center overflow-hidden [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:16px_16px] p-3 sm:min-h-0",
+            )}
           >
-            {starter.inputExample}
-          </pre>
-          {!inputText.trim() ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                starter.setInput(starter.inputExample);
-                textareaRef.current?.focus();
-              }}
-            >
-              {guidance.exampleAction}
-            </Button>
-          ) : null}
+            {canApply && previewModel ? (
+              <SampleGraphPreview
+                model={previewModel}
+                variant="editor"
+                width={320}
+                height={300}
+                className="h-full max-h-full w-full"
+              />
+            ) : (
+              <span className="px-3 text-center text-xs font-semibold text-[var(--muted)]">
+                {inputStatus === "reading"
+                  ? messages.starter.readingFile
+                  : inputStatus === "checking"
+                    ? messages.starter.checkingInput
+                    : inputStatus === "review"
+                      ? messages.starter.needsReview
+                      : messages.starter.previewEmpty}
+              </span>
+            )}
+          </div>
         </div>
-      </details>
-      <a
-        href={`${appGuidePaths[locale]}#${importFormat === "adjacency-matrix" ? "adjacency-matrix" : ["auto", "contest-edge-list", "edge-pairs"].includes(importFormat) ? "edge-list" : "guide-import"}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(
-          "inline-flex min-h-11 w-fit max-w-full items-center gap-2 rounded-lg px-2 text-xs text-[var(--text-2)] transition-colors hover:text-[var(--text)] active:opacity-80",
-          focusRing,
-        )}
-      >
-        <BookOpen className="size-3.5 shrink-0" aria-hidden="true" />
-        {contentNavigationCopy[locale].inputHelp}
-        <ArrowUpRight className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="sr-only">
-          ({contentNavigationCopy[locale].newTab})
-        </span>
-      </a>
+      </div>
       {starter.fileReadState.status === "failed" ? (
         <p role="alert" className="text-xs text-[var(--danger)]">
           {starter.fileReadState.reason === "too-large"
@@ -230,55 +240,6 @@ export function StarterPasteBody({
             : messages.starter.fileReadFailed}
         </p>
       ) : null}
-      <div className="ge-paste-grid grid min-h-[352px] flex-1 grid-cols-1 gap-3 sm:min-h-[220px] sm:grid-cols-[minmax(0,1fr)_176px]">
-        <textarea
-          ref={textareaRef}
-          id={inputId}
-          name="graph-input"
-          value={inputText}
-          aria-describedby={`${helpId}${visibleIssues.length > 0 ? ` ${issuesId}` : ""}`}
-          aria-invalid={
-            issueSeverity === "error" && Boolean(inputText.trim())
-              ? true
-              : undefined
-          }
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => starter.setInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (isStarterApplyShortcut(event.nativeEvent)) {
-              event.preventDefault();
-              if (canApply) {
-                starter.applyText();
-              }
-            }
-          }}
-          className="ge-focus ge-scrollbar min-h-[220px] w-full resize-none rounded-lg border border-[var(--control-border)] bg-[var(--fill)] px-3 py-3.5 font-mono text-control leading-[1.5] text-[var(--text)] outline-none placeholder:text-[var(--muted)] @min-[480px]/editor:px-4 @min-[480px]/editor:text-sm @min-[480px]/editor:leading-[1.6]"
-        />
-        <div
-          aria-label={messages.starter.preview}
-          className="ge-paste-preview grid min-h-[120px] place-items-center overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--bg)] [background-image:radial-gradient(circle,var(--grid)_1px,transparent_1.4px)] [background-size:16px_16px] sm:min-h-0"
-        >
-          {canApply && previewModel ? (
-            <SampleGraphPreview
-              model={previewModel}
-              variant="editor"
-              width={160}
-              height={150}
-            />
-          ) : (
-            <span className="px-3 text-center text-xs font-semibold text-[var(--muted)]">
-              {inputStatus === "reading"
-                ? messages.starter.readingFile
-                : inputStatus === "checking"
-                  ? messages.starter.checkingInput
-                  : inputStatus === "review"
-                    ? messages.starter.needsReview
-                    : messages.starter.previewEmpty}
-            </span>
-          )}
-        </div>
-      </div>
       {analysis?.status === "ambiguous" ? (
         <AmbiguousFormatChoices
           analysis={analysis}
@@ -348,12 +309,16 @@ export function StarterPasteFooter({
   }[inputStatus];
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const platform = useShortcutPlatform();
+  const applyShortcut =
+    platform === "mac" ? "⌘↵" : platform === "other" ? "Ctrl+↵" : null;
 
   useLayoutEffect(() => starter.cancelFileRead, [starter.cancelFileRead]);
 
   return (
-    <div className="grid w-full min-w-0 grid-cols-2 items-stretch gap-2 @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap">
+    <div className="grid w-full min-w-0 grid-cols-2 gap-2 @min-[480px]/editor:grid-cols-3">
       <Button size="lg" variant="secondary" wrap onClick={onUseSample}>
+        <LayoutGrid className="size-icon-sm shrink-0" aria-hidden="true" />
         <span className="min-w-0 whitespace-normal">
           {messages.chrome.starterUseSample}
         </span>
@@ -364,6 +329,7 @@ export function StarterPasteFooter({
         wrap
         onClick={() => fileInputRef.current?.click()}
       >
+        <FolderOpen className="size-icon-sm shrink-0" aria-hidden="true" />
         <span className="min-w-0 whitespace-normal">
           {messages.chrome.starterOpenFile}
         </span>
@@ -385,10 +351,16 @@ export function StarterPasteFooter({
         size="lg"
         variant={canApply ? "primary" : "disabled"}
         wrap
-        className="col-span-2 max-w-full @min-[640px]/editor:ml-auto"
+        tooltip={
+          applyShortcut
+            ? messages.chrome.starterApplyHint(applyShortcut)
+            : undefined
+        }
+        tooltipSide="top"
+        className="col-span-2 @min-[480px]/editor:col-span-1"
         onClick={() => starter.applyText()}
       >
-        <FileInput className="size-icon-sm" aria-hidden="true" />
+        <FileInput className="size-icon-sm shrink-0" aria-hidden="true" />
         <span className="min-w-0 [overflow-wrap:anywhere] whitespace-normal">
           {actionLabel}
         </span>
@@ -460,22 +432,6 @@ function SampleGalleryLoadError({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-export function StarterSampleFooter({
-  onBackToPaste,
-}: {
-  onBackToPaste: () => void;
-}) {
-  const { messages } = useI18n();
-
-  return (
-    <div className="flex w-full items-center gap-2">
-      <Button size="lg" variant="secondary" wrap onClick={onBackToPaste}>
-        {messages.chrome.starterBackToPaste}
-      </Button>
-    </div>
-  );
-}
-
 function AmbiguousFormatChoices({
   analysis,
   onSelect,
@@ -489,11 +445,11 @@ function AmbiguousFormatChoices({
   );
 
   return (
-    <fieldset className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-3">
-      <legend className="px-1 text-control font-semibold text-[var(--text)]">
+    <fieldset className={cn(surface.inset, "min-w-0 p-3")}>
+      <legend className="float-left mb-1 w-full text-control font-semibold text-[var(--text)]">
         {messages.starter.ambiguousTitle}
       </legend>
-      <p className="mb-2 text-xs text-[var(--muted)]">
+      <p className="clear-left mb-2.5 text-xs leading-relaxed text-[var(--muted)]">
         {messages.starter.ambiguousHelp}
       </p>
       <div className="grid grid-cols-1 gap-2 @min-[640px]/editor:grid-cols-2">
@@ -557,7 +513,7 @@ function SampleGalleryFallback() {
           {Array.from({ length: 6 }, (_, index) => (
             <div
               key={index}
-              className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-3"
+              className={cn(surface.card, "flex flex-col gap-3 p-3")}
             >
               <div className="ge-skeleton h-[96px] rounded-lg" />
               <div className="ge-skeleton h-4 w-24 rounded-full" />

@@ -14,11 +14,7 @@ import type {
   GraphPatch,
 } from "../../core/graph/model";
 import { edgeDraftAtom, selectionAtom } from "./editor-atoms";
-import {
-  createEmptyEdgeDraft,
-  createEmptySelection,
-  type SelectionState,
-} from "./editor-state";
+import { createEmptySelection, type SelectionState } from "./editor-state";
 import { graphAtom, graphRevisionAtom, commitGraphAtom } from "./graph-atoms";
 import { pruneSelectionForGraph } from "./editor-selection";
 
@@ -66,11 +62,8 @@ export const executeCommandAtom = atom(
     const { after, transaction } = prepared;
     set(commitGraphAtom, after, prepared.serialized);
     set(graphRevisionAtom, transaction.afterRevision);
-    if (
-      get(edgeDraftAtom).sourceNodeId !== null ||
-      get(edgeDraftAtom).message
-    ) {
-      set(edgeDraftAtom, createEmptyEdgeDraft());
+    if (get(edgeDraftAtom) !== null) {
+      set(edgeDraftAtom, null);
     }
     set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), after));
     set(historyAtom, appendHistory(get(historyAtom), transaction));
@@ -102,7 +95,7 @@ export const undoAtom = atom(null, (get, set) => {
   set(commandErrorAtom, null);
   set(commitGraphAtom, nextGraph, serialized);
   set(graphRevisionAtom, transaction.beforeRevision);
-  set(edgeDraftAtom, createEmptyEdgeDraft());
+  set(edgeDraftAtom, null);
   set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
   set(historyAtom, history.slice(0, -1));
   set(futureAtom, [transaction, ...get(futureAtom)]);
@@ -131,15 +124,10 @@ export const redoAtom = atom(null, (get, set) => {
   set(commandErrorAtom, null);
   set(commitGraphAtom, nextGraph, serialized);
   set(graphRevisionAtom, transaction.afterRevision);
-  set(edgeDraftAtom, createEmptyEdgeDraft());
+  set(edgeDraftAtom, null);
   set(selectionAtom, pruneSelectionForGraph(get(selectionAtom), nextGraph));
   set(historyAtom, appendHistory(get(historyAtom), transaction));
   set(futureAtom, restFuture);
-});
-
-export const clearHistoryAtom = atom(null, (_get, set) => {
-  set(historyAtom, []);
-  set(futureAtom, []);
 });
 
 export const deleteSelectionAtom = atom(

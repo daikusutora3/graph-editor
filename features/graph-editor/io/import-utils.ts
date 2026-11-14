@@ -3,29 +3,19 @@ import {
   GRAPH_MAX_NODES,
   GRAPH_MAX_EDGES,
 } from "../core/graph/graph-limits";
-import { createEmptyGraphModel, createNode } from "../core/graph/graph-factory";
-import type {
-  GraphModel,
-  GraphNode,
-  GraphSettings,
-  NodeId,
-} from "../core/graph/model";
+import {
+  createEmptyGraphModel,
+  createNode,
+  defaultGraphSettings,
+} from "../core/graph/graph-factory";
+import type { GraphModel, GraphSettings, NodeId } from "../core/graph/model";
 import type {
   ImportFormatKind,
   ImportResult,
   ImportWarning,
 } from "./import-types";
 
-export type ImportFormat =
-  | "auto"
-  | "contest-edge-list"
-  | "tree-edge-list"
-  | "parent-list"
-  | "weighted-parent-list"
-  | "edge-pairs"
-  | "adjacency-list"
-  | "adjacency-matrix"
-  | "json";
+export type ImportFormat = "auto" | ImportFormatKind;
 
 export type ImportOptions = Partial<GraphSettings> & {
   format?: ImportFormat;
@@ -62,6 +52,16 @@ export function splitTokens(text: string) {
   return text.match(/[^\s,]+/g) ?? [];
 }
 
+export function createIndexedNodes(nodeCount: number, indexBase: 0 | 1) {
+  return Array.from({ length: nodeCount }, (_, index) =>
+    createNode({
+      id: `n${index}`,
+      label: String(index + indexBase),
+      order: index,
+    }),
+  );
+}
+
 export function arrangeNodes(model: GraphModel) {
   const count = model.nodes.length;
   const radius = Math.max(170, count * 26);
@@ -80,21 +80,22 @@ export function arrangeNodes(model: GraphModel) {
   });
 }
 
-export function readImportSettings(
-  options: ImportOptions,
-  overrides: Partial<Pick<GraphSettings, "directed" | "weighted">> = {},
-): GraphSettings {
+export function readImportSettings(options: ImportOptions): GraphSettings {
   return {
-    directed: overrides.directed ?? options.directed ?? false,
-    weighted: overrides.weighted ?? options.weighted ?? false,
+    directed: options.directed ?? defaultGraphSettings.directed,
+    weighted: options.weighted ?? defaultGraphSettings.weighted,
     indexBase: options.indexBase ?? 1,
-    allowSelfLoops: options.allowSelfLoops ?? true,
-    allowMultiEdges: options.allowMultiEdges ?? true,
-    autoEdgeRouting: options.autoEdgeRouting ?? true,
-    snapToGrid: options.snapToGrid ?? false,
-    showNodeLabels: options.showNodeLabels ?? true,
-    arrowScale: options.arrowScale ?? 1,
-    weightKind: options.weightKind ?? "number",
+    allowSelfLoops:
+      options.allowSelfLoops ?? defaultGraphSettings.allowSelfLoops,
+    allowMultiEdges:
+      options.allowMultiEdges ?? defaultGraphSettings.allowMultiEdges,
+    autoEdgeRouting:
+      options.autoEdgeRouting ?? defaultGraphSettings.autoEdgeRouting,
+    snapToGrid: options.snapToGrid ?? defaultGraphSettings.snapToGrid,
+    showNodeLabels:
+      options.showNodeLabels ?? defaultGraphSettings.showNodeLabels,
+    arrowScale: options.arrowScale ?? defaultGraphSettings.arrowScale,
+    weightKind: options.weightKind ?? defaultGraphSettings.weightKind,
   };
 }
 
@@ -128,17 +129,19 @@ export function importLimitFailure(
   );
 }
 
-export function detectIndexBase(labels: string[], fallback: 0 | 1 | undefined) {
-  return labels.every((label) => /^-?\d+$/.test(label)) && labels.includes("0")
-    ? 0
-    : fallback;
+export function detectIndexBase(
+  labels: ReadonlySet<string>,
+  fallback: 0 | 1 | undefined,
+) {
+  if (!labels.has("0")) return fallback;
+  for (const label of labels) if (!/^-?\d+$/.test(label)) return fallback;
+  return 0;
 }
 
 export function ensureNodeByLabel(
   model: GraphModel,
   idByLabel: Map<string, NodeId>,
   label: string,
-  position: Partial<GraphNode> = {},
 ) {
   const existing = idByLabel.get(label);
   if (existing) {
@@ -151,8 +154,6 @@ export function ensureNodeByLabel(
       id,
       label,
       order: model.nodes.length,
-      x: position.x,
-      y: position.y,
     }),
   );
   idByLabel.set(label, id);

@@ -16,7 +16,6 @@ import {
   graphPasteCountAtom,
   selectionAtom,
 } from "./editor-atoms";
-import { createEmptyEdgeDraft } from "./editor-state";
 import { graphAtom } from "./graph-atoms";
 import { deleteSelectionAtom, executeCommandAtom } from "./history-atoms";
 
@@ -24,7 +23,7 @@ export const selectAllGraphAtom = atom(null, (get, set) => {
   const graph = get(graphAtom);
 
   set(editorModeAtom, "select");
-  set(edgeDraftAtom, createEmptyEdgeDraft());
+  set(edgeDraftAtom, null);
   set(selectionAtom, {
     nodeIds: graph.nodes.map((node) => node.id),
     edgeIds: graph.edges.map((edge) => edge.id),
@@ -48,14 +47,8 @@ export const copyGraphSelectionAtom = atom(null, (get, set) => {
 
 export const cutGraphSelectionAtom = atom(null, (get, set) => {
   const selection = get(selectionAtom);
-  const payload = createGraphClipboardPayload(get(graphAtom), selection);
+  if (!set(copyGraphSelectionAtom)) return false;
 
-  if (!payload) {
-    return false;
-  }
-
-  set(graphClipboardAtom, payload);
-  set(graphPasteCountAtom, 0);
   set(deleteSelectionAtom, selection);
   return true;
 });
@@ -81,7 +74,7 @@ export const pasteGraphClipboardAtom = atom(null, (get, set) => {
   const result = set(executeCommandAtom, pasteResult.command);
   if (result.status !== "applied") return true;
   set(editorModeAtom, "select");
-  set(edgeDraftAtom, createEmptyEdgeDraft());
+  set(edgeDraftAtom, null);
   set(selectionAtom, pasteResult.selection);
   set(graphPasteCountAtom, pasteCount);
   return true;

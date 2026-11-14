@@ -75,5 +75,5 @@ export function useEditorPanel() {
     setPanel(null);
   }, [setPanel]);
 
-  return { close, open, panel, presence, setPanel, toggle };
+  return { close, open, panel, presence, toggle };
 }

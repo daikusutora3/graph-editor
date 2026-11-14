@@ -7,10 +7,7 @@ import {
   updateNodeCommand,
 } from "../../features/graph-editor/core/graph/graph-intents";
 import { serializeGraphModel } from "../../features/graph-editor/core/graph/graph-json";
-import {
-  applyGraphPatch,
-  prepareGraphPatch,
-} from "../../features/graph-editor/core/graph/graph-patch";
+import { prepareGraphPatch } from "../../features/graph-editor/core/graph/graph-patch";
 import type {
   GraphModel,
   GraphPatch,
@@ -37,7 +34,6 @@ import {
   executeCommandAtom,
   historyAtom,
   futureAtom,
-  clearHistoryAtom,
   redoAtom,
   undoAtom,
 } from "../../features/graph-editor/shell/state/history-atoms";
@@ -66,13 +62,12 @@ const prepared = prepareGraphPatch(graph, nodePatch);
 expect(
   prepared.after.edges === graph.edges &&
     prepared.after.settings === graph.settings &&
-    prepared.serialized === serializeGraphModel(prepared.after) &&
-    isDeepStrictEqual(prepared.after, applyGraphPatch(graph, nodePatch)),
+    prepared.serialized === serializeGraphModel(prepared.after),
   "prepared node patch retains untouched edges and exactly the validated save document",
 );
-const edgeOnly = applyGraphPatch(graph, {
+const edgeOnly = prepareGraphPatch(graph, {
   edges: { put: [{ ...graph.edges[0]!, label: "Changed edge" }] },
-});
+}).after;
 expect(
   edgeOnly.nodes === graph.nodes,
   "edge-only patch preserves node identity",
@@ -86,7 +81,7 @@ for (const patch of [{}, { settings: { ...graph.settings, directed: true } }]) {
 }
 expect(
   isDeepStrictEqual(
-    applyGraphPatch(graph, { nodes: { order: ["b", "a"] } }).nodes,
+    prepareGraphPatch(graph, { nodes: { order: ["b", "a"] } }).after.nodes,
     [graph.nodes[1], graph.nodes[0]],
   ),
   "explicit patch order still reorders IDs",
@@ -94,10 +89,10 @@ expect(
 const inserted = { id: "c", label: "C", order: 2, x: 200, y: 0 };
 expect(
   isDeepStrictEqual(
-    applyGraphPatch(graph, {
+    prepareGraphPatch(graph, {
       nodes: { remove: ["a"], put: [inserted], order: ["c", "b"] },
       edges: { remove: ["ab"] },
-    }).nodes,
+    }).after.nodes,
     [inserted, graph.nodes[1]],
   ),
   "remove, insert and explicit ordering retain their existing semantics",
@@ -554,12 +549,8 @@ function verifyHistoryBudgets() {
     largeStore.get(futureAtom).length === 0,
     "a new edit discards the pruned branch's redo documents",
   );
-  largeStore.set(clearHistoryAtom);
-  expect(
-    largeStore.get(historyAtom).length === 0 &&
-      largeStore.get(futureAtom).length === 0,
-    "clearing history releases both history and redo ownership",
-  );
+  largeStore.set(historyAtom, []);
+  largeStore.set(futureAtom, []);
   for (let edit = 1; edit <= 160; edit += 1)
     largeStore.set(executeCommandAtom, updateNodeCommand("n0", { x: edit }));
   expect(

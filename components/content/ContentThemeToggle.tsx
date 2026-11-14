@@ -19,7 +19,7 @@ export function ContentThemeToggle({
       aria-label={label}
       title={label}
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className={cn(actionStyles(), "min-w-11 shrink-0 justify-center px-3")}
+      className={cn(actionStyles, "min-w-11 shrink-0 justify-center px-3")}
     >
       <Icon className="size-4" aria-hidden="true" />
     </button>

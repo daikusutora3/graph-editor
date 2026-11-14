@@ -1,6 +1,4 @@
 import type {
-  EdgeId,
-  EdgeRoutingOverride,
   GraphColor,
   GraphEdge,
   GraphModel,
@@ -52,15 +50,7 @@ export function createNode(input: {
   });
 }
 
-export function createEdge(input: {
-  id: EdgeId;
-  source: NodeId;
-  target: NodeId;
-  weight?: string;
-  label?: string;
-  color?: GraphColor;
-  routing?: EdgeRoutingOverride;
-}): GraphEdge {
+export function createEdge(input: GraphEdge): GraphEdge {
   return stripUndefinedProperties({
     id: input.id,
     source: input.source,

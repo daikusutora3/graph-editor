@@ -7,7 +7,6 @@ import {
   ControlRow,
   Notice,
   PanelActions,
-  SectionLabel,
   Segment,
   Slider,
 } from "@/components/ui/controls";
@@ -27,8 +26,8 @@ import {
   type ScreenshotDownloadState,
   type ScreenshotPreview,
 } from "../io/graph-io-types";
-import type { ThemeMode } from "../theme/theme";
 import { PngDimensionInput } from "./PngDimensionInput";
+import { surface, textStyle } from "@/components/ui/surfaces";
 
 const LONG_EDGE_STEP = 20;
 const PADDING_STEP = 4;
@@ -44,7 +43,6 @@ type PngPanelBodyProps = {
   preview: ScreenshotPreview;
   scope: PngExportScope;
   solidBackground: "white" | "black";
-  theme: ThemeMode;
   onBackgroundChange: (background: PngExportBackground) => void;
   onCanvasHeightChange: (value: number) => void;
   onCanvasWidthChange: (value: number) => void;
@@ -64,7 +62,6 @@ export function PngPanelBody({
   preview,
   scope,
   solidBackground,
-  theme,
   onBackgroundChange,
   onCanvasHeightChange,
   onCanvasWidthChange,
@@ -76,19 +73,60 @@ export function PngPanelBody({
   const segmentSize = mobile ? "md" : "sm";
   const transparent = background === "transparent";
   const ready = preview.state === "ready" && preview.width && preview.height;
-  const dimensions = ready ? `${preview.width} × ${preview.height} px` : "—";
+  const dimensions = ready ? `${preview.width} × ${preview.height} px` : null;
   const previewHeight = ready
     ? Math.min(220, Math.round((340 * preview.height!) / preview.width!))
     : 160;
 
   return (
     <>
-      <div className="flex min-w-0 flex-col gap-2">
-        <ControlRow
-          label={messages.screenshot.scope}
-          layout="stacked"
-          className="gap-1"
+      <section
+        aria-label={messages.screenshot.preview}
+        className={cn(surface.inset, "relative shrink-0 overflow-hidden")}
+      >
+        <div
+          className={cn(
+            "relative grid w-full place-items-center overflow-hidden",
+            transparent && "ge-checker",
+          )}
+          style={{
+            height: previewHeight,
+            background: transparent
+              ? undefined
+              : EXPORT_BACKGROUND_COLORS[solidBackground],
+          }}
         >
+          {ready && preview.url ? (
+            <img
+              src={preview.url}
+              alt={messages.screenshot.previewAlt}
+              className="absolute inset-0 h-full w-full object-contain"
+              draggable={false}
+            />
+          ) : (
+            <span className="px-3 text-center text-xs leading-snug font-semibold text-[var(--muted)]">
+              {preview.state === "loading"
+                ? messages.screenshot.previewLoading
+                : preview.state === "failed"
+                  ? messages.screenshot.previewFailed
+                  : messages.screenshot.previewEmpty}
+            </span>
+          )}
+        </div>
+        {dimensions ? (
+          <span
+            className={cn(
+              surface.floating,
+              textStyle.meta,
+              "absolute right-2 bottom-2 rounded-md px-1.5 py-0.5",
+            )}
+          >
+            {dimensions}
+          </span>
+        ) : null}
+      </section>
+      <div className="flex min-w-0 flex-col gap-3">
+        <ControlRow label={messages.screenshot.scope} layout="stacked">
           <Segment
             label={messages.screenshot.scope}
             size={segmentSize}
@@ -100,11 +138,7 @@ export function PngPanelBody({
             onChange={onScopeChange}
           />
         </ControlRow>
-        <ControlRow
-          label={messages.screenshot.background}
-          layout="stacked"
-          className="gap-1"
-        >
+        <ControlRow label={messages.screenshot.background} layout="stacked">
           <Segment
             label={messages.screenshot.background}
             size={segmentSize}
@@ -112,7 +146,7 @@ export function PngPanelBody({
             options={[
               {
                 label:
-                  theme === "dark"
+                  solidBackground === "black"
                     ? messages.screenshot.black
                     : messages.screenshot.white,
                 value: solidBackground,
@@ -127,15 +161,10 @@ export function PngPanelBody({
         </ControlRow>
 
         {scope !== "viewport" ? (
-          <ControlRow
-            label={messages.screenshot.imageSize}
-            layout="stacked"
-            className="gap-1"
-          >
+          <ControlRow label={messages.screenshot.imageSize} layout="stacked">
             <Segment
               label={messages.screenshot.imageSize}
               size={segmentSize}
-              wrap
               value={scope}
               options={[
                 { label: messages.screenshot.fixedLongEdge, value: "full" },
@@ -152,7 +181,6 @@ export function PngPanelBody({
 
         {scope === "full" ? (
           <Slider
-            compact
             label={messages.chrome.pngSize}
             max={MAX_LONG_EDGE_PX}
             min={MIN_LONG_EDGE_PX}
@@ -193,7 +221,6 @@ export function PngPanelBody({
         ) : null}
 
         <Slider
-          compact
           label={messages.chrome.pngPadding}
           max={MAX_PADDING_PX}
           min={MIN_PADDING_PX}
@@ -203,47 +230,6 @@ export function PngPanelBody({
           onChange={onPaddingChange}
         />
       </div>
-
-      <section
-        aria-label={messages.screenshot.preview}
-        className="flex shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--panel-solid)]"
-      >
-        <div className="flex h-8 shrink-0 items-center justify-between border-b border-[var(--hair)] px-3">
-          <SectionLabel>{messages.screenshot.preview}</SectionLabel>
-          <span className="font-mono text-meta font-semibold text-[var(--muted)] tabular-nums">
-            {dimensions}
-          </span>
-        </div>
-        <div
-          className={cn(
-            "relative grid w-full shrink-0 place-items-center overflow-hidden",
-            transparent && "ge-checker",
-          )}
-          style={{
-            height: previewHeight,
-            background: transparent
-              ? undefined
-              : EXPORT_BACKGROUND_COLORS[solidBackground],
-          }}
-        >
-          {ready && preview.url ? (
-            <img
-              src={preview.url}
-              alt={messages.screenshot.previewAlt}
-              className="absolute inset-0 h-full w-full object-contain"
-              draggable={false}
-            />
-          ) : (
-            <span className="px-3 text-center text-xs leading-snug font-semibold text-[var(--muted)]">
-              {preview.state === "loading"
-                ? messages.screenshot.previewLoading
-                : preview.state === "failed"
-                  ? messages.screenshot.previewFailed
-                  : messages.screenshot.previewEmpty}
-            </span>
-          )}
-        </div>
-      </section>
 
       {notice ? <Notice>{notice}</Notice> : null}
     </>

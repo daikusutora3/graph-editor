@@ -1,10 +1,16 @@
 import type { EdgeId, GraphEdge, GraphModel, NodeId } from "./model";
 
+export function edgePairKey(source: string, target: string, directed: boolean) {
+  return JSON.stringify(
+    directed || source <= target ? [source, target] : [target, source],
+  );
+}
+
 export function canUseEdgeEndpoints(
   model: GraphModel,
   source: NodeId,
   target: NodeId,
-  options: { ignoreEdgeIds?: ReadonlySet<EdgeId> } = {},
+  ignoreEdgeId?: EdgeId,
 ) {
   const nodeIds = new Set(model.nodes.map((node) => node.id));
 
@@ -18,7 +24,7 @@ export function canUseEdgeEndpoints(
 
   if (!model.settings.allowMultiEdges) {
     return !model.edges.some((edge) => {
-      if (options.ignoreEdgeIds?.has(edge.id)) {
+      if (edge.id === ignoreEdgeId) {
         return false;
       }
 
@@ -39,12 +45,10 @@ export function canUseEdgeEndpoints(
 export function filterAddableEdges(model: GraphModel, edges: GraphEdge[]) {
   const nodeIds = new Set(model.nodes.map((node) => node.id));
   const key = (edge: GraphEdge) =>
-    JSON.stringify(
-      model.settings.directed
-        ? [edge.source, edge.target]
-        : [edge.source, edge.target].sort(),
-    );
-  const pairs = new Set(model.edges.map(key));
+    edgePairKey(edge.source, edge.target, model.settings.directed);
+  const pairs = model.settings.allowMultiEdges
+    ? null
+    : new Set(model.edges.map(key));
   const acceptedEdges: GraphEdge[] = [];
   for (const edge of edges) {
     if (
@@ -53,10 +57,12 @@ export function filterAddableEdges(model: GraphModel, edges: GraphEdge[]) {
       (!model.settings.allowSelfLoops && edge.source === edge.target)
     )
       continue;
-    const pair = key(edge);
-    if (!model.settings.allowMultiEdges && pairs.has(pair)) continue;
+    if (pairs) {
+      const pair = key(edge);
+      if (pairs.has(pair)) continue;
+      pairs.add(pair);
+    }
     acceptedEdges.push(edge);
-    pairs.add(pair);
   }
   return acceptedEdges;
 }

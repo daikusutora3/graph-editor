@@ -1,11 +1,9 @@
 import type {
   EdgeId,
-  EdgeRoutingOverride,
   GraphColor,
   GraphEdge,
   GraphIntent,
   GraphModel,
-  GraphNode,
   GraphSettings,
   NodePositionMap,
   NodeId,
@@ -33,25 +31,13 @@ export function replaceModelCommand(next: GraphModel): GraphIntent {
   return { type: "replace-model", label: "Replace graph", model: next };
 }
 
-export function addNodeCommand(input: {
-  id: NodeId;
-  label?: string;
-  x?: number;
-  y?: number;
-  color?: GraphColor;
-}): GraphIntent {
+export function addNodeCommand(
+  input: Extract<GraphIntent, { type: "add-node" }>["input"],
+): GraphIntent {
   return { type: "add-node", input };
 }
 
-export function addEdgeCommand(input: {
-  id: EdgeId;
-  source: NodeId;
-  target: NodeId;
-  weight?: string;
-  label?: string;
-  color?: GraphColor;
-  routing?: EdgeRoutingOverride;
-}): GraphIntent {
+export function addEdgeCommand(input: GraphEdge): GraphIntent {
   return { type: "add-edge", input };
 }
 
@@ -64,7 +50,7 @@ export function deleteSelectionCommand(selection: {
 
 export function updateNodeCommand(
   nodeId: NodeId,
-  patch: Partial<Pick<GraphNode, "label" | "x" | "y" | "order" | "color">>,
+  patch: Extract<GraphIntent, { type: "update-node" }>["patch"],
 ): GraphIntent {
   return { type: "update-node", nodeId, patch };
 }
@@ -78,12 +64,7 @@ export function setNodesColorCommand(
 
 export function updateEdgeCommand(
   edgeId: EdgeId,
-  patch: Partial<
-    Pick<
-      GraphEdge,
-      "source" | "target" | "label" | "weight" | "color" | "routing"
-    >
-  >,
+  patch: Extract<GraphIntent, { type: "update-edge" }>["patch"],
 ): GraphIntent {
   return { type: "update-edge", edgeId, patch };
 }

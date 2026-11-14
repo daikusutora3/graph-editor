@@ -116,7 +116,6 @@ for (locale of ["ja", "en", "zh-Hans"]) {
     !markup.includes('role="dialog"'),
     "confirmation stays inside Settings",
   );
-  assert(!markup.includes(messagesByLocale[locale].chrome.clearArmedHint));
   cancelAction.props.onClick();
   render();
   assert.equal(cancelled, 1);

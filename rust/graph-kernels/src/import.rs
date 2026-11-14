@@ -1,7 +1,7 @@
 use std::slice;
 
 const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
-const HEADER_LENGTH: usize = 8;
+const HEADER_LENGTH: usize = 5;
 
 fn separator(byte: u8) -> bool {
     matches!(byte, b' ' | b'\t' | b'\r' | 0x0b | 0x0c | b',')
@@ -45,7 +45,6 @@ fn scan_matrix(data: &[u8], output: &mut [f64], size: usize, capacity: usize) ->
     }
     let mut previous = vec![0.0; size * size];
     let mut is_symmetric = true;
-    let mut has_zero = false;
     let mut has_weighted = false;
     let mut directed_count = 0usize;
     let mut undirected_count = 0usize;
@@ -61,9 +60,7 @@ fn scan_matrix(data: &[u8], output: &mut [f64], size: usize, capacity: usize) ->
             if target < source && value != previous[target * size + source] {
                 is_symmetric = false;
             }
-            if value == 0.0 {
-                has_zero = true;
-            } else {
+            if value != 0.0 {
                 if directed_count < capacity {
                     let offset = HEADER_LENGTH + directed_count * 3;
                     output[offset] = source as f64;
@@ -88,13 +85,10 @@ fn scan_matrix(data: &[u8], output: &mut [f64], size: usize, capacity: usize) ->
         return false;
     }
     output[0] = 1.0;
-    output[1] = if has_weighted { 0.0 } else { 1.0 };
-    output[2] = if is_symmetric { 1.0 } else { 0.0 };
-    output[3] = if has_zero { 1.0 } else { 0.0 };
-    output[4] = if has_weighted { 1.0 } else { 0.0 };
-    output[5] = size as f64;
-    output[6] = directed_count as f64;
-    output[7] = undirected_count as f64;
+    output[1] = if is_symmetric { 1.0 } else { 0.0 };
+    output[2] = if has_weighted { 1.0 } else { 0.0 };
+    output[3] = directed_count as f64;
+    output[4] = undirected_count as f64;
     true
 }
 
@@ -127,7 +121,7 @@ mod tests {
         ));
         assert_eq!(
             &result[..HEADER_LENGTH],
-            &[1.0, 0.0, 1.0, 1.0, 1.0, 3.0, 4.0, 2.0]
+            &[1.0, 1.0, 1.0, 4.0, 2.0]
         );
         assert_eq!(
             &result[HEADER_LENGTH..HEADER_LENGTH + 12],
@@ -164,8 +158,8 @@ mod tests {
     fn edge_storage_cap_does_not_change_counts() {
         let mut result = vec![0.0; HEADER_LENGTH + 3];
         assert!(scan_matrix(b"1 1\n1 1", &mut result, 2, 1));
-        assert_eq!(result[6], 4.0);
-        assert_eq!(result[7], 3.0);
+        assert_eq!(result[3], 4.0);
+        assert_eq!(result[4], 3.0);
         assert_eq!(&result[HEADER_LENGTH..], &[0.0, 0.0, 1.0]);
     }
 }

@@ -1,10 +1,7 @@
-import {
-  createEdge,
-  createEmptyGraphModel,
-  createNode,
-} from "../core/graph/graph-factory";
+import { createEdge, createEmptyGraphModel } from "../core/graph/graph-factory";
 import {
   arrangeNodes,
+  createIndexedNodes,
   detectIndexBase,
   ensureNodeByLabel,
   importLimitFailure,
@@ -13,24 +10,18 @@ import {
   MAX_IMPORT_EDGES,
   MAX_IMPORT_NODES,
   type ImportOptions,
-  type ParsedLine,
   readImportSettings,
 } from "./import-utils";
 import type { NodeId } from "../core/graph/model";
 import { importTextLimitWarning } from "./import-text-limits";
 import type { ImportResult, ImportWarning } from "./import-types";
-import {
-  createImportSource,
-  parseAdjacencyTarget,
-  type ImportSource,
-} from "./import-source";
+import { parseAdjacencyTarget, type ImportSource } from "./import-source";
 
 export function tryImportAdjacencyMatrix(
-  lines: ParsedLine[],
+  source: ImportSource,
   options: ImportOptions,
-  preparedSource?: ImportSource,
 ): ImportResult | null {
-  const source = preparedSource ?? createImportSource(lines);
+  const { lines } = source;
   if (lines.length < 1 || source.firstRow.length !== lines.length) {
     return null;
   }
@@ -48,33 +39,9 @@ export function tryImportAdjacencyMatrix(
 
   const matrix = source.matrix;
   if (!matrix) return null;
-  const { size, isSymmetric, hasZeroValue, isBinary, hasWeightedValue } =
-    matrix;
-
-  if (!hasZeroValue && options.format !== "adjacency-matrix") {
-    if (!isBinary || !isSymmetric) {
-      return null;
-    }
-  }
+  const { size, isSymmetric, hasWeightedValue } = matrix;
 
   const directed = options.directed || !isSymmetric;
-
-  if (
-    options.format !== "adjacency-matrix" &&
-    size === 2 &&
-    (!isBinary || (!directed && !isSymmetric))
-  ) {
-    return null;
-  }
-
-  if (
-    hasWeightedValue &&
-    options.format !== "adjacency-matrix" &&
-    size === 3 &&
-    looksLikeWeightedEdgePairs(source.rows, size)
-  ) {
-    return null;
-  }
 
   const edgeCount = directed
     ? matrix.directedEdgeCount
@@ -91,19 +58,14 @@ export function tryImportAdjacencyMatrix(
     );
   }
 
-  const settings = readImportSettings(options, {
+  const settings = readImportSettings({
+    ...options,
     directed,
     weighted: Boolean(hasWeightedValue || options.weighted),
   });
   const model = createEmptyGraphModel(settings);
 
-  model.nodes = Array.from({ length: size }, (_, index) =>
-    createNode({
-      id: `n${index}`,
-      label: String(index + settings.indexBase),
-      order: index,
-    }),
-  );
+  model.nodes = createIndexedNodes(size, settings.indexBase);
   arrangeNodes(model);
 
   const addMatrixEdge = (
@@ -147,41 +109,11 @@ export function tryImportAdjacencyMatrix(
   };
 }
 
-function looksLikeWeightedEdgePairs(rows: string[][], matrixSize: number) {
-  if (rows.some((row) => row.length !== 3)) {
-    return false;
-  }
-
-  const endpoints = rows
-    .flatMap((row) => row.slice(0, 2))
-    .map((value) => Number(value));
-
-  if (endpoints.some((value) => !Number.isInteger(value))) {
-    return false;
-  }
-
-  const weights = rows.map((row) => Number(row[2]));
-
-  if (weights.some((value) => value === 0)) {
-    return false;
-  }
-
-  const zeroBased = endpoints.every(
-    (value) => value >= 0 && value < matrixSize,
-  );
-  const oneBased = endpoints.every(
-    (value) => value >= 1 && value <= matrixSize,
-  );
-
-  return !zeroBased && !oneBased;
-}
-
 export function tryImportAdjacencyList(
-  lines: ParsedLine[],
+  importSource: ImportSource,
   options: ImportOptions,
-  preparedSource?: ImportSource,
 ): ImportResult | null {
-  const importSource = preparedSource ?? createImportSource(lines);
+  const { lines } = importSource;
   let separator: string | undefined;
   let entryCount = 0;
   let hasWeightedTargets = false;
@@ -230,7 +162,6 @@ export function tryImportAdjacencyList(
   }
   if (separator === undefined) return null;
   const adjacencySeparator = separator;
-  const labels = [...uniqueLabels];
   const nodeCount = uniqueLabels.size;
 
   if (nodeCount > MAX_IMPORT_NODES) {
@@ -254,24 +185,19 @@ export function tryImportAdjacencyList(
     );
   }
 
-  const settings = readImportSettings(
-    {
-      ...options,
-      indexBase: detectIndexBase(labels, options.indexBase),
-    },
-    {
-      directed: options.directed || adjacencySeparator === "->",
-      weighted: Boolean(hasWeightedTargets || options.weighted),
-    },
-  );
+  const settings = readImportSettings({
+    ...options,
+    indexBase: detectIndexBase(uniqueLabels, options.indexBase),
+    directed: options.directed || adjacencySeparator === "->",
+    weighted: Boolean(hasWeightedTargets || options.weighted),
+  });
   const model = createEmptyGraphModel(settings);
   const idByLabel = new Map<string, NodeId>();
   const seenUndirected = new Set<string>();
   const warnings: ImportWarning[] = [];
 
   lines.forEach((line) => {
-    const row = importSource.readAdjacencyRow(line.text);
-    if (!row) return;
+    const row = importSource.readAdjacencyRow(line.text)!;
     const { sourceLabel } = row;
 
     if (!sourceLabel) {
@@ -281,10 +207,6 @@ export function tryImportAdjacencyList(
 
     const source = ensureNodeByLabel(model, idByLabel, sourceLabel);
     const targets = row.targetTokens;
-
-    if (targets.length === 0) {
-      return;
-    }
 
     targets.forEach((targetToken) => {
       const parsedTarget = parseAdjacencyTarget(targetToken);

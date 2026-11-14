@@ -1,16 +1,16 @@
-import type cytoscape from "cytoscape";
 import type { Core, Position } from "cytoscape";
+import { clamp } from "../../core/graph/graph-utils";
 import { decodeCytoscapeId, getCytoscapeElement } from "./cytoscape-ids";
 
 import type { GraphCanvasPalette } from "./cytoscape-adapter";
 import type {
-  GraphCanvasChrome,
+  EditorLayout,
   GraphCanvasExportOptions,
 } from "../../core/view/types";
 
 export const MIN_CANVAS_ZOOM = 0.04;
 export const MAX_CANVAS_ZOOM = 1.5;
-export const ZOOM_STEP = 0.1;
+const ZOOM_STEP = 0.1;
 const CANVAS_FIT_PADDING = 48;
 const CHROME_INSETS = {
   desktop: { left: 16, right: 16, top: 76, bottom: 60 },
@@ -18,9 +18,6 @@ const CHROME_INSETS = {
   mobile: { left: 12, right: 12, top: 64, bottom: 88 },
 } as const;
 const VIEWPORT_RESCUE_TOLERANCE_PX = 8;
-export const APP_ANIMATION_DURATION_MS = 180;
-export const APP_ANIMATION_EASING =
-  "cubic-bezier(0.2, 0, 0, 1)" as cytoscape.Css.TransitionTimingFunction;
 
 type RenderedViewport = {
   x1: number;
@@ -48,7 +45,7 @@ export function nextCanvasButtonZoomLevel(
   return clamp(nextPercent / 100, MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM);
 }
 
-export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
+export function readGraphOutOfView(cy: Core, layout: EditorLayout) {
   const container = cy.container();
 
   if (!container || cy.nodes().length === 0) {
@@ -56,7 +53,7 @@ export function readGraphOutOfView(cy: Core, chrome: GraphCanvasChrome) {
   }
 
   const rect = { width: cy.width(), height: cy.height() };
-  const insets = graphViewportInsets(rect, chrome);
+  const insets = graphViewportInsets(rect, layout);
   const visibleBounds = {
     x1: insets.left,
     y1: insets.top,
@@ -94,13 +91,6 @@ export function renderedPointInsideViewport(
   );
 }
 
-export function clonePosition(position: Position): Position {
-  return {
-    x: position.x,
-    y: position.y,
-  };
-}
-
 export function syncCytoscapeSelection(
   cy: Core,
   selection: { nodeIds: string[]; edgeIds: string[] },
@@ -128,7 +118,7 @@ export function syncCytoscapeSelection(
 
 export function fitGraphToAvailableViewport(
   cy: Core,
-  chrome: GraphCanvasChrome,
+  layout: EditorLayout,
   measuredInsets?: MeasuredViewportInsets,
 ) {
   const container = cy.container();
@@ -142,7 +132,7 @@ export function fitGraphToAvailableViewport(
   const elements = cy.elements();
 
   if (elements.length === 0) {
-    centerGraphOrigin(cy, chrome, measuredInsets);
+    centerGraphOrigin(cy, layout, measuredInsets);
     return;
   }
 
@@ -152,7 +142,7 @@ export function fitGraphToAvailableViewport(
     return;
   }
 
-  const insets = graphViewportInsets(rect, chrome, measuredInsets);
+  const insets = graphViewportInsets(rect, layout, measuredInsets);
   if (
     measuredInsets &&
     (rect.width - insets.left - insets.right <= CANVAS_FIT_PADDING * 2 ||
@@ -195,7 +185,7 @@ export function fitGraphToAvailableViewport(
 
 export function centerGraphOrigin(
   cy: Core,
-  chrome: GraphCanvasChrome,
+  layout: EditorLayout,
   measuredInsets?: MeasuredViewportInsets,
 ) {
   const container = cy.container();
@@ -210,7 +200,7 @@ export function centerGraphOrigin(
     return;
   }
 
-  const insets = graphViewportInsets(rect, chrome, measuredInsets);
+  const insets = graphViewportInsets(rect, layout, measuredInsets);
   if (
     measuredInsets &&
     (rect.width <= insets.left + insets.right ||
@@ -303,10 +293,6 @@ export function readCanvasPalette(): GraphCanvasPalette {
   };
 }
 
-export function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function applyViewport(
   cy: Core,
   {
@@ -324,10 +310,10 @@ function applyViewport(
 
 export function graphViewportInsets(
   rect: { width: number; height: number },
-  chrome: GraphCanvasChrome,
+  layout: EditorLayout,
   measuredInsets?: MeasuredViewportInsets,
 ) {
-  const base = CHROME_INSETS[chrome.layout];
+  const base = CHROME_INSETS[layout];
   const maxHorizontal = Math.max(0, rect.width - CANVAS_FIT_PADDING * 2);
   const maxVertical = Math.max(0, rect.height - CANVAS_FIT_PADDING * 2);
   const horizontal = base.left + base.right;

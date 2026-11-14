@@ -61,7 +61,7 @@ for (const key of ["Enter", " "]) {
   const buttons = () =>
     EdgeNodeHitboxes.type({
       nodes: store.get(graphAtom).nodes.map((node) => ({ ...node, width: 72 })),
-      sourceNodeId: store.get(edgeDraftAtom).sourceNodeId,
+      sourceNodeId: store.get(edgeDraftAtom),
       onConnect,
       onContextMenu() {},
       onPointerEnter() {},
@@ -98,7 +98,7 @@ for (const key of ["Enter", " "]) {
     button.props.onClick(event);
     if (index === 0)
       assert.equal(
-        store.get(edgeDraftAtom).sourceNodeId,
+        store.get(edgeDraftAtom),
         id,
         `${key}: activates the focused source node despite an older selected node`,
       );

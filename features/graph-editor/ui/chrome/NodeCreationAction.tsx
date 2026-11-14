@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { GraphNode } from "../../core/graph/model";
 import { useI18n } from "../../i18n/I18nProvider";
 import { nodeCreationCopy } from "../../i18n/node-creation-copy";
+import { surface } from "@/components/ui/surfaces";
 
 export function NodeCreationAction({
   mobile,
@@ -22,13 +23,28 @@ export function NodeCreationAction({
   const statusId = `${descriptionId}-status`;
   const [addedNode, setAddedNode] = useState<GraphNode | null>(null);
   const [failed, setFailed] = useState(false);
+  // Pointer and touch users add vertices on the canvas, so this keyboard and
+  // screen-reader path stays invisible until it receives focus (like a skip
+  // link). It also stays visible while its "no room" message is shown.
+  const [focused, setFocused] = useState(false);
+  const visible = focused || failed;
 
   return (
     <div
       data-editor-chrome-control="true"
       data-node-creation-action
+      data-visible={visible ? "" : undefined}
+      onFocus={() => setFocused(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setFocused(false);
+        }
+      }}
       className={cn(
-        "pointer-events-auto absolute z-40 flex min-h-0 max-w-[calc(100%-5.25rem)] flex-col gap-[4px]",
+        "absolute z-40 flex min-h-0 max-w-[calc(100%-5.25rem)] flex-col gap-[4px] transition-opacity motion-reduce:transition-none",
+        visible
+          ? "pointer-events-auto opacity-100"
+          : "pointer-events-none opacity-0",
         mobile
           ? cn(
               "left-3",
@@ -55,7 +71,7 @@ export function NodeCreationAction({
           failed ? `${descriptionId} ${statusId}` : descriptionId
         }
         data-graph-shortcut-target="true"
-        className="ge-panel min-h-11 max-w-full rounded-xl px-3.5 backdrop-blur-[16px]"
+        className="ge-panel min-h-11 max-w-full rounded-xl px-3.5"
         style={{ paddingBlock: ".25rem" }}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ")
@@ -86,7 +102,8 @@ export function NodeCreationAction({
           failed
             ? cn(
                 focusRing,
-                "ge-scrollbar order-first min-h-0 shrink overflow-y-auto overscroll-contain rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-xs leading-tight text-[var(--text)]",
+                surface.floating,
+                "ge-scrollbar order-first min-h-0 shrink overflow-y-auto overscroll-contain rounded-lg px-3 text-xs leading-tight text-[var(--text)]",
               )
             : "sr-only"
         }

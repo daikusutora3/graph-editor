@@ -1,10 +1,9 @@
+import type { GraphCanvasExportOptions } from "../../core/view/types";
+
 export type CopyState = "idle" | "copied" | "blocked";
-export type PngExportBackground = "white" | "black" | "transparent";
-export type PngExportScope = "viewport" | "full" | "natural" | "natural-fixed";
-export type PngExportLongEdgePreset = 1280 | 1920 | 2560 | 3840 | "custom";
-export type PngExportPaddingPreset = 0 | 24 | 48 | "custom";
+export type PngExportBackground = GraphCanvasExportOptions["background"];
+export type PngExportScope = GraphCanvasExportOptions["scope"];
 export const PNG_EXPORT_LONG_EDGE_PRESETS = [1280, 1920, 2560, 3840] as const;
-export const PNG_EXPORT_PADDING_PRESETS = [0, 24, 48] as const;
 export const DEFAULT_LONG_EDGE_PX = 1920;
 export const DEFAULT_PADDING_PX = 24;
 export const MIN_LONG_EDGE_PX = 480;

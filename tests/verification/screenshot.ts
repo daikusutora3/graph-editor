@@ -7,12 +7,8 @@ import {
   clampPaddingPx,
   clampPaddingPxForLongEdge,
   createEmptyScreenshotPreview,
-  isScreenshotPreviewStale,
   makeScreenshotInputKey,
-  resolveLongEdgePx,
-  resolvePaddingPx,
   resolvePngCanvasLayout,
-  shouldAcceptScreenshotPreviewRequest,
 } from "../../features/graph-editor/ui/io/graph-io-screenshot-state";
 import { createVerification } from "./harness";
 
@@ -125,31 +121,6 @@ function verifyPreviewInputKey() {
       }),
     "preview input key should include export scope",
   );
-  expect(
-    makeScreenshotInputKey({
-      background: "white",
-      canvasHeightPx: 1080,
-      canvasWidthPx: 1920,
-      graphRevision: 7,
-      longEdgePx: 1024,
-      paddingPx: 48,
-      scope: "natural-fixed",
-      theme: "light",
-      zoomPercent: 100,
-    }) !==
-      makeScreenshotInputKey({
-        background: "white",
-        canvasHeightPx: 1080,
-        canvasWidthPx: 1920,
-        graphRevision: 7,
-        longEdgePx: 1024,
-        paddingPx: 48,
-        scope: "natural-fixed",
-        theme: "light",
-        zoomPercent: 125,
-      }),
-    "current-zoom preview should update when zoom changes",
-  );
   for (const scope of [
     "full",
     "viewport",
@@ -164,12 +135,6 @@ function verifyPreviewInputKey() {
       scope,
       theme: "light" as const,
     };
-    expect(
-      (makeScreenshotInputKey({ ...input, zoomPercent: 50 }) ===
-        makeScreenshotInputKey({ ...input, zoomPercent: 125 })) ===
-        (scope === "full"),
-      "only fixed-size full previews should remain current after zooming",
-    );
     const snapshots = {
       ...input,
       viewportSignature: "[0.5,0,0,1440,1000,1]",
@@ -237,49 +202,9 @@ function verifyPreviewStateHelpers() {
       emptyPreview.inputKey === null,
     "empty screenshot preview should clear URL and input key",
   );
-
-  expect(
-    isScreenshotPreviewStale(
-      { ...emptyPreview, state: "failed", inputKey: "old" },
-      "new",
-    ),
-    "failed previews with an old key should be stale",
-  );
-  expect(
-    isScreenshotPreviewStale(emptyPreview, "new"),
-    "empty previews should be stale when a preview is requested",
-  );
-  expect(
-    !isScreenshotPreviewStale(
-      { ...emptyPreview, state: "ready", inputKey: "same" },
-      "same",
-    ),
-    "ready previews with the current input key should not be stale",
-  );
-  expect(
-    isScreenshotPreviewStale(
-      { ...emptyPreview, state: "ready", inputKey: "old" },
-      "new",
-    ),
-    "ready previews with an old input key should be stale",
-  );
-  expect(
-    shouldAcceptScreenshotPreviewRequest(3, 3) &&
-      !shouldAcceptScreenshotPreviewRequest(4, 3),
-    "only the latest screenshot preview request should be accepted",
-  );
 }
 
 function verifyScreenshotSizingHelpers() {
-  expect(
-    resolveLongEdgePx(1920, 1600) === 1920 &&
-      resolveLongEdgePx("custom", 1600) === 1600,
-    "long-edge presets should resolve custom values only for custom mode",
-  );
-  expect(
-    resolvePaddingPx(48, 96) === 48 && resolvePaddingPx("custom", 96) === 96,
-    "padding presets should resolve custom values only for custom mode",
-  );
   expect(
     clampLongEdgePx(Number.NaN) === 1920 &&
       clampLongEdgePx(1) === 480 &&

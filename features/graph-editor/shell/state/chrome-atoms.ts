@@ -24,7 +24,7 @@ export const hasSelectionAtom = atom((get) => {
 });
 
 export const edgeDraftSourceLabelAtom = atom((get) => {
-  const sourceNodeId = get(edgeDraftAtom).sourceNodeId;
+  const sourceNodeId = get(edgeDraftAtom);
   if (sourceNodeId === null) return null;
   return (
     get(graphAtom).nodes.find((node) => node.id === sourceNodeId)?.label ?? null

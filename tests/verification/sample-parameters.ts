@@ -1,5 +1,5 @@
+import { createConfiguredSampleGraph } from "./sample-graph-helper";
 import {
-  createConfiguredSampleGraph,
   getSampleParameters,
   normalizeSampleParameters,
   type SampleParameterValues,

@@ -2,16 +2,15 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { fieldLabel } from "./control-styles";
 import { SectionLabel } from "./Text";
 
 export function ControlGroup({
   children,
-  className,
   label,
   spacing = "normal",
 }: {
   children: ReactNode;
-  className?: string;
   label?: string;
   spacing?: "normal" | "tight";
 }) {
@@ -20,7 +19,6 @@ export function ControlGroup({
       className={cn(
         "flex min-w-0 flex-col",
         spacing === "tight" ? "gap-0" : "gap-2",
-        className,
       )}
     >
       {label ? <SectionLabel>{label}</SectionLabel> : null}
@@ -46,17 +44,14 @@ export function ControlRow({
   return (
     <div
       className={cn(
-        "grid min-w-0 gap-2",
+        "grid min-w-0",
         layout === "inline"
-          ? "grid-cols-[4rem_minmax(0,1fr)] items-center"
-          : "grid-cols-1",
+          ? "grid-cols-[4rem_minmax(0,1fr)] items-center gap-2"
+          : "grid-cols-1 gap-1",
         className,
       )}
     >
-      <Label
-        htmlFor={htmlFor}
-        className="min-w-0 text-control font-medium [overflow-wrap:anywhere] text-[var(--muted)]"
-      >
+      <Label htmlFor={htmlFor} className={fieldLabel}>
         {label}
       </Label>
       {children}

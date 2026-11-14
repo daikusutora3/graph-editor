@@ -1,15 +1,18 @@
-import { layoutLine } from "./layout-algorithms";
-import { layoutScc } from "./layout-algorithms";
-import { layoutGrid } from "./layout-algorithms";
-import { layoutConcentric } from "./layout-algorithms";
-import { layoutBfs } from "./layout-algorithms";
-import { createForceLayoutTask, layoutForce } from "./layout-algorithms";
-import { layoutSpread } from "./layout-algorithms";
-import { layoutTree } from "./layout-algorithms";
-import { layoutDag } from "./layout-algorithms";
-import { layoutBipartite } from "./layout-algorithms";
-import { FORCE_LAYOUT_NODE_LIMIT } from "./layout-algorithms";
-import { layoutRadial } from "./layout-algorithms";
+import {
+  createForceLayoutTask,
+  FORCE_LAYOUT_NODE_LIMIT,
+  layoutBfs,
+  layoutBipartite,
+  layoutConcentric,
+  layoutDag,
+  layoutForce,
+  layoutGrid,
+  layoutLine,
+  layoutRadial,
+  layoutScc,
+  layoutSpread,
+  layoutTree,
+} from "./layout-algorithms";
 import { createMoveNodesCommand } from "../core/graph/graph-intents";
 import { estimateNodeWidth, NODE_SIZE_PX } from "../core/graph/node-size";
 import type { GraphModel, NodeId } from "../core/graph/model";
@@ -27,7 +30,6 @@ import {
 
 type LayoutRuntimeDefinition = {
   kind: string;
-  priority: "primary" | "advanced";
   positions: (
     model: GraphModel,
     rootNodeId?: NodeId,
@@ -47,42 +49,35 @@ export type LayoutDisabledReason =
 const manualLayoutDefinitions = [
   {
     kind: "force",
-    priority: "primary",
-    positions: (model) => layoutForce(model),
+    positions: layoutForce,
     disabledReason: (model) =>
       model.nodes.length > FORCE_LAYOUT_NODE_LIMIT ? "tooLargeGraph" : null,
   },
   {
     kind: "circle",
-    priority: "advanced",
     positions: (model) =>
       layoutCircle(orderedNodeIds(model), LAYOUT_CIRCLE_MIN_RADIUS),
   },
   {
     kind: "grid",
-    priority: "advanced",
     positions: (model) => layoutGrid(orderedNodeIds(model)),
   },
   {
     kind: "bfs",
-    priority: "primary",
-    positions: (model, rootNodeId) => layoutBfs(model, rootNodeId),
+    positions: layoutBfs,
   },
   {
     kind: "tree",
-    priority: "advanced",
-    positions: (model, rootNodeId) => layoutTree(model, rootNodeId),
+    positions: layoutTree,
     disabledReason: (model) => (isForest(model) ? null : "notForest"),
   },
   {
     kind: "concentric",
-    priority: "advanced",
-    positions: (model) => layoutConcentric(model),
+    positions: layoutConcentric,
   },
   {
     kind: "dagLayer",
-    priority: "advanced",
-    positions: (model) => layoutDag(model),
+    positions: layoutDag,
     disabledReason: (model) => {
       if (!model.settings.directed) {
         return "dagRequiresDirected";
@@ -93,50 +88,32 @@ const manualLayoutDefinitions = [
   },
   {
     kind: "bipartite",
-    priority: "advanced",
-    positions: (model) => layoutBipartite(model),
+    positions: layoutBipartite,
     disabledReason: (model) => (isBipartite(model) ? null : "notBipartite"),
   },
   {
     kind: "scc",
-    priority: "advanced",
-    positions: (model) => layoutScc(model),
+    positions: layoutScc,
     disabledReason: (model) =>
       model.settings.directed ? null : "sccRequiresDirected",
   },
   {
     kind: "radial",
-    priority: "advanced",
-    positions: (model, rootNodeId) => layoutRadial(model, rootNodeId),
+    positions: layoutRadial,
   },
   {
     kind: "line",
-    priority: "advanced",
-    positions: (model) => layoutLine(model),
+    positions: layoutLine,
   },
   {
     kind: "spread",
-    priority: "primary",
-    positions: (model) => layoutSpread(model),
+    positions: layoutSpread,
   },
 ] as const satisfies readonly LayoutRuntimeDefinition[];
 
 export type LayoutKind = (typeof manualLayoutDefinitions)[number]["kind"];
 
-export type LayoutDefinition = {
-  kind: LayoutKind;
-  priority: "primary" | "advanced";
-};
-
-export const layoutDefinitions: readonly LayoutDefinition[] =
-  manualLayoutDefinitions.map(({ kind, priority }) => ({
-    kind,
-    priority,
-  }));
-
-const layoutRuntimeByKind = new Map<LayoutKind, LayoutRuntimeDefinition>(
-  manualLayoutDefinitions.map((definition) => [definition.kind, definition]),
-);
+export const layoutKinds = manualLayoutDefinitions.map(({ kind }) => kind);
 
 export function createManualLayoutCommand(
   model: GraphModel,
@@ -198,8 +175,10 @@ export function manualLayoutDisabledReasonCode(
   return getLayoutRuntime(kind).disabledReason?.(model) ?? null;
 }
 
-function getLayoutRuntime(kind: LayoutKind) {
-  const runtime = layoutRuntimeByKind.get(kind);
+function getLayoutRuntime(kind: LayoutKind): LayoutRuntimeDefinition {
+  const runtime = manualLayoutDefinitions.find(
+    (definition) => definition.kind === kind,
+  );
 
   if (!runtime) {
     throw new Error(`Unknown layout kind: ${kind}`);

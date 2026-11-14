@@ -11,8 +11,10 @@ import {
   rangeSelectionFilterAtom,
 } from "../../shell/state/editor-atoms";
 import { useShortcutPlatform } from "../hooks/shortcut-platform";
-import { IconButton, focusRing } from "@/components/ui/controls";
+import { menuFocusKeyDown } from "../primitives/focus-navigation";
+import { ActionRow, IconButton, splitEnd } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
+import { menuStyle } from "@/components/ui/surfaces";
 
 export function RangeSelectionMenu({
   onOpen,
@@ -89,8 +91,8 @@ export function RangeSelectionMenu({
         active={mode === "select"}
         disabled={panel !== null}
         className={cn(
-          "w-6 rounded-l-none touch:w-6 touch:rounded-l-none",
-          "h-11",
+          splitEnd,
+          "h-11 w-6 touch:w-7",
           above && "rounded-r-xl touch:rounded-r-xl",
         )}
         onClick={() => {
@@ -122,7 +124,8 @@ export function RangeSelectionMenu({
           role="menu"
           aria-label={copy.target}
           className={cn(
-            "ge-pop pointer-events-auto absolute left-0 z-50 flex w-52 max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-1.5",
+            menuStyle.surface,
+            "ge-pop pointer-events-auto absolute left-0 z-50 flex w-52 max-w-[calc(100vw-2rem)] flex-col gap-0.5",
             above ? "bottom-full mb-3" : "top-full mt-3",
           )}
           onBlur={(event) => {
@@ -139,55 +142,33 @@ export function RangeSelectionMenu({
               close(true);
               return;
             }
-            const items = [
-              ...event.currentTarget.querySelectorAll<HTMLElement>(
-                "[role=menuitemradio]",
-              ),
-            ];
-            const index = items.indexOf(document.activeElement as HTMLElement);
-            const next =
-              event.key === "Home"
-                ? 0
-                : event.key === "End"
-                  ? items.length - 1
-                  : event.key === "ArrowDown"
-                    ? (index + 1) % items.length
-                    : event.key === "ArrowUp"
-                      ? (index - 1 + items.length) % items.length
-                      : null;
-            if (next !== null) {
-              event.preventDefault();
-              items[next]?.focus();
-            }
+            menuFocusKeyDown(event);
           }}
         >
           <span className="px-2.5 py-1 text-xs text-[var(--muted)]">
             {copy.label}
           </span>
           {(["all", "nodes", "edges"] as const).map((value) => (
-            <button
+            <ActionRow
               key={value}
-              type="button"
               role="menuitemradio"
               aria-checked={filter === value}
               tabIndex={-1}
-              className={cn(
-                focusRing,
-                "flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm font-semibold text-[var(--text-2)] hover:bg-[var(--fill)]",
-              )}
+              density="menu"
+              icon={
+                filter === value ? (
+                  <Check className="size-3.5" aria-hidden="true" />
+                ) : (
+                  <span aria-hidden="true" />
+                )
+              }
               onClick={() => {
                 setFilter(value);
                 close(true);
               }}
             >
-              <span
-                aria-hidden="true"
-                className="grid size-4 place-items-center"
-              >
-                {filter === value ? <Check className="size-3.5" /> : null}
-              </span>
               {copy[value]}
-            </button>
+            </ActionRow>
           ))}
           <span className="border-t border-[var(--line)] px-2.5 pt-2 pb-1 text-xs whitespace-nowrap text-[var(--muted)]">
             {copy.hint(platform === "mac" ? "⌘" : "Ctrl")}

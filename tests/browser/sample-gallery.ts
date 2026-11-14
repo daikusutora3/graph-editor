@@ -239,7 +239,7 @@ try {
     .fill("6");
   await waitStats("grid", "30 nodes / 49 edges");
   assert.equal(await card("grid").locator("svg circle").count(), 30);
-  await page.getByText("Generation settings ▾", { exact: true }).click();
+  await page.getByText("Generation settings", { exact: true }).click();
   await page
     .getByRole("combobox", { name: "Index", exact: true })
     .selectOption("1");

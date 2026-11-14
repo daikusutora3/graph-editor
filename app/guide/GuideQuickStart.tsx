@@ -13,7 +13,6 @@ export function GuideQuickStart({ locale }: { locale: AppLocale }) {
       id="guide-start"
       title={copy.quickStartTitle}
       description={copy.quickStartIntro}
-      variant="plain"
       className="@container/guide-start"
     >
       <ContentCardGrid className="mt-5">

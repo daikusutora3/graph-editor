@@ -32,7 +32,8 @@ export function readEditorChromeInsets(
   );
   if (includeCanvasControls) {
     for (const selector of [
-      "[data-node-creation-action]",
+      // Only reserve space while the keyboard-revealed action is showing.
+      "[data-node-creation-action][data-visible]",
       "[data-canvas-zoom-controls]",
     ]) {
       const controls = root

@@ -326,7 +326,7 @@ batchedCanvas.cy.destroy();
   });
   const positions = cy.nodes().map((node) => ({ ...node.position() }));
   for (const bottom of [176, 269]) {
-    fitGraphToAvailableViewport(cy, { layout: "mobile" }, { top: 196, bottom });
+    fitGraphToAvailableViewport(cy, "mobile", { top: 196, bottom });
     const bounds = cy.elements().renderedBoundingBox({ includeLabels: true });
     assert(bounds.y1 >= 196 + 48 - 1e-5, "fit clears actual top rows");
     assert(
@@ -341,18 +341,14 @@ batchedCanvas.cy.destroy();
     "fit preserves graph coordinates",
   );
   const camera = { zoom: cy.zoom(), pan: { ...cy.pan() } };
-  fitGraphToAvailableViewport(
-    cy,
-    { layout: "mobile" },
-    { top: 700, bottom: 300 },
-  );
+  fitGraphToAvailableViewport(cy, "mobile", { top: 700, bottom: 300 });
   assert.deepEqual(
     { zoom: cy.zoom(), pan: { ...cy.pan() } },
     camera,
     "unavailable measured space preserves the camera",
   );
   cy.elements().remove();
-  centerGraphOrigin(cy, { layout: "mobile" }, { top: 196, bottom: 176 });
+  centerGraphOrigin(cy, "mobile", { top: 196, bottom: 176 });
   assert.deepEqual(
     cy.pan(),
     { x: 160, y: 460 },
@@ -385,20 +381,12 @@ batchedCanvas.cy.destroy();
     childNodes: [],
     getBoundingClientRect: () => ({ width: 1920, height: 1080 }),
   });
-  fitGraphToAvailableViewport(
-    cy,
-    { layout: "desktop" },
-    { top: 104, bottom: 0 },
-  );
+  fitGraphToAvailableViewport(cy, "desktop", { top: 104, bottom: 0 });
   assert(
     cy.elements().renderedBoundingBox().y2 > 963,
     "default bottom clearance can overlap the enlarged zoom surface",
   );
-  fitGraphToAvailableViewport(
-    cy,
-    { layout: "desktop" },
-    { top: 104, bottom: 117 },
-  );
+  fitGraphToAvailableViewport(cy, "desktop", { top: 104, bottom: 117 });
   const fitted = cy.elements().renderedBoundingBox();
   assert(
     fitted.y2 <= 963 - 48 + 1e-5,
@@ -514,7 +502,7 @@ function lifecycleFixture(canvas) {
     containerRef: { current: canvas.container },
     cyRef: { current: null },
     elements,
-    chrome: { layout: "desktop" },
+    layout: "desktop",
     graph,
     mode: "select",
     selection: { nodeIds: ["a"], edgeIds: ["ab"] },
@@ -667,9 +655,8 @@ function lifecycleFixture(canvas) {
       true,
       "each observer delivery completes pixels before paint",
     );
-    test.options.chrome = {
-      layout: width < 640 ? "mobile" : width < 1024 ? "compact" : "desktop",
-    };
+    test.options.layout =
+      width < 640 ? "mobile" : width < 1024 ? "compact" : "desktop";
     test.hook.render();
     test.hook.flush();
     assert.equal(

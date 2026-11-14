@@ -228,7 +228,7 @@ for (const locale of locales) {
     assert(/min-h-11/.test(attribute(copyButton, "class") ?? ""));
     for (const target of [
       article.guide.sectionId,
-      article.canonicalGuideExampleId,
+      article.example.guideExampleId ?? undefined,
     ].filter(Boolean)) {
       assert(
         guide.ids.has(target!),

@@ -1,10 +1,7 @@
-import {
-  createEdge,
-  createEmptyGraphModel,
-  createNode,
-} from "../core/graph/graph-factory";
+import { createEdge, createEmptyGraphModel } from "../core/graph/graph-factory";
 import {
   arrangeNodes,
+  createIndexedNodes,
   importLimitFailure,
   importFailure,
   MAX_IMPORT_NODES,
@@ -53,55 +50,36 @@ export function tryImportTreeEdgeList(
     );
   }
 
-  const endpoints = edgeRows.flat().map(Number);
+  const edges = edgeRows.map(
+    ([sourceText, targetText]) =>
+      [Number(sourceText), Number(targetText)] as const,
+  );
+  const endpoints = edges.flat();
   if (endpoints.some((value) => !Number.isInteger(value))) {
     return null;
   }
 
   const indexBase = inferTreeIndexBase(endpoints, nodeCount, options.indexBase);
-  const edges = edgeRows.map(
-    ([sourceText, targetText]) =>
-      [Number(sourceText), Number(targetText)] as const,
-  );
   if (!isUndirectedTreeLabels(edges, nodeCount, options.indexBase)) {
     return null;
   }
-  const model = createEmptyGraphModel({
-    ...readImportSettings({ ...options, indexBase }),
-    directed: options.directed ?? false,
-  });
+  const model = createEmptyGraphModel(
+    readImportSettings({ ...options, indexBase }),
+  );
 
   model.nodes = createIndexedNodes(nodeCount, indexBase);
-  edgeRows.forEach(([sourceText, targetText]) => {
-    const sourceIndex = Number(sourceText) - indexBase;
-    const targetIndex = Number(targetText) - indexBase;
-
-    if (
-      sourceIndex < 0 ||
-      sourceIndex >= nodeCount ||
-      targetIndex < 0 ||
-      targetIndex >= nodeCount
-    ) {
-      return;
-    }
-
-    const sourceNode = model.nodes[sourceIndex];
-    const targetNode = model.nodes[targetIndex];
-
-    if (!sourceNode || !targetNode) return;
+  edges.forEach(([source, target]) => {
+    const sourceIndex = source - indexBase;
+    const targetIndex = target - indexBase;
 
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
-        source: sourceNode.id,
-        target: targetNode.id,
+        source: model.nodes[sourceIndex]!.id,
+        target: model.nodes[targetIndex]!.id,
       }),
     );
   });
-
-  if (model.edges.length !== nodeCount - 1) {
-    return null;
-  }
 
   arrangeNodes(model);
   return {
@@ -148,38 +126,26 @@ export function tryImportParentList(
   }
 
   const indexBase = inferTreeIndexBase(parents, nodeCount, options.indexBase);
-  const parentIndices = parents.map((parentLabel) => parentLabel - indexBase);
   if (!isRootedParentTreeLabels(parents, nodeCount, options.indexBase)) {
     return null;
   }
 
-  const model = createEmptyGraphModel({
-    ...readImportSettings({ ...options, indexBase }, { directed: true }),
-    directed: true,
-  });
+  const model = createEmptyGraphModel(
+    readImportSettings({ ...options, indexBase, directed: true }),
+  );
 
   model.nodes = createIndexedNodes(nodeCount, indexBase);
   parents.forEach((parentLabel, index) => {
-    const parentIndex = parentIndices[index];
+    const parentIndex = parentLabel - indexBase;
     const childIndex = index + 1;
-    const parentNode =
-      parentIndex === undefined ? undefined : model.nodes[parentIndex];
-    const childNode = model.nodes[childIndex];
-
-    if (!parentNode || !childNode) return;
-
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
-        source: parentNode.id,
-        target: childNode.id,
+        source: model.nodes[parentIndex]!.id,
+        target: model.nodes[childIndex]!.id,
       }),
     );
   });
-
-  if (model.edges.length !== nodeCount - 1) {
-    return null;
-  }
 
   arrangeNodes(model);
   return {
@@ -228,20 +194,19 @@ export function tryImportWeightedParentList(
   }
 
   const indexBase = inferTreeIndexBase(parents, nodeCount, options.indexBase);
-  const parentIndices = parents.map((parentLabel) => parentLabel - indexBase);
   if (!isRootedParentTreeLabels(parents, nodeCount, options.indexBase)) {
     return null;
   }
 
-  const model = createEmptyGraphModel({
-    ...readImportSettings(
-      { ...options, indexBase, weightKind: "number" },
-      { directed: true, weighted: true },
-    ),
-    directed: true,
-    weighted: true,
-    weightKind: "number",
-  });
+  const model = createEmptyGraphModel(
+    readImportSettings({
+      ...options,
+      indexBase,
+      weightKind: "number",
+      directed: true,
+      weighted: true,
+    }),
+  );
 
   for (const [index, row] of rows.entries()) {
     const warning = importTextLimitWarning(
@@ -260,27 +225,17 @@ export function tryImportWeightedParentList(
 
   model.nodes = createIndexedNodes(nodeCount, indexBase);
   rows.forEach(([, weight], index) => {
-    const parentIndex = parentIndices[index];
+    const parentIndex = parents[index]! - indexBase;
     const childIndex = index + 1;
-    const parentNode =
-      parentIndex === undefined ? undefined : model.nodes[parentIndex];
-    const childNode = model.nodes[childIndex];
-
-    if (!parentNode || !childNode) return;
-
     model.edges.push(
       createEdge({
         id: `e${model.edges.length}`,
-        source: parentNode.id,
-        target: childNode.id,
+        source: model.nodes[parentIndex]!.id,
+        target: model.nodes[childIndex]!.id,
         weight,
       }),
     );
   });
-
-  if (model.edges.length !== nodeCount - 1) {
-    return null;
-  }
 
   arrangeNodes(model);
   return {
@@ -289,14 +244,4 @@ export function tryImportWeightedParentList(
     format: "Weighted parent list",
     formatKind: "weighted-parent-list",
   };
-}
-
-function createIndexedNodes(nodeCount: number, indexBase: 0 | 1) {
-  return Array.from({ length: nodeCount }, (_, index) =>
-    createNode({
-      id: `n${index}`,
-      label: String(index + indexBase),
-      order: index,
-    }),
-  );
 }

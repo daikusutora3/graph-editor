@@ -41,7 +41,8 @@ const fixtures: {
     field: "edge-weight",
     line: 4,
     input: (text) => `# comment\n\n2 1\n0 1 ${text}`,
-    direct: importStructuredEdgeList,
+    direct: (input, options) =>
+      importStructuredEdgeList(createImportSource(readLines(input)), options),
   },
   {
     name: "edge-pair source",
@@ -50,7 +51,7 @@ const fixtures: {
     line: 3,
     input: (text) => `# comment\n\n${text} b`,
     direct: (input, options) =>
-      tryImportLooseEdgeList(readLines(input), options),
+      tryImportLooseEdgeList(createImportSource(readLines(input)), options),
   },
   {
     name: "edge-pair target",
@@ -59,7 +60,7 @@ const fixtures: {
     line: 3,
     input: (text) => `# comment\n\na ${text}`,
     direct: (input, options) =>
-      tryImportLooseEdgeList(readLines(input), options),
+      tryImportLooseEdgeList(createImportSource(readLines(input)), options),
   },
   {
     name: "edge-pair weight",
@@ -68,7 +69,7 @@ const fixtures: {
     line: 3,
     input: (text) => `# comment\n\na b ${text}`,
     direct: (input, options) =>
-      tryImportLooseEdgeList(readLines(input), options),
+      tryImportLooseEdgeList(createImportSource(readLines(input)), options),
   },
   {
     name: "adjacency source",
@@ -77,7 +78,7 @@ const fixtures: {
     line: 3,
     input: (text) => `# comment\n\n${text}: b`,
     direct: (input, options) =>
-      tryImportAdjacencyList(readLines(input), options),
+      tryImportAdjacencyList(createImportSource(readLines(input)), options),
   },
   {
     name: "adjacency target",
@@ -86,7 +87,7 @@ const fixtures: {
     line: 3,
     input: (text) => `# comment\n\na: ${text}`,
     direct: (input, options) =>
-      tryImportAdjacencyList(readLines(input), options),
+      tryImportAdjacencyList(createImportSource(readLines(input)), options),
   },
   {
     name: "adjacency weight",
@@ -95,7 +96,7 @@ const fixtures: {
     line: 3,
     input: (text) => `# comment\n\na: b(${text})`,
     direct: (input, options) =>
-      tryImportAdjacencyList(readLines(input), options),
+      tryImportAdjacencyList(createImportSource(readLines(input)), options),
   },
   {
     name: "weighted parent weight",
@@ -216,8 +217,8 @@ for (const length of [256, 257]) {
     weightKind: "string",
     directed: true,
   };
-  const first = tryImportAdjacencyList(lines, options, source);
-  const second = tryImportAdjacencyList(lines, options, source);
+  const first = tryImportAdjacencyList(source, options);
+  const second = tryImportAdjacencyList(source, options);
   assert.deepEqual(
     first,
     second,
@@ -256,7 +257,8 @@ for (const input of [
     limit: 256,
   });
   assert.deepEqual(
-    importStructuredEdgeList(input, options).warnings,
+    importStructuredEdgeList(createImportSource(readLines(input)), options)
+      .warnings,
     evaluation.result.warnings,
   );
   const validPartial = evaluateGraphInput(

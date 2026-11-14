@@ -103,7 +103,7 @@ for (const [nodeCount, edgeCount] of [
         ),
       },
       interaction: {
-        nodes: [...graph.nodes, { ...graph.nodes[0]!, x: 24 }],
+        previousNodes: [{ ...graph.nodes[0]!, x: 24 }],
         movedNodeIds: new Set(["n0"]),
       },
     };
@@ -159,7 +159,7 @@ for (const [nodeCount, edgeCount] of [
       fullMedianMs: median(fullTimes),
       incrementalMedianMs: median(partialTimes),
       speedup: median(fullTimes) / median(partialTimes),
-      workerPayloadCloneMedianMs: median(cloneTimes),
+      workerCompactPayloadCloneMedianMs: median(cloneTimes),
       workerFullResponseMedianMs: median(fullResponseTimes),
       workerDeltaResponseMedianMs: median(deltaResponseTimes),
       workerResponseSpeedup:

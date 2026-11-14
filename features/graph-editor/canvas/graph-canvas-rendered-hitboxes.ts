@@ -11,7 +11,7 @@ import {
 
 import type { GraphModel } from "../core/graph/model";
 import type { EditorMode } from "../shell/state/editor-state";
-import type { GraphCanvasChrome } from "./graph-canvas-types";
+import type { EditorLayout } from "../core/view/types";
 
 import {
   type EdgeLabelHitbox,
@@ -24,13 +24,13 @@ import { readCytoscapeCoordinateOrigin } from "../adapters/cytoscape/cytoscape-c
 type UseRenderedHitboxesOptions = {
   graph: GraphModel;
   mode: EditorMode;
-  chrome: GraphCanvasChrome;
+  layout: EditorLayout;
 };
 
 export function useRenderedHitboxes({
   graph,
   mode,
-  chrome,
+  layout,
 }: UseRenderedHitboxesOptions) {
   const pendingHitboxCyRef = useRef<Core | null>(null);
   const hitboxFrameRef = useRef<number | null>(null);
@@ -69,7 +69,7 @@ export function useRenderedHitboxes({
       }
       const { nodes: nextNodeHitboxes, edges: nextEdgeLabelHitboxes } =
         readerRef.current.reader.read(graph, mode === "select");
-      const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
+      const nextGraphOutOfView = readGraphOutOfView(cy, layout);
 
       setNodeHitboxes(nextNodeHitboxes);
 
@@ -87,7 +87,7 @@ export function useRenderedHitboxes({
         current === nextGraphOutOfView ? current : nextGraphOutOfView,
       );
     },
-    [chrome, graph, mode],
+    [layout, graph, mode],
   );
 
   useLayoutEffect(() => {
@@ -112,14 +112,14 @@ export function useRenderedHitboxes({
           dx === 0 && dy === 0 ? "" : `translate(${dx}px, ${dy}px)`;
       }
 
-      if (chrome.layout === "mobile") {
-        const nextGraphOutOfView = readGraphOutOfView(cy, chrome);
+      if (layout === "mobile") {
+        const nextGraphOutOfView = readGraphOutOfView(cy, layout);
         setIsGraphOutOfView((current) =>
           current === nextGraphOutOfView ? current : nextGraphOutOfView,
         );
       }
     },
-    [chrome],
+    [layout],
   );
 
   const updateRenderedHitboxes = useCallback(

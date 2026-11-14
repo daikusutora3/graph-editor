@@ -21,12 +21,10 @@ type GraphCanvasApi = {
   editSelection: () => boolean;
   fitView: () => void;
   exportPng: (detail: GraphCanvasExportOptions) => Promise<Blob>;
-  isGraphOutOfView: () => boolean;
   resetZoom: () => void;
 };
 
 type GraphCanvasApiContextValue = GraphCanvasApi & {
-  notifyZoomPercent: (value: number) => void;
   notifyViewportSignature: (value: string) => void;
   notifyExportScaleSignature: (value: string) => void;
   requestFit: (graph: GraphModel) => void;
@@ -38,7 +36,6 @@ const missingCanvasApi: GraphCanvasApi = {
   editSelection: () => false,
   fitView: () => {},
   exportPng: () => Promise.reject(new Error("Graph canvas is not ready")),
-  isGraphOutOfView: () => false,
   resetZoom: () => {},
 };
 
@@ -68,22 +65,17 @@ function createSnapshotStore<T>(initialSnapshot: T) {
   };
 }
 
-const GraphCanvasZoomContext = createContext<ReturnType<
-  typeof createSnapshotStore<number>
-> | null>(null);
 const GraphCanvasViewportContext = createContext<ReturnType<
   typeof createSnapshotStore<string>
 > | null>(null);
 const GraphCanvasExportScaleContext = createContext<ReturnType<
   typeof createSnapshotStore<string>
 > | null>(null);
-const defaultZoomSnapshot = () => 100;
 const defaultViewportSnapshot = () => "";
-const skipZoomSubscription = () => () => {};
+const skipSubscription = () => () => {};
 
 export function GraphCanvasProvider({ children }: { children: ReactNode }) {
   const [fitRequest, setFitRequest] = useState<CanvasFitRequest | null>(null);
-  const [zoomStore] = useState(() => createSnapshotStore(100));
   const [viewportStore] = useState(() => createSnapshotStore(""));
   const [exportScaleStore] = useState(() => createSnapshotStore(""));
   const fitId = useRef(0);
@@ -98,32 +90,23 @@ export function GraphCanvasProvider({ children }: { children: ReactNode }) {
     apiRef.current = api;
   }, []);
 
-  const callApi = useCallback(
-    <T,>(read: (api: GraphCanvasApi) => T) =>
-      read(apiRef.current ?? missingCanvasApi),
-    [],
-  );
-
   const value = useMemo<GraphCanvasApiContextValue>(
     () => ({
-      editSelection: () => callApi((api) => api.editSelection()),
-      fitView: () => callApi((api) => api.fitView()),
-      isGraphOutOfView: () => callApi((api) => api.isGraphOutOfView()),
-      resetZoom: () => callApi((api) => api.resetZoom()),
-      notifyZoomPercent: zoomStore.set,
+      editSelection: () => (apiRef.current ?? missingCanvasApi).editSelection(),
+      fitView: () => (apiRef.current ?? missingCanvasApi).fitView(),
+      resetZoom: () => (apiRef.current ?? missingCanvasApi).resetZoom(),
       notifyViewportSignature: viewportStore.set,
       notifyExportScaleSignature: exportScaleStore.set,
       requestFit,
       completeFit,
-      exportPng: (detail) => callApi((api) => api.exportPng(detail)),
+      exportPng: (detail) =>
+        (apiRef.current ?? missingCanvasApi).exportPng(detail),
       registerGraphCanvasApi,
     }),
     [
-      callApi,
       requestFit,
       completeFit,
       registerGraphCanvasApi,
-      zoomStore,
       viewportStore,
       exportScaleStore,
     ],
@@ -132,13 +115,11 @@ export function GraphCanvasProvider({ children }: { children: ReactNode }) {
   return (
     <GraphCanvasApiContext.Provider value={value}>
       <GraphCanvasFitContext.Provider value={fitRequest}>
-        <GraphCanvasZoomContext.Provider value={zoomStore}>
-          <GraphCanvasViewportContext.Provider value={viewportStore}>
-            <GraphCanvasExportScaleContext.Provider value={exportScaleStore}>
-              {children}
-            </GraphCanvasExportScaleContext.Provider>
-          </GraphCanvasViewportContext.Provider>
-        </GraphCanvasZoomContext.Provider>
+        <GraphCanvasViewportContext.Provider value={viewportStore}>
+          <GraphCanvasExportScaleContext.Provider value={exportScaleStore}>
+            {children}
+          </GraphCanvasExportScaleContext.Provider>
+        </GraphCanvasViewportContext.Provider>
       </GraphCanvasFitContext.Provider>
     </GraphCanvasApiContext.Provider>
   );
@@ -166,21 +147,7 @@ export function useGraphCanvasFitRequest() {
   return request;
 }
 
-export function useGraphCanvasZoomPercent(enabled = true) {
-  const store = useContext(GraphCanvasZoomContext);
-  if (!store) {
-    throw new Error(
-      "useGraphCanvasZoomPercent must be used within GraphCanvasProvider",
-    );
-  }
-  return useSyncExternalStore(
-    enabled ? store.subscribe : skipZoomSubscription,
-    enabled ? store.getSnapshot : defaultZoomSnapshot,
-    defaultZoomSnapshot,
-  );
-}
-
-export function useGraphCanvasViewportSignature(enabled = true) {
+export function useGraphCanvasViewportSignature(enabled: boolean) {
   const store = useContext(GraphCanvasViewportContext);
   if (!store) {
     throw new Error(
@@ -188,13 +155,13 @@ export function useGraphCanvasViewportSignature(enabled = true) {
     );
   }
   return useSyncExternalStore(
-    enabled ? store.subscribe : skipZoomSubscription,
+    enabled ? store.subscribe : skipSubscription,
     enabled ? store.getSnapshot : defaultViewportSnapshot,
     defaultViewportSnapshot,
   );
 }
 
-export function useGraphCanvasExportScaleSignature(enabled = true) {
+export function useGraphCanvasExportScaleSignature(enabled: boolean) {
   const store = useContext(GraphCanvasExportScaleContext);
   if (!store) {
     throw new Error(
@@ -202,7 +169,7 @@ export function useGraphCanvasExportScaleSignature(enabled = true) {
     );
   }
   return useSyncExternalStore(
-    enabled ? store.subscribe : skipZoomSubscription,
+    enabled ? store.subscribe : skipSubscription,
     enabled ? store.getSnapshot : defaultViewportSnapshot,
     defaultViewportSnapshot,
   );

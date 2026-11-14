@@ -1,8 +1,6 @@
 import type { ThemeMode } from "../theme/theme";
 import type {
   PngExportBackground,
-  PngExportLongEdgePreset,
-  PngExportPaddingPreset,
   PngExportScope,
   ScreenshotPreview,
 } from "./graph-io-types";
@@ -24,7 +22,6 @@ export type ScreenshotPreviewInput = {
   paddingPx: number;
   scope: PngExportScope;
   theme: ThemeMode;
-  zoomPercent?: number;
   viewportSignature?: string;
   exportScaleSignature?: string;
 };
@@ -48,7 +45,6 @@ export function makeScreenshotInputKey({
   paddingPx,
   scope,
   theme,
-  zoomPercent,
   viewportSignature,
   exportScaleSignature,
 }: ScreenshotPreviewInput) {
@@ -62,41 +58,12 @@ export function makeScreenshotInputKey({
     scope,
     theme,
 
-    zoomPercent: scope === "full" ? undefined : zoomPercent,
     viewportSignature: scope === "viewport" ? viewportSignature : undefined,
     exportScaleSignature:
       scope === "natural" || scope === "natural-fixed"
         ? exportScaleSignature
         : undefined,
   });
-}
-
-export function isScreenshotPreviewStale(
-  preview: ScreenshotPreview,
-  currentInputKey: string,
-) {
-  return preview.inputKey !== currentInputKey;
-}
-
-export function shouldAcceptScreenshotPreviewRequest(
-  currentRequestId: number,
-  requestId: number,
-) {
-  return currentRequestId === requestId;
-}
-
-export function resolveLongEdgePx(
-  preset: PngExportLongEdgePreset,
-  customLongEdgePx: number,
-) {
-  return preset === "custom" ? customLongEdgePx : preset;
-}
-
-export function resolvePaddingPx(
-  preset: PngExportPaddingPreset,
-  customPaddingPx: number,
-) {
-  return preset === "custom" ? customPaddingPx : preset;
 }
 
 export function clampLongEdgePx(value: number) {

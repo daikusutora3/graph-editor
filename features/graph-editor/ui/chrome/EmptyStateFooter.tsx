@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { GitHubLogo, XLogo } from "../brand/social-logos";
-import { focusRing } from "@/components/ui/controls";
+import { ActionRow, LinkButton, buttonClass } from "@/components/ui/controls";
+import { menuStyle } from "@/components/ui/surfaces";
 
 const AUTHOR_LINKS = [
   {
@@ -63,29 +64,24 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
   }, []);
 
   return (
-    <div
-      className={cn(
-        "relative inline-flex w-fit max-w-full shrink-0 items-center gap-0.5 rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1",
-        mobile && "flex-col",
-      )}
-    >
-      <details ref={authorRef} className="group/author min-w-0 text-xs">
+    <div className="relative flex w-full max-w-full shrink-0 flex-wrap items-center justify-center gap-x-1 gap-y-0.5 text-xs text-[var(--muted)]">
+      <details ref={authorRef} className="group/author relative min-w-0">
         <summary
           className={cn(
-            "inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-xl px-1.5 text-[var(--text-2)] transition-colors group-open/author:bg-[var(--fill-2)] hover:bg-[var(--fill)] [&::-webkit-details-marker]:hidden",
-            focusRing,
+            buttonClass({ size: "sm" }),
+            "cursor-pointer list-none gap-1.5 pr-2 pl-1 font-normal text-[var(--muted)] group-open/author:bg-[var(--fill)] [&::-webkit-details-marker]:hidden",
           )}
         >
-          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--fill)] text-[var(--text-2)] group-open/author:bg-[var(--fill-2)]">
+          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--fill)] text-[var(--text-2)] group-open/author:bg-[var(--fill-2)]">
             <UserRound
               aria-hidden="true"
-              className="size-3.5"
+              className="size-3"
               strokeWidth={1.75}
             />
           </span>
           <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
             <span>{messages.app.authorPrefix}</span>
-            <span translate="no" className="font-medium text-[var(--text)]">
+            <span translate="no" className="font-semibold text-[var(--text-2)]">
               daikusutora3
             </span>
           </span>
@@ -96,7 +92,8 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
         </summary>
         <div
           className={cn(
-            "absolute inset-x-0 bottom-full z-10 mb-2 flex flex-col gap-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--line)] bg-[var(--panel-solid)] p-1",
+            menuStyle.surface,
+            "ge-pop absolute bottom-full left-1/2 z-10 mb-2 flex w-52 -translate-x-1/2 flex-col gap-0.5 overflow-y-auto overscroll-contain",
 
             mobile
               ? "max-h-[max(48px,calc(var(--ge-viewport-height,100dvh)-var(--ge-mobile-controls-bottom,92px)-190px))]"
@@ -104,68 +101,61 @@ export function EmptyStateFooter({ mobile }: { mobile: boolean }) {
           )}
         >
           {AUTHOR_LINKS.map(({ href, label, Icon }) => (
-            <a
+            <ActionRow
               key={label}
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className={cn(
-                "group/link flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-control text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)]",
-                focusRing,
-              )}
+              density="menu"
+              icon={
+                <Icon
+                  aria-hidden="true"
+                  className="size-3.5 text-[var(--muted)]"
+                />
+              }
+              trailing={
+                <ArrowUpRight aria-hidden="true" className="size-3.5" />
+              }
             >
-              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[var(--fill)] text-[var(--muted)] group-hover/link:text-[var(--text)]">
-                <Icon aria-hidden="true" className="size-3.5" />
-              </span>
-              <span className="flex-1 font-medium">{label}</span>
-              <ArrowUpRight
-                aria-hidden="true"
-                className="size-3.5 text-[var(--muted)]"
-              />
-            </a>
+              {label}
+            </ActionRow>
           ))}
         </div>
       </details>
-      {!mobile ? (
-        <span
-          aria-hidden="true"
-          className="mx-0.5 h-5 w-px shrink-0 bg-[var(--line)]"
-        />
-      ) : null}
+      <span
+        aria-hidden="true"
+        className={cn("text-[var(--disabled)]", mobile && "hidden")}
+      >
+        ·
+      </span>
       <nav
         aria-label={contentNavigationCopy[locale].navigation}
-        className="flex max-w-full flex-wrap items-center justify-center gap-0.5"
+        className={cn(
+          "flex max-w-full flex-wrap items-center justify-center gap-x-1",
+          mobile && "w-full",
+        )}
       >
-        <a
+        <LinkButton
           href={appGuidePaths[locale]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-xs text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] active:bg-[var(--fill-2)]",
-            focusRing,
-          )}
+          external
+          newTabLabel={contentNavigationCopy[locale].newTab}
+          className="font-normal text-[var(--muted)]"
+          icon={<BookOpen aria-hidden="true" className="size-3.5" />}
         >
-          <BookOpen aria-hidden="true" className="size-3.5" />
           {messages.appMenu.guide}
-          <span className="sr-only">
-            ({contentNavigationCopy[locale].newTab})
-          </span>
-        </a>
-        <a
+        </LinkButton>
+        <span aria-hidden="true" className="text-[var(--disabled)]">
+          ·
+        </span>
+        <LinkButton
           href={appArticlePaths[locale]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-xs text-[var(--text-2)] transition-colors hover:bg-[var(--fill)] hover:text-[var(--text)] active:bg-[var(--fill-2)]",
-            focusRing,
-          )}
+          external
+          newTabLabel={contentNavigationCopy[locale].newTab}
+          className="font-normal text-[var(--muted)]"
+          icon={<Newspaper aria-hidden="true" className="size-3.5" />}
         >
-          <Newspaper aria-hidden="true" className="size-3.5" />
           {contentNavigationCopy[locale].articles}
-          <span className="sr-only">
-            ({contentNavigationCopy[locale].newTab})
-          </span>
-        </a>
+        </LinkButton>
       </nav>
     </div>
   );

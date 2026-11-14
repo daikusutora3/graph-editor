@@ -20,14 +20,6 @@ export function useShortcutPlatform() {
   return platform;
 }
 
-export function isMacShortcutPlatformValue(
-  platform: string | undefined,
-  userAgent: string | undefined,
-  maxTouchPoints?: number,
-) {
-  return shortcutPlatformValue(platform, userAgent, maxTouchPoints) === "mac";
-}
-
 export function shortcutPlatformValue(
   platform: string | undefined,
   userAgent: string | undefined,

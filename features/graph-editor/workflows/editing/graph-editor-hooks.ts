@@ -4,14 +4,14 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 
 import { useGraphCanvasApi } from "../../canvas/GraphCanvasProvider";
-import { editorPanelAtom } from "../../shell/state/editor-atoms";
+import {
+  editorModeAtom,
+  editorPanelAtom,
+} from "../../shell/state/editor-atoms";
 import { toggleEditorPanel } from "../../shell/state/editor-layout";
 
 import { isEditorShortcutBlockedTarget } from "../../adapters/browser/shortcut-targets";
-import {
-  clearInteractionStateAtom,
-  setEditorModeAtom,
-} from "../../shell/state/editor-actions";
+import { clearInteractionStateAtom } from "../../shell/state/editor-actions";
 import {
   copyGraphSelectionAtom,
   cutGraphSelectionAtom,
@@ -37,7 +37,7 @@ import {
 } from "../../shell/state/history-atoms";
 
 export function useGraphEditorShortcuts() {
-  const setMode = useSetAtom(setEditorModeAtom);
+  const setMode = useSetAtom(editorModeAtom);
   const clearInteractionState = useSetAtom(clearInteractionStateAtom);
   const selectAllGraph = useSetAtom(selectAllGraphAtom);
   const copyGraphSelection = useSetAtom(copyGraphSelectionAtom);
@@ -54,15 +54,8 @@ export function useGraphEditorShortcuts() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        isEditorShortcutBlockedTarget(event.target)
-      ) {
-        return;
-      }
-
       const shortcut = resolveGraphEditorShortcut(event);
-      if (!shortcut) {
+      if (!shortcut || isEditorShortcutBlockedTarget(event.target)) {
         return;
       }
 
@@ -152,7 +145,6 @@ export function useGraphExternalStorageSync() {
   useEffect(() => {
     if (getGraphStorageContext().kind === "example") return;
     const onStorage = (event: StorageEvent) => {
-      if (getGraphStorageContext().kind === "example") return;
       if (event.storageArea !== window.localStorage) return;
       if (event.key === GRAPH_STORAGE_KEY || event.key === null) {
         observeExternalStorage(event.newValue);

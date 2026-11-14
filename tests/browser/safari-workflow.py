@@ -358,19 +358,19 @@ class Session:
 def run_design_guidelines_review(session):
     messages = {
         "ja": {"path": "/", "load": "グラフを読み込む", "apply": "グラフに反映", "export": "書き出し", "image": "PNG 画像",
-               "input": "グラフのデータ", "format": "形式", "example": "入力例", "useExample": "この例を入力",
+               "input": "グラフのデータ", "format": "形式",
                "fixedCanvas": "倍率＋枠指定", "modes": ["選択", "頂点", "辺"],
                "addNode": "中央付近に頂点を追加", "undo": "戻す", "redo": "進む", "transparent": "透過",
                "guide": "使い方ガイド", "articles": "記事", "shortcuts": "キーボードショートカット",
                "samples": "サンプルを使う", "clearSearch": "検索をクリア", "clearFilters": "絞り込みをクリア"},
         "en": {"path": "/en", "load": "Load a graph", "apply": "Apply to graph", "export": "Export", "image": "PNG image",
-               "input": "Graph data", "format": "Format", "example": "Input example", "useExample": "Use this example",
+               "input": "Graph data", "format": "Format",
                "fixedCanvas": "Fixed canvas", "modes": ["Select", "Node", "Edge"],
                "addNode": "Add node near center", "undo": "Undo", "redo": "Redo", "transparent": "Clear",
                "guide": "User guide", "articles": "Articles", "shortcuts": "Keyboard shortcuts",
                "samples": "Use a sample", "clearSearch": "Clear search", "clearFilters": "Clear filters"},
         "zh-hans": {"path": "/zh-hans", "load": "加载图", "apply": "应用到图", "export": "导出", "image": "PNG 图像",
-                    "input": "图数据", "format": "格式", "example": "输入示例", "useExample": "填入此示例",
+                    "input": "图数据", "format": "格式",
                     "fixedCanvas": "指定画布", "modes": ["选择", "顶点", "边"],
                     "addNode": "在中央附近添加顶点", "undo": "撤销", "redo": "重做", "transparent": "透明",
                     "guide": "使用指南", "articles": "文章", "shortcuts": "键盘快捷键",
@@ -564,26 +564,15 @@ def run_design_guidelines_review(session):
                     session.click(session.element("[data-editor-panel=starter] label[for=" + json.dumps(labels[0]["id"]) + "]"))
                     assert session.js("return document.activeElement===document.querySelector('[data-editor-panel=starter] textarea')"), "Visible data label focuses its textarea"
 
-                    example_summary = session.element("[data-editor-panel=starter] [data-import-example] summary")
-                    session.js("arguments[0].focus();", {ELEMENT: example_summary})
-                    key("\ue007")
-                    session.wait("return document.querySelector('[data-import-example]')?.open")
-                    input_example = session.js("""const box=document.querySelector('[data-import-example]');
-                        return {label:box.querySelector('pre').getAttribute('aria-label'),text:box.querySelector('pre').textContent,
-                            useButton:box.querySelector('button')?.textContent.trim()};""")
-                    assert input_example["label"] == m["example"] and input_example["useButton"] == m["useExample"], input_example
-                    session.activate(session.element("[data-import-example] button"))
-                    session.wait("return document.querySelector('[data-editor-panel=starter] textarea')?.value===" + json.dumps(input_example["text"]))
-                    assert session.js("return document.querySelector('[data-import-example]')?.open&&!document.querySelector('[data-import-example] button')&&document.activeElement===document.querySelector('[data-editor-panel=starter] textarea')"), "Using an example preserves its reference and focuses the editor"
-
-                    replace_input("")
-                    session.wait("return !!document.querySelector('[data-import-example] button')")
+                    input_example = session.js("""const e=document.querySelector('[data-editor-panel=starter] textarea');
+                        return {placeholder:e.placeholder,empty:e.value===''};""")
+                    assert input_example["empty"] and input_example["placeholder"].strip(), input_example
                     session.click(session.element('[data-editor-panel=starter] option[value="json"]'))
                     session.wait("return document.querySelector('[data-editor-panel=starter] select')?.value==='json'")
-                    json_example = session.js("return document.querySelector('[data-import-example] pre')?.textContent")
+                    json_example = session.js("return document.querySelector('[data-editor-panel=starter] textarea')?.dataset.example")
                     parsed_example = json.loads(json_example)
                     assert parsed_example["version"] == 1 and len(parsed_example["nodes"]) == 2 and len(parsed_example["edges"]) == 1, parsed_example
-                    session.activate(session.element("[data-import-example] button"))
+                    replace_input(json_example)
                     session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p.querySelector('textarea').value===" + json.dumps(json_example) + "&&!p.querySelector('textarea').getAttribute('aria-invalid')&&![...p.querySelectorAll('button')].at(-1).disabled")
                     input_example["jsonValid"] = True
                     input_example["jsonNodeCount"] = len(parsed_example["nodes"])
@@ -598,11 +587,8 @@ def run_design_guidelines_review(session):
                         return {invalid:e.getAttribute('aria-invalid'),border:getComputedStyle(e).borderColor,danger,
                             descriptions:ids.map(id=>({id,text:document.getElementById(id)?.textContent.trim()})),
                             issueRole:issue?.getAttribute('role'),issueLive:issue?.getAttribute('aria-live'),
-                            exampleOpen:p.querySelector('[data-import-example]').open,
-                            exampleUseButton:!!p.querySelector('[data-import-example] button'),
                             applyDisabled:[...p.querySelectorAll('button')].at(-1).disabled};""")
                     assert invalid["applyDisabled"] and invalid["issueRole"] is None and invalid["issueLive"] is None, invalid
-                    assert invalid["exampleOpen"] and not invalid["exampleUseButton"], invalid
                     assert invalid["border"] == invalid["danger"], invalid
                     assert len(invalid["descriptions"]) == 2 and all(d["text"] for d in invalid["descriptions"]), invalid
                     invalid_geometry = panel_geometry("starter")
@@ -629,7 +615,7 @@ def run_design_guidelines_review(session):
                     capture("diagnostics")
 
                     replace_input("4 4\n0 1\n1 2\n1 3\n2 3")
-                    session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&!p.querySelector('[data-import-diagnostics]')&&p.querySelector('[data-import-example]').open&&![...p.querySelectorAll('button')].at(-1).disabled")
+                    session.wait("const p=document.querySelector('[data-editor-panel=starter]');return p&&!p.querySelector('[data-import-diagnostics]')&&![...p.querySelectorAll('button')].at(-1).disabled")
                     apply_button = session.button(m["apply"])
                     session.js("arguments[0].focus();", {ELEMENT: apply_button})
                     key("\ue007")
@@ -1109,6 +1095,8 @@ def run_responsive_text_review(session, selected_case=None):
                             return Math.abs(r.height-390)<1&&Math.abs(parseFloat(root.style.getPropertyValue('--ge-top-chrome-bottom'))-(top.bottom-r.top))<1
                                 &&Math.abs(parseFloat(root.style.getPropertyValue('--ge-mobile-controls-bottom'))-(r.bottom-bottom.top+12))<1;""")
                         short_geometry = inspect_chrome()
+                        session.js("document.querySelector('[data-node-creation-action] button').focus();")
+                        session.wait("return document.querySelector('[data-node-creation-action]').hasAttribute('data-visible')")
                         short_action = session.js("""const e=document.querySelector('[data-node-creation-action] button'),r=e.getBoundingClientRect();
                             const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
                             return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,

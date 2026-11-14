@@ -1,6 +1,6 @@
 import { serializeGraphModel } from "./graph-json";
 import { graphIntentLabel } from "./graph-intents";
-import { diffGraphModels, isEmptyGraphPatch } from "./graph-patch";
+import { diffGraphModels } from "./graph-patch";
 import { reduceGraphIntent } from "./graph-reducer";
 import type { GraphIntent, GraphModel, GraphTransaction } from "./model";
 
@@ -24,7 +24,7 @@ export function prepareGraphTransaction(
   const serialized = serializeGraphModel(after);
   const forward = diffGraphModels(before, after);
 
-  if (isEmptyGraphPatch(forward)) {
+  if (!forward.nodes && !forward.edges && !forward.settings) {
     return null;
   }
 

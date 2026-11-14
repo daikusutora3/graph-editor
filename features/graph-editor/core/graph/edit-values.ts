@@ -1,5 +1,3 @@
-import type { WeightKind } from "./model";
-
 export function normalizeNodeLabelInput(value: string) {
   return value.trim();
 }
@@ -10,13 +8,8 @@ export function normalizeEdgeLabelInput(value: string) {
   return label === "" ? undefined : label;
 }
 
-export type InlineEditErrorCode = "invalid-number" | "invalid-graph";
+export type InlineEditErrorCode = "invalid-graph";
 
-export function normalizeEdgeWeightInput(
-  value: string,
-  _weightKind: WeightKind,
-): { value: string; error?: InlineEditErrorCode } {
-  const weight = value.trim() || "1";
-
-  return { value: weight };
+export function normalizeEdgeWeightInput(value: string): string {
+  return value.trim() || "1";
 }

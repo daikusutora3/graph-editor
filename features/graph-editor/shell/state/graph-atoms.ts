@@ -8,9 +8,7 @@ import {
   scheduleStoredGraphWrite,
 } from "../../adapters/browser/stored-graph";
 
-export { GRAPH_STORAGE_KEY } from "../../adapters/browser/stored-graph";
-
-export const initialGraph: GraphModel = createEmptyGraphModel();
+const initialGraph: GraphModel = createEmptyGraphModel();
 
 type GraphStorageState = {
   graph: GraphModel;

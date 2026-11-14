@@ -9,7 +9,7 @@ import {
   NODE_SIZE_PX,
   nodeGeometryWidth,
 } from "../core/graph/node-size";
-import type { GraphCanvasChrome } from "../core/view/types";
+import type { EditorLayout } from "../core/view/types";
 import type { CommandResult } from "../shell/state/history-atoms";
 
 type Position = { x: number; y: number };
@@ -41,7 +41,7 @@ export function createGraphNodeAtPosition(
 export function findNodeCreationPosition(
   graph: GraphModel,
   viewport: NodeCreationViewport,
-  chrome: GraphCanvasChrome,
+  layout: EditorLayout,
   metrics?: NodeCreationMetrics,
 ): Position | null {
   const { width, height, pan, zoom } = viewport;
@@ -73,14 +73,14 @@ export function findNodeCreationPosition(
   )
     return null;
 
-  const baseInsets = graphViewportInsets(viewport, chrome);
+  const baseInsets = graphViewportInsets(viewport, layout);
   const insets = {
     ...baseInsets,
     top: Math.max(baseInsets.top, metrics?.viewportInsets?.top ?? 0),
 
     bottom:
       Math.max(baseInsets.bottom, metrics?.viewportInsets?.bottom ?? 0) +
-      (chrome.layout === "mobile" ? actionHeight + 12 : 0),
+      (layout === "mobile" ? actionHeight + 12 : 0),
   };
 
   const halfWidth = (newNodeWidth * zoom) / 2;

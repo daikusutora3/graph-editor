@@ -11,10 +11,7 @@ import type {
   EditorMode,
   SelectionState,
 } from "../shell/state/editor-state";
-import {
-  createEmptyEdgeDraft,
-  createEmptySelection,
-} from "../shell/state/editor-state";
+import { createEmptySelection } from "../shell/state/editor-state";
 
 import type { GraphContextMenuTarget } from "./graph-canvas-types";
 import type { RangeSelectionFilter } from "./range-selection-filter";
@@ -67,7 +64,7 @@ export function useCytoscapeInteractionEvents({
       }
 
       if (mode === "edge") {
-        setEdgeDraft(createEmptyEdgeDraft());
+        setEdgeDraft(null);
         return;
       }
 

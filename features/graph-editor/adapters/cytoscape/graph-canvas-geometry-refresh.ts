@@ -1,4 +1,4 @@
-import type { CollectionReturnValue } from "cytoscape";
+import type { CollectionReturnValue, EdgeCollection } from "cytoscape";
 
 type GeometryRefreshCollection = {
   updateStyle: () => unknown;
@@ -14,8 +14,19 @@ export function refreshCytoscapeGeometry(changed: CollectionReturnValue) {
     .filter((element) => !element.removed());
   affected.merge(affected.nodes().connectedEdges());
 
+  const representatives = parallelEdgeRepresentatives(affected.edges());
+  affected.merge(representatives.parallelEdges());
+  if (affected.length === 0) return 0;
+
+  const fresh = affected as unknown as GeometryRefreshCollection;
+  fresh.updateStyle();
+  fresh.boundingBox({ useCache: false });
+  return affected.length;
+}
+
+export function parallelEdgeRepresentatives(edges: EdgeCollection) {
   const pairs = new Map<string, Set<string>>();
-  const representatives = affected.edges().filter((edge) => {
+  return edges.filter((edge) => {
     const source = edge.source().id();
     const target = edge.target().id();
     const first = source <= target ? source : target;
@@ -29,11 +40,4 @@ export function refreshCytoscapeGeometry(changed: CollectionReturnValue) {
     targets.add(second);
     return true;
   });
-  affected.merge(representatives.parallelEdges());
-  if (affected.length === 0) return 0;
-
-  const fresh = affected as unknown as GeometryRefreshCollection;
-  fresh.updateStyle();
-  fresh.boundingBox({ useCache: false });
-  return affected.length;
 }

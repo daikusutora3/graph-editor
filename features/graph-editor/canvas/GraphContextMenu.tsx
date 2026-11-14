@@ -1,21 +1,24 @@
 "use client";
 
 import type React from "react";
-import { useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
+import { useLayoutEffect, useRef, useState, useEffect } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
 import type { EdgeId, GraphModel, NodeId } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
-import { cn } from "@/lib/utils";
 
 import type {
   GraphContextMenuTarget,
   RenderedPoint,
 } from "./graph-canvas-types";
-import { Kbd, focusRing } from "@/components/ui/controls";
-import { resolveSelectionActions } from "./selection-actions";
-
-export type { GraphContextMenuTarget } from "./graph-canvas-types";
+import { ActionRow, Kbd } from "@/components/ui/controls";
+import { menuFocusKeyDown } from "../ui/primitives/focus-navigation";
+import {
+  resolveSelectionActions,
+  selectionForTarget,
+} from "./selection-actions";
+import { cn } from "@/lib/utils";
+import { menuStyle } from "@/components/ui/surfaces";
 
 export type GraphContextMenuProps = {
   target: GraphContextMenuTarget;
@@ -108,10 +111,7 @@ export function GraphContextMenu({
     );
   }, [target]);
 
-  const deleteSelection = useMemo(
-    () => selectionForTarget(target, selection),
-    [target, selection],
-  );
+  const deleteSelection = selectionForTarget(target, selection);
   const actions = resolveSelectionActions(graph, deleteSelection, messages);
   const runAction = (id: (typeof actions)[number]["id"]) => {
     switch (id) {
@@ -148,7 +148,10 @@ export function GraphContextMenu({
     <div
       ref={menuRef}
       data-panel-state={panelState}
-      className="ge-panel ge-context-menu pointer-events-auto absolute z-40 flex max-h-[calc(100%-1rem)] w-[min(14rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto rounded-xl p-1.5 text-control text-[var(--text)] backdrop-blur-[12px]"
+      className={cn(
+        menuStyle.surface,
+        "ge-context-menu pointer-events-auto absolute z-40 flex max-h-[calc(100%-1rem)] w-[min(14rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto text-control text-[var(--text)]",
+      )}
       style={{
         left: menuPosition.left,
         top: menuPosition.top,
@@ -167,7 +170,7 @@ export function GraphContextMenu({
           return;
         }
 
-        moveMenuFocus(event, menuRef.current);
+        menuFocusKeyDown(event);
       }}
     >
       {(target.kind === "node" && node) || (target.kind === "edge" && edge)
@@ -282,79 +285,22 @@ function MenuButton({
       {divider ? (
         <div className="my-1 h-px bg-[var(--hair)]" aria-hidden="true" />
       ) : null}
-      <button
-        type="button"
+      <ActionRow
         role="menuitem"
+        density="menu"
+        icon={icon}
+        tone={danger ? "danger" : "neutral"}
+        trailing={
+          kbd ? (
+            <Kbd size="md" tone={danger ? "danger" : "neutral"}>
+              {kbd}
+            </Kbd>
+          ) : undefined
+        }
         onClick={onClick}
-        className={cn(
-          "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-left font-semibold transition-colors touch:min-h-11",
-          focusRing,
-          danger
-            ? "text-[var(--danger)] hover:bg-[var(--danger-fill)]"
-            : "text-[var(--text-2)] hover:bg-[var(--fill)]",
-        )}
       >
-        <span className="grid size-5 shrink-0 place-items-center">{icon}</span>
-        <span className="min-w-0 flex-1 leading-tight break-words whitespace-normal">
-          {label}
-        </span>
-        {kbd ? (
-          <Kbd size="md" tone={danger ? "danger" : "neutral"}>
-            {kbd}
-          </Kbd>
-        ) : null}
-      </button>
+        {label}
+      </ActionRow>
     </>
   );
-}
-
-function moveMenuFocus(
-  event: React.KeyboardEvent,
-  menu: HTMLDivElement | null,
-) {
-  if (!menu) {
-    return;
-  }
-
-  const items = [...menu.querySelectorAll<HTMLElement>("[role='menuitem']")];
-
-  if (items.length === 0) {
-    return;
-  }
-
-  const index = items.indexOf(document.activeElement as HTMLElement);
-  let next: number | null = null;
-
-  if (event.key === "ArrowDown") {
-    next = index < 0 ? 0 : (index + 1) % items.length;
-  } else if (event.key === "ArrowUp") {
-    next =
-      index < 0 ? items.length - 1 : (index - 1 + items.length) % items.length;
-  } else if (event.key === "Home") {
-    next = 0;
-  } else if (event.key === "End") {
-    next = items.length - 1;
-  }
-
-  if (next !== null) {
-    event.preventDefault();
-    items[next].focus();
-  }
-}
-
-function selectionForTarget(
-  target: GraphContextMenuTarget,
-  selection: SelectionState,
-): SelectionState {
-  if (target.kind === "node" && selection.nodeIds.includes(target.nodeId)) {
-    return selection;
-  }
-
-  if (target.kind === "edge" && selection.edgeIds.includes(target.edgeId)) {
-    return selection;
-  }
-
-  return target.kind === "node"
-    ? { nodeIds: [target.nodeId], edgeIds: [] }
-    : { nodeIds: [], edgeIds: [target.edgeId] };
 }

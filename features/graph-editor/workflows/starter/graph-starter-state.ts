@@ -2,7 +2,6 @@
 
 import type { ImportWarning } from "../../io/import-types";
 import { useAtomValue } from "jotai";
-import type { RefObject } from "react";
 import {
   useCallback,
   useEffect,
@@ -17,7 +16,6 @@ import { getImportExample } from "../../io/import-examples";
 import { initializeRustKernel } from "../../compute/rust-kernel";
 import type { ImportFormat, ImportOptions } from "../../io/import-utils";
 import type { ImportEvaluation } from "../../io/import-types";
-import type { GraphModel } from "../../core/graph/model";
 import { graphSettingsAtom } from "../../shell/state/graph-atoms";
 import { useDebouncedValue } from "../../ui/hooks/use-debounced-value";
 
@@ -28,27 +26,22 @@ import {
   type StarterFileReadState,
 } from "./starter-file-read";
 
-export type StarterTab = "paste" | "sample";
-
 type GraphStarterStateOptions = {
   open: boolean;
 
-  previewEnabled?: boolean;
+  previewEnabled: boolean;
   onClose: () => void;
-  textareaRef: RefObject<HTMLTextAreaElement | null>;
 };
 
 export function useGraphStarterState({
   open,
-  previewEnabled = true,
+  previewEnabled,
   onClose,
-  textareaRef,
 }: GraphStarterStateOptions) {
   const graphSettings = useAtomValue(graphSettingsAtom);
   const applyGraphModel = useApplyGraphModel();
   const [inputText, setInputText] = useState("");
   const [issues, setIssues] = useState<ImportWarning[]>([]);
-  const [tab, setTab] = useState<StarterTab>("paste");
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const importFormatRef = useRef(importFormat);
   const [fileReadState, setFileReadState] =
@@ -82,35 +75,24 @@ export function useGraphStarterState({
     transition: true,
   });
   useEffect(() => {
-    if (open && tab === "paste" && inputText.length >= 16_384)
+    if (open && inputText.length >= 16_384)
       void initializeRustKernel().catch(() => {});
-  }, [inputText, open, tab]);
-  const previewParseKey = useMemo(
-    () =>
-      previewEnabled
-        ? makeStarterParseKey(debouncedInputText, importOptions)
-        : null,
-    [debouncedInputText, importOptions, previewEnabled],
-  );
+  }, [inputText, open]);
   const parsedPreview = useMemo<StarterParseResult | null>(() => {
-    if (previewParseKey === null || !debouncedInputText.trim()) {
-      return null;
-    }
+    if (!previewEnabled || !debouncedInputText.trim()) return null;
 
     return {
-      key: previewParseKey,
+      inputText: debouncedInputText,
       evaluation: evaluateGraphInput(debouncedInputText, importOptions),
     };
-  }, [debouncedInputText, importOptions, previewParseKey]);
+  }, [debouncedInputText, importOptions, previewEnabled]);
 
   const previewPending =
     previewEnabled &&
     Boolean(inputText.trim()) &&
-    parsedPreview?.key.inputText !== inputText;
+    parsedPreview?.inputText !== inputText;
   const evaluation =
-    parsedPreview?.key.inputText === inputText
-      ? parsedPreview.evaluation
-      : null;
+    parsedPreview?.inputText === inputText ? parsedPreview.evaluation : null;
   const preview = evaluation?.result ?? null;
   const analysis = evaluation?.analysis ?? null;
   const previewWarnings =
@@ -140,30 +122,9 @@ export function useGraphStarterState({
     return cancelFileRead;
   }, [cancelFileRead, open]);
 
-  useEffect(() => {
-    if (!open || tab !== "paste") {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => textareaRef.current?.focus(), 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [open, tab, textareaRef]);
-
-  const applyModel = (model: GraphModel) => {
-    return applyGraphModel(model, {
-      clearEdgeDraft: true,
-      clearSelection: true,
-      fitAfterUpdate: true,
-      selectMode: true,
-    });
-  };
-
   const applyText = (text = inputText) => {
-    const parseKey = makeStarterParseKey(text, importOptions);
     const currentEvaluation =
-      parsedPreview?.key.inputText === parseKey.inputText &&
-      parsedPreview.key.settings === parseKey.settings
+      parsedPreview?.inputText === text
         ? parsedPreview.evaluation
         : evaluateGraphInput(text, importOptions);
     const { analysis: currentAnalysis, result } = currentEvaluation;
@@ -173,7 +134,7 @@ export function useGraphStarterState({
       return;
     }
 
-    if (applyModel(result.model)) close();
+    if (applyGraphModel(result.model)) close();
   };
 
   const setInput = (value: string) => {
@@ -198,38 +159,15 @@ export function useGraphStarterState({
     readFile: fileReader.read,
     inputText,
     importFormat,
-    issues,
-    open,
     preview,
     previewPending,
     setImportFormat: selectImportFormat,
     visibleIssues: issues.length > 0 ? issues : previewWarnings,
     setInput,
-    setTab,
-    tab,
   };
 }
 
 type StarterParseResult = {
-  key: ReturnType<typeof makeStarterParseKey>;
+  inputText: string;
   evaluation: ImportEvaluation;
 };
-
-function makeStarterParseKey(inputText: string, options: ImportOptions) {
-  return {
-    inputText,
-    settings: JSON.stringify({
-      allowMultiEdges: options.allowMultiEdges,
-      allowSelfLoops: options.allowSelfLoops,
-      arrowScale: options.arrowScale,
-      autoEdgeRouting: options.autoEdgeRouting,
-      directed: options.directed,
-      format: options.format,
-      indexBase: options.indexBase,
-      snapToGrid: options.snapToGrid,
-      showNodeLabels: options.showNodeLabels,
-      weighted: options.weighted,
-      weightKind: options.weightKind,
-    } satisfies Record<keyof ImportOptions, unknown>),
-  };
-}

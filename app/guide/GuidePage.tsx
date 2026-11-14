@@ -124,7 +124,6 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
                 id={`guide-${section.id}`}
                 anchorId={legacySectionIds[section.id]}
                 title={section.title}
-                variant="plain"
               >
                 <GuideSectionContent section={section} locale={locale} />
                 {section.id === "shortcuts" ? (
@@ -149,7 +148,6 @@ export function GuidePage({ locale }: { locale: AppLocale }) {
           <ContentSection
             id="guide-faq"
             title={copy.faqTitle}
-            variant="plain"
             description={copy.faqIntro}
             className="mt-10 sm:mt-14"
           >

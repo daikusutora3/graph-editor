@@ -172,12 +172,8 @@ try {
       (await computeRoutingInWorker(model, {}, undefined, {
         previousNodes: invalid.nodes,
         movedNodeIds: new Set(["a"]),
-      })) === null &&
-        (await computeRoutingInWorker(model, {}, undefined, {
-          nodes: invalid.nodes,
-          movedNodeIds: new Set(["a"]),
-        })) === null,
-      "compact and legacy interaction snapshots have the same coordinate boundary",
+      })) === null,
+      "previous interaction positions respect the coordinate boundary",
     );
   }
   expect(

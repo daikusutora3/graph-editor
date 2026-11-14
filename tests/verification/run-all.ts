@@ -47,6 +47,36 @@ const suites = [
     path: "tests/verification/graph-serialization.ts",
   },
   { name: "autosave", path: "tests/verification/autosave.ts" },
+  { name: "webmcp", path: "tests/verification/webmcp.ts" },
+  { name: "webmcp-batch", path: "tests/verification/webmcp-batch.ts" },
+  { name: "webmcp-large", path: "tests/verification/webmcp-large.ts" },
+  { name: "webmcp-incident", path: "tests/verification/webmcp-incident.ts" },
+  {
+    name: "webmcp-add-elements",
+    path: "tests/verification/webmcp-add-elements.ts",
+  },
+  { name: "webmcp-workflows", path: "tests/verification/webmcp-workflows.ts" },
+  { name: "webmcp-filters", path: "tests/verification/webmcp-filters.ts" },
+  {
+    name: "webmcp-filter-batch",
+    path: "tests/verification/webmcp-filter-batch.ts",
+  },
+  {
+    name: "webmcp-filter-delete",
+    path: "tests/verification/webmcp-filter-delete.ts",
+  },
+  {
+    name: "webmcp-filter-arrange-reverse",
+    path: "tests/verification/webmcp-filter-arrange-reverse.ts",
+  },
+  {
+    name: "webmcp-filter-selection",
+    path: "tests/verification/webmcp-filter-selection.ts",
+  },
+  {
+    name: "webmcp-relative-layout",
+    path: "tests/verification/webmcp-relative-layout.ts",
+  },
   { name: "example-sessions", path: "tests/verification/example-sessions.ts" },
   { name: "core", path: "tests/verification/graph-core.ts" },
   {
@@ -81,6 +111,7 @@ const suites = [
   { name: "sample-preview", path: "tests/verification/sample-preview.ts" },
   { name: "focus-navigation", path: "tests/verification/focus-navigation.ts" },
   { name: "design-contrast", path: "tests/verification/design-contrast.ts" },
+  { name: "design-system", path: "tests/verification/design-system.ts" },
   {
     name: "ui-control-contracts",
     path: "tests/verification/ui-control-contracts.tsx",

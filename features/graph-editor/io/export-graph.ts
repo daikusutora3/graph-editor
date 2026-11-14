@@ -1,6 +1,7 @@
 import { GRAPH_MAX_INPUT_CHARS } from "../core/graph/graph-limits";
+import { edgePairKey } from "../core/graph/edge-constraints";
 import { exportEdgeList } from "./export-edge-list";
-import { createTikzExportTask, exportTikz } from "./export-tikz";
+import { createTikzExportTask } from "./export-tikz";
 import type { GraphModel } from "../core/graph/model";
 import { getExportNodeEntries } from "./export-node-labels";
 import { serializeGraphModel } from "../core/graph/graph-json";
@@ -49,12 +50,10 @@ export function exportGraph(
   model: GraphModel,
   format: GraphExportFormat,
 ): string {
-  const problem = graphExportProblem(model, format);
-  if (problem) throw new Error(problem);
-  const text = exportUnchecked(model, format);
-  if (format !== "json" && text.length > GRAPH_MAX_INPUT_CHARS)
-    throw new Error("input-limit");
-  return text;
+  const task = createGraphExportTask(model, format);
+  let step = task.next();
+  while (!step.done) step = task.next();
+  return step.value;
 }
 
 export function* createGraphExportTask(
@@ -72,10 +71,11 @@ export function* createGraphExportTask(
   return text;
 }
 
-function exportUnchecked(model: GraphModel, format: GraphExportFormat): string {
+function exportUnchecked(
+  model: GraphModel,
+  format: Exclude<GraphExportFormat, "tikz">,
+): string {
   switch (format) {
-    case "tikz":
-      return exportTikz(model);
     case "json":
       return serializeGraphModel(model);
     case "adjacency-list":
@@ -98,11 +98,7 @@ export function hasLossyAdjacencyExport(
   const seen = new Set<string>();
 
   for (const edge of model.edges) {
-    const key = JSON.stringify(
-      model.settings.directed
-        ? [edge.source, edge.target]
-        : [edge.source, edge.target].sort(),
-    );
+    const key = edgePairKey(edge.source, edge.target, model.settings.directed);
 
     if (seen.has(key)) {
       return true;
@@ -123,7 +119,9 @@ export function getGraphExportFormat(format: GraphExportFormat) {
 
 function exportAdjacencyList(model: GraphModel): string {
   const entries = getExportNodeEntries(model);
-  const nodeIndex = createNodeIndex(model);
+  const nodeIndex = new Map(
+    entries.map((entry) => [entry.node.id, entry.label]),
+  );
   const adjacency = new Map(
     entries.map((entry) => [
       entry.node.id,
@@ -159,11 +157,10 @@ function exportAdjacencyList(model: GraphModel): string {
 
   return entries
     .map((entry) => {
-      const label = nodeIndex.get(entry.node.id);
       const targets = (adjacency.get(entry.node.id) ?? [])
         .toSorted((a, b) => a.label - b.label)
         .map((target) => target.value);
-      return `${label}: ${targets.join(" ")}`;
+      return `${entry.label}: ${targets.join(" ")}`;
     })
     .join("\n");
 }
@@ -187,15 +184,10 @@ function exportAdjacencyMatrix(model: GraphModel): string {
     if (source == null || target == null) continue;
 
     const value = model.settings.weighted ? (edge.weight ?? "1") : "1";
-    const sourceRow = rows[source];
-    const targetRow = rows[target];
-
-    if (!sourceRow || !targetRow) continue;
-
-    sourceRow.set(target, value);
+    rows[source]!.set(target, value);
 
     if (!model.settings.directed) {
-      targetRow.set(source, value);
+      rows[target]!.set(source, value);
     }
   }
 
@@ -232,19 +224,10 @@ function exportDenseAdjacencyMatrix(
     const target = orderIndex.get(edge.target);
     if (source == null || target == null) continue;
     const value = model.settings.weighted ? (edge.weight ?? "1") : "1";
-    const sourceRow = matrix[source];
-    const targetRow = matrix[target];
-    if (!sourceRow || !targetRow) continue;
-    sourceRow[target] = value;
-    if (!model.settings.directed) targetRow[source] = value;
+    matrix[source]![target] = value;
+    if (!model.settings.directed) matrix[target]![source] = value;
   }
   return matrix.map((row) => row.join(" ")).join("\n");
-}
-
-function createNodeIndex(model: GraphModel) {
-  return new Map(
-    getExportNodeEntries(model).map((entry) => [entry.node.id, entry.label]),
-  );
 }
 
 function formatAdjacencyTarget(
@@ -260,8 +243,8 @@ export function graphExportProblem(
   format: GraphExportFormat,
 ): string | null {
   if (format === "json" || format === "tikz") return null;
+  if (hasLossyAdjacencyExport(model, format)) return "parallel-edges";
   if (format === "adjacency-matrix") {
-    if (hasLossyAdjacencyExport(model, format)) return "parallel-edges";
     if (
       model.settings.weighted &&
       model.edges.some(
@@ -280,8 +263,6 @@ export function graphExportProblem(
           (!model.settings.directed && edge.source !== edge.target ? 2 : 1);
     if (size > GRAPH_MAX_INPUT_CHARS) return "input-limit";
   }
-  if (format === "adjacency-list" && hasLossyAdjacencyExport(model, format))
-    return "parallel-edges";
   if (
     model.settings.weighted &&
     model.edges.some((edge) => {

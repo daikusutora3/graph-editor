@@ -7,7 +7,6 @@ import { normalizeLoopStepSize } from "../../core/layout/edge-routing-loops";
 import { nodeGeometryWidth, NODE_SIZE_PX } from "../../core/graph/node-size";
 import {
   edgeCurveSegments,
-  edgeCurveSvgPath,
   type EdgeCurvePoint,
   type QuadraticCurveSegment,
 } from "../../core/layout/edge-route-geometry";
@@ -21,78 +20,6 @@ import { previewArrowVertices } from "./preview-arrow";
 
 function previewNodeWidth(model: GraphModel, node: GraphNode) {
   return model.settings.showNodeLabels ? nodeGeometryWidth(node) : NODE_SIZE_PX;
-}
-
-export function createPreviewEdgePath({
-  directed,
-  isLoop = false,
-  radius,
-  routing,
-  scale,
-  source,
-  target,
-  targetWidth = radius * 2,
-}: {
-  directed: boolean;
-
-  isLoop?: boolean;
-  radius: number;
-  routing?: {
-    bowPx: number;
-    controlPointDistancesPx?: readonly number[];
-    controlPointWeights?: readonly number[];
-    loopDirectionDeg: number;
-    loopSweepDeg: number;
-    loopStepSizePx?: number;
-  };
-  scale: number;
-  source: { x: number; y: number };
-  target: { x: number; y: number };
-  targetWidth?: number;
-}) {
-  if (isLoop) {
-    return createLoopPath(source, radius, scale, routing);
-  }
-
-  const curve = {
-    controlPointDistancesPx: (
-      routing?.controlPointDistancesPx ?? [routing?.bowPx ?? 0]
-    ).map((distance) => distance * scale),
-    controlPointWeights: routing?.controlPointWeights ?? [0.5],
-  };
-  if (!directed) return edgeCurveSvgPath(source, target, curve);
-  const segments = clippedPreviewSegments(
-    source,
-    target,
-    curve,
-    targetWidth,
-    radius,
-  );
-  return [
-    `M${round(source.x)} ${round(source.y)}`,
-    ...segments.map(
-      ({ control, end }) =>
-        `Q${round(control.x)} ${round(control.y)} ${round(end.x)} ${round(end.y)}`,
-    ),
-  ].join("");
-}
-
-function clippedPreviewSegments(
-  source: { x: number; y: number },
-  target: { x: number; y: number },
-  curve: {
-    controlPointDistancesPx: readonly number[];
-    controlPointWeights: readonly number[];
-  },
-  targetWidth: number,
-  radius: number,
-) {
-  const original = edgeCurveSegments(source, target, curve);
-  return clipPreviewEdgeAtTarget(straightFallback(original, source, target), {
-    centre: target,
-    width: targetWidth,
-    height: radius * 2,
-  });
 }
 
 function createLoopPath(
@@ -396,16 +323,6 @@ function getEditorPaintBounds(
     width: maxX - minX + strokeMargin * 2,
     height: maxY - minY + strokeMargin * 2,
   };
-}
-
-export function getModelBounds(
-  model: GraphModel,
-  routes: ReturnType<typeof computeEdgeRouting>,
-  editorLike: boolean,
-  radiusScale = 1,
-) {
-  return preparePreviewGeometry(model, routes, editorLike, radiusScale)
-    .modelBounds;
 }
 
 function getPreparedModelBounds(

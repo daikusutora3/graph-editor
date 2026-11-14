@@ -18,7 +18,6 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
   return (
     <ContentSection
       id="guide-examples"
-      variant="plain"
       title={copy.heading}
       description={guideVisualCopy[locale].exampleInstruction}
       className="mt-10 sm:mt-14"
@@ -32,7 +31,6 @@ export function GuideExamples({ locale }: { locale: AppLocale }) {
             headingId={example.id}
             headingLevel={3}
             title={text.title}
-            variant="plain"
             className="mt-6 scroll-mt-36 sm:mt-8 sm:scroll-mt-28"
           >
             <ContentExample

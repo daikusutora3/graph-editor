@@ -1,5 +1,6 @@
 "use client";
 import { integrityCopy } from "../i18n/integrity-copy";
+import { Button } from "@/components/ui/controls";
 
 import type { Core } from "cytoscape";
 import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
@@ -44,10 +45,7 @@ import {
 import { SelectionActionBar } from "./SelectionActionBar";
 import { GraphContextMenu } from "./GraphContextMenu";
 import { useGraphCanvasContextActions } from "./graph-canvas-context-actions";
-import type {
-  GraphCanvasChrome,
-  GraphContextMenuTarget,
-} from "./graph-canvas-types";
+import type { GraphContextMenuTarget } from "./graph-canvas-types";
 import { getGraphCanvasViewState } from "./graph-canvas-view-state";
 import type { RenderedPoint } from "./graph-canvas-types";
 import { useEditFeedback } from "./graph-canvas-edit-feedback";
@@ -133,7 +131,6 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   const {
     registerGraphCanvasApi,
     completeFit,
-    notifyZoomPercent,
     notifyViewportSignature,
     notifyExportScaleSignature,
   } = useGraphCanvasApi();
@@ -141,10 +138,9 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
 
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
-  const edgeSourceNodeIdRef = useRef(edgeDraft.sourceNodeId);
-  edgeSourceNodeIdRef.current = edgeDraft.sourceNodeId;
+  const edgeSourceNodeIdRef = useRef(edgeDraft);
+  edgeSourceNodeIdRef.current = edgeDraft;
   const rangeSelectionFilterRef = useRef<RangeSelectionFilter>("all");
-  const chrome = useMemo<GraphCanvasChrome>(() => ({ layout }), [layout]);
 
   const exportPng = useGraphImageExport({
     cyRef,
@@ -161,9 +157,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     nodeHitboxes,
     panRenderedHitboxes,
     updateRenderedHitboxes,
-  } = useRenderedHitboxes({ chrome, graph, mode });
-  const isGraphOutOfViewRef = useRef(isGraphOutOfView);
-  isGraphOutOfViewRef.current = isGraphOutOfView;
+  } = useRenderedHitboxes({ layout, graph, mode });
 
   const {
     edgeRoutingMeta,
@@ -207,7 +201,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
           pan: readGraphViewportPan(cy),
           zoom: cy.zoom(),
         },
-        chrome,
+        layout,
         {
           nodeSize: palette.nodeSize,
           actionHeight,
@@ -227,7 +221,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
       if (node) setSelection({ nodeIds: [node.id], edgeIds: [] });
       return node;
     },
-    [addNodeAtGraphPosition, chrome, graph, mode, setSelection],
+    [addNodeAtGraphPosition, layout, graph, mode, setSelection],
   );
 
   const {
@@ -241,22 +235,12 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     setSelection,
   });
 
-  const updateZoomPercent = useCallback(
-    (nextZoomPercent: number) => {
-      setZoomPercent((current) =>
-        current === nextZoomPercent ? current : nextZoomPercent,
-      );
-      notifyZoomPercent(nextZoomPercent);
-    },
-    [notifyZoomPercent],
-  );
-
   const { displayReady, displayError, renderReady } = useGraphCanvasLifecycle({
     routingReady,
     containerRef,
     cyRef,
     elements,
-    chrome,
+    layout,
     graph,
     mode,
     fitRequest,
@@ -265,7 +249,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     selection,
     selectionRef,
     flushRenderedHitboxes,
-    setZoomPercent: updateZoomPercent,
+    setZoomPercent,
     notifyViewportSignature,
     notifyExportScaleSignature,
     suppressSelectionSyncRef,
@@ -330,13 +314,13 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     }
   }, [cancelHtmlNodeDrag, mode]);
 
-  const { fitView, maxZoom, minZoom, resetCanvasZoom, zoomCanvas, zoomStep } =
+  const { fitView, maxZoom, minZoom, resetCanvasZoom, zoomCanvas } =
     useGraphCanvasViewportActions({
       canZoom: graphHasElements,
-      chrome,
+      layout,
       cyRef,
       flushRenderedHitboxes,
-      setZoomPercent: updateZoomPercent,
+      setZoomPercent,
     });
 
   const editSelectedNode = useCallback(() => {
@@ -378,7 +362,6 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
       fitView,
       exportPng,
       resetZoom: resetCanvasZoom,
-      isGraphOutOfView: () => isGraphOutOfViewRef.current,
     });
 
     return () => registerGraphCanvasApi(null);
@@ -408,16 +391,12 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
   }, [graph]);
 
   const {
-    deleteContextSelection,
     openEdgeContextMenu,
     openNodeContextMenu,
     reverseSelectionEdges,
-    setSelectionEdgeColor,
-    setSelectionNodeColor,
-    setSelectionColors,
+    setSelectionColor,
   } = useGraphCanvasContextActions({
     cancelInlineEdit,
-    deleteSelection,
     executeCommand,
     setContextMenuTarget,
     syncContextSelection,
@@ -536,6 +515,11 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
     },
     [executeCommand, graph.edges],
   );
+  const resetEdgeCurve = useCallback(
+    (edgeId: string) =>
+      executeCommand(updateEdgeCommand(edgeId, { routing: undefined })),
+    [executeCommand],
+  );
   const handleCanvasClick = useCallback(() => {
     setContextMenuTarget(null);
   }, [setContextMenuTarget]);
@@ -595,9 +579,12 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
           className="absolute inset-0 grid place-items-center bg-[var(--bg)] text-sm text-[var(--muted)]"
         >
           {displayError ? (
-            <button onClick={retryDisplay}>
-              {integrityCopy[locale].renderFailed} {integrityCopy[locale].retry}
-            </button>
+            <div className="flex flex-col items-center gap-3 px-6 text-center">
+              <span>{integrityCopy[locale].renderFailed}</span>
+              <Button variant="secondary" onClick={retryDisplay}>
+                {integrityCopy[locale].retry}
+              </Button>
+            </div>
           ) : (
             integrityCopy[locale].loading
           )}
@@ -648,16 +635,10 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
               <SelectionActionBar
                 graph={graph}
                 selection={selection}
-                chrome={chrome}
-                onSetNodeColor={setSelectionNodeColor}
-                onSetEdgeColor={setSelectionEdgeColor}
-                onSetSelectionColors={setSelectionColors}
+                layout={layout}
+                onSetSelectionColor={setSelectionColor}
                 onReverseEdges={reverseSelectionEdges}
-                onResetEdgeCurve={(edgeId) =>
-                  executeCommand(
-                    updateEdgeCommand(edgeId, { routing: undefined }),
-                  )
-                }
+                onResetEdgeCurve={resetEdgeCurve}
                 onEditSelectedNode={editSelectedNode}
                 onEditSelectedEdge={editSelectedEdge}
                 onDeleteSelection={() => deleteSelection(selection)}
@@ -684,7 +665,6 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
                     minZoom={minZoom}
                     maxZoom={maxZoom}
                     zoomPercent={zoomPercent}
-                    zoomStep={zoomStep}
                     onFitView={fitView}
                     onZoom={zoomCanvas}
                     onResetZoom={resetCanvasZoom}
@@ -713,7 +693,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             <>
               <EdgeDraftLine
                 segment={viewState.edgeDraftSegment}
-                hasError={Boolean(viewState.edgeCandidateError)}
+                hasError={viewState.edgeCandidateBlocked}
                 showTargetMarker={!edgeHoverNodeId}
               />
             </>
@@ -735,7 +715,7 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
           {mode === "edge" ? (
             <EdgeNodeHitboxes
               nodes={nodeHitboxes}
-              sourceNodeId={edgeDraft.sourceNodeId}
+              sourceNodeId={edgeDraft}
               onPointerEnter={handleEdgeNodePointerEnter}
               onPointerLeave={handleEdgeNodePointerLeave}
               onConnect={drawEdgeFromNode}
@@ -822,11 +802,9 @@ function GraphCanvasSession({ retryDisplay }: { retryDisplay: () => void }) {
             onClose={() => setContextMenuTarget(null)}
             onEditNodeLabel={openNodeLabelEdit}
             onEditEdgeValue={openEdgeInlineEdit}
-            onDeleteSelection={deleteContextSelection}
+            onDeleteSelection={deleteSelection}
             onReverseEdges={reverseSelectionEdges}
-            onResetEdgeCurve={(edgeId) =>
-              executeCommand(updateEdgeCommand(edgeId, { routing: undefined }))
-            }
+            onResetEdgeCurve={resetEdgeCurve}
             onBendEdge={bendEdgeBy}
           />
         ) : null}

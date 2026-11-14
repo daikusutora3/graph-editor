@@ -1,7 +1,7 @@
 /* oxlint-disable no-await-in-loop */
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
-import { sampleGraphDefinitions } from "../../features/graph-editor/samples/registry";
+import { sampleGraphGroups } from "../../features/graph-editor/samples/registry";
 import { getSampleParameters } from "../../features/graph-editor/samples/sample-parameters";
 
 const browser = await chromium.launch();
@@ -11,11 +11,12 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 const errors: string[] = [];
+const samples = sampleGraphGroups.flatMap((group) => group.samples);
 page.on("pageerror", (error) => errors.push(error.message));
 try {
   await page.goto(`${base}/en`);
   await page.locator('[data-canvas-ready="true"]').waitFor();
-  for (const sample of sampleGraphDefinitions) {
+  for (const sample of samples) {
     await page
       .getByRole("button", { name: "Load a graph", exact: true })
       .click();
@@ -57,7 +58,7 @@ try {
     );
   }
   assert.deepEqual(errors, []);
-  console.log(`All ${sampleGraphDefinitions.length} samples passed at 375px`);
+  console.log(`All ${samples.length} samples passed at 375px`);
 } finally {
   await browser.close();
 }

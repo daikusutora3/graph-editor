@@ -19,9 +19,7 @@ import {
   layoutPendingAtom,
   clearGraphAtom,
   replaceGraphModelAtom,
-  resetEditorSessionAtom,
   reverseAllDirectedEdgesAtom,
-  setEditorModeAtom,
 } from "../../features/graph-editor/shell/state/editor-actions";
 import {
   copyGraphSelectionAtom,
@@ -35,10 +33,7 @@ import {
   resolveGraphEditorShortcut,
   shouldPreventDefaultForGraphEditorShortcut,
 } from "../../features/graph-editor/shell/state/editor-shortcuts";
-import {
-  isMacShortcutPlatformValue,
-  shortcutPlatformValue,
-} from "../../features/graph-editor/ui/hooks/shortcut-platform";
+import { shortcutPlatformValue } from "../../features/graph-editor/ui/hooks/shortcut-platform";
 import {
   edgeDraftAtom,
   editorModeAtom,
@@ -46,7 +41,6 @@ import {
   graphPasteCountAtom,
   selectionAtom,
 } from "../../features/graph-editor/shell/state/editor-atoms";
-import { createEmptyEdgeDraft } from "../../features/graph-editor/shell/state/editor-state";
 import {
   graphAtom,
   syncExternalGraphAtom,
@@ -66,13 +60,9 @@ const store = createStore();
 const model = graphFixture();
 
 store.set(selectionAtom, { nodeIds: ["a"], edgeIds: ["ab"] });
-store.set(edgeDraftAtom, { sourceNodeId: "a" });
+store.set(edgeDraftAtom, "a");
 store.set(editorModeAtom, "edge");
-store.set(replaceGraphModelAtom, model, {
-  clearEdgeDraft: true,
-  clearSelection: true,
-  selectMode: true,
-});
+store.set(replaceGraphModelAtom, model);
 
 expect(
   store.get(graphAtom).nodes.length === 2,
@@ -88,11 +78,11 @@ expect(
   "replace action should clear selection",
 );
 expect(
-  store.get(edgeDraftAtom).sourceNodeId == null,
+  store.get(edgeDraftAtom) == null,
   "replace action should clear edge draft",
 );
 
-store.set(setEditorModeAtom, "node");
+store.set(editorModeAtom, "node");
 expect(store.get(editorModeAtom) === "node", "mode action should set mode");
 
 store.set(applyManualLayoutAtom, "line");
@@ -109,31 +99,6 @@ expect(
 expect(
   store.get(editorModeAtom) === "select",
   "clear action should restore select mode",
-);
-
-store.set(syncExternalGraphAtom, model);
-store.set(executeCommandAtom, addNodeCommand({ id: "c", x: 240, y: 0 }));
-expect(store.get(historyAtom).length > 0, "command should create history");
-store.set(selectionAtom, { nodeIds: ["a"], edgeIds: [] });
-store.set(edgeDraftAtom, { sourceNodeId: "a" });
-store.set(editorModeAtom, "edge");
-store.set(resetEditorSessionAtom);
-
-expect(store.get(historyAtom).length === 0, "reset should clear history");
-expect(store.get(futureAtom).length === 0, "reset should clear future");
-expect(
-  store.get(editorModeAtom) === "select",
-  "reset should restore select mode",
-);
-expect(
-  store.get(selectionAtom).nodeIds.length === 0 &&
-    store.get(selectionAtom).edgeIds.length === 0,
-  "reset should clear selection",
-);
-expect(
-  JSON.stringify(store.get(edgeDraftAtom)) ===
-    JSON.stringify(createEmptyEdgeDraft()),
-  "reset should clear edge draft",
 );
 
 verifyShortcutResolver();
@@ -244,15 +209,6 @@ expect(
   "editing during force work cancels it without overwriting newer content",
 );
 
-const resetForce = forceStore.set(applyManualLayoutAtom, "force");
-forceStore.set(resetEditorSessionAtom);
-expect(
-  (await resetForce).status === "rejected" &&
-    forceStore.get(historyAtom).length === 0 &&
-    !forceStore.get(layoutPendingAtom),
-  "resetting the editor cancels pending force work even with the same graph",
-);
-
 const replacedForce = forceStore.set(applyManualLayoutAtom, "force");
 forceStore.set(applyManualLayoutAtom, "line");
 const lineGraph = forceStore.get(graphAtom);
@@ -355,10 +311,10 @@ function verifyShortcutResolver() {
 
 function verifyShortcutPlatformLabels() {
   expect(
-    isMacShortcutPlatformValue("MacIntel", "Mozilla/5.0") &&
-      !isMacShortcutPlatformValue("iPhone", "Mozilla/5.0") &&
-      !isMacShortcutPlatformValue("MacIntel", "Mozilla/5.0 (iPad)") &&
-      !isMacShortcutPlatformValue("Win32", "Mozilla/5.0"),
+    shortcutPlatformValue("MacIntel", "Mozilla/5.0") === "mac" &&
+      shortcutPlatformValue("iPhone", "Mozilla/5.0") !== "mac" &&
+      shortcutPlatformValue("MacIntel", "Mozilla/5.0 (iPad)") !== "mac" &&
+      shortcutPlatformValue("Win32", "Mozilla/5.0") !== "mac",
     "shortcut labels should use Mac symbols only for macOS, not iOS or Windows",
   );
   expect(
@@ -625,7 +581,7 @@ function verifyShortcutActions() {
 
   shortcutStore.set(syncExternalGraphAtom, graphFixture());
   shortcutStore.set(editorModeAtom, "edge");
-  shortcutStore.set(edgeDraftAtom, { sourceNodeId: "a" });
+  shortcutStore.set(edgeDraftAtom, "a");
   shortcutStore.set(selectAllGraphAtom);
 
   expect(
@@ -638,7 +594,7 @@ function verifyShortcutActions() {
     "select-all action should select all graph elements",
   );
   expect(
-    shortcutStore.get(edgeDraftAtom).sourceNodeId == null,
+    shortcutStore.get(edgeDraftAtom) == null,
     "select-all action should clear edge draft",
   );
 

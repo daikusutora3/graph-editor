@@ -7,16 +7,11 @@ import type {
   GraphIntent,
   GraphModel,
   GraphNode,
-  EdgeId,
   NodeId,
 } from "../core/graph/model";
+import type { SelectionState } from "../core/view/types";
 
 const PASTE_OFFSET_PX = 32;
-
-type GraphSelection = {
-  nodeIds: NodeId[];
-  edgeIds: EdgeId[];
-};
 
 export type GraphClipboardPayload = {
   nodes: GraphNode[];
@@ -26,12 +21,12 @@ export type GraphClipboardPayload = {
 
 type PasteGraphResult = {
   command: GraphIntent;
-  selection: GraphSelection;
+  selection: SelectionState;
 };
 
 export function createGraphClipboardPayload(
   graph: GraphModel,
-  selection: GraphSelection,
+  selection: SelectionState,
 ): GraphClipboardPayload | null {
   const selectedNodeIds = new Set(selection.nodeIds);
   const selectedEdgeIds = new Set(selection.edgeIds);

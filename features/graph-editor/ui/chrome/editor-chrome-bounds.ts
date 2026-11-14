@@ -2,10 +2,6 @@
 
 import { useLayoutEffect, useRef } from "react";
 import { measureEditorChromeInsets } from "../../adapters/browser/editor-chrome-insets";
-export {
-  measureEditorChromeInsets,
-  readEditorChromeInsets,
-} from "../../adapters/browser/editor-chrome-insets";
 
 export function useEditorChromeBounds(position: "top" | "bottom") {
   const ref = useRef<HTMLDivElement | null>(null);

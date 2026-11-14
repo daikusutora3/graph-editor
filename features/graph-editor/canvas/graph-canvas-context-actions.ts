@@ -1,14 +1,9 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 
-import {
-  reverseEdgesCommand,
-  setEdgesColorCommand,
-  setNodesColorCommand,
-  setSelectionColorsCommand,
-} from "../core/graph/graph-intents";
+import { reverseEdgesCommand } from "../core/graph/graph-intents";
+import { selectionColorCommand } from "./selection-color-actions";
 import type {
   EdgeId,
   GraphColor,
@@ -20,6 +15,7 @@ import type { SelectionState } from "../shell/state/editor-state";
 import type {
   GraphContextMenuTarget,
   RenderedPoint,
+  SyncContextSelectionTarget,
 } from "./graph-canvas-types";
 import {
   EDGE_LABEL_HITBOX_HEIGHT,
@@ -28,24 +24,15 @@ import {
   type EdgeLabelHitbox,
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
 
-type SyncContextSelection = (
-  target: Pick<GraphContextMenuTarget, "kind"> & {
-    edgeId?: EdgeId;
-    nodeId?: NodeId;
-  },
-) => SelectionState;
-
 type UseGraphCanvasContextActionsOptions = {
   cancelInlineEdit: () => void;
-  deleteSelection: (selection: SelectionState) => void;
   executeCommand: (command: GraphIntent) => void;
-  setContextMenuTarget: Dispatch<SetStateAction<GraphContextMenuTarget | null>>;
-  syncContextSelection: SyncContextSelection;
+  setContextMenuTarget: (target: GraphContextMenuTarget | null) => void;
+  syncContextSelection: (target: SyncContextSelectionTarget) => void;
 };
 
 export function useGraphCanvasContextActions({
   cancelInlineEdit,
-  deleteSelection,
   executeCommand,
   setContextMenuTarget,
   syncContextSelection,
@@ -88,20 +75,6 @@ export function useGraphCanvasContextActions({
     [cancelInlineEdit, setContextMenuTarget, syncContextSelection],
   );
 
-  const setSelectionEdgeColor = useCallback(
-    (edgeIds: EdgeId[], color: GraphColor) => {
-      executeCommand(setEdgesColorCommand(edgeIds, color));
-    },
-    [executeCommand],
-  );
-
-  const setSelectionNodeColor = useCallback(
-    (nodeIds: NodeId[], color: GraphColor) => {
-      executeCommand(setNodesColorCommand(nodeIds, color));
-    },
-    [executeCommand],
-  );
-
   const reverseSelectionEdges = useCallback(
     (edgeIds: EdgeId[]) => {
       executeCommand(reverseEdgesCommand(edgeIds));
@@ -109,35 +82,22 @@ export function useGraphCanvasContextActions({
     [executeCommand],
   );
 
-  const setSelectionColors = useCallback(
-    (selection: SelectionState, color: GraphColor) => {
-      executeCommand(
-        setSelectionColorsCommand({
-          nodeIds: selection.nodeIds,
-          nodeColor: color,
-          edgeIds: selection.edgeIds,
-          edgeColor: color,
-        }),
-      );
+  const setSelectionColor = useCallback(
+    (
+      selection: SelectionState,
+      kind: "node" | "edge" | "mixed",
+      color: GraphColor,
+    ) => {
+      executeCommand(selectionColorCommand(selection, kind, color));
     },
     [executeCommand],
   );
 
-  const deleteContextSelection = useCallback(
-    (nextSelection: SelectionState) => {
-      deleteSelection(nextSelection);
-    },
-    [deleteSelection],
-  );
-
   return {
-    deleteContextSelection,
     openEdgeContextMenu,
     openNodeContextMenu,
     reverseSelectionEdges,
-    setSelectionEdgeColor,
-    setSelectionNodeColor,
-    setSelectionColors,
+    setSelectionColor,
   };
 }
 

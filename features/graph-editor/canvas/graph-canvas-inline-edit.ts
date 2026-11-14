@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
-import { isEditorShortcutBlockedTarget } from "../adapters/browser/shortcut-targets";
 import type { GraphColor } from "../core/graph/model";
+import { clamp } from "../core/graph/graph-utils";
 import type { InlineEditTarget } from "./graph-canvas-types";
 
 export function isInlineEditStartShortcut(event: KeyboardEvent) {
@@ -19,8 +19,6 @@ export function isInlineEditStartShortcut(event: KeyboardEvent) {
 
   return event.key === "Enter" || event.key === "F2";
 }
-
-export const isCanvasShortcutBlockedTarget = isEditorShortcutBlockedTarget;
 
 const NODE_LABEL_PADDING = 14;
 
@@ -170,8 +168,4 @@ function isWideInlineEditCodePoint(codePoint: number): boolean {
       (codePoint >= 0x1f300 && codePoint <= 0x1faff) ||
       (codePoint >= 0x20000 && codePoint <= 0x3fffd))
   );
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
 }

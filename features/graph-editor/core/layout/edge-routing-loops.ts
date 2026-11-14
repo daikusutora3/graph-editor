@@ -12,8 +12,6 @@ import {
 import { normalizeEdgeRoutingOverride } from "../graph/edge-routing-overrides";
 import { edgeHasVisibleLabel, edgeLabelSize } from "./edge-routing-shared";
 
-export const DEFAULT_LOOP_STEP_SIZE_PX = 40;
-export const MAX_LOOP_STEP_SIZE_PX = 180;
 export function normalizeLoopStepSize(value?: number) {
   return Number.isFinite(value)
     ? Math.max(40, Math.min(180, Math.round(value!)))

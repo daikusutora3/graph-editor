@@ -61,7 +61,7 @@ export function ContentCopyButton({
         aria-busy={status === "busy"}
         aria-label={`${buttonLabel}: ${title}`}
         className={cn(
-          actionStyles(),
+          actionStyles,
           "text-sm active:bg-[var(--fill-2)] disabled:opacity-60",
         )}
       >

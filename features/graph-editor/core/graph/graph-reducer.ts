@@ -1,7 +1,12 @@
 import { canUseEdgeEndpoints, filterAddableEdges } from "./edge-constraints";
 import { createEdge, createNode } from "./graph-factory";
 import { stripUndefinedProperties } from "./graph-utils";
-import type { GraphIntent, GraphModel, GraphSettings } from "./model";
+import type {
+  GraphColor,
+  GraphIntent,
+  GraphModel,
+  GraphSettings,
+} from "./model";
 
 export function reduceGraphIntent(
   model: GraphModel,
@@ -11,13 +16,12 @@ export function reduceGraphIntent(
     case "replace-model":
       return intent.model;
     case "add-node": {
-      const nodeLabelIndex = nextAvailableNodeLabelIndex(model);
       const nodeOrder = nextAvailableNodeOrder(model);
       const node = createNode({
         ...intent.input,
         label:
           intent.input.label ??
-          String(nodeLabelIndex + model.settings.indexBase),
+          String(nextAvailableNodeLabelIndex(model) + model.settings.indexBase),
         order: nodeOrder,
       });
       return { ...model, nodes: [...model.nodes, node] };
@@ -55,28 +59,20 @@ export function reduceGraphIntent(
         ),
       };
     case "set-nodes-color": {
-      const idSet = new Set(intent.nodeIds);
-      const nextColor = intent.color === "paper" ? undefined : intent.color;
       return {
         ...model,
-        nodes: model.nodes.map((node) =>
-          idSet.has(node.id)
-            ? stripUndefinedProperties({ ...node, color: nextColor })
-            : node,
-        ),
+        nodes: colorElements(model.nodes, intent.nodeIds, intent.color),
       };
     }
     case "update-edge": {
       const currentEdge = model.edges.find((edge) => edge.id === intent.edgeId);
       const nextSource = intent.patch.source ?? currentEdge?.source;
       const nextTarget = intent.patch.target ?? currentEdge?.target;
-      const ignoreEdgeIds = new Set([intent.edgeId]);
-
       if (
         currentEdge &&
         nextSource &&
         nextTarget &&
-        !canUseEdgeEndpoints(model, nextSource, nextTarget, { ignoreEdgeIds })
+        !canUseEdgeEndpoints(model, nextSource, nextTarget, intent.edgeId)
       ) {
         return model;
       }
@@ -91,39 +87,19 @@ export function reduceGraphIntent(
       };
     }
     case "set-edges-color": {
-      const idSet = new Set(intent.edgeIds);
-      const nextColor = intent.color === "paper" ? undefined : intent.color;
       return {
         ...model,
-        edges: model.edges.map((edge) =>
-          idSet.has(edge.id)
-            ? stripUndefinedProperties({ ...edge, color: nextColor })
-            : edge,
-        ),
+        edges: colorElements(model.edges, intent.edgeIds, intent.color),
       };
     }
     case "set-selection-colors": {
-      const nodeIds = new Set(intent.nodeIds);
-      const edgeIds = new Set(intent.edgeIds);
-      const nodeColor =
-        intent.nodeColor === "paper" ? undefined : intent.nodeColor;
-      const edgeColor =
-        intent.edgeColor === "paper" ? undefined : intent.edgeColor;
       return {
         ...model,
-        nodes: nodeIds.size
-          ? model.nodes.map((node) =>
-              nodeIds.has(node.id)
-                ? stripUndefinedProperties({ ...node, color: nodeColor })
-                : node,
-            )
+        nodes: intent.nodeIds.length
+          ? colorElements(model.nodes, intent.nodeIds, intent.nodeColor)
           : model.nodes,
-        edges: edgeIds.size
-          ? model.edges.map((edge) =>
-              edgeIds.has(edge.id)
-                ? stripUndefinedProperties({ ...edge, color: edgeColor })
-                : edge,
-            )
+        edges: intent.edgeIds.length
+          ? colorElements(model.edges, intent.edgeIds, intent.edgeColor)
           : model.edges,
       };
     }
@@ -192,12 +168,25 @@ export function reduceGraphIntent(
       const nextEdges = filterAddableEdges(baseModel, intent.edges);
 
       return {
-        ...model,
-        nodes: baseModel.nodes,
+        ...baseModel,
         edges: [...baseModel.edges, ...nextEdges],
       };
     }
   }
+}
+
+function colorElements<T extends { id: string; color?: GraphColor }>(
+  elements: T[],
+  ids: string[],
+  color: GraphColor,
+) {
+  const idSet = new Set(ids);
+  const nextColor = color === "paper" ? undefined : color;
+  return elements.map((element) =>
+    idSet.has(element.id)
+      ? stripUndefinedProperties({ ...element, color: nextColor })
+      : element,
+  );
 }
 
 function nextAvailableNodeLabelIndex(model: GraphModel) {

@@ -31,8 +31,8 @@ export function ContentHeader({
 }) {
   const copy = contentNavigationCopy[locale];
   const navClass = cn(
-    actionStyles(),
-    "px-2 text-sm max-[319px]:gap-1 max-[319px]:px-1 max-sm:gap-1.5 max-sm:px-1.5 max-sm:text-[13px] sm:px-3",
+    actionStyles,
+    "px-2 text-sm max-[319px]:gap-1 max-[319px]:px-1 max-sm:gap-1.5 max-sm:px-1.5 max-sm:text-control sm:px-3",
     "aria-[current=page]:bg-[var(--fill)] aria-[current=page]:font-semibold aria-[current=page]:text-[var(--text)]",
   );
   return (
@@ -105,33 +105,25 @@ export function ContentHeader({
               <ContentThemeToggle labels={copy} />
             </div>
           </div>
-          <ContentEditorLink locale={locale} compact />
+          <ContentEditorLink locale={locale} />
         </div>
       </header>
     </ContentStickyHeader>
   );
 }
 
-export function ContentEditorLink({
-  locale,
-  primary = false,
-  compact = false,
-}: {
-  locale: AppLocale;
-  primary?: boolean;
-  compact?: boolean;
-}) {
+function ContentEditorLink({ locale }: { locale: AppLocale }) {
   return (
     <a
       href={appLocalePaths[locale]}
       aria-label={contentNavigationCopy[locale].editor}
       className={cn(
-        actionStyles(primary ? "primary" : "quiet"),
+        actionStyles,
         "shrink-0 justify-center text-sm whitespace-nowrap",
       )}
     >
       <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-      <span className={compact ? "max-[319px]:sr-only" : undefined}>
+      <span className="max-[319px]:sr-only">
         {contentNavigationCopy[locale].editor}
       </span>
     </a>

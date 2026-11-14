@@ -1,18 +1,13 @@
 import type { SampleGraphKind } from "./sample-graphs";
 
-type CatalogSampleKind = Exclude<SampleGraphKind, "empty">;
-
 type SampleCopy = {
   label: string;
   subtitle: string;
   searchTerms?: string;
 };
 
-export type SampleGraphItem = {
+export type SampleGraphItem = SampleCopy & {
   kind: SampleGraphKind;
-  label: string;
-  subtitle: string;
-  searchTerms?: string;
 };
 
 export type SampleGraphGroupKey =
@@ -28,20 +23,12 @@ export type SampleGraphGroupKey =
 
 export type SampleGraphGroup = {
   key: SampleGraphGroupKey;
-  label: string;
-  note: string;
   samples: SampleGraphItem[];
-};
-
-export type SampleGraphDefinition = SampleGraphItem & {
-  groupKey: SampleGraphGroupKey;
 };
 
 type SampleGraphDefinitionGroup = {
   key: SampleGraphGroupKey;
-  label: string;
-  note: string;
-  samples: CatalogSampleKind[];
+  samples: SampleGraphKind[];
 };
 
 const sampleCopyByKind = {
@@ -271,13 +258,11 @@ const sampleCopyByKind = {
     searchTerms:
       "0-1 BFS 01 BFS zero one breadth first search 幅優先探索 最短路 deque デック",
   },
-} satisfies Record<CatalogSampleKind, SampleCopy>;
+} satisfies Record<SampleGraphKind, SampleCopy>;
 
 const sampleDefinitionGroups: SampleGraphDefinitionGroup[] = [
   {
     key: "basics",
-    label: "基本的なグラフ族",
-    note: "最初に触ることが多い基本形",
     samples: [
       "path",
       "cycle",
@@ -292,14 +277,10 @@ const sampleDefinitionGroups: SampleGraphDefinitionGroup[] = [
   },
   {
     key: "extremal",
-    label: "二部・多部・極値",
-    note: "彩色・マッチング・極値で使う族",
     samples: ["bipartite", "multipartite", "turan", "crown", "chain", "knight"],
   },
   {
     key: "structural",
-    label: "構造的グラフクラス",
-    note: "認識問題や構造定理で出るクラス",
     samples: [
       "chordal",
       "interval",
@@ -314,8 +295,6 @@ const sampleDefinitionGroups: SampleGraphDefinitionGroup[] = [
   },
   {
     key: "planar",
-    label: "平面・分解・構成",
-    note: "埋め込みと低幅構造",
     samples: [
       "planar",
       "outerplanar",
@@ -331,8 +310,6 @@ const sampleDefinitionGroups: SampleGraphDefinitionGroup[] = [
   },
   {
     key: "algorithmic",
-    label: "アルゴリズムで使う構造",
-    note: "最短路・マッチング・連結性・テストデータ",
     samples: [
       "weighted",
       "zeroOne",
@@ -354,14 +331,10 @@ const sampleDefinitionGroups: SampleGraphDefinitionGroup[] = [
   },
   {
     key: "geometric",
-    label: "交差グラフ・幾何表現",
-    note: "円・弧・距離で表すクラス",
     samples: ["circle", "circularArc", "unitDisk"],
   },
   {
     key: "regular",
-    label: "正則・対称・多面体",
-    note: "正則性や高い対称性を持つ例",
     samples: [
       "cube",
       "hypercube",
@@ -379,14 +352,10 @@ const sampleDefinitionGroups: SampleGraphDefinitionGroup[] = [
   },
   {
     key: "algebraic",
-    label: "集合・代数的構成",
-    note: "集合族や有限体から作る例",
     samples: ["kneser", "johnson", "paley"],
   },
   {
     key: "small",
-    label: "小さな名前付きグラフ・反例",
-    note: "特徴付けや彩色で出る小例",
     samples: [
       "house",
       "houseX",
@@ -403,52 +372,14 @@ const sampleDefinitionGroups: SampleGraphDefinitionGroup[] = [
   },
 ];
 
-function sample(kind: CatalogSampleKind): SampleGraphItem {
-  return { kind, ...sampleCopyByKind[kind] };
-}
-
-export const sampleGraphDefinitions: SampleGraphDefinition[] =
-  sampleDefinitionGroups.flatMap((group) =>
-    group.samples.map((kind) => ({
-      ...sample(kind),
-      groupKey: group.key,
-    })),
-  );
-
 export const sampleGraphGroups: SampleGraphGroup[] = sampleDefinitionGroups.map(
   (group) => ({
     key: group.key,
-    label: group.label,
-    note: group.note,
-    samples: group.samples.map(sample),
+    samples: group.samples.map((kind) => ({ kind, ...sampleCopyByKind[kind] })),
   }),
 );
 
-export const sampleGraphCount = sampleGraphDefinitions.length;
-
-export function sampleDefaultNodeCount(kind: SampleGraphKind) {
-  const defaults: Partial<Record<SampleGraphKind, number>> = {
-    path: 6,
-    cycle: 6,
-    edgeless: 6,
-    complete: 5,
-    star: 6,
-    tree: 7,
-    grid: 9,
-    bipartite: 6,
-    crown: 10,
-    knight: 16,
-    zeroOne: 7,
-    negativeEdges: 6,
-    negativeCycle: 5,
-    multigraph: 4,
-    bridges: 8,
-    bipartiteMatching: 8,
-    eulerTrail: 6,
-    functional: 8,
-    randomTree: 12,
-    randomDag: 12,
-    randomConnected: 12,
-  };
-  return defaults[kind] ?? 6;
-}
+export const sampleGraphCount = sampleGraphGroups.reduce(
+  (count, group) => count + group.samples.length,
+  0,
+);

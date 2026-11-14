@@ -371,7 +371,7 @@ export function approximateCurveLength(
   return length;
 }
 
-function quadraticPoint(
+export function quadraticPoint(
   segment: QuadraticCurveSegment,
   t: number,
 ): EdgeCurvePoint {

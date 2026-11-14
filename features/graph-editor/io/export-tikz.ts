@@ -60,13 +60,6 @@ function borderAnchor(
   return `(${name}.${(Math.round(angle) + 360) % 360})`;
 }
 
-export function exportTikz(model: GraphModel): string {
-  const task = createTikzExportTask(model);
-  let step = task.next();
-  while (!step.done) step = task.next();
-  return step.value;
-}
-
 export function* createTikzExportTask(
   model: GraphModel,
 ): Generator<void, string> {

@@ -126,7 +126,7 @@ export function ArticlePage({
           <Link
             href={articleIndexPath(locale)}
             prefetch={false}
-            className={cn(actionStyles(), "-ml-3 active:bg-[var(--fill-2)]")}
+            className={cn(actionStyles, "-ml-3 active:bg-[var(--fill-2)]")}
           >
             {copy.articlesLink}
           </Link>
@@ -152,7 +152,6 @@ export function ArticlePage({
                 key={section.id}
                 id={section.id}
                 title={section.title}
-                variant="plain"
               >
                 {section.id === articleScreenshotSections[article.slug] ? (
                   <ArticleScreenshot slug={article.slug} locale={locale} />
@@ -171,11 +170,7 @@ export function ArticlePage({
                 </div>
               </ContentSection>
             ))}
-            <ContentSection
-              id="article-example"
-              title={copy.exampleTitle}
-              variant="plain"
-            >
+            <ContentSection id="article-example" title={copy.exampleTitle}>
               <ContentExample
                 input={article.example.input}
                 title={article.title}
@@ -184,21 +179,17 @@ export function ArticlePage({
               >
                 <ArticleDiagram example={article.example} />
               </ContentExample>
-              {article.canonicalGuideExampleId ? (
+              {article.example.guideExampleId ? (
                 <div className="mt-3">
                   <ContextGuideLink
                     locale={locale}
-                    target={article.canonicalGuideExampleId}
+                    target={article.example.guideExampleId}
                     label={copy.sameExampleGuideLabel}
                   />
                 </div>
               ) : null}
             </ContentSection>
-            <ContentSection
-              id="article-related"
-              title={copy.relatedTitle}
-              variant="plain"
-            >
+            <ContentSection id="article-related" title={copy.relatedTitle}>
               <ContentCardGrid className="mt-5" columns={2}>
                 {related.map((relatedArticle) => (
                   <ArticleCard
@@ -211,10 +202,7 @@ export function ArticlePage({
               </ContentCardGrid>
               <ActionLink
                 href={articleIndexPath(locale)}
-                className={cn(
-                  actionStyles(),
-                  "mt-4 -ml-3 text-sm active:bg-[var(--fill-2)]",
-                )}
+                className="mt-4 -ml-3 text-sm active:bg-[var(--fill-2)]"
               >
                 {copy.allArticles}
                 <ArrowRight className="size-4 shrink-0" aria-hidden="true" />

@@ -259,6 +259,23 @@ function screenshotFixture(extraOptions = {}) {
 const png = () => new Blob(["original"], { type: "image/png" });
 
 {
+  const { options, hook } = screenshotFixture({ previewEnabled: false });
+  assert.equal(hook.value.effectiveBackground, "white");
+  options.theme = "dark";
+  hook.render();
+  assert.equal(hook.value.effectiveBackground, "black");
+  hook.value.setBackground("transparent");
+  await hook.flush();
+  options.theme = "light";
+  hook.render();
+  assert.equal(hook.value.effectiveBackground, "transparent");
+  hook.value.setBackground("white");
+  await hook.flush();
+  assert.equal(hook.value.effectiveBackground, "white");
+  hook.unmount();
+}
+
+{
   const { hook } = screenshotFixture();
   await hook.flush();
   assert.equal(exports.length, 1);
@@ -418,7 +435,7 @@ for (const copyFirst of [true, false]) {
   );
   assert.equal(clipboardWrites.length, 1);
   await hook.flush();
-  hook.value.setPaddingPreset(48);
+  hook.value.setPaddingPx(48);
   hook.value.setBackground("transparent");
   hook.value.setScope("natural");
   await hook.flush();
@@ -523,8 +540,8 @@ for (const kind of ["copy", "download"]) {
     "feedback also follows external graph/theme input keys",
   );
   hook.value.download();
-  hook.value.setPaddingPreset(48);
-  hook.value.setPaddingPreset(24);
+  hook.value.setPaddingPx(48);
+  hook.value.setPaddingPx(24);
   await hook.flush();
   exports[1].resolve(png());
   await hook.flush();
@@ -551,7 +568,7 @@ for (const kind of ["copy", "download"]) {
 {
   const { hook } = screenshotFixture({ previewEnabled: false });
   hook.value.download();
-  hook.value.setPaddingPreset(48);
+  hook.value.setPaddingPx(48);
   await hook.flush();
   exports[0].reject(new Error("image-export:canvas-too-small"));
   await hook.flush();
@@ -593,7 +610,7 @@ for (const kind of ["copy", "download"]) {
     "copying",
     "clipboard fallback owns its pending PNG until download completes",
   );
-  hook.value.setPaddingPreset(48);
+  hook.value.setPaddingPx(48);
   await hook.flush();
   hook.value.copy();
   assert.equal(exports.length, 1);
@@ -612,6 +629,19 @@ for (const kind of ["copy", "download"]) {
   await hook.flush();
   assert.equal(hook.value.copyState, "blocked");
   assert.equal(hook.value.copyMessage, "copy-failed");
+  hook.unmount();
+}
+
+{
+  const { hook } = screenshotFixture({ previewEnabled: false });
+  const clipboard = navigator.clipboard;
+  navigator.clipboard = undefined;
+  hook.value.copy();
+  exports[0].resolve(png());
+  await hook.flush();
+  assert.equal(downloads.length, 1, "missing clipboard falls back to saving");
+  assert.equal(hook.value.copyState, "saved");
+  navigator.clipboard = clipboard;
   hook.unmount();
 }
 
@@ -1041,7 +1071,7 @@ assert.equal(urls.size, 0);
     useRenderedHitboxes({
       graph,
       mode: "select",
-      chrome: { layout: "desktop" },
+      layout: "desktop",
     }),
   );
   hook.render();

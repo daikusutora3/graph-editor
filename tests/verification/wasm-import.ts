@@ -30,7 +30,6 @@ function reference(input: string): NumericImportMatrix | null {
   const values: number[][] = [];
   const entries: NonNullable<NumericImportMatrix["entries"]> = [];
   let isSymmetric = true;
-  let hasZeroValue = false;
   let hasWeightedValue = false;
   let directedEdgeCount = 0;
   let undirectedEdgeCount = 0;
@@ -42,8 +41,7 @@ function reference(input: string): NumericImportMatrix | null {
       row.push(value);
       if (target < source && value !== values[target]![source])
         isSymmetric = false;
-      if (value === 0) hasZeroValue = true;
-      else {
+      if (value !== 0) {
         directedEdgeCount++;
         if (target >= source) undirectedEdgeCount++;
         if (value !== 1) hasWeightedValue = true;
@@ -56,9 +54,7 @@ function reference(input: string): NumericImportMatrix | null {
   return {
     size,
     entries,
-    isBinary: !hasWeightedValue,
     isSymmetric,
-    hasZeroValue,
     hasWeightedValue,
     directedEdgeCount,
     undirectedEdgeCount,
@@ -80,9 +76,7 @@ function signature(result: NumericImportMatrix | null) {
   }
   return JSON.stringify([
     result.size,
-    result.isBinary,
     result.isSymmetric,
-    result.hasZeroValue,
     result.hasWeightedValue,
     result.directedEdgeCount,
     result.undirectedEdgeCount,

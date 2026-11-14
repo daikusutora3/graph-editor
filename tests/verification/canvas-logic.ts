@@ -1,13 +1,13 @@
 import { nudgeEdgeBend } from "../../features/graph-editor/core/layout/edge-route-geometry";
-import { normalizeEdgeWeightInput } from "../../features/graph-editor/core/graph/edit-values";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { resolveEdgeCreation } from "../../features/graph-editor/canvas/graph-canvas-edge-creation";
-import { getEdgeCandidateError } from "../../features/graph-editor/canvas/graph-canvas-edge-draft";
+import { isEdgeCandidateBlocked } from "../../features/graph-editor/canvas/graph-canvas-edge-draft";
 import { rangeSelectionFilterFromModifiers } from "../../features/graph-editor/canvas/range-selection-filter";
 import {
   describeSelection,
   resolveSelectionActions,
+  selectionForTarget,
 } from "../../features/graph-editor/canvas/selection-actions";
 import { detectBrowserLocale } from "../../features/graph-editor/i18n/locale";
 import { messagesByLocale } from "../../features/graph-editor/i18n/messages";
@@ -30,6 +30,20 @@ const graph: GraphModel = {
   ],
 };
 const messages = messagesByLocale.en;
+const mixedSelection = { nodeIds: ["a", "b"], edgeIds: ["ab"] };
+expect(
+  selectionForTarget({ kind: "node", nodeId: "a" }, mixedSelection) ===
+    mixedSelection &&
+    selectionForTarget({ kind: "edge", edgeId: "ab" }, mixedSelection) ===
+      mixedSelection &&
+    JSON.stringify(
+      selectionForTarget({ kind: "node", nodeId: "c" }, mixedSelection),
+    ) === JSON.stringify({ nodeIds: ["c"], edgeIds: [] }) &&
+    JSON.stringify(
+      selectionForTarget({ kind: "edge", edgeId: "bc" }, mixedSelection),
+    ) === JSON.stringify({ nodeIds: [], edgeIds: ["bc"] }),
+  "context targets preserve an existing selection or replace it with the target",
+);
 
 const rangeModifiers = (shiftKey: boolean, altKey: boolean) => ({
   altKey,
@@ -79,74 +93,72 @@ for (const filter of ["all", "nodes", "edges"] as const) {
 
 const pickSource = resolveEdgeCreation({
   model: graph,
-  draft: { sourceNodeId: null },
+  draft: null,
   targetNodeId: "a",
 });
 expect(
-  pickSource.kind === "update-draft" &&
-    pickSource.nextDraft.sourceNodeId === "a" &&
-    pickSource.nextDraft.message?.code === "source-selected",
+  pickSource.kind === "update-draft" && pickSource.nextDraft === "a",
   "first tap in edge mode should pick the source",
 );
 
 const selfLoop = resolveEdgeCreation({
   model: graph,
-  draft: { sourceNodeId: "a" },
+  draft: "a",
   targetNodeId: "a",
 });
 expect(
-  selfLoop.kind === "reject" && selfLoop.reason === "self-loop",
+  selfLoop.kind === "update-draft" && selfLoop.nextDraft === "a",
   "self loops should be rejected unless allowed",
 );
 
 const duplicate = resolveEdgeCreation({
   model: graph,
-  draft: { sourceNodeId: "a" },
+  draft: "a",
   targetNodeId: "b",
 });
 expect(
-  duplicate.kind === "reject" && duplicate.reason === "duplicate-edge",
+  duplicate.kind === "update-draft" && duplicate.nextDraft === "a",
   "duplicate edges should be rejected unless allowed",
 );
 
 const created = resolveEdgeCreation({
   model: graph,
-  draft: { sourceNodeId: "a" },
+  draft: "a",
   targetNodeId: "c",
 });
 expect(
   created.kind === "create-edge" &&
     created.source === "a" &&
     created.target === "c" &&
-    created.nextDraft.sourceNodeId === null,
+    created.nextDraft === null,
   "a valid target should create the edge and clear the source",
 );
 
 const chained = resolveEdgeCreation({
   model: graph,
-  draft: { sourceNodeId: "a" },
+  draft: "a",
   targetNodeId: "c",
   continueFromTarget: true,
 });
 expect(
-  chained.kind === "create-edge" && chained.nextDraft.sourceNodeId === "c",
+  chained.kind === "create-edge" && chained.nextDraft === "c",
   "continueFromTarget should keep drawing from the new node",
 );
 
 const missing = resolveEdgeCreation({
   model: graph,
-  draft: { sourceNodeId: "a" },
+  draft: "a",
   targetNodeId: "zzz",
 });
 expect(
-  missing.kind === "reject" && missing.reason === "target-missing",
+  missing.kind === "update-draft" && missing.nextDraft === "a",
   "an unknown target should be reported as missing",
 );
 
 expect(
-  getEdgeCandidateError(graph, "a", "a") === "self-loop" &&
-    getEdgeCandidateError(graph, "a", "b") === "duplicate-edge" &&
-    getEdgeCandidateError(graph, "a", "c") === null,
+  isEdgeCandidateBlocked(graph, "a", "a") &&
+    isEdgeCandidateBlocked(graph, "a", "b") &&
+    !isEdgeCandidateBlocked(graph, "a", "c"),
   "hover candidate errors should mirror the creation rules",
 );
 
@@ -219,14 +231,6 @@ expect(
       messages,
     ) === messages.chrome.selection.mixed(2, 1),
   "selection descriptions should name nodes and edges",
-);
-
-expect(
-  normalizeEdgeWeightInput("INF", "number").value === "INF" &&
-    !normalizeEdgeWeightInput("容量 ∞", "number").error &&
-    normalizeEdgeWeightInput(" 12 ", "number").value === "12" &&
-    normalizeEdgeWeightInput("", "number").value === "1",
-  "weight input should accept text and default empty to 1",
 );
 
 expect(

@@ -10,7 +10,7 @@ import { isGraphCoordinate } from "../../features/graph-editor/core/graph/graph-
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import {
   createManualLayoutCommand,
-  layoutDefinitions,
+  layoutKinds,
   manualLayoutDisabledReasonCode,
 } from "../../features/graph-editor/layouts";
 import {
@@ -141,7 +141,7 @@ assert.deepEqual(
 );
 
 function verifyLayouts(engine: string) {
-  for (const { kind } of layoutDefinitions) {
+  for (const kind of layoutKinds) {
     assert.equal(manualLayoutDisabledReasonCode(kind, model), null, kind);
     const command = createManualLayoutCommand(model, kind, "__proto__");
     assert.equal(command.type, "move-nodes");

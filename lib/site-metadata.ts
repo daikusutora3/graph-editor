@@ -10,7 +10,6 @@ export const APP_ICON = "/brand/graph-editor-logo-512.png";
 export const APP_ICON_192 = "/brand/graph-editor-logo-192.png";
 export const APP_ICON_48 = "/brand/graph-editor-logo-48.png";
 export const FAVICON = "/favicon.ico";
-export const SOCIAL_IMAGE = APP_ICON;
 export const APPLE_TOUCH_ICON = "/brand/graph-editor-logo-180.png";
 
 export const appLocaleMetadata = {

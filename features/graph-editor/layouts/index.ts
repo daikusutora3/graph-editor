@@ -1,9 +1,8 @@
 export {
   createManualLayoutCommand,
   createManualLayoutTask,
-  layoutDefinitions,
+  layoutKinds,
   manualLayoutDisabledReasonCode,
-  type LayoutDefinition,
   type LayoutDisabledReason,
   type LayoutKind,
 } from "./manual-layouts";

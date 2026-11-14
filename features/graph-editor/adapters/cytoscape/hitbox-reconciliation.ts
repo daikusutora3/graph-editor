@@ -35,20 +35,6 @@ function createHitboxSnapshot<T extends { id: string }>(
   };
 }
 
-export function reconcileNodeHitboxes(
-  current: NodeHitbox[],
-  next: NodeHitbox[],
-) {
-  return reconcileHitboxes(current, next, sameNodeHitbox);
-}
-
-export function reconcileEdgeLabelHitboxes(
-  current: EdgeLabelHitbox[],
-  next: EdgeLabelHitbox[],
-) {
-  return reconcileHitboxes(current, next, sameEdgeLabelHitbox);
-}
-
 function reconcileHitboxes<T extends { id: string }>(
   current: T[],
   next: T[],

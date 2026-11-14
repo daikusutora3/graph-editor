@@ -24,7 +24,6 @@ import {
 import {
   clampBow,
   curveFromControlPoint,
-  edgeCurveMidpoint,
   edgeCurveSvgPath,
   quadraticControlThroughPoint,
 } from "../core/layout/edge-route-geometry";
@@ -520,25 +519,6 @@ export function edgeBendFromRenderedPointer(
       Math.round(clampBow(curve.controlPointDistancesPx[0] / zoom) * 10) / 10,
     bowT: Math.round(curve.controlPointWeights[0] * 1000) / 1000,
   };
-}
-
-export function edgeBendHandlePosition(
-  edge: EdgeLabelHitbox,
-  preview: EdgeBend | null,
-  zoom: number,
-) {
-  if (preview == null) {
-    return { x: edge.x, y: edge.y };
-  }
-
-  return edgeCurveMidpoint(
-    { x: edge.sourceX, y: edge.sourceY },
-    { x: edge.targetX, y: edge.targetY },
-    {
-      controlPointDistancesPx: [preview.bowPx * zoom],
-      controlPointWeights: [preview.bowT],
-    },
-  );
 }
 
 export function createEdgeHitboxPath(edge: EdgeLabelHitbox) {

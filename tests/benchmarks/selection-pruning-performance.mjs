@@ -44,8 +44,8 @@ writeFileSync(
   entry,
   `import { createStore } from ${JSON.stringify(require.resolve("jotai/vanilla"))};
 import { createEmptyGraphModel } from ${path("features/graph-editor/core/graph/graph-factory.ts")};
-import { updateNodeCommand, setNodesColorCommand, setEdgesColorCommand, setSelectionColorsCommand } from ${path("features/graph-editor/core/graph/graph-intents.ts")};
-import { pickSelectionColor } from ${path("features/graph-editor/canvas/selection-color-actions.ts")};
+import { updateNodeCommand, setNodesColorCommand, setEdgesColorCommand } from ${path("features/graph-editor/core/graph/graph-intents.ts")};
+import { selectionColorCommand } from ${path("features/graph-editor/canvas/selection-color-actions.ts")};
 import { selectionAtom } from ${path("features/graph-editor/shell/state/editor-atoms.ts")};
 import { graphAtom, graphRevisionAtom, syncExternalGraphAtom } from ${path("features/graph-editor/shell/state/graph-atoms.ts")};
 import { executeCommandAtom, historyAtom, futureAtom, undoAtom, redoAtom } from ${path("features/graph-editor/shell/state/history-atoms.ts")};
@@ -70,14 +70,13 @@ ${
   const actions = {
     onSetNodeColor: (nodeIds, color) => execute(setNodesColorCommand(nodeIds, color)),
     onSetEdgeColor: (edgeIds, color) => execute(setEdgesColorCommand(edgeIds, color)),
-    onSetSelectionColors: (selection, color) => execute(setSelectionColorsCommand({nodeIds:selection.nodeIds,edgeIds:selection.edgeIds,nodeColor:color,edgeColor:color})),
   };
   return {
     execute: () => {
       if (originalDispatch) {
         actions.onSetNodeColor(selection.nodeIds, "green");
         actions.onSetEdgeColor(selection.edgeIds, "green");
-      } else pickSelectionColor(selection, "mixed", "green", actions);
+      } else execute(selectionColorCommand(selection, "mixed", "green"));
     },
     inspect: () => ({graph:store.get(graphAtom),selection:store.get(selectionAtom),history:store.get(historyAtom),future:store.get(futureAtom),revision:store.get(graphRevisionAtom),sameSelection:store.get(selectionAtom)===selection}),
     undo: () => store.set(undoAtom),
@@ -254,7 +253,7 @@ const report = {
     ? {
         paletteAction: {
           reference: "setNodesColor then setEdgesColor",
-          current: "production pickSelectionColor with setSelectionColors",
+          current: "production selectionColorCommand",
         },
       }
     : {}),

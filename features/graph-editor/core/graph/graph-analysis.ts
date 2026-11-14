@@ -1,9 +1,8 @@
 import type { GraphModel, NodeId } from "./model";
+import { getNodeByOrder } from "./selectors";
 
 export function orderedNodeIds(model: GraphModel) {
-  return [...model.nodes]
-    .sort((a, b) => a.order - b.order)
-    .map((node) => node.id);
+  return getNodeByOrder(model).map((node) => node.id);
 }
 
 export function prioritizeRoot(nodeIds: NodeId[], rootNodeId?: NodeId) {
@@ -18,45 +17,26 @@ export function orderIndex(nodeIds: NodeId[]) {
   return new Map(nodeIds.map((nodeId, index) => [nodeId, index]));
 }
 
-export function componentOrder(
-  component: NodeId[],
-  order: Map<NodeId, number>,
+export function graphAdjacency(model: GraphModel, directed: boolean) {
+  const adjacency = new Map<NodeId, Set<NodeId>>(
+    model.nodes.map((node) => [node.id, new Set<NodeId>()]),
+  );
+
+  for (const edge of model.edges) {
+    if (!adjacency.has(edge.source) || !adjacency.has(edge.target)) continue;
+
+    adjacency.get(edge.source)!.add(edge.target);
+    if (!directed) adjacency.get(edge.target)!.add(edge.source);
+  }
+
+  return adjacency;
+}
+
+export function connectedComponents(
+  model: GraphModel,
+  adjacency = graphAdjacency(model, false),
 ) {
-  return Math.min(...component.map((nodeId) => order.get(nodeId) ?? 0));
-}
-
-export function undirectedAdjacency(model: GraphModel) {
-  const adjacency = new Map<NodeId, Set<NodeId>>(
-    model.nodes.map((node) => [node.id, new Set<NodeId>()]),
-  );
-
-  for (const edge of model.edges) {
-    if (!adjacency.has(edge.source) || !adjacency.has(edge.target)) continue;
-
-    adjacency.get(edge.source)!.add(edge.target);
-    adjacency.get(edge.target)!.add(edge.source);
-  }
-
-  return adjacency;
-}
-
-export function directedAdjacency(model: GraphModel) {
-  const adjacency = new Map<NodeId, Set<NodeId>>(
-    model.nodes.map((node) => [node.id, new Set<NodeId>()]),
-  );
-
-  for (const edge of model.edges) {
-    if (!adjacency.has(edge.source) || !adjacency.has(edge.target)) continue;
-
-    adjacency.get(edge.source)!.add(edge.target);
-  }
-
-  return adjacency;
-}
-
-export function connectedComponents(model: GraphModel) {
   const nodeIds = orderedNodeIds(model);
-  const adjacency = undirectedAdjacency(model);
   const order = orderIndex(nodeIds);
   const visited = new Set<NodeId>();
   const components: NodeId[][] = [];
@@ -64,14 +44,11 @@ export function connectedComponents(model: GraphModel) {
   for (const start of nodeIds) {
     if (visited.has(start)) continue;
 
-    const component: NodeId[] = [];
     const queue = [start];
     visited.add(start);
 
     for (let head = 0; head < queue.length; head += 1) {
       const current = queue[head]!;
-      component.push(current);
-
       const neighbors = [...(adjacency.get(current) ?? [])].sort(
         (a, b) => order.get(a)! - order.get(b)!,
       );
@@ -83,7 +60,7 @@ export function connectedComponents(model: GraphModel) {
       }
     }
 
-    components.push(component);
+    components.push(queue);
   }
 
   return components;
@@ -92,7 +69,7 @@ export function connectedComponents(model: GraphModel) {
 export function stronglyConnectedComponents(model: GraphModel) {
   const nodeIds = orderedNodeIds(model);
   const order = orderIndex(nodeIds);
-  const adjacency = directedAdjacency(model);
+  const adjacency = graphAdjacency(model, true);
   const indexByNode = new Map<NodeId, number>();
   const lowLink = new Map<NodeId, number>();
   const stack: NodeId[] = [];
@@ -170,9 +147,11 @@ export function degreeMap(model: GraphModel) {
   return degrees;
 }
 
-export function isBipartite(model: GraphModel) {
+export function bipartiteColoring(
+  model: GraphModel,
+  adjacency = graphAdjacency(model, false),
+) {
   const nodeIds = orderedNodeIds(model);
-  const adjacency = undirectedAdjacency(model);
   const color = new Map<NodeId, 0 | 1>();
 
   for (const nodeId of nodeIds) {
@@ -192,18 +171,21 @@ export function isBipartite(model: GraphModel) {
           color.set(neighbor, nextColor);
           queue.push(neighbor);
         } else if (seenColor !== nextColor) {
-          return false;
+          return null;
         }
       }
     }
   }
 
-  return true;
+  return color;
+}
+
+export function isBipartite(model: GraphModel) {
+  return bipartiteColoring(model) !== null;
 }
 
 export function isForest(model: GraphModel) {
-  const nodeIds = orderedNodeIds(model);
-  const parent = new Map(nodeIds.map((nodeId) => [nodeId, nodeId]));
+  const parent = new Map(model.nodes.map((node) => [node.id, node.id]));
 
   const find = (nodeId: NodeId): NodeId => {
     const currentParent = parent.get(nodeId);
@@ -237,7 +219,7 @@ export function isForest(model: GraphModel) {
 export function isDirectedAcyclic(model: GraphModel) {
   if (!model.settings.directed) return false;
 
-  const nodeIds = orderedNodeIds(model);
+  const nodeIds = model.nodes.map((node) => node.id);
   const outgoing = new Map<NodeId, Set<NodeId>>(
     nodeIds.map((nodeId) => [nodeId, new Set<NodeId>()]),
   );
@@ -255,11 +237,9 @@ export function isDirectedAcyclic(model: GraphModel) {
   }
 
   const queue = nodeIds.filter((nodeId) => indegree.get(nodeId) === 0);
-  let visitedCount = 0;
 
   for (let head = 0; head < queue.length; head += 1) {
     const current = queue[head]!;
-    visitedCount += 1;
 
     for (const neighbor of outgoing.get(current) ?? []) {
       indegree.set(neighbor, indegree.get(neighbor)! - 1);
@@ -269,5 +249,5 @@ export function isDirectedAcyclic(model: GraphModel) {
     }
   }
 
-  return visitedCount === nodeIds.length;
+  return queue.length === nodeIds.length;
 }

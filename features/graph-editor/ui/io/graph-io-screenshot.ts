@@ -1,6 +1,9 @@
 "use client";
 
-import { IMAGE_EXPORT_ERROR } from "../../adapters/cytoscape/graph-canvas-viewport";
+import {
+  EXPORT_BACKGROUND_COLORS,
+  IMAGE_EXPORT_ERROR,
+} from "../../adapters/cytoscape/graph-canvas-viewport";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -8,7 +11,6 @@ import {
   useGraphCanvasExportScaleSignature,
   useGraphCanvasViewportSignature,
 } from "../../canvas/GraphCanvasProvider";
-import { EXPORT_BACKGROUND_COLORS } from "../../adapters/cytoscape/graph-canvas-viewport";
 import {
   downloadBlob,
   ensurePngBlob,
@@ -17,8 +19,6 @@ import {
 import { useI18n } from "../../i18n/I18nProvider";
 import type {
   PngExportBackground,
-  PngExportLongEdgePreset,
-  PngExportPaddingPreset,
   PngExportScope,
   ScreenshotCopyState,
   ScreenshotDownloadState,
@@ -30,12 +30,8 @@ import {
   clampPaddingPx,
   clampPaddingPxForLongEdge,
   createEmptyScreenshotPreview,
-  isScreenshotPreviewStale,
   makeScreenshotInputKey,
-  resolveLongEdgePx,
-  resolvePaddingPx,
   resolvePngCanvasLayout,
-  shouldAcceptScreenshotPreviewRequest,
 } from "./graph-io-screenshot-state";
 import type { ThemeMode } from "../theme/theme";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
@@ -59,18 +55,11 @@ export function useGraphIOScreenshot({
     inputKey: "",
     message: "",
   });
-  const [background, setBackgroundState] =
-    useState<PngExportBackground>("white");
-  const [longEdgePreset, setLongEdgePresetState] =
-    useState<PngExportLongEdgePreset>(DEFAULT_LONG_EDGE_PX);
-  const [customLongEdgePx, setCustomLongEdgePxState] =
-    useState(DEFAULT_LONG_EDGE_PX);
+  const [transparent, setTransparent] = useState(false);
+  const [longEdgePx, setLongEdgePxState] = useState(DEFAULT_LONG_EDGE_PX);
   const [canvasWidthPx, setCanvasWidthPx] = useState(1920);
   const [canvasHeightPx, setCanvasHeightPx] = useState(1080);
-  const [paddingPreset, setPaddingPresetState] =
-    useState<PngExportPaddingPreset>(DEFAULT_PADDING_PX);
-  const [customPaddingPx, setCustomPaddingPxState] =
-    useState(DEFAULT_PADDING_PX);
+  const [paddingPx, setPaddingPxState] = useState(DEFAULT_PADDING_PX);
   const [scope, setScopeState] = useState<PngExportScope>("full");
   const [preview, setPreview] = useState<ScreenshotPreview>(
     createEmptyScreenshotPreview,
@@ -87,30 +76,29 @@ export function useGraphIOScreenshot({
   );
   const solidBackground: "white" | "black" =
     theme === "dark" ? "black" : "white";
-  const effectiveBackground: PngExportBackground =
-    background === "transparent" ? background : solidBackground;
+  const effectiveBackground: PngExportBackground = transparent
+    ? "transparent"
+    : solidBackground;
   const currentPreviewInput = useMemo(
     () => ({
       background: effectiveBackground,
       canvasHeightPx,
       canvasWidthPx,
       graphRevision,
-      longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
-      paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
+      longEdgePx,
+      paddingPx,
       scope,
       theme,
       exportScaleSignature,
       viewportSignature,
     }),
     [
-      customLongEdgePx,
+      longEdgePx,
       canvasHeightPx,
       canvasWidthPx,
-      customPaddingPx,
+      paddingPx,
       effectiveBackground,
       graphRevision,
-      longEdgePreset,
-      paddingPreset,
       scope,
       theme,
       exportScaleSignature,
@@ -147,10 +135,7 @@ export function useGraphIOScreenshot({
   const visiblePreview = isGraphEmpty
     ? createEmptyScreenshotPreview()
     : preview;
-  const previewStale = isScreenshotPreviewStale(
-    visiblePreview,
-    currentPreviewInputKey,
-  );
+  const previewStale = visiblePreview.inputKey !== currentPreviewInputKey;
 
   const previewReadyToRefresh =
     currentPreviewInputKey === debouncedPreviewInputKey &&
@@ -167,8 +152,8 @@ export function useGraphIOScreenshot({
       background: exportBackground,
       canvasHeightPx: exportCanvasHeightPx,
       canvasWidthPx: exportCanvasWidthPx,
-      longEdgePx,
-      paddingPx,
+      longEdgePx: exportLongEdgePx,
+      paddingPx: exportPaddingPx,
       scope: exportScope,
     }: {
       background: PngExportBackground;
@@ -187,9 +172,9 @@ export function useGraphIOScreenshot({
 
     const safePaddingPx =
       exportScope === "full"
-        ? clampPaddingPxForLongEdge(paddingPx, longEdgePx)
-        : clampPaddingPx(paddingPx);
-    const contentLongEdgePx = Math.max(1, longEdgePx - safePaddingPx * 2);
+        ? clampPaddingPxForLongEdge(exportPaddingPx, exportLongEdgePx)
+        : clampPaddingPx(exportPaddingPx);
+    const contentLongEdgePx = Math.max(1, exportLongEdgePx - safePaddingPx * 2);
     const sizeOptions =
       exportScope === "full"
         ? { maxHeight: contentLongEdgePx, maxWidth: contentLongEdgePx }
@@ -264,10 +249,7 @@ export function useGraphIOScreenshot({
       if (
         signal.aborted ||
         !mountedRef.current ||
-        !shouldAcceptScreenshotPreviewRequest(
-          previewRequestRef.current,
-          requestId,
-        )
+        previewRequestRef.current !== requestId
       ) {
         return;
       }
@@ -287,12 +269,7 @@ export function useGraphIOScreenshot({
     } catch (error) {
       if (signal.aborted || !mountedRef.current) return;
       console.warn("Screenshot preview failed", error);
-      if (
-        shouldAcceptScreenshotPreviewRequest(
-          previewRequestRef.current,
-          requestId,
-        )
-      ) {
+      if (previewRequestRef.current === requestId) {
         if (
           error instanceof Error &&
           error.message === "image-export:canvas-too-small"
@@ -316,21 +293,11 @@ export function useGraphIOScreenshot({
     }
   }
 
-  const createBlobForAction = () =>
-    createBlob({
-      background: effectiveBackground,
-      canvasHeightPx,
-      canvasWidthPx,
-      longEdgePx: resolveLongEdgePx(longEdgePreset, customLongEdgePx),
-      paddingPx: resolvePaddingPx(paddingPreset, customPaddingPx),
-      scope,
-    });
-
   const copy = () => {
     if (isGraphEmpty) return;
     const ticket = copyAction.begin();
     if (!ticket) return;
-    const pngBlobPromise = createBlobForAction();
+    const pngBlobPromise = createBlob(currentPreviewInput);
 
     const markFailed = (message: string) => {
       if (mountedRef.current) console.warn("Screenshot copy failed", message);
@@ -339,16 +306,6 @@ export function useGraphIOScreenshot({
 
     const copyBlob = async () => {
       try {
-        if (
-          !navigator.clipboard?.write ||
-          typeof ClipboardItem === "undefined"
-        ) {
-          throw new DOMException(
-            "Clipboard image write is unavailable",
-            "NotAllowedError",
-          );
-        }
-
         await writePngBlobToClipboard(pngBlobPromise);
         copyAction.finish(ticket, "copied");
       } catch (error) {
@@ -404,7 +361,7 @@ export function useGraphIOScreenshot({
       }
     };
 
-    void createBlobForAction()
+    void createBlob(currentPreviewInput)
       .then(saveBlob)
       .catch((error) =>
         markFailed(
@@ -420,31 +377,17 @@ export function useGraphIOScreenshot({
   };
 
   const setBackground = (nextBackground: PngExportBackground) => {
-    setBackgroundState(nextBackground);
+    setTransparent(nextBackground === "transparent");
     resetFeedback();
   };
 
-  const setPaddingPreset = (nextPreset: PngExportPaddingPreset) => {
-    setPaddingPresetState(nextPreset);
+  const setPaddingPx = (nextPaddingPx: number) => {
+    setPaddingPxState(clampPaddingPx(nextPaddingPx));
     resetFeedback();
   };
 
-  const setCustomPaddingPx = (nextPaddingPx: number) => {
-    const paddingPx = clampPaddingPx(nextPaddingPx);
-    setPaddingPresetState("custom");
-    setCustomPaddingPxState(paddingPx);
-    resetFeedback();
-  };
-
-  const setLongEdgePreset = (nextPreset: PngExportLongEdgePreset) => {
-    setLongEdgePresetState(nextPreset);
-    resetFeedback();
-  };
-
-  const setCustomLongEdgePx = (nextLongEdgePx: number) => {
-    const longEdgePx = clampLongEdgePx(nextLongEdgePx);
-    setLongEdgePresetState("custom");
-    setCustomLongEdgePxState(longEdgePx);
+  const setLongEdgePx = (nextLongEdgePx: number) => {
+    setLongEdgePxState(clampLongEdgePx(nextLongEdgePx));
     resetFeedback();
   };
 
@@ -494,7 +437,6 @@ export function useGraphIOScreenshot({
   ]);
 
   return {
-    background,
     canvasHeightPx,
     canvasWidthPx,
     copy,
@@ -504,21 +446,16 @@ export function useGraphIOScreenshot({
     downloadMessage,
     downloadState,
     effectiveBackground,
-    customPaddingPx,
-    customLongEdgePx,
-    longEdgePreset,
-    paddingPreset,
+    longEdgePx,
+    paddingPx,
     preview: visiblePreview,
-    previewStale,
     scope,
     setBackground,
     setCanvasHeightPx: setCanvasHeight,
     setCanvasWidthPx: setCanvasWidth,
-    setCustomLongEdgePx,
-    setCustomPaddingPx,
+    setLongEdgePx,
+    setPaddingPx,
     setScope,
-    setLongEdgePreset,
-    setPaddingPreset,
     solidBackground,
   };
 }
@@ -595,7 +532,7 @@ async function addPngPadding(
     if (!context) throw new Error("Could not prepare padded PNG");
 
     if (background !== "transparent") {
-      context.fillStyle = readPaddedPngBackground(background);
+      context.fillStyle = EXPORT_BACKGROUND_COLORS[background];
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -689,10 +626,4 @@ async function readBlobDimensions(blob: Blob) {
 
 function escapeHtmlAttribute(value: string) {
   return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
-}
-
-function readPaddedPngBackground(
-  background: Exclude<PngExportBackground, "transparent">,
-) {
-  return EXPORT_BACKGROUND_COLORS[background];
 }

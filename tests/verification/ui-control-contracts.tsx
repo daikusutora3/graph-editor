@@ -32,57 +32,46 @@ const options = [
 ] as const;
 
 for (const value of options.map((option) => option.value)) {
-  for (const disabled of [false, true]) {
-    const markup = renderToStaticMarkup(
-      <Segment
-        label="Direction"
-        options={options}
-        value={value}
-        disabled={disabled}
-        onChange={() => {}}
-      />,
-    );
-    const group = openingTags(markup, "div").find(
-      (tag) => attribute(tag, "role") === "radiogroup",
-    );
-    assert(group, "exclusive choices have a radio group");
-    assert.equal(attribute(group, "aria-label"), "Direction");
+  const markup = renderToStaticMarkup(
+    <Segment
+      label="Direction"
+      options={options}
+      value={value}
+      onChange={() => {}}
+    />,
+  );
+  const group = openingTags(markup, "div").find(
+    (tag) => attribute(tag, "role") === "radiogroup",
+  );
+  assert(group, "exclusive choices have a radio group");
+  assert.equal(attribute(group, "aria-label"), "Direction");
 
-    const radios = openingTags(markup, "button");
-    assert.equal(radios.length, options.length);
-    radios.forEach((radio, index) => {
-      const option = options[index]!;
-      const selected = option.value === value;
-      assert.equal(attribute(radio, "type"), "button");
-      assert.equal(attribute(radio, "role"), "radio");
-      assert.equal(
-        attribute(radio, "aria-label"),
-        `Direction: ${option.label}`,
-      );
-      assert.equal(attribute(radio, "aria-checked"), String(selected));
-      assert.equal(attribute(radio, "tabindex"), selected ? "0" : "-1");
-      assert.equal(attribute(radio, "disabled") !== undefined, disabled);
-    });
-  }
+  const radios = openingTags(markup, "button");
+  assert.equal(radios.length, options.length);
+  radios.forEach((radio, index) => {
+    const option = options[index]!;
+    const selected = option.value === value;
+    assert.equal(attribute(radio, "type"), "button");
+    assert.equal(attribute(radio, "role"), "radio");
+    assert.equal(attribute(radio, "aria-label"), `Direction: ${option.label}`);
+    assert.equal(attribute(radio, "aria-checked"), String(selected));
+    assert.equal(attribute(radio, "tabindex"), selected ? "0" : "-1");
+  });
 }
 
 for (const checked of [false, true]) {
-  for (const disabled of [false, true]) {
-    const markup = renderToStaticMarkup(
-      <OptionToggle
-        checked={checked}
-        disabled={disabled}
-        label="Grid snapping"
-        onChange={() => {}}
-      />,
-    );
-    const button = openingTags(markup, "button")[0]!;
-    assert.equal(attribute(button, "type"), "button");
-    assert.equal(attribute(button, "role"), "checkbox");
-    assert.equal(attribute(button, "aria-checked"), String(checked));
-    assert.equal(attribute(button, "disabled") !== undefined, disabled);
-    assert(textContent(markup).includes("Grid snapping"));
-  }
+  const markup = renderToStaticMarkup(
+    <OptionToggle
+      checked={checked}
+      label="Grid snapping"
+      onChange={() => {}}
+    />,
+  );
+  const button = openingTags(markup, "button")[0]!;
+  assert.equal(attribute(button, "type"), "button");
+  assert.equal(attribute(button, "role"), "checkbox");
+  assert.equal(attribute(button, "aria-checked"), String(checked));
+  assert(textContent(markup).includes("Grid snapping"));
 }
 
 const field = renderToStaticMarkup(

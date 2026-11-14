@@ -11,18 +11,13 @@ import {
 } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
-import type { GraphCanvasChrome } from "./graph-canvas-types";
+import type { EditorLayout } from "../core/view/types";
 import { rovingFocusKeyDown } from "@/components/ui/use-roving-focus";
 import {
   SELECTABLE_EDGE_COLORS,
   SELECTABLE_NODE_COLORS,
 } from "../core/graph/colors";
-import type {
-  EdgeId,
-  GraphColor,
-  GraphModel,
-  NodeId,
-} from "../core/graph/model";
+import type { EdgeId, GraphColor, GraphModel } from "../core/graph/model";
 import type { SelectionState } from "../shell/state/editor-state";
 import { Button, IconButton, Kbd, focusRing } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
@@ -32,15 +27,17 @@ import {
   resolveSelectionActions,
   type SelectionActionId,
 } from "./selection-actions";
-import { pickSelectionColor } from "./selection-color-actions";
+import { menuStyle } from "@/components/ui/surfaces";
 
 type SelectionActionBarProps = {
   graph: GraphModel;
   selection: SelectionState;
-  chrome: GraphCanvasChrome;
-  onSetNodeColor: (nodeIds: NodeId[], color: GraphColor) => void;
-  onSetEdgeColor: (edgeIds: EdgeId[], color: GraphColor) => void;
-  onSetSelectionColors: (selection: SelectionState, color: GraphColor) => void;
+  layout: EditorLayout;
+  onSetSelectionColor: (
+    selection: SelectionState,
+    kind: "node" | "edge" | "mixed",
+    color: GraphColor,
+  ) => void;
   onReverseEdges: (edgeIds: EdgeId[]) => void;
   onResetEdgeCurve: (edgeId: EdgeId) => void;
   onEditSelectedNode: () => void;
@@ -51,10 +48,8 @@ type SelectionActionBarProps = {
 export function SelectionActionBar({
   graph,
   selection,
-  chrome,
-  onSetNodeColor,
-  onSetEdgeColor,
-  onSetSelectionColors,
+  layout,
+  onSetSelectionColor,
   onReverseEdges,
   onResetEdgeCurve,
   onEditSelectedNode,
@@ -70,44 +65,30 @@ export function SelectionActionBar({
   const selectedEdges = graph.edges.filter((edge) =>
     selectedEdgeIds.has(edge.id),
   );
-  const nodeColors = new Set(
-    selectedNodes.map((node) => node.color ?? "paper"),
-  );
-  const edgeColors = new Set(
-    selectedEdges.map((edge) => edge.color ?? "paper"),
-  );
+  const colors = new Set([
+    ...selectedNodes.map((node) => node.color ?? "paper"),
+    ...selectedEdges.map((edge) => edge.color ?? "paper"),
+  ]);
   const mixedSelection = selectedNodes.length > 0 && selectedEdges.length > 0;
   const swatchKind =
     mixedSelection || selectedNodes.length > 0 ? "node" : "edge";
   const selectableColors =
     swatchKind === "node" ? SELECTABLE_NODE_COLORS : SELECTABLE_EDGE_COLORS;
-  const activeColor = (() => {
-    const colors = mixedSelection
-      ? new Set([...nodeColors, ...edgeColors])
-      : swatchKind === "node"
-        ? nodeColors
-        : edgeColors;
-    return colors.size === 1 ? ([...colors][0] as GraphColor) : null;
-  })();
+  const activeColor = colors.size === 1 ? ([...colors][0] as GraphColor) : null;
   const description = describeSelection(graph, selection, messages);
   const actions = resolveSelectionActions(graph, selection, messages).filter(
     (action) => !action.menuOnly,
   );
-  const mobile = chrome.layout === "mobile";
+  const mobile = layout === "mobile";
   const colorLabel =
     swatchKind === "node"
       ? messages.canvas.nodeColor
       : messages.canvas.edgeColor;
   const pickColor = (color: GraphColor) => {
-    pickSelectionColor(
+    onSetSelectionColor(
       selection,
       mixedSelection ? "mixed" : swatchKind,
       color,
-      {
-        onSetNodeColor,
-        onSetEdgeColor,
-        onSetSelectionColors,
-      },
     );
   };
   const runAction = (id: SelectionActionId) => {
@@ -138,10 +119,10 @@ export function SelectionActionBar({
         role="toolbar"
         aria-label={description}
         className={cn(
-          "ge-panel ge-pop pointer-events-auto relative flex min-h-12 max-w-full items-center gap-1 backdrop-blur-[12px]",
+          "ge-panel ge-pop pointer-events-auto relative flex min-h-bar max-w-full items-center gap-1",
           mobile
             ? "flex-nowrap rounded-2xl p-1 pl-3"
-            : "flex-wrap rounded-xl py-1 pr-1.5 pl-3",
+            : "flex-wrap rounded-bar py-1 pr-1.5 pl-3",
         )}
       >
         <span
@@ -226,7 +207,7 @@ export function SelectionActionBar({
             <Button
               key={id}
               aria-label={label}
-              variant={danger ? "danger" : "ghost"}
+              variant={danger ? "danger-ghost" : "ghost"}
               className="rounded-lg"
               onClick={() => runAction(id)}
             >
@@ -313,20 +294,14 @@ function SelectionColorPalette({
         }
       }}
     >
-      <button
-        type="button"
+      <Button
+        active={open}
         aria-label={label}
         aria-expanded={open}
         aria-controls={open ? id : undefined}
-        data-tooltip={label}
-        data-tooltip-side="top"
-        className={cn(
-          focusRing,
-          "flex h-11 w-14 shrink-0 items-center justify-center gap-1 rounded-xl px-2 transition-colors",
-          open
-            ? "bg-[var(--accent-fill)] text-[var(--accent-text)]"
-            : "text-[var(--text-2)] hover:bg-[var(--fill)]",
-        )}
+        tooltip={label}
+        tooltipSide="top"
+        className={cn("gap-1 px-2", mobile ? "h-11 w-14 rounded-xl" : "w-12")}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={(event) => {
           if (event.key === "ArrowUp" || event.key === "ArrowDown") {
@@ -359,12 +334,15 @@ function SelectionColorPalette({
           strokeWidth={1.75}
           aria-hidden="true"
         />
-      </button>
+      </Button>
       {open ? (
         <div
           ref={palette}
           id={id}
-          className="ge-panel ge-pop absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl p-1.5 backdrop-blur-[12px]"
+          className={cn(
+            menuStyle.surface,
+            "ge-pop absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2",
+          )}
           onClick={(event) => {
             if (event.detail > 0) close(true);
           }}

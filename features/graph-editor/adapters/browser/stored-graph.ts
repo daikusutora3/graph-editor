@@ -2,11 +2,6 @@ import {
   parseGraphModelJson,
   serializeGraphModel,
 } from "../../core/graph/graph-json";
-import {
-  GRAPH_MAX_JSON_CHARS,
-  GRAPH_MAX_NODES,
-  GRAPH_MAX_EDGES,
-} from "../../core/graph/graph-limits";
 import type { GraphModel } from "../../core/graph/model";
 import { createArticleExampleGraph } from "@/lib/article-examples";
 import {
@@ -15,10 +10,6 @@ import {
 } from "./graph-storage-context";
 
 export { GRAPH_STORAGE_KEY } from "./graph-storage-context";
-export const MAX_STORED_GRAPH_CHARS = GRAPH_MAX_JSON_CHARS;
-export const MAX_STORED_GRAPH_NODES = GRAPH_MAX_NODES;
-export const MAX_STORED_GRAPH_EDGES = GRAPH_MAX_EDGES;
-export const STORAGE_SKIPPED_EVENT = "graph-editor:storage-skipped";
 export const STORAGE_STATE_EVENT = "graph-editor:storage-state";
 export type SaveStatus =
   "saved" | "pending" | "failed" | "conflict" | "unavailable" | "invalid";
@@ -43,6 +34,10 @@ function contextStorage(context: GraphStorageContext) {
   return context.kind === "example"
     ? window.sessionStorage
     : window.localStorage;
+}
+
+function isWriteBlocked() {
+  return ["invalid", "conflict", "unavailable"].includes(snapshot.status);
 }
 
 function notify(status: SaveStatus, raw = snapshot.raw) {
@@ -107,9 +102,8 @@ export function scheduleStoredGraphWrite(
     notify("failed");
     return;
   }
-  if (["invalid", "conflict", "unavailable"].includes(snapshot.status)) return;
+  if (isWriteBlocked()) return;
   notify("pending");
-  installStorageFlushListeners();
   if (timer !== null) window.clearTimeout(timer);
   timer = window.setTimeout(() => {
     timer = null;
@@ -133,7 +127,7 @@ export async function flushStoredGraphWrite() {
     cancelScheduledStoredGraphWrite();
     return;
   }
-  if (["invalid", "conflict", "unavailable"].includes(snapshot.status)) return;
+  if (isWriteBlocked()) return;
   if (timer !== null) window.clearTimeout(timer);
   timer = null;
   if (

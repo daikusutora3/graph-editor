@@ -4,10 +4,12 @@ import { ChevronDown } from "lucide-react";
 import type { InputHTMLAttributes, SelectHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
-import { controlIcon } from "./control-styles";
+import { controlIcon, fieldSurface } from "./control-styles";
 
-const fieldBase =
-  "ge-focus h-8 w-full min-w-0 rounded-lg touch:h-11 border border-[var(--control-border)] bg-[var(--fill)] px-2.5 text-control font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]";
+const fieldBase = cn(
+  "ge-focus h-8 w-full min-w-0 rounded-lg px-2.5 text-control font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)] touch:h-11",
+  fieldSurface,
+);
 
 export function Select({
   children,
@@ -38,8 +40,4 @@ export function TextInput({
   ...props
 }: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cn(fieldBase, className)} />;
-}
-
-export function fieldClassName(extra?: string) {
-  return cn(fieldBase, extra);
 }

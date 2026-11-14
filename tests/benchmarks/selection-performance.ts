@@ -63,10 +63,8 @@ measure(
         createElement(SelectionActionBar, {
           graph,
           selection,
-          chrome: { layout: "desktop" },
-          onSetNodeColor: noOp,
-          onSetEdgeColor: noOp,
-          onSetSelectionColors: noOp,
+          layout: "desktop",
+          onSetSelectionColor: noOp,
           onReverseEdges: noOp,
           onResetEdgeCurve: noOp,
           onEditSelectedNode: noOp,

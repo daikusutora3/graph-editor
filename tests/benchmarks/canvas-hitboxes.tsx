@@ -17,8 +17,8 @@ import {
   readEdgeLabelHitboxes,
 } from "../../features/graph-editor/adapters/cytoscape/graph-canvas-hitboxes";
 import {
-  reconcileEdgeLabelHitboxes,
-  reconcileNodeHitboxes,
+  createEdgeLabelHitboxSnapshot,
+  createNodeHitboxSnapshot,
 } from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
 import {
   graphModelToCytoscapeElements,
@@ -265,8 +265,10 @@ export async function runCanvasHitboxReadBenchmark(
   await new Promise<void>((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
   );
-  let currentNodes = readNodeHitboxes(cy, graph);
-  let currentEdges = readEdgeLabelHitboxes(cy, graph);
+  const nodeSnapshot = createNodeHitboxSnapshot();
+  const edgeSnapshot = createEdgeLabelHitboxSnapshot();
+  let currentNodes = nodeSnapshot.reset(readNodeHitboxes(cy, graph));
+  let currentEdges = edgeSnapshot.reset(readEdgeLabelHitboxes(cy, graph));
   const reads: number[] = [];
   const reconciliations: number[] = [];
   const preservedNodes: number[] = [];
@@ -278,8 +280,8 @@ export async function runCanvasHitboxReadBenchmark(
     const nextEdges = readEdgeLabelHitboxes(cy, graph);
     const readTime = performance.now() - start;
     const reconcileStart = performance.now();
-    const reconciledNodes = reconcileNodeHitboxes(currentNodes, nextNodes);
-    const reconciledEdges = reconcileEdgeLabelHitboxes(currentEdges, nextEdges);
+    const reconciledNodes = nodeSnapshot.reset(nextNodes);
+    const reconciledEdges = edgeSnapshot.reset(nextEdges);
     const reconcileTime = performance.now() - reconcileStart;
     if (index >= 5) {
       reads.push(readTime);

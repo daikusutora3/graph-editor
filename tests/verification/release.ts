@@ -17,7 +17,6 @@ import {
   APP_NAME,
   APP_TITLE,
   SITE_URL,
-  SOCIAL_IMAGE,
   appLanguageAlternates,
   appLocaleMetadata,
   appLocalePaths,
@@ -163,8 +162,13 @@ expect(
   "out/index.html should keep Twitter description aligned with public metadata",
 );
 expect(
-  indexHtml.includes(SOCIAL_IMAGE),
-  "out/index.html should include the social image",
+  indexHtml.includes(
+    `property="og:image" content="${SITE_URL}${appLocaleMetadata.ja.ogImage}"`,
+  ) &&
+    indexHtml.includes(
+      `name="twitter:image" content="${SITE_URL}${appLocaleMetadata.ja.ogImage}"`,
+    ),
+  "out/index.html should include the localized social image in both metadata tags",
 );
 expect(
   /<link rel="icon" href="\/favicon\.ico"[^>]*type="image\/x-icon"/.test(

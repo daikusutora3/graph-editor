@@ -4,7 +4,7 @@ import { createEdgeRoutingCacheKey } from "../../features/graph-editor/core/layo
 import {
   createManualLayoutCommand,
   createManualLayoutTask,
-  layoutDefinitions,
+  layoutKinds,
   manualLayoutDisabledReasonCode,
 } from "../../features/graph-editor/layouts";
 import {
@@ -14,16 +14,16 @@ import {
 import { createVerification } from "./harness";
 
 const { expect, fail, finish } = createVerification("Layout");
-const kinds = layoutDefinitions.map((definition) => definition.kind);
+const kinds = layoutKinds;
 const kindSet = new Set(kinds);
 
 if (kindSet.size !== kinds.length) {
   fail("layout registry contains duplicate kinds");
 }
 
-for (const definition of layoutDefinitions) {
-  manualLayoutDisabledReasonCode(definition.kind, createEmptyGraphModel());
-  createManualLayoutCommand(createEmptyGraphModel(), definition.kind);
+for (const kind of layoutKinds) {
+  manualLayoutDisabledReasonCode(kind, createEmptyGraphModel());
+  createManualLayoutCommand(createEmptyGraphModel(), kind);
 }
 
 const undirectedPath = graphFixture({
@@ -334,7 +334,7 @@ expect(
   "already separated maximum-length pills retain the original positions",
 );
 
-finish(`Layout verification passed (${layoutDefinitions.length} kinds)`);
+finish(`Layout verification passed (${layoutKinds.length} kinds)`);
 
 function graphFixture({
   directed,

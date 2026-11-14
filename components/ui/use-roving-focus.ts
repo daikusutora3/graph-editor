@@ -1,9 +1,6 @@
 import type { KeyboardEvent } from "react";
 
-export function rovingFocusKeyDown(
-  event: KeyboardEvent<HTMLElement>,
-  itemSelector = "[role='radio']",
-) {
+export function rovingFocusKeyDown(event: KeyboardEvent<HTMLElement>) {
   const keys = [
     "ArrowLeft",
     "ArrowRight",
@@ -18,7 +15,7 @@ export function rovingFocusKeyDown(
   }
 
   const items = [
-    ...event.currentTarget.querySelectorAll<HTMLElement>(itemSelector),
+    ...event.currentTarget.querySelectorAll<HTMLElement>("[role='radio']"),
   ].filter((item) => !item.hasAttribute("disabled"));
 
   if (items.length === 0) {

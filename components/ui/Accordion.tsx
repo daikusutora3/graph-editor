@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Disclosure } from "./Disclosure";
 import { panelSurface } from "./styles";
@@ -9,20 +9,15 @@ type AccordionItem = {
   content: ReactNode;
 };
 
-type AccordionProps = Omit<ComponentPropsWithoutRef<"div">, "children"> & {
+type AccordionProps = {
   name: string;
   items: readonly AccordionItem[];
+  className?: string;
 };
 
-export function Accordion({
-  name,
-  items,
-  className,
-  ...props
-}: AccordionProps) {
+export function Accordion({ name, items, className }: AccordionProps) {
   return (
     <div
-      {...props}
       className={cn(
         panelSurface,
         "divide-y divide-[var(--line)] overflow-hidden",

@@ -1,4 +1,5 @@
 import type { EdgeRoutingOverride } from "./model";
+import { clamp } from "./graph-utils";
 
 export const MAX_BOW_PX = 180;
 const MIN_BOW_T = 0.05;
@@ -49,10 +50,6 @@ export function normalizeEdgeRoutingOverride(
 
 function finiteNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

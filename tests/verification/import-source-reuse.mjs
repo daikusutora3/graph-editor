@@ -59,44 +59,37 @@ const source = createImportSource(readOriginalLines(partialInput));
 void source.rows;
 lineReads = 0;
 tokenReads = 0;
-const prepared = importStructuredEdgeList(partialInput, partialOptions, source);
+const prepared = importStructuredEdgeList(source, partialOptions);
 expect(
   lineReads === 0 && tokenReads === 0,
   "a prepared source requires no second line/token scan",
 );
 expect(
-  JSON.stringify(prepared) ===
-    JSON.stringify(importStructuredEdgeList(partialInput, partialOptions)) &&
-    JSON.stringify(prepared.warnings) ===
-      JSON.stringify([
-        { code: "extra-edge-lines", count: 1 },
-        {
-          code: "expected-integers",
-          line: 4,
-          expected: 3,
-          shape: "u v w",
-          got: 2,
-        },
-        {
-          code: "node-out-of-range",
-          line: 5,
-          source: "0",
-          target: "4",
-          min: 0,
-          max: 2,
-        },
-      ]) &&
-    prepared.model.edges.length === 1,
+  JSON.stringify(prepared.warnings) ===
+    JSON.stringify([
+      { code: "extra-edge-lines", count: 1 },
+      {
+        code: "expected-integers",
+        line: 4,
+        expected: 3,
+        shape: "u v w",
+        got: 2,
+      },
+      {
+        code: "node-out-of-range",
+        line: 5,
+        source: "0",
+        target: "4",
+        min: 0,
+        max: 2,
+      },
+    ]) && prepared.model.edges.length === 1,
   "prepared parsing retains partial-import diagnostics and physical line numbers",
 );
 
 const invalidWeightInput = `2 1\n0 1 3\n0 1 ${"界".repeat(257)}`;
 const invalidSource = createImportSource(readOriginalLines(invalidWeightInput));
-const rejected = importStructuredEdgeList(
-  invalidWeightInput,
-  partialOptions,
-  invalidSource,
-);
+const rejected = importStructuredEdgeList(invalidSource, partialOptions);
 expect(
   rejected.model.nodes.length === 0 &&
     rejected.warnings[0]?.code === "text-too-long" &&
@@ -104,8 +97,9 @@ expect(
   "an extra supplied row still rejects overlong weight text before partial import",
 );
 expect(
-  importStructuredEdgeList("3,1\n0 1", { indexBase: 0 }).warnings[0]?.code ===
-    "expected-header",
+  importStructuredEdgeList(createImportSource(readOriginalLines("3,1\n0 1")), {
+    indexBase: 0,
+  }).warnings[0]?.code === "expected-header",
   "reusing general token rows does not change the structured header syntax",
 );
 finish();

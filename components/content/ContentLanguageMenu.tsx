@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { actionStyles } from "@/components/ui/styles";
 import type { AppLocale } from "@/lib/site-metadata";
 import { cn } from "@/lib/utils";
+import { menuStyle } from "@/components/ui/surfaces";
 
 export function ContentLanguageMenu({
   label,
@@ -53,26 +54,30 @@ export function ContentLanguageMenu({
       document.removeEventListener("keydown", escape);
     };
   }, []);
+  const currentName = options.find((option) => option.locale === current)?.name;
   return (
     <nav aria-label={label} className="shrink-0">
       <details ref={ref} className="group relative">
         <summary
           className={cn(
-            actionStyles(),
+            actionStyles,
             "min-w-11 cursor-pointer list-none justify-center gap-1.5 text-xs [&::-webkit-details-marker]:hidden",
           )}
-          aria-label={`${label}: ${options.find((option) => option.locale === current)?.name}`}
+          aria-label={`${label}: ${currentName}`}
         >
           <Languages className="size-4 shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">
-            {options.find((option) => option.locale === current)?.name}
-          </span>
+          <span className="hidden sm:inline">{currentName}</span>
           <ChevronDown
             className="size-3 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none max-[319px]:hidden"
             aria-hidden="true"
           />
         </summary>
-        <div className="absolute top-full right-0 z-30 mt-1 w-40 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] p-1">
+        <div
+          className={cn(
+            menuStyle.surface,
+            "ge-pop absolute top-full right-0 z-30 mt-1 flex w-44 flex-col gap-0.5",
+          )}
+        >
           {options.map((option) => (
             <a
               key={option.locale}
@@ -81,7 +86,7 @@ export function ContentLanguageMenu({
               lang={option.locale}
               aria-current={option.locale === current ? "page" : undefined}
               className={cn(
-                actionStyles(),
+                actionStyles,
                 "w-full justify-between text-sm aria-[current=page]:bg-[var(--fill)] aria-[current=page]:font-semibold",
               )}
             >

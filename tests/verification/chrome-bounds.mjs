@@ -27,11 +27,12 @@ const feature = (path) =>
 mock.module(feature("i18n/I18nProvider.tsx"), () => ({
   useI18n: () => ({ locale: "en" }),
 }));
-const {
-  measureEditorChromeInsets,
-  readEditorChromeInsets,
-  useEditorChromeBounds,
-} = await import(feature("ui/chrome/editor-chrome-bounds.ts"));
+const { useEditorChromeBounds } = await import(
+  feature("ui/chrome/editor-chrome-bounds.ts")
+);
+const { measureEditorChromeInsets, readEditorChromeInsets } = await import(
+  feature("adapters/browser/editor-chrome-insets.ts")
+);
 const { NodeCreationAction } = await import(
   feature("ui/chrome/NodeCreationAction.tsx")
 );
@@ -59,7 +60,7 @@ const root = {
       ? top
       : selector === "[data-editor-chrome-bottom]"
         ? bottom
-        : selector === "[data-node-creation-action]"
+        : selector === "[data-node-creation-action][data-visible]"
           ? nodeAction
           : null,
   style: {
@@ -148,7 +149,7 @@ const insets = readEditorChromeInsets(canvas);
 const position = findNodeCreationPosition(
   createEmptyGraphModel(),
   { width: 320, height: 844, zoom: 1, pan: { x: 0, y: 0 } },
-  { layout: "mobile" },
+  "mobile",
   { nodeSize: 72, newNodeWidth: 72, actionHeight: 96, viewportInsets: insets },
 );
 assert(position);
@@ -161,7 +162,7 @@ assert.equal(
   findNodeCreationPosition(
     createEmptyGraphModel(),
     { width: 320, height: 390, zoom: 1, pan: { x: 0, y: 0 } },
-    { layout: "mobile" },
+    "mobile",
     {
       nodeSize: 72,
       newNodeWidth: 72,

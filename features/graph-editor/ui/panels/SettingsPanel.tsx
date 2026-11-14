@@ -4,11 +4,9 @@ import { ArrowLeftRight, Trash2 } from "lucide-react";
 import { useId, useLayoutEffect, useRef } from "react";
 
 import type { GraphModel, GraphSettings } from "../../core/graph/model";
-import { useAtomValue } from "jotai";
 
 import { useI18n } from "../../i18n/I18nProvider";
 import { clearConfirmationCopy } from "../../i18n/clear-confirmation-copy";
-import { graphIsEmptyAtom } from "../../shell/state/graph-atoms";
 import type { Locale } from "../../i18n/locale";
 import {
   ActionRow,
@@ -20,6 +18,8 @@ import {
   OptionToggle,
   PanelActions,
 } from "@/components/ui/controls";
+import { surface } from "@/components/ui/surfaces";
+import { cn } from "@/lib/utils";
 
 export function SettingsPanel({
   clearArmed,
@@ -40,11 +40,11 @@ export function SettingsPanel({
 }) {
   const { locale, localeOptions, messages, setLocale } = useI18n();
   const { settings } = graph;
+  const isGraphEmpty = graph.nodes.length === 0 && graph.edges.length === 0;
   const segmentSize = mobile ? "md" : "sm";
   const canReverseAll =
     settings.directed &&
     graph.edges.some((edge) => edge.source !== edge.target);
-  const isGraphEmpty = useAtomValue(graphIsEmptyAtom);
 
   return (
     <>
@@ -197,7 +197,7 @@ export function ClearGraphControl({
           role="group"
           aria-labelledby={`${id}-title`}
           aria-describedby={`${id}-description`}
-          className="flex flex-col gap-3 rounded-lg border border-[var(--line)] bg-[var(--bg)] p-3"
+          className={cn(surface.inset, "flex flex-col gap-3 p-3")}
         >
           <div className="flex flex-col gap-1">
             <h3

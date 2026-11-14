@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from "jotai";
-import { Copy, RotateCcw, Search, X } from "lucide-react";
+import { ChevronRight, Copy, RotateCcw, Search, X } from "lucide-react";
 import {
   type FocusEvent,
   memo,
@@ -21,7 +21,6 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { messagesByLocale } from "../../i18n/messages";
 import { exportEdgeList } from "../../io/export-edge-list";
 import {
-  createConfiguredSampleGraph,
   getSampleParameters,
   normalizeSampleParameterInput,
   normalizeSampleParameters,
@@ -34,21 +33,27 @@ import {
   type SampleGraphItem,
   type SampleGraphGroupKey,
 } from "../../samples/registry";
-import type { SampleGraphKind } from "../../samples/sample-graphs";
+import {
+  createParameterizedSampleGraph,
+  type SampleGraphKind,
+} from "../../samples/sample-graphs";
 import { graphSettingsAtom } from "../../shell/state/graph-atoms";
 import { useApplyGraphModel } from "../../workflows/starter/use-apply-graph-model";
 import {
   Button,
   ControlRow,
-  SectionLabel,
+  IconButton,
   Select,
   TextInput,
+  fieldLabel,
+  fieldSurface,
   focusRing,
-  pressFeedback,
 } from "@/components/ui/controls";
 import { SampleGraphPreview } from "./SampleGraphPreview";
 import { SAMPLE_GALLERY_GRID_CLASS } from "./sample-gallery-layout";
 import { focusAfterContentSwitch } from "../primitives/focus-after-content-switch";
+import { surface } from "@/components/ui/surfaces";
+import { cn } from "@/lib/utils";
 
 type SampleValues = Record<string, string>;
 
@@ -109,15 +114,7 @@ export function SampleGalleryPane({
   };
   const applyModel = useCallback(
     (model: GraphModel) => {
-      if (
-        applyGraphModel(model, {
-          clearEdgeDraft: true,
-          clearSelection: true,
-          fitAfterUpdate: true,
-          selectMode: true,
-        })
-      )
-        onSampleApplied();
+      if (applyGraphModel(model)) onSampleApplied();
     },
     [applyGraphModel, onSampleApplied],
   );
@@ -130,16 +127,16 @@ export function SampleGalleryPane({
 
   return (
     <div className="ge-fade-in flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-col gap-2 px-4 pt-3.5 pb-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <label
+      <div className="@container/sample-filters shrink-0 px-4 pt-3.5 pb-3">
+        <div className="grid min-w-0 gap-2 @min-[30rem]/sample-filters:grid-cols-[minmax(0,1fr)_minmax(0,14rem)]">
+          <ControlRow
             htmlFor={searchId}
-            className="text-control font-medium text-[var(--muted)]"
+            label={messages.samples.searchAria}
+            layout="stacked"
           >
-            {messages.samples.searchAria}
-          </label>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--control-border)] bg-[var(--fill)] px-3 text-[var(--muted)] focus-within:border-[var(--control-accent)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)] touch:h-11">
+            <div
+              className={`flex h-8 min-w-0 items-center gap-2 rounded-lg pr-1 pl-2.5 text-[var(--muted)] focus-within:border-[var(--control-accent)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)] touch:h-11 ${fieldSurface}`}
+            >
               <Search className="size-3.5 shrink-0" aria-hidden="true" />
               <input
                 ref={searchRef}
@@ -151,56 +148,64 @@ export function SampleGalleryPane({
                 onChange={(event) => setSampleQuery(event.target.value)}
                 className="h-full min-w-0 flex-1 bg-transparent text-control font-semibold text-[var(--text)] outline-none [&::-webkit-search-cancel-button]:appearance-none"
               />
+              <output
+                className="shrink-0 px-1 font-mono text-meta font-semibold text-[var(--muted)] tabular-nums"
+                aria-live="polite"
+              >
+                {filteredSampleCount}/{sampleGraphCount}
+              </output>
               {sampleQuery ? (
-                <button
-                  type="button"
-                  aria-label={messages.samples.clearSearch}
+                <IconButton
+                  label={messages.samples.clearSearch}
+                  size="xs"
+                  className="text-[var(--muted)]"
                   onClick={clearSearch}
-                  className={`-mr-2 grid size-8 shrink-0 place-items-center rounded-md touch:size-11 ${focusRing} ${pressFeedback}`}
                 >
                   <X className="size-3.5" aria-hidden="true" />
-                </button>
+                </IconButton>
               ) : null}
             </div>
-            <output
-              className="font-mono text-xs font-semibold text-[var(--muted)] tabular-nums"
-              aria-live="polite"
-            >
-              {filteredSampleCount}/{sampleGraphCount}
-            </output>
-          </div>
-        </div>
-        <ControlRow htmlFor={categoryId} label={messages.samples.category}>
-          <Select
-            id={categoryId}
-            value={category}
-            onChange={(event) =>
-              setCategory(event.target.value as SampleGraphGroupKey | "all")
-            }
+          </ControlRow>
+          <ControlRow
+            htmlFor={categoryId}
+            label={messages.samples.category}
+            layout="stacked"
           >
-            <option value="all">{messages.samples.allCategories}</option>
-            {sampleGraphGroups.map((group) => (
-              <option key={group.key} value={group.key}>
-                {messages.samples.group[group.key].label}
-              </option>
-            ))}
-          </Select>
-        </ControlRow>
+            <Select
+              id={categoryId}
+              value={category}
+              onChange={(event) =>
+                setCategory(event.target.value as SampleGraphGroupKey | "all")
+              }
+            >
+              <option value="all">{messages.samples.allCategories}</option>
+              {sampleGraphGroups.map((group) => (
+                <option key={group.key} value={group.key}>
+                  {messages.samples.group[group.key].label}
+                </option>
+              ))}
+            </Select>
+          </ControlRow>
+        </div>
       </div>
       <div
         data-sample-scroll
         tabIndex={0}
-        className="ge-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pb-4"
+        className="ge-scrollbar ge-focus ge-focus-inset flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pb-4"
       >
-        <details className="shrink-0 text-xs text-[var(--muted)]">
+        <details className="group/generation shrink-0 text-xs text-[var(--muted)]">
           <summary
-            className={`flex min-h-8 cursor-pointer items-center rounded-md font-semibold touch:min-h-11 ${focusRing}`}
+            className={`flex min-h-8 w-fit cursor-pointer list-none items-center gap-1 rounded-md pr-1.5 font-semibold transition-colors hover:text-[var(--text)] touch:min-h-11 [&::-webkit-details-marker]:hidden ${focusRing}`}
           >
+            <ChevronRight
+              className="size-3.5 shrink-0 transition-transform group-open/generation:rotate-90 motion-reduce:transition-none"
+              aria-hidden="true"
+            />
             {messages.samples.generationSettings}
           </summary>
-          <div className="flex flex-wrap gap-2 pt-1 pb-2">
-            <label className="min-w-0 flex-[1_1_9rem]">
-              <SectionLabel>{messages.settings.direction}</SectionLabel>
+          <div className="flex flex-wrap gap-2 pt-2 pb-2">
+            <label className="flex min-w-0 flex-[1_1_9rem] flex-col gap-1">
+              <span className={fieldLabel}>{messages.settings.direction}</span>
               <Select
                 aria-label={messages.settings.direction}
                 value={String(settings.directed)}
@@ -215,8 +220,8 @@ export function SampleGalleryPane({
                 <option value="true">{messages.settings.directed}</option>
               </Select>
             </label>
-            <label className="min-w-0 flex-[1_1_9rem]">
-              <SectionLabel>{messages.settings.weight}</SectionLabel>
+            <label className="flex min-w-0 flex-[1_1_9rem] flex-col gap-1">
+              <span className={fieldLabel}>{messages.settings.weight}</span>
               <Select
                 aria-label={messages.settings.weight}
                 value={String(settings.weighted)}
@@ -232,8 +237,8 @@ export function SampleGalleryPane({
                 <option value="true">{messages.settings.weighted}</option>
               </Select>
             </label>
-            <label className="min-w-0 flex-[1_1_9rem]">
-              <SectionLabel>{messages.settings.indexBase}</SectionLabel>
+            <label className="flex min-w-0 flex-[1_1_9rem] flex-col gap-1">
+              <span className={fieldLabel}>{messages.settings.indexBase}</span>
               <Select
                 aria-label={messages.settings.indexBase}
                 value={settings.indexBase}
@@ -255,15 +260,15 @@ export function SampleGalleryPane({
           filteredSampleGroups.map((group) => (
             <section key={group.key} className="flex shrink-0 flex-col gap-2.5">
               <div className="flex items-start justify-between gap-3 px-0.5">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <SectionLabel>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <h3 className="text-control font-semibold text-[var(--text)]">
                     {messages.samples.group[group.key].label}
-                  </SectionLabel>
+                  </h3>
                   <div className="text-xs leading-snug text-[var(--muted)]">
                     {messages.samples.group[group.key].note}
                   </div>
                 </div>
-                <div className="font-mono text-meta font-semibold text-[var(--muted)] tabular-nums">
+                <div className="mt-0.5 grid h-5 min-w-5 place-items-center rounded-md bg-[var(--fill)] px-1.5 font-mono text-meta font-semibold text-[var(--muted)] tabular-nums">
                   {group.samples.length}
                 </div>
               </div>
@@ -282,7 +287,12 @@ export function SampleGalleryPane({
             </section>
           ))
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] px-5 py-8 text-center">
+          <div
+            className={cn(
+              surface.card,
+              "flex flex-col items-center gap-3 px-5 py-8 text-center",
+            )}
+          >
             <div className="text-sm font-bold text-[var(--text)]">
               {messages.samples.empty}
             </div>
@@ -354,7 +364,7 @@ const SampleCard = memo(function SampleCard({
     )
     .map(
       (parameter) =>
-        `${messages.samples.parameterLabels[parameter.labelKey]} = ${normalized[parameter.key]}`,
+        `${messages.samples.parameterLabels[parameter.key]} = ${normalized[parameter.key]}`,
     );
   const previewRef = useRef<HTMLSpanElement | null>(null);
   const [visible, setVisible] = useState(false);
@@ -389,7 +399,7 @@ const SampleCard = memo(function SampleCard({
   const model = useMemo(
     () =>
       visible
-        ? createConfiguredSampleGraph(sample.kind, deferredValues, settings)
+        ? createParameterizedSampleGraph(sample.kind, deferredValues, settings)
         : null,
     [visible, sample.kind, deferredValues, settings],
   );
@@ -403,7 +413,7 @@ const SampleCard = memo(function SampleCard({
     return () => window.clearTimeout(timeout);
   }, [copyStatus]);
   const currentModel = () =>
-    createConfiguredSampleGraph(sample.kind, normalized, settings);
+    createParameterizedSampleGraph(sample.kind, normalized, settings);
   const copyHelp = model
     ? messages.samples.copyInputHelp(
         model.settings.indexBase,
@@ -424,7 +434,10 @@ const SampleCard = memo(function SampleCard({
       data-sample-kind={sample.kind}
       aria-label={title}
       noValidate
-      className="@container/sample-card flex flex-col overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)]"
+      className={cn(
+        surface.card,
+        "@container/sample-card flex flex-col overflow-hidden",
+      )}
       onCompositionStart={() => {
         isComposingRef.current = true;
       }}
@@ -489,7 +502,7 @@ const SampleCard = memo(function SampleCard({
               <CardNumberInput
                 key={parameter.key}
                 parameter={parameter}
-                label={messages.samples.parameterLabels[parameter.labelKey]}
+                label={messages.samples.parameterLabels[parameter.key]}
                 value={rawValues[parameter.key] ?? ""}
                 noticeId={noticeId}
                 onChange={(value) =>
@@ -612,7 +625,7 @@ function CardNumberInput({
 }) {
   return (
     <label className="flex min-w-[80px] flex-[1_1_80px] flex-col gap-1">
-      <SectionLabel>{label}</SectionLabel>
+      <span className={fieldLabel}>{label}</span>
       <TextInput
         type="text"
         inputMode="numeric"
@@ -620,7 +633,7 @@ function CardNumberInput({
         aria-label={label}
         aria-describedby={noticeId}
         aria-invalid={!/^\d+$/.test(normalizeSampleParameterInput(value))}
-        title={`${parameter.min}–${parameter.max}${parameter.step && parameter.step > 1 ? ` (step ${parameter.step})` : ""}`}
+        title={`${parameter.min}–${parameter.max}${parameter.step > 1 ? ` (step ${parameter.step})` : ""}`}
         onFocus={selectInputValueOnFocus}
         onChange={(event) => onChange(event.target.value)}
         className="font-mono tabular-nums"

@@ -15,8 +15,7 @@ import {
   graphHasEdgesAtom,
   graphHasNodesAtom,
 } from "../../shell/state/graph-atoms";
-import { HINT_STORAGE_PREFIX, HINTS_RESET_EVENT } from "./hint-storage";
-
+const HINT_STORAGE_PREFIX = "graph-editor-hint-learned:";
 const HINT_IDLE_MS = 2500;
 
 type HintId =
@@ -160,22 +159,11 @@ function useStuckHint({
   const armedRef = useRef(false);
 
   useEffect(() => {
-    const read = () => {
-      try {
-        setLearned(window.localStorage.getItem(storageKey) === "1");
-      } catch {
-        setLearned(false);
-      }
-    };
-    const reset = () => {
-      armedRef.current = false;
-      read();
-    };
-
-    read();
-    window.addEventListener(HINTS_RESET_EVENT, reset);
-
-    return () => window.removeEventListener(HINTS_RESET_EVENT, reset);
+    try {
+      setLearned(window.localStorage.getItem(storageKey) === "1");
+    } catch {
+      setLearned(false);
+    }
   }, [storageKey]);
 
   useEffect(() => {
@@ -244,7 +232,7 @@ function HintPill({
           "ge-pop inline-flex max-w-full items-center gap-2 rounded-full px-3 text-xs font-semibold",
           tone === "hint"
             ? "min-h-[30px] bg-[var(--primary)] py-1.5 text-center leading-relaxed text-[var(--primary-text)]"
-            : "ge-panel min-h-9 py-2 text-center leading-relaxed text-[var(--text)] backdrop-blur-[12px]",
+            : "ge-panel min-h-9 py-2 text-center leading-relaxed text-[var(--text)]",
         )}
       >
         <span className="whitespace-normal">{text}</span>

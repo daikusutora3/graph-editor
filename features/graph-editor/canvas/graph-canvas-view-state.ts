@@ -1,17 +1,13 @@
 import type { GraphModel, NodeId } from "../core/graph/model";
 import type { EdgeDraft, SelectionState } from "../shell/state/editor-state";
+import type { EditFeedback } from "./graph-canvas-edit-feedback";
 
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { RenderedPoint } from "./graph-canvas-types";
 import {
-  getEdgeCandidateError,
+  isEdgeCandidateBlocked,
   trimRenderedSegment,
 } from "./graph-canvas-edge-draft";
-
-type EditFeedback = {
-  id: number;
-  nodeIds: NodeId[];
-};
 
 type GraphCanvasViewStateOptions = {
   edgeCursor: RenderedPoint | null;
@@ -34,28 +30,28 @@ export function getGraphCanvasViewState({
   nodeHitboxes,
   selection,
 }: GraphCanvasViewStateOptions) {
-  const sourceHitbox = edgeDraft.sourceNodeId
-    ? nodeHitboxes.find((node) => node.id === edgeDraft.sourceNodeId)
+  const sourceHitbox = edgeDraft
+    ? nodeHitboxes.find((node) => node.id === edgeDraft)
     : null;
-  const edgeCandidateError =
-    edgeDraft.sourceNodeId && edgeHoverNodeId
-      ? getEdgeCandidateError(graph, edgeDraft.sourceNodeId, edgeHoverNodeId)
-      : null;
+  const edgeCandidateBlocked = Boolean(
+    edgeDraft &&
+    edgeHoverNodeId &&
+    isEdgeCandidateBlocked(graph, edgeDraft, edgeHoverNodeId),
+  );
   const feedbackNodeHitboxes = editFeedback
     ? nodeHitboxes.filter((node) => editFeedback.nodeIds.includes(node.id))
     : [];
   const edgeDraftSegment =
     sourceHitbox && edgeCursor
-      ? trimRenderedSegment(sourceHitbox, edgeCursor, 28, 0)
+      ? trimRenderedSegment(sourceHitbox, edgeCursor, 28)
       : null;
   const hasSelection =
     selection.nodeIds.length > 0 || selection.edgeIds.length > 0;
 
   return {
-    edgeCandidateError,
+    edgeCandidateBlocked,
     edgeDraftSegment,
     feedbackNodeHitboxes,
-    hasSelection,
     showSelectionActionBar: !inlineEditActive && hasSelection,
   };
 }

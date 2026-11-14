@@ -6,14 +6,12 @@ import { cn } from "@/lib/utils";
 
 export function Kbd({
   children,
-  className,
   size = "sm",
   tone = "neutral",
 }: {
   children: ReactNode;
-  className?: string;
   size?: "sm" | "md";
-  tone?: "neutral" | "danger" | "inherit";
+  tone?: "neutral" | "danger";
 }) {
   return (
     <kbd
@@ -25,8 +23,6 @@ export function Kbd({
           : "h-7 min-w-7 px-1.5 text-sm",
         tone === "neutral" && "bg-[var(--fill)] text-[var(--muted)]",
         tone === "danger" && "bg-[var(--danger-fill)] text-[var(--danger)]",
-        tone === "inherit" && "bg-[var(--fill)] text-inherit",
-        className,
       )}
     >
       {children}
@@ -34,26 +30,13 @@ export function Kbd({
   );
 }
 
-export function SectionLabel({
-  children,
-  className,
-  trailing,
-}: {
-  children: ReactNode;
-  className?: string;
-  trailing?: ReactNode;
-}) {
+export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className={cn("flex items-center justify-between gap-3", className)}>
+    <span className="flex items-center justify-between gap-3">
       <span className="min-w-0 text-meta font-medium [overflow-wrap:anywhere] text-[var(--muted)]">
         {children}
       </span>
-      {trailing ? (
-        <span className="text-xs font-medium text-[var(--muted)]">
-          {trailing}
-        </span>
-      ) : null}
-    </div>
+    </span>
   );
 }
 
@@ -66,21 +49,13 @@ export function Hairline({ className }: { className?: string }) {
   );
 }
 
-export function Notice({
-  children,
-  tone = "warning",
-}: {
-  children: ReactNode;
-  tone?: "warning" | "danger" | "success";
-}) {
+export function Notice({ children }: { children: ReactNode }) {
   return (
     <div
       role="status"
       className={cn(
         "rounded-lg px-3 py-2 text-xs leading-snug font-semibold",
-        tone === "warning" && "bg-[var(--warning)] text-[var(--warning-text)]",
-        tone === "success" && "bg-[var(--success)] text-[var(--success-text)]",
-        tone === "danger" && "bg-[var(--danger-fill)] text-[var(--danger)]",
+        "bg-[var(--warning)] text-[var(--warning-text)]",
       )}
     >
       {children}

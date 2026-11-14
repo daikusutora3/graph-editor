@@ -31,11 +31,6 @@ try {
               "export function parseStoredGraph(raw: string | null): GraphModel | null {",
               "stored",
             ],
-            [
-              /graph-starter-state\.ts$/,
-              "function makeStarterParseKey(inputText: string, options: ImportOptions) {",
-              "key",
-            ],
           ]) {
             builder.onLoad({ filter }, (args) => {
               const source = readFileSync(args.path, "utf8");

@@ -16,7 +16,6 @@ import {
   importLimitFailure,
   MAX_IMPORT_INPUT_CHARS,
   type ImportOptions,
-  type ParsedLine,
   readLines,
 } from "./import-utils";
 import {
@@ -60,7 +59,7 @@ export function importGraphInput(
 
 function evaluateGraphInputInternal(
   input: string,
-  options: ImportOptions = {},
+  options: ImportOptions,
 ): ImportEvaluation {
   const jsonInput =
     options.format === "json" ||
@@ -88,26 +87,25 @@ function evaluateGraphInputInternal(
     };
   }
 
-  const lines = readLines(input);
+  const source = createImportSource(readLines(input));
 
-  if (lines.length === 0) {
+  if (source.lines.length === 0) {
     const result = importFailure({ code: "empty-input" }, options);
     return {
-      analysis: analyzeGraphSource(createImportSource(lines), options),
+      analysis: analyzeGraphSource(source, options),
       result,
     };
   }
 
   const requestedFormat = options.format ?? "auto";
   if (requestedFormat !== "auto") {
-    const result = parseRequestedFormat(input, lines, requestedFormat, options);
+    const result = parseRequestedFormat(source, requestedFormat, options);
     return {
       analysis: analysisForRequestedFormat(requestedFormat, result),
       result,
     };
   }
 
-  const source = createImportSource(lines);
   const analysis = analyzeGraphSource(source, options);
   const recommendedFormat = analysis.recommendedFormat;
   if (!recommendedFormat) {
@@ -122,11 +120,9 @@ function evaluateGraphInputInternal(
   }
 
   const detectedResult = parseRequestedFormat(
-    input,
-    lines,
+    source,
     recommendedFormat,
     options,
-    source,
   );
   const result =
     analysis.status === "ambiguous"
@@ -137,87 +133,50 @@ function evaluateGraphInputInternal(
 }
 
 function parseRequestedFormat(
-  input: string,
-  lines: ParsedLine[],
+  source: ImportSource,
   requestedFormat: ImportFormatKind,
   options: ImportOptions,
-  source?: ImportSource,
 ): ImportResult {
   const formatOptions = { ...options, format: requestedFormat };
-
-  if (requestedFormat === "json") {
-    return importGraphJson(parseGraphModelJson(input), formatOptions);
-  }
-
-  if (requestedFormat === "adjacency-matrix") {
-    return (
-      tryImportAdjacencyMatrix(lines, formatOptions, source) ??
-      importFailure(
-        { code: "invalid-format", formatKind: "adjacency-matrix" },
-        formatOptions,
-      )
-    );
-  }
-
-  if (requestedFormat === "adjacency-list") {
-    return (
-      tryImportAdjacencyList(lines, formatOptions, source) ??
-      importFailure(
-        { code: "invalid-format", formatKind: "adjacency-list" },
-        formatOptions,
-      )
-    );
-  }
+  const { lines } = source;
 
   if (requestedFormat === "contest-edge-list") {
-    const preparedSource = source ?? createImportSource(lines);
     return importStructuredEdgeList(
-      input,
-      detectStructuredEdgeListOptions(preparedSource, formatOptions),
-      preparedSource,
+      source,
+      detectStructuredEdgeListOptions(source, formatOptions),
     );
   }
 
-  if (requestedFormat === "edge-pairs") {
-    return (
-      tryImportLooseEdgeList(lines, formatOptions, source) ??
-      importFailure(
-        { code: "invalid-format", formatKind: "edge-pairs" },
-        formatOptions,
-      )
-    );
+  let result: ImportResult | null;
+  switch (requestedFormat) {
+    case "adjacency-matrix":
+      result = tryImportAdjacencyMatrix(source, formatOptions);
+      break;
+    case "adjacency-list":
+      result = tryImportAdjacencyList(source, formatOptions);
+      break;
+    case "edge-pairs":
+      result = tryImportLooseEdgeList(source, formatOptions);
+      break;
+    case "tree-edge-list":
+      result = tryImportTreeEdgeList(lines, formatOptions);
+      break;
+    case "parent-list":
+      result = tryImportParentList(lines, formatOptions);
+      break;
+    case "weighted-parent-list":
+      result = tryImportWeightedParentList(lines, formatOptions);
+      break;
+    default:
+      return importFailure({ code: "unsupported-format" }, formatOptions);
   }
-
-  if (requestedFormat === "tree-edge-list") {
-    return (
-      tryImportTreeEdgeList(lines, formatOptions) ??
-      importFailure(
-        { code: "invalid-format", formatKind: "tree-edge-list" },
-        formatOptions,
-      )
-    );
-  }
-
-  if (requestedFormat === "parent-list") {
-    return (
-      tryImportParentList(lines, formatOptions) ??
-      importFailure(
-        { code: "invalid-format", formatKind: "parent-list" },
-        formatOptions,
-      )
-    );
-  }
-
-  if (requestedFormat === "weighted-parent-list") {
-    return (
-      tryImportWeightedParentList(lines, formatOptions) ??
-      importFailure(
-        { code: "invalid-format", formatKind: "weighted-parent-list" },
-        formatOptions,
-      )
-    );
-  }
-  return importFailure({ code: "unsupported-format" }, formatOptions);
+  return (
+    result ??
+    importFailure(
+      { code: "invalid-format", formatKind: requestedFormat },
+      formatOptions,
+    )
+  );
 }
 
 function analysisForRequestedFormat(
@@ -266,9 +225,7 @@ function withAmbiguityWarning(
 
   return {
     ...detectedResult,
-    warnings: detectedResult.warnings.includes(warning)
-      ? detectedResult.warnings
-      : [...detectedResult.warnings, warning],
+    warnings: [...detectedResult.warnings, warning],
   };
 }
 

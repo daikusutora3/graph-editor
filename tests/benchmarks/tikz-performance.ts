@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createEmptyGraphModel } from "../../features/graph-editor/core/graph/graph-factory";
 import { serializeGraphModel } from "../../features/graph-editor/core/graph/graph-json";
 import type { GraphModel } from "../../features/graph-editor/core/graph/model";
+import { exportGraph } from "../../features/graph-editor/io/export-graph";
 import * as tikz from "../../features/graph-editor/io/export-tikz";
 
 const createTask = (
@@ -45,7 +46,7 @@ for (const [name, count, loops, longLabels] of [
   let signature = "";
   for (let pass = 0; pass < 6; pass++) {
     const start = performance.now();
-    const expected = tikz.exportTikz(model);
+    const expected = exportGraph(model, "tikz");
     const elapsed = performance.now() - start;
     if (pass > 0) times.push(elapsed);
     signature = createHash("sha256").update(expected).digest("hex");

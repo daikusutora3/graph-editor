@@ -23,6 +23,9 @@ import { EditorChrome } from "../ui/chrome/EditorChrome";
 import { I18nProvider, useI18n } from "../i18n/I18nProvider";
 import { APP_NAME, appGuidePaths } from "@/lib/site-metadata";
 import type { Locale } from "../i18n/locale";
+import { useGraphWebMcp } from "../webmcp/use-graph-webmcp";
+import { surface } from "@/components/ui/surfaces";
+import { cn } from "@/lib/utils";
 
 export function GraphEditor({ initialLocale }: { initialLocale?: Locale }) {
   return (
@@ -45,6 +48,7 @@ function GraphEditorContent() {
   useEditorLayoutObserver(rootRef);
   useGraphEditorShortcuts();
   useGraphExternalStorageSync();
+  useGraphWebMcp(graphStorageReady);
 
   return (
     <main
@@ -55,7 +59,10 @@ function GraphEditorContent() {
         href={appGuidePaths[locale]}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute -top-20 left-3 z-[100] inline-flex min-h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--panel-solid)] px-3 text-sm font-semibold text-[var(--text)] focus:top-3 focus:outline-2 focus:outline-offset-2"
+        className={cn(
+          surface.floating,
+          "absolute -top-20 left-3 z-[100] inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-[var(--text)] focus:top-3 focus:outline-2 focus:outline-offset-2",
+        )}
       >
         {messages.appMenu.guide}
       </a>

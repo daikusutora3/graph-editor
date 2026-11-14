@@ -2,13 +2,6 @@ import { sameSerializableValue } from "./graph-utils";
 import { serializeGraphModel } from "./graph-json";
 import type { GraphModel, GraphPatch } from "./model";
 
-export function applyGraphPatch(
-  model: GraphModel,
-  patch: GraphPatch,
-): GraphModel {
-  return prepareGraphPatch(model, patch).after;
-}
-
 export function prepareGraphPatch(model: GraphModel, patch: GraphPatch) {
   const next: GraphModel = {
     ...model,
@@ -58,10 +51,10 @@ export function diffGraphModels(
 function diffElements<T extends { id: string }>(before: T[], after: T[]) {
   if (before === after) return undefined;
   const beforeById = new Map(before.map((item) => [item.id, item]));
-  const afterById = new Map(after.map((item) => [item.id, item]));
+  const afterIds = new Set(after.map((item) => item.id));
   const orderChanged = !sameIdOrder(before, after);
   const remove = before
-    .filter((item) => !afterById.has(item.id))
+    .filter((item) => !afterIds.has(item.id))
     .map((item) => item.id);
   const put = after.filter(
     (item) => !sameSerializableValue(beforeById.get(item.id), item),
@@ -73,18 +66,6 @@ function diffElements<T extends { id: string }>(before: T[], after: T[]) {
     ...(put.length > 0 ? { put } : {}),
     ...(orderChanged ? { order: after.map((item) => item.id) } : {}),
   };
-}
-
-export function isEmptyGraphPatch(patch: GraphPatch) {
-  return (
-    !patch.settings &&
-    !patch.nodes?.remove?.length &&
-    !patch.nodes?.put?.length &&
-    !patch.nodes?.order &&
-    !patch.edges?.remove?.length &&
-    !patch.edges?.put?.length &&
-    !patch.edges?.order
-  );
 }
 
 function reorderById<T extends { id: string }>(items: T[], order?: string[]) {

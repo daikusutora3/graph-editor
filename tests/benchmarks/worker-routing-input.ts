@@ -8,6 +8,11 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { defaultEdgeRoutingMeta } from "../../features/graph-editor/core/layout/edge-routing";
 
 type RoutingJob = Extract<ComputeJob, { kind: "routing" }>;
+type BenchmarkJob = Omit<RoutingJob, "interaction"> & {
+  interaction: { movedNodeIds: Set<string> } & (
+    { previousNodes: GraphModel["nodes"] } | { nodes: GraphModel["nodes"] }
+  );
+};
 const results = [];
 for (const [nodeCount, edgeCount, movedCount] of [
   [100, 400, 1],
@@ -51,8 +56,8 @@ for (const [nodeCount, edgeCount, movedCount] of [
     compactClone: number[] = [],
     fullTotal: number[] = [],
     compactTotal: number[] = [];
-  let full!: { job: RoutingJob; restored: GraphModel["nodes"] };
-  let compact!: { job: RoutingJob; restored: GraphModel["nodes"] };
+  let full!: { job: BenchmarkJob; restored: GraphModel["nodes"] };
+  let compact!: { job: BenchmarkJob; restored: GraphModel["nodes"] };
   const measure = (isCompact: boolean, round: number) => {
     const start = performance.now();
 
@@ -67,7 +72,7 @@ for (const [nodeCount, edgeCount, movedCount] of [
     const previousNodes = withMeasuredNodeGeometry(graph).nodes.filter((node) =>
       movedNodeIds.has(node.id),
     );
-    const job: RoutingJob = {
+    const job: BenchmarkJob = {
       kind: "routing",
       model: withMeasuredNodeGeometry(positioned),
       options: { mode: "quality", previousMeta },
@@ -86,10 +91,13 @@ for (const [nodeCount, edgeCount, movedCount] of [
     const prepared = performance.now();
     const transported = structuredClone(job);
     const cloned = performance.now();
-    const restored = restoreRoutingInteractionNodes(
-      transported.model,
-      transported.interaction!,
-    );
+    const restored =
+      "nodes" in transported.interaction
+        ? transported.interaction.nodes
+        : restoreRoutingInteractionNodes(
+            transported.model,
+            transported.interaction,
+          );
     const end = performance.now();
     if (round >= 10) {
       (isCompact ? compactPrepare : fullPrepare).push(prepared - start);

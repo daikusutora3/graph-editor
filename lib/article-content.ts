@@ -2,13 +2,13 @@ import {
   getArticleExample,
   type ArticleExample as ArticleExampleSeed,
   type ArticleSlug,
+  type GuideExampleId,
 } from "./article-examples";
 import { guideCopy, guideExampleCopy } from "./guide-content";
 import { guideExamples } from "./guide-examples";
-import { appGuidePaths, appLocalePaths, type AppLocale } from "./site-metadata";
+import { appLocalePaths, type AppLocale } from "./site-metadata";
 
 export { articleSlugs, type ArticleSlug } from "./article-examples";
-export type GuideExampleId = (typeof guideExamples)[number]["id"];
 export type ArticleGuideAnchor =
   "guide-import" | "guide-layouts" | "guide-export";
 
@@ -20,11 +20,7 @@ export type ArticleSection = {
 };
 
 export type ArticleExample = ArticleExampleSeed & {
-  code: string;
   result: string;
-  directed: false;
-  indexBase: 0 | 1;
-  preferredLayout: "circle" | "tree" | "bipartite";
 };
 
 export type ArticleContent = {
@@ -38,10 +34,7 @@ export type ArticleContent = {
   guide: {
     sectionId: ArticleGuideAnchor;
     label: string;
-    exampleId?: GuideExampleId;
   };
-  guideAnchor: ArticleGuideAnchor;
-  canonicalGuideExampleId?: GuideExampleId;
   relatedSlugs: readonly ArticleSlug[];
 };
 
@@ -159,25 +152,13 @@ function localizedExample(
   );
   return {
     ...example,
-    code: example.input,
     result: example.guideExampleId
       ? guideExampleCopy[locale].examples[index]!.result
       : bipartiteResults[locale],
-    directed: false,
-    indexBase: example.guideExampleId ? 1 : 0,
-    preferredLayout:
-      slug === "tree-layout"
-        ? "tree"
-        : slug === "bipartite-graph"
-          ? "bipartite"
-          : "circle",
   };
 }
 
-type ArticleText = Omit<
-  ArticleContent,
-  "example" | "guide" | "guideAnchor" | "canonicalGuideExampleId"
->;
+type ArticleText = Omit<ArticleContent, "example" | "guide">;
 
 const articleText: Record<AppLocale, readonly ArticleText[]> = {
   ja: [
@@ -759,10 +740,7 @@ function articlesForLocale(locale: AppLocale): readonly ArticleContent[] {
       guide: {
         sectionId: anchor,
         label: guideSection.navTitle,
-        exampleId: example.guideExampleId ?? undefined,
       },
-      guideAnchor: anchor,
-      canonicalGuideExampleId: example.guideExampleId ?? undefined,
     };
   });
 }
@@ -793,17 +771,6 @@ export function articlePath(locale: AppLocale, slug: ArticleSlug): string {
   return `${articleIndexPath(locale)}/${slug}`;
 }
 
-export function articleGuidePath(
-  locale: AppLocale,
-  slug: ArticleSlug,
-  target: "operation" | "example" = "operation",
-): string {
-  const exampleId = getArticleExample(slug)!.guideExampleId;
-  const anchor =
-    target === "example" && exampleId ? exampleId : articleGuideAnchors[slug];
-  return `${appGuidePaths[locale]}#${anchor}`;
-}
-
 export function getArticlesForGuideSection(
   locale: AppLocale,
   sectionId: string,
@@ -812,7 +779,7 @@ export function getArticlesForGuideSection(
     ? sectionId
     : `guide-${sectionId}`;
   return getArticles(locale).filter(
-    (article) => article.guideAnchor === anchor,
+    (article) => article.guide.sectionId === anchor,
   );
 }
 
@@ -821,6 +788,6 @@ export function getArticleForGuideExample(
   exampleId: GuideExampleId,
 ): ArticleContent | undefined {
   return getArticles(locale).find(
-    (article) => article.canonicalGuideExampleId === exampleId,
+    (article) => article.example.guideExampleId === exampleId,
   );
 }

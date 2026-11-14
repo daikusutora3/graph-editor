@@ -5,7 +5,7 @@ import type { CSSProperties, MutableRefObject, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useI18n } from "../i18n/I18nProvider";
-import { IconButton, focusRing, pressFeedback } from "@/components/ui/controls";
+import { Button, IconButton } from "@/components/ui/controls";
 import type { NodeHitbox } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import type { InlineEditTarget, RenderedPoint } from "./graph-canvas-types";
 import { clampInlineEditCenterX } from "./graph-canvas-inline-edit";
@@ -15,10 +15,9 @@ type ZoomControlsProps = {
   maxZoom: number;
   minZoom: number;
   zoomPercent: number;
-  zoomStep: number;
   onFitView: () => void;
   onResetZoom: () => void;
-  onZoom: (delta: number) => void;
+  onZoom: (direction: -1 | 1) => void;
 };
 
 export function ZoomControls({
@@ -26,7 +25,6 @@ export function ZoomControls({
   maxZoom,
   minZoom,
   zoomPercent,
-  zoomStep,
   onFitView,
   onResetZoom,
   onZoom,
@@ -40,7 +38,7 @@ export function ZoomControls({
   return (
     <div
       data-canvas-zoom-controls
-      className="ge-panel pointer-events-auto relative z-40 flex min-h-[3.375rem] items-center gap-0.5 rounded-xl px-1 backdrop-blur-[12px] touch:gap-1 touch:rounded-[14px]"
+      className="ge-panel pointer-events-auto relative z-40 flex min-h-bar items-center gap-0.5 rounded-bar px-1 touch:gap-1"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
@@ -50,32 +48,27 @@ export function ZoomControls({
         label={messages.canvas.zoomOut}
         size="lg"
         tooltipSide="top"
-        onClick={() => onZoom(-zoomStep)}
+        onClick={() => onZoom(-1)}
       >
         <Minus className="size-icon-sm" />
       </IconButton>
-      <button
-        type="button"
+      <Button
         aria-label={messages.canvas.resetZoom(zoomPercent)}
-        data-tooltip={messages.canvas.resetZoom(zoomPercent)}
-        data-tooltip-side="top"
+        tooltip={messages.canvas.resetZoom(zoomPercent)}
+        tooltipSide="top"
         disabled={disabled}
+        className="h-11 min-w-[60px] px-2 font-mono tabular-nums touch:min-w-14"
         onClick={onResetZoom}
-        className={[
-          "grid h-11 min-w-[60px] place-items-center rounded-lg bg-transparent px-2 font-mono text-control font-semibold text-[var(--text-2)] tabular-nums transition-colors hover:bg-[var(--fill)] disabled:cursor-default disabled:text-[var(--faint)] disabled:hover:bg-transparent touch:min-w-14 touch:rounded-lg",
-          focusRing,
-          pressFeedback,
-        ].join(" ")}
       >
         {zoomPercent}%
-      </button>
+      </Button>
       <IconButton
         className="size-11"
         disabled={zoomInDisabled}
         label={messages.canvas.zoomIn}
         size="lg"
         tooltipSide="top"
-        onClick={() => onZoom(zoomStep)}
+        onClick={() => onZoom(1)}
       >
         <Plus className="size-icon-sm" />
       </IconButton>
@@ -99,7 +92,7 @@ export function FitToViewButton({ onFitView }: { onFitView: () => void }) {
 
   return (
     <IconButton
-      className="ge-panel ge-pop pointer-events-auto size-11 rounded-[14px] backdrop-blur-[12px]"
+      className="ge-panel ge-pop pointer-events-auto size-11 rounded-bar"
       label={messages.canvas.fitGraphTitle}
       tooltipSide="top"
       onClick={onFitView}

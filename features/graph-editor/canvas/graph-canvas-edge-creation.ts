@@ -1,10 +1,6 @@
-import { canUseEdgeEndpoints } from "../core/graph/edge-constraints";
-import { getNode } from "../core/graph/selectors";
 import type { GraphModel, NodeId } from "../core/graph/model";
-import type {
-  EdgeDraft,
-  EdgeDraftMessageCode,
-} from "../shell/state/editor-state";
+import { isEdgeCandidateBlocked } from "./graph-canvas-edge-draft";
+import type { EdgeDraft } from "../shell/state/editor-state";
 
 export type EdgeCreationInput = {
   model: GraphModel;
@@ -23,19 +19,7 @@ export type EdgeCreationResult =
   | {
       kind: "update-draft";
       nextDraft: EdgeDraft;
-    }
-  | {
-      kind: "reject";
-      nextDraft: EdgeDraft;
-      reason: EdgeDraftMessageCode;
     };
-
-function draftMessage(
-  kind: NonNullable<EdgeDraft["message"]>["kind"],
-  code: EdgeDraftMessageCode,
-): NonNullable<EdgeDraft["message"]> {
-  return { kind, code };
-}
 
 export function resolveEdgeCreation({
   model,
@@ -43,64 +27,31 @@ export function resolveEdgeCreation({
   targetNodeId,
   continueFromTarget = false,
 }: EdgeCreationInput): EdgeCreationResult {
-  const sourceNodeId = draft.sourceNodeId;
-  const targetExists = getNode(model, targetNodeId) !== null;
+  const sourceNodeId = draft;
+  const targetExists = model.nodes.some((node) => node.id === targetNodeId);
   const sourceExists = sourceNodeId
-    ? getNode(model, sourceNodeId) !== null
+    ? model.nodes.some((node) => node.id === sourceNodeId)
     : true;
   const nextSourceOnEndpointError = sourceExists ? sourceNodeId : null;
 
   if (!targetExists || !sourceExists) {
-    const reason: EdgeDraftMessageCode = !targetExists
-      ? "target-missing"
-      : "source-missing";
-
     return {
-      kind: "reject",
-      reason,
-      nextDraft: {
-        sourceNodeId: nextSourceOnEndpointError,
-        message: draftMessage("error", reason),
-      },
+      kind: "update-draft",
+      nextDraft: nextSourceOnEndpointError,
     };
   }
 
   if (!sourceNodeId) {
     return {
       kind: "update-draft",
-      nextDraft: {
-        sourceNodeId: targetNodeId,
-        message: draftMessage("info", "source-selected"),
-      },
+      nextDraft: targetNodeId,
     };
   }
 
-  if (sourceNodeId === targetNodeId && !model.settings.allowSelfLoops) {
-    const reason = "self-loop";
-
+  if (isEdgeCandidateBlocked(model, sourceNodeId, targetNodeId)) {
     return {
-      kind: "reject",
-      reason,
-      nextDraft: {
-        sourceNodeId,
-        message: draftMessage("error", reason),
-      },
-    };
-  }
-
-  if (
-    !model.settings.allowMultiEdges &&
-    !canUseEdgeEndpoints(model, sourceNodeId, targetNodeId)
-  ) {
-    const reason = "duplicate-edge";
-
-    return {
-      kind: "reject",
-      reason,
-      nextDraft: {
-        sourceNodeId,
-        message: draftMessage("error", reason),
-      },
+      kind: "update-draft",
+      nextDraft: sourceNodeId,
     };
   }
 
@@ -108,9 +59,6 @@ export function resolveEdgeCreation({
     kind: "create-edge",
     source: sourceNodeId,
     target: targetNodeId,
-    nextDraft: {
-      sourceNodeId: continueFromTarget ? targetNodeId : null,
-      message: draftMessage("success", "edge-created"),
-    },
+    nextDraft: continueFromTarget ? targetNodeId : null,
   };
 }

@@ -8,7 +8,7 @@ import {
 import { updateEdgeCommand, updateNodeCommand } from "./graph-intents";
 import type { EdgeId, GraphIntent, GraphModel, NodeId } from "./model";
 
-export type InlineEditCommitInput =
+export type InlineEditTarget =
   | {
       kind: "node-label";
       nodeId: NodeId;
@@ -26,10 +26,10 @@ export type InlineEditCommitInput =
 
 export type InlineEditCommitResult =
   | { kind: "close"; command?: GraphIntent }
-  | { kind: "error"; edit: InlineEditCommitInput };
+  | { kind: "error"; edit: InlineEditTarget };
 
 export function resolveInlineEditCommit(
-  edit: InlineEditCommitInput,
+  edit: InlineEditTarget,
   graph: GraphModel,
 ): InlineEditCommitResult {
   if (!isGraphText(edit.value.trim()))
@@ -55,19 +55,12 @@ export function resolveInlineEditCommit(
   }
 
   if (edit.kind === "edge-weight") {
-    const normalized = normalizeEdgeWeightInput(
-      edit.value,
-      graph.settings.weightKind,
-    );
+    const normalized = normalizeEdgeWeightInput(edit.value);
 
-    if (normalized.error) {
-      return { kind: "error", edit: { ...edit, error: normalized.error } };
-    }
-
-    if (normalized.value !== (edge.weight ?? "1")) {
+    if (normalized !== (edge.weight ?? "1")) {
       return {
         kind: "close",
-        command: updateEdgeCommand(edge.id, { weight: normalized.value }),
+        command: updateEdgeCommand(edge.id, { weight: normalized }),
       };
     }
 

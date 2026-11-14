@@ -9,27 +9,18 @@ import {
   MAX_IMPORT_EDGES,
   MAX_IMPORT_NODES,
   readImportSettings,
-  readLines,
   type ImportOptions,
 } from "./import-utils";
 import type { ImportResult, ImportWarning } from "./import-types";
 import { importTextLimitWarning } from "./import-text-limits";
-import {
-  createImportSource,
-  isStructuredEdgeListHeader,
-  type ImportSource,
-} from "./import-source";
-
-type EdgeListImportOptions = ImportOptions;
+import { isStructuredEdgeListHeader, type ImportSource } from "./import-source";
 
 export function importStructuredEdgeList(
-  input: string,
-  options: EdgeListImportOptions = {},
-  preparedSource?: ImportSource,
+  source: ImportSource,
+  options: ImportOptions = {},
 ): ImportResult {
   const warnings: ImportWarning[] = [];
   const settings = readImportSettings(options);
-  const source = preparedSource ?? createImportSource(readLines(input));
   const { lines } = source;
   const header = lines[0]?.text.split(/\s+/) ?? [];
   const nodeCount = Number(header[0]);
@@ -111,7 +102,7 @@ export function importStructuredEdgeList(
   });
   const radius = Math.max(170, nodeCount * 26);
   model.nodes = Array.from({ length: nodeCount }, (_, index) => {
-    const angle = nodeCount === 0 ? 0 : (Math.PI * 2 * index) / nodeCount;
+    const angle = (Math.PI * 2 * index) / nodeCount;
     return createNode({
       id: `n${index}`,
       label: String(index + inputIndexBase),
@@ -140,10 +131,7 @@ export function importStructuredEdgeList(
     index < Math.min(edgeCount, dataLines.length);
     index += 1
   ) {
-    const line = dataLines[index];
-
-    if (!line) continue;
-
+    const line = dataLines[index]!;
     const parts = dataRows[index]!;
     const expectedColumns = settings.weighted ? 3 : 2;
 
@@ -179,16 +167,11 @@ export function importStructuredEdgeList(
       continue;
     }
 
-    const sourceNode = model.nodes[sourceIndex];
-    const targetNode = model.nodes[targetIndex];
-
-    if (!sourceNode || !targetNode) continue;
-
     model.edges.push(
       createEdge({
         id: `e${index}`,
-        source: sourceNode.id,
-        target: targetNode.id,
+        source: model.nodes[sourceIndex]!.id,
+        target: model.nodes[targetIndex]!.id,
         weight: settings.weighted ? parts[2] : undefined,
       }),
     );

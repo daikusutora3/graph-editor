@@ -2,7 +2,7 @@
 
 import type { Core } from "cytoscape";
 import { getCytoscapeElement } from "../adapters/cytoscape/cytoscape-ids";
-import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+import type { MutableRefObject } from "react";
 import {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import type {
   GraphContextMenuTarget,
   InlineEditTarget,
   RenderedPoint,
+  SyncContextSelectionTarget,
 } from "./graph-canvas-types";
 import {
   readInlineEditPosition,
@@ -30,19 +31,14 @@ import {
 } from "../adapters/cytoscape/graph-canvas-hitboxes";
 import {
   inlineEditCssProperties,
-  isCanvasShortcutBlockedTarget,
   isInlineEditStartShortcut,
 } from "./graph-canvas-inline-edit";
+import { isEditorShortcutBlockedTarget } from "../adapters/browser/shortcut-targets";
 import { resolveInlineEditCommit } from "../core/graph/inline-edit-commit";
 import {
   MAX_CANVAS_ZOOM,
   MIN_CANVAS_ZOOM,
 } from "../adapters/cytoscape/graph-canvas-viewport";
-
-type SyncContextSelectionTarget = Pick<GraphContextMenuTarget, "kind"> & {
-  edgeId?: EdgeId;
-  nodeId?: NodeId;
-};
 
 type UseGraphInlineEditOptions = {
   contextMenuTarget: GraphContextMenuTarget | null;
@@ -55,8 +51,8 @@ type UseGraphInlineEditOptions = {
   mode: EditorMode;
   nodeHitboxes: NodeHitbox[];
   selection: SelectionState;
-  setContextMenuTarget: Dispatch<SetStateAction<GraphContextMenuTarget | null>>;
-  syncContextSelection: (target: SyncContextSelectionTarget) => SelectionState;
+  setContextMenuTarget: (target: GraphContextMenuTarget | null) => void;
+  syncContextSelection: (target: SyncContextSelectionTarget) => void;
   zoomPercent: number;
 };
 
@@ -204,7 +200,7 @@ export function useGraphInlineEdit({
         mode !== "select" ||
         inlineEdit ||
         contextMenuTarget ||
-        isCanvasShortcutBlockedTarget(event.target)
+        isEditorShortcutBlockedTarget(event.target)
       ) {
         return;
       }

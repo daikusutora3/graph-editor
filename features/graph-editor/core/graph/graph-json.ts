@@ -1,14 +1,13 @@
 import {
   GRAPH_MAX_NODES,
   GRAPH_MAX_EDGES,
-  GRAPH_MAX_TEXT_CODE_POINTS,
   GRAPH_MAX_JSON_CHARS,
   isGraphText,
 } from "./graph-limits";
 import { normalizeGraphColor } from "./colors";
 import { isGraphCoordinate } from "./graph-coordinates";
 import { normalizeEdgeRoutingOverride } from "./edge-routing-overrides";
-import { createEmptyGraphModel } from "./graph-factory";
+import { defaultGraphSettings } from "./graph-factory";
 import { stripUndefinedProperties } from "./graph-utils";
 import type {
   EdgeId,
@@ -18,24 +17,7 @@ import type {
   GraphSettings,
 } from "./model";
 
-export const GRAPH_JSON_VERSION = 1;
-export const GRAPH_JSON_MAX_NODES = GRAPH_MAX_NODES;
-export const GRAPH_JSON_MAX_EDGES = GRAPH_MAX_EDGES;
-export const GRAPH_JSON_MAX_TEXT_CHARS = GRAPH_MAX_TEXT_CODE_POINTS;
-
-export function migrateGraphDocument(value: unknown): unknown | null {
-  if (!isRecord(value) || typeof value.version !== "number") {
-    return null;
-  }
-
-  if (value.version > GRAPH_JSON_VERSION) {
-    return null;
-  }
-
-  return value;
-}
-
-const fallbackGraph = createEmptyGraphModel();
+const GRAPH_JSON_VERSION = 1;
 
 export type GraphContractReason = "coordinate-range" | "invalid-graph";
 
@@ -120,7 +102,7 @@ function isSerializableGraphModel(model: GraphModel) {
     !isPlainDataRecord(model.settings) ||
     !validSettings(model.settings) ||
     Object.keys(model.settings).length !==
-      Object.keys(fallbackGraph.settings).length
+      Object.keys(defaultGraphSettings).length
   )
     return false;
 
@@ -204,45 +186,39 @@ export function looksLikeGraphJson(text: string) {
 }
 
 export function normalizeGraphModel(input: unknown): GraphModel | null {
-  const value = migrateGraphDocument(input);
-
-  if (!isRecord(value) || value.version !== GRAPH_JSON_VERSION) {
+  if (!isRecord(input) || input.version !== GRAPH_JSON_VERSION) {
     return null;
   }
+  const value = input;
 
   if (!Array.isArray(value.nodes) || !Array.isArray(value.edges)) {
     return null;
   }
 
   if (
-    value.nodes.length > GRAPH_JSON_MAX_NODES ||
-    value.edges.length > GRAPH_JSON_MAX_EDGES
+    value.nodes.length > GRAPH_MAX_NODES ||
+    value.edges.length > GRAPH_MAX_EDGES
   ) {
     return null;
   }
 
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
+  const nodeIds = new Set<string>();
+  const nodeOrders = new Set<number>();
 
   for (const nodeValue of value.nodes) {
     const node = normalizeNode(nodeValue);
 
-    if (!node) {
+    if (!node || nodeIds.has(node.id) || nodeOrders.has(node.order)) {
       return null;
     }
 
+    nodeIds.add(node.id);
+    nodeOrders.add(node.order);
     nodes.push(node);
   }
 
-  if (hasDuplicates(nodes.map((node) => node.id))) {
-    return null;
-  }
-
-  if (hasDuplicates(nodes.map((node) => node.order))) {
-    return null;
-  }
-
-  const nodeIds = new Set(nodes.map((node) => node.id));
   const edgeIds = new Set<EdgeId>();
 
   for (const edgeValue of value.edges) {
@@ -336,12 +312,8 @@ function validEdge(value: unknown): value is GraphEdge {
   );
 }
 
-function normalizeSettings(value: unknown): GraphSettings {
-  const defaults = fallbackGraph.settings;
-
-  if (!isRecord(value)) {
-    return defaults;
-  }
+function normalizeSettings(value: Record<string, unknown>): GraphSettings {
+  const defaults = defaultGraphSettings;
 
   return {
     directed:
@@ -400,9 +372,9 @@ function validRouting(value: unknown) {
   );
 }
 
-function validSettings(value: unknown) {
+function validSettings(value: unknown): value is Record<string, unknown> {
   if (!isRecord(value)) return false;
-  const defaults = fallbackGraph.settings;
+  const defaults = defaultGraphSettings;
   return Object.entries(value).every(([key, item]) => {
     if (!Object.hasOwn(defaults, key)) return false;
     if (key === "indexBase") return item === 0 || item === 1;
@@ -417,10 +389,6 @@ function validSettings(value: unknown) {
       return item === "none" || item === "number" || item === "string";
     return typeof item === "boolean";
   });
-}
-
-function hasDuplicates(values: Array<string | number>) {
-  return new Set(values).size !== values.length;
 }
 
 function sameDocument(a: unknown, b: unknown): boolean {

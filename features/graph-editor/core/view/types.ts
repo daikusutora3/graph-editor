@@ -7,30 +7,11 @@ export type SelectionState = {
   edgeIds: EdgeId[];
 };
 
-export type EdgeDraftMessageCode =
-  | "target-missing"
-  | "source-missing"
-  | "source-selected"
-  | "self-loop"
-  | "duplicate-edge"
-  | "edge-created";
-
-export type EdgeDraft = {
-  sourceNodeId: NodeId | null;
-
-  message?: {
-    kind: "info" | "success" | "error";
-    code: EdgeDraftMessageCode;
-  } | null;
-};
+export type EdgeDraft = NodeId | null;
 
 export type RenderedPoint = {
   x: number;
   y: number;
-};
-
-export type GraphCanvasChrome = {
-  layout: EditorLayout;
 };
 
 export type GraphCanvasExportOptions = {

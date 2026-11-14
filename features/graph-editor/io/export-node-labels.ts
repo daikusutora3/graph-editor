@@ -1,7 +1,7 @@
 import { getNodeByOrder } from "../core/graph/selectors";
 import type { GraphModel, GraphNode } from "../core/graph/model";
 
-export type ExportNodeEntry = {
+type ExportNodeEntry = {
   node: GraphNode;
   label: number;
 };
@@ -13,7 +13,7 @@ export function getExportNodeEntries(model: GraphModel): ExportNodeEntry[] {
   );
 
   if (numericEntries) {
-    return numericEntries.toSorted((a, b) => a.label - b.label);
+    return numericEntries;
   }
 
   return getNodeByOrder(model).map((node, index) => ({
@@ -27,7 +27,6 @@ function readContiguousNumericLabels(
   indexBase: number,
 ): ExportNodeEntry[] | null {
   const entries: ExportNodeEntry[] = [];
-  const seen = new Set<number>();
 
   for (const node of nodes) {
     if (!/^-?\d+$/.test(node.label)) {
@@ -36,20 +35,17 @@ function readContiguousNumericLabels(
 
     const label = Number(node.label);
 
-    if (!Number.isSafeInteger(label) || seen.has(label)) {
+    if (
+      !Number.isSafeInteger(label) ||
+      label < indexBase ||
+      label >= indexBase + nodes.length ||
+      entries[label - indexBase] !== undefined
+    ) {
       return null;
     }
 
-    seen.add(label);
-    entries.push({ node, label });
+    entries[label - indexBase] = { node, label };
   }
 
-  if (entries.length === 0) {
-    return entries;
-  }
-
-  const min = Math.min(...entries.map((entry) => entry.label));
-  const max = Math.max(...entries.map((entry) => entry.label));
-
-  return min === indexBase && max - min + 1 === entries.length ? entries : null;
+  return entries;
 }

@@ -3,7 +3,7 @@
 @custom-variant touch (&:where([data-layout="mobile"] *));
 
 [data-layout="mobile"] {
-  --ge-mobile-toolbar-height: 3.375rem;
+  --ge-mobile-toolbar-height: 3.375rem; /* keep in sync with --spacing-bar */
   --ge-mobile-controls-bottom: calc(var(--ge-mobile-toolbar-height) + 28px);
 }
 
@@ -19,7 +19,7 @@
   --hair: #2a2a30;
   --fill: #2a2a30;
   --fill-2: #3f3f46;
-  --control-border: #8b8b95;
+  --control-border: #74747c;
   --control-accent: #82aaff;
   --focus: #93b4ff;
   --scrim: rgb(0 0 0 / 0.5);
@@ -98,7 +98,7 @@
   --hair: #eef0f2;
   --fill: #f3f4f6;
   --fill-2: #e5e7eb;
-  --control-border: #7c8493;
+  --control-border: #858c9a;
   --control-accent: #2563eb;
   --focus: #1d4ed8;
   --scrim: rgb(17 24 39 / 0.28);
@@ -203,6 +203,8 @@
   --spacing-icon-sm: 15px;
   --spacing-icon-md: 17px;
   --spacing-icon-lg: 18px;
+  --radius-bar: 0.875rem;
+  --spacing-bar: 3.375rem;
 }
 
 .ge-brand-light {
@@ -224,6 +226,8 @@
 .ge-panel {
   border: 1px solid var(--line);
   background: var(--panel);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .ge-popover {

@@ -1,7 +1,5 @@
-import {
-  edgeBendFromRenderedPointer,
-  edgeBendHandlePosition,
-} from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
+import { createConfiguredSampleGraph } from "./sample-graph-helper";
+import { edgeBendFromRenderedPointer } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { createStore } from "jotai/vanilla";
 
 import {
@@ -38,10 +36,7 @@ import {
   layoutLine,
   layoutTree,
 } from "../../features/graph-editor/layouts/layout-algorithms";
-import {
-  createSampleGraph,
-  createSizedSampleGraph,
-} from "../../features/graph-editor/samples/sample-graphs";
+import { createSampleGraph } from "../../features/graph-editor/samples/sample-graphs";
 import {
   emptyEdgeRoutingContinuitySnapshot,
   readPreviousAutomaticRoutingMeta,
@@ -130,11 +125,15 @@ const dragStartRoutes = computeEdgeRouting(dragStartGraph);
 for (const directed of [false, true]) {
   for (const labelKind of ["none", "weight", "label"] as const) {
     for (const reverseOrder of [false, true]) {
-      const sample = createSizedSampleGraph("tree", 7, {
-        autoEdgeRouting: true,
-        directed,
-        weighted: labelKind === "weight",
-      });
+      const sample = createConfiguredSampleGraph(
+        "tree",
+        { nodes: 7 },
+        {
+          autoEdgeRouting: true,
+          directed,
+          weighted: labelKind === "weight",
+        },
+      );
       const sevenNodeTree = {
         ...sample,
         edges: (reverseOrder ? sample.edges.toReversed() : sample.edges).map(
@@ -1091,34 +1090,6 @@ expect(
   ).bowT === 0.05,
   "bend position should be clamped near the endpoints",
 );
-const renderedMidpoint = edgeBendHandlePosition(
-  {
-    id: "manual",
-    label: "",
-    isLoop: false,
-    sourceX: 0,
-    sourceY: 0,
-    targetX: 200,
-    targetY: 0,
-    sourceWidth: 48,
-    targetWidth: 48,
-    nodeHeight: 48,
-    x: 94,
-    y: 63,
-    bowPx: 100,
-    controlPointDistancesPx: [100],
-    controlPointWeights: [0.5],
-    loopDirectionDeg: -45,
-    loopSweepDeg: 70,
-  },
-  null,
-  1,
-);
-expect(
-  renderedMidpoint.x === 94 && renderedMidpoint.y === 63,
-  "an idle bend handle should use Cytoscape's exact rendered midpoint",
-);
-
 for (const route of computeEdgeRouting(obstructedGraph).values()) {
   expect(
     [

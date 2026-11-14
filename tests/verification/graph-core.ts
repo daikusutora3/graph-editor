@@ -14,13 +14,12 @@ import {
 import { reduceGraphIntent } from "../../features/graph-editor/core/graph/graph-reducer";
 import { prepareGraphTransaction } from "../../features/graph-editor/core/graph/graph-transaction";
 import {
-  applyGraphPatch,
+  prepareGraphPatch,
   diffGraphModels,
 } from "../../features/graph-editor/core/graph/graph-patch";
 import {
   computeEdgeRouting,
   resolveRoutingMode,
-  shouldAvoidNodesForEdgeRouting,
 } from "../../features/graph-editor/core/layout/edge-routing";
 import {
   minimumCurveDistanceToNode,
@@ -28,7 +27,6 @@ import {
   sampleEdgeCurve,
 } from "../../features/graph-editor/core/layout/edge-route-geometry";
 import { importGraphInput } from "../../features/graph-editor/io/import-graph";
-import { hasGraphContent } from "../../features/graph-editor/core/graph/selectors";
 import type {
   GraphEdge,
   GraphModel,
@@ -44,7 +42,7 @@ const validEdgeList = importGraphInput("0 1\n1 2", {
 });
 
 expect(
-  hasGraphContent(validEdgeList.model),
+  validEdgeList.model.nodes.length > 0 || validEdgeList.model.edges.length > 0,
   "valid edge list should produce graph content",
 );
 
@@ -128,10 +126,10 @@ expect(
 if (preparedNodeUpdate) {
   expect(
     JSON.stringify(
-      applyGraphPatch(
+      prepareGraphPatch(
         preparedNodeUpdate.after,
         preparedNodeUpdate.transaction.backward,
-      ),
+      ).after,
     ) === JSON.stringify(constrainedModel),
     "node-only history restores the complete graph including untouched edges",
   );
@@ -146,16 +144,16 @@ const replacementModel: GraphModel = {
 };
 expect(
   JSON.stringify(
-    applyGraphPatch(
+    prepareGraphPatch(
       constrainedModel,
       diffGraphModels(constrainedModel, replacementModel),
-    ),
+    ).after,
   ) === JSON.stringify(replacementModel) &&
     JSON.stringify(
-      applyGraphPatch(
+      prepareGraphPatch(
         replacementModel,
         diffGraphModels(replacementModel, constrainedModel),
-      ),
+      ).after,
     ) === JSON.stringify(constrainedModel),
   "replacement history preserves inserted, removed, edited and ordered elements in both directions",
 );
@@ -189,6 +187,31 @@ const weightedModel = {
     weightKind: "number" as const,
   },
 };
+
+for (const [input, expected] of [
+  ["INF", "INF"],
+  ["容量 ∞", "容量 ∞"],
+  [" 12 ", "12"],
+  ["", "1"],
+]) {
+  const result = resolveInlineEditCommit(
+    {
+      kind: "edge-weight",
+      edgeId: "ab",
+      value: input,
+      fallbackPosition: { x: 0, y: 0 },
+    },
+    weightedModel,
+  );
+  const updated =
+    result.kind === "close" && result.command
+      ? applyInlineEditIntent(weightedModel, result.command)
+      : weightedModel;
+  expect(
+    updated.edges[0]?.weight === expected,
+    "inline weight should trim text and default empty to 1",
+  );
+}
 
 const invalidInlineWeight = resolveInlineEditCommit(
   {
@@ -367,15 +390,15 @@ const largeRoutingModel: GraphModel = {
 };
 
 expect(
-  !shouldAvoidNodesForEdgeRouting(emptyModel),
+  resolveRoutingMode(emptyModel, "quality") !== "quality",
   "edge routing should skip node avoidance when there is no routing work",
 );
 expect(
-  shouldAvoidNodesForEdgeRouting(weightedModel),
+  resolveRoutingMode(weightedModel, "quality") === "quality",
   "edge routing should keep node avoidance for small graphs",
 );
 expect(
-  !shouldAvoidNodesForEdgeRouting(largeRoutingModel),
+  resolveRoutingMode(largeRoutingModel, "quality") !== "quality",
   "edge routing should skip node avoidance beyond the work limit",
 );
 

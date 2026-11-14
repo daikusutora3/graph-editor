@@ -98,7 +98,7 @@ export function resolveGraphEditorShortcut(
     return { type: "fit-view" };
   }
 
-  const panel = PANEL_KEY_TO_PANEL[event.key === "?" ? "?" : key];
+  const panel = PANEL_KEY_TO_PANEL[key];
   if (panel) {
     return { type: "toggle-panel", panel };
   }
@@ -145,7 +145,6 @@ export function shouldPreventDefaultForGraphEditorShortcut(
     case "undo":
     case "redo":
     case "select-all":
-      return true;
     case "reset-zoom":
       return true;
     case "copy-selection":

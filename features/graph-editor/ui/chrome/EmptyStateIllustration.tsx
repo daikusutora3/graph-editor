@@ -31,7 +31,7 @@ export function EmptyStateIllustration({
       >
         <span
           translate="no"
-          className="hidden shrink-0 rounded-md border border-[var(--line)] bg-[var(--panel-solid)] px-2 py-1.5 font-mono text-[11px] leading-relaxed text-[var(--muted)] sm:block"
+          className="hidden shrink-0 rounded-md border border-[var(--line)] bg-[var(--panel-solid)] px-2 py-1.5 font-mono text-meta leading-relaxed text-[var(--muted)] sm:block"
         >
           0 1<br />1 2<br />2 0
         </span>

@@ -6,9 +6,6 @@ export function inferTreeIndexBase(
   const allZeroBased = labels.every((value) => value >= 0 && value < nodeCount);
   const allOneBased = labels.every((value) => value >= 1 && value <= nodeCount);
 
-  if (labels.includes(0) && allZeroBased) {
-    return 0;
-  }
   if (allOneBased) {
     return 1;
   }
@@ -28,11 +25,6 @@ export function isRootedParentTreeLabels(
   }
 
   const indexBase = inferTreeIndexBase(parentLabels, nodeCount, fallback);
-  const parents = parentLabels.map((label) => label - indexBase);
-  if (parents.some((parent) => parent < 0 || parent >= nodeCount)) {
-    return false;
-  }
-
   const state = new Uint8Array(nodeCount);
   state[0] = 2;
 
@@ -46,11 +38,15 @@ export function isRootedParentTreeLabels(
     while (state[current] === 0) {
       state[current] = 1;
       path.push(current);
-      const parent = parents[current - 1];
-      if (parent == null || parent < 0 || parent >= nodeCount) {
+      const label = parentLabels[current - 1];
+      if (
+        label == null ||
+        label < indexBase ||
+        label >= indexBase + nodeCount
+      ) {
         return false;
       }
-      current = parent;
+      current = label - indexBase;
     }
 
     if (state[current] === 1) {
@@ -112,6 +108,6 @@ export function isUndirectedTreeLabels(
     parents[leftRoot] = rightRoot;
   }
 
-  const root = find(0);
-  return parents.every((_, node) => find(node) === root);
+  // With nodeCount - 1 valid, non-cyclic edges, the graph is connected.
+  return true;
 }

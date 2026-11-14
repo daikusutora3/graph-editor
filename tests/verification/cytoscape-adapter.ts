@@ -26,8 +26,8 @@ import type { GraphModel } from "../../features/graph-editor/core/graph/model";
 import { createEdgeHitboxPath } from "../../features/graph-editor/canvas/GraphCanvasHitboxOverlays";
 import { snapPositionToNodeDragGrid } from "../../features/graph-editor/canvas/graph-canvas-html-node-drag";
 import {
-  reconcileEdgeLabelHitboxes,
-  reconcileNodeHitboxes,
+  createEdgeLabelHitboxSnapshot,
+  createNodeHitboxSnapshot,
 } from "../../features/graph-editor/adapters/cytoscape/hitbox-reconciliation";
 import type {
   EdgeLabelHitbox,
@@ -197,30 +197,26 @@ function verifySharedEndpointSnapshots() {
 function verifyHitboxReconciliation() {
   const node: NodeHitbox = { id: "a", label: "A", x: 0, y: 0, width: 72 };
   const secondNode: NodeHitbox = { ...node, id: "b" };
-  const nodes = [node, secondNode];
+  const nodeSnapshot = createNodeHitboxSnapshot();
+  const nodes = nodeSnapshot.reset([node, secondNode]);
   expect(
-    reconcileNodeHitboxes(
-      nodes,
-      nodes.map((item) => ({ ...item })),
-    ) === nodes,
+    nodeSnapshot.reset(nodes.map((item) => ({ ...item }))) === nodes,
     "unchanged hitboxes should retain their array reference",
   );
   const movedNode = { ...node, x: 10 };
-  const moved = reconcileNodeHitboxes(nodes, [movedNode, { ...secondNode }]);
+  const moved = nodeSnapshot.reset([movedNode, { ...secondNode }]);
   expect(
     moved !== nodes && moved[0] === movedNode && moved[1] === secondNode,
     "moving one node should preserve every other node reference",
   );
-  const reordered = reconcileNodeHitboxes(nodes, [
-    { ...secondNode },
-    { ...node },
-  ]);
+  nodeSnapshot.reset(nodes);
+  const reordered = nodeSnapshot.reset([{ ...secondNode }, { ...node }]);
   expect(
     reordered[0] === secondNode && reordered[1] === node,
     "reordering hitboxes should retain references by ID",
   );
   expect(
-    reconcileNodeHitboxes(nodes, [{ ...secondNode }])[0] === secondNode,
+    nodeSnapshot.reset([{ ...secondNode }])[0] === secondNode,
     "deleting a hitbox should retain the surviving reference",
   );
   const edge: EdgeLabelHitbox = {
@@ -245,10 +241,10 @@ function verifyHitboxReconciliation() {
     loopPoints: [{ x: 1, y: 2 }],
   };
   const secondEdge = { ...edge, id: "ba" };
-  const edges = [edge, secondEdge];
+  const edgeSnapshot = createEdgeLabelHitboxSnapshot();
+  const edges = edgeSnapshot.reset([edge, secondEdge]);
   expect(
-    reconcileEdgeLabelHitboxes(
-      edges,
+    edgeSnapshot.reset(
       edges.map((item) => ({
         ...item,
         controlPointDistancesPx: [...item.controlPointDistancesPx!],
@@ -281,10 +277,8 @@ function verifyHitboxReconciliation() {
     { controlPointWeights: undefined },
   ] satisfies Partial<EdgeLabelHitbox>[]) {
     const changedEdge = { ...edge, ...update };
-    const reconciled = reconcileEdgeLabelHitboxes(edges, [
-      changedEdge,
-      { ...secondEdge },
-    ]);
+    edgeSnapshot.reset(edges);
+    const reconciled = edgeSnapshot.reset([changedEdge, { ...secondEdge }]);
     expect(
       reconciled[0] === changedEdge && reconciled[1] === secondEdge,
       `changing ${Object.keys(update)[0]} should update that edge only`,
@@ -446,9 +440,11 @@ function verifyDiffSyncCanSkipDraggedNodePositions() {
         { ...graphFixture().nodes[1], x: 300, y: 320 },
       ],
     };
-    syncCytoscapeElements(cy, graphModelToCytoscapeElements(nextGraph), {
-      skipNodePositionIds: new Set(["a"]),
-    });
+    syncCytoscapeElements(
+      cy,
+      graphModelToCytoscapeElements(nextGraph),
+      new Set(["a"]),
+    );
     const skippedPosition = cy.getElementById("a").position();
     const syncedPosition = cy.getElementById("b").position();
 

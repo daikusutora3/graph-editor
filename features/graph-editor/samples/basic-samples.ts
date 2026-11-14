@@ -7,47 +7,18 @@ import type { GraphModel, GraphSettings, NodeId } from "../core/graph/model";
 
 type Point = { x: number; y: number };
 
-export const popularSampleGraphKinds = ["cycle", "tree", "grid"] as const;
-export type PopularSampleGraphKind = (typeof popularSampleGraphKinds)[number];
-
-export function createPopularSampleGraph(
-  kind: PopularSampleGraphKind,
-  settings: Partial<GraphSettings> = {},
-): GraphModel {
-  const model =
-    kind === "cycle"
-      ? createCycleGraph(6, settings)
-      : kind === "tree"
-        ? createTreeGraph(7, settings)
-        : createGridGraph(3, 3, settings);
-  const nodeIds = orderedNodeIds(model);
-  const positions =
-    kind === "cycle"
-      ? circlePositions(nodeIds)
-      : kind === "tree"
-        ? binaryTreePositions(nodeIds)
-        : gridPositions(nodeIds, 3);
-
-  return withNodePositions(model, positions);
-}
-
 export function layoutPoint(
   index: number,
   count: number,
+  minimumRadius = 170,
 ): { x: number; y: number } {
   if (count <= 1) return { x: 0, y: 0 };
   const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
-  const radius = Math.max(170, count * 24);
+  const radius = Math.max(minimumRadius, count * 24);
   return {
     x: Math.round(Math.cos(angle) * radius),
     y: Math.round(Math.sin(angle) * radius),
   };
-}
-
-export function orderedNodeIds(model: GraphModel): NodeId[] {
-  return [...model.nodes]
-    .sort((a, b) => a.order - b.order)
-    .map((node) => node.id);
 }
 
 export function withNodePositions(
@@ -94,26 +65,11 @@ export function circlePositions(
   nodeIds: NodeId[],
   minimumRadius = 150,
 ): Record<NodeId, Point> {
-  if (nodeIds.length <= 1) {
-    return Object.fromEntries(
-      nodeIds.map((nodeId) => [nodeId, { x: 0, y: 0 }]),
-    );
-  }
-
-  const radius = Math.max(minimumRadius, nodeIds.length * 24);
-
   return Object.fromEntries(
-    nodeIds.map((nodeId, index) => {
-      const angle = (Math.PI * 2 * index) / nodeIds.length - Math.PI / 2;
-
-      return [
-        nodeId,
-        {
-          x: Math.round(Math.cos(angle) * radius),
-          y: Math.round(Math.sin(angle) * radius),
-        },
-      ];
-    }),
+    nodeIds.map((nodeId, index) => [
+      nodeId,
+      layoutPoint(index, nodeIds.length, minimumRadius),
+    ]),
   );
 }
 
@@ -174,8 +130,8 @@ export function addUnitEdge(
 }
 
 export function createPathGraph(
-  nodeCount = 5,
-  settings: Partial<GraphSettings> = {},
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
 ): GraphModel {
   const model = createEmptyGraphModel(settings);
   const ids = addNodes(model, Math.max(0, nodeCount));
@@ -186,10 +142,10 @@ export function createPathGraph(
 }
 
 export function createCycleGraph(
-  nodeCount = 6,
-  settings: Partial<GraphSettings> = {},
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
 ): GraphModel {
-  const model = createPathGraph(Math.max(0, nodeCount), settings);
+  const model = createPathGraph(nodeCount, settings);
   if (model.nodes.length >= 2) {
     addUnitEdge(
       model,
@@ -202,8 +158,8 @@ export function createCycleGraph(
 }
 
 export function createTreeGraph(
-  nodeCount = 7,
-  settings: Partial<GraphSettings> = {},
+  nodeCount: number,
+  settings: Partial<GraphSettings>,
 ): GraphModel {
   const model = createEmptyGraphModel(settings);
   const ids = addNodes(model, Math.max(0, nodeCount));
@@ -214,9 +170,9 @@ export function createTreeGraph(
 }
 
 export function createGridGraph(
-  rows = 3,
-  columns = 3,
-  settings: Partial<GraphSettings> = {},
+  rows: number,
+  columns: number,
+  settings: Partial<GraphSettings>,
 ): GraphModel {
   const model = createEmptyGraphModel(settings);
   const ids: NodeId[][] = [];

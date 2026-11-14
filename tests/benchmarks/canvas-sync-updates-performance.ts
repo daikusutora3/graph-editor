@@ -18,8 +18,12 @@ import { defaultEdgeRoutingMeta } from "../../features/graph-editor/core/layout/
 import { createCalculationCanvas } from "../fixtures/calculation-canvas";
 
 const referencePath = argument("--reference");
-const reference: typeof syncCytoscapeElements | undefined = referencePath
+const referenceSync = referencePath
   ? (await import(pathToFileURL(referencePath).href)).syncCytoscapeElements
+  : undefined;
+const reference: typeof syncCytoscapeElements | undefined = referenceSync
+  ? (cy, elements, skipNodePositionIds) =>
+      referenceSync(cy, elements, { skipNodePositionIds })
   : undefined;
 const candidatePath = argument("--candidate");
 const current: typeof syncCytoscapeElements = candidatePath
@@ -169,12 +173,13 @@ for (const [nodeCount, edgeCount] of singleEdits || bulkEdits
           });
           const start = performance.now();
           const result = withCytoscapeBatch(cy, () =>
-            synchronize(cy, definitions, {
-              skipNodePositionIds:
-                operation === "mixed edit during drag"
-                  ? new Set(["__proto__"])
-                  : undefined,
-            }),
+            synchronize(
+              cy,
+              definitions,
+              operation === "mixed edit during drag"
+                ? new Set(["__proto__"])
+                : undefined,
+            ),
           );
           const syncElapsed = performance.now() - start;
           const syncEvents = { ...events };

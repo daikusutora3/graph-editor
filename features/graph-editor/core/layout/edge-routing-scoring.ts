@@ -10,12 +10,13 @@ import {
   type RoutingLabelObstacle,
 } from "../../compute/wasm-routing";
 import { singleBowCurve } from "./edge-route-geometry";
-import type { EdgeRoutingMeta } from "./edge-routing";
-import { edgeHasVisibleLabel } from "./edge-routing-shared";
-import { representativeBow } from "./edge-routing";
-import { edgeLabelSize } from "./edge-routing-shared";
+import {
+  EDGE_PAIR_SCORING_WORK_LIMIT,
+  representativeBow,
+  type EdgeRoutingMeta,
+} from "./edge-routing";
+import { edgeHasVisibleLabel, edgeLabelSize } from "./edge-routing-shared";
 import type { ResolvedEdgeRoutingOptions } from "./edge-routing-shared";
-import { EDGE_PAIR_SCORING_WORK_LIMIT } from "./edge-routing";
 
 import type { GraphEdge, GraphNode, EdgeId, NodeId } from "../graph/model";
 import {
@@ -26,32 +27,16 @@ import {
   type EdgeCurvePoint,
 } from "./edge-route-geometry";
 
-export const NODE_CHECK_UNITS = 1;
+const NODE_CHECK_UNITS = 1;
 
-export const PRUNE_MARGIN_PX = 120;
-export const STRAIGHT_CURVE: EdgeCurveGeometry = {
+const PRUNE_MARGIN_PX = 120;
+const STRAIGHT_CURVE: EdgeCurveGeometry = {
   controlPointDistancesPx: [0],
   controlPointWeights: [0.5],
 };
-export const NODE_COLLISION_SCORE = 1_000_000;
-export const NODE_PENETRATION_SCORE = 1_000;
-export const EXTRA_LENGTH_SCORE = 0.2;
-export function scoreCandidateCurve(
-  curve: EdgeCurveGeometry,
-  source: GraphNode,
-  target: GraphNode,
-  edge: GraphEdge,
-  edges: GraphEdge[],
-  nodes: GraphNode[],
-  nodesById: Map<NodeId, GraphNode>,
-  options: ResolvedEdgeRoutingOptions,
-  resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
-) {
-  return (
-    scoreCurveNodeAndShape(curve, source, target, edge, nodes, options).score +
-    scoreCurveLabelOverlap(edge, edges, nodesById, curve, options, resolvedMeta)
-  );
-}
+const NODE_COLLISION_SCORE = 1_000_000;
+const NODE_PENETRATION_SCORE = 1_000;
+const EXTRA_LENGTH_SCORE = 0.2;
 export function scoreCurveNodeAndShape(
   curve: EdgeCurveGeometry,
   source: GraphNode,
@@ -82,10 +67,11 @@ export function scoreCurveNodeAndShape(
       continue;
     }
 
+    const halfWidth = nodeGeometryWidth(node) / 2;
     const extra = Math.max(0, (nodeGeometryHeight(node) - NODE_SIZE_PX) / 2);
     if (
-      node.x + nodeGeometryWidth(node) / 2 < bounds.x1 ||
-      node.x - nodeGeometryWidth(node) / 2 > bounds.x2 ||
+      node.x + halfWidth < bounds.x1 ||
+      node.x - halfWidth > bounds.x2 ||
       node.y + extra < bounds.y1 ||
       node.y - extra > bounds.y2
     ) {
@@ -126,7 +112,7 @@ export function scoreCurveNodeAndShape(
       scoreCurveZigzag(curve),
   };
 }
-export function routeForEdge(
+function routeForEdge(
   edge: GraphEdge,
   options: ResolvedEdgeRoutingOptions,
   resolvedMeta: ReadonlyMap<EdgeId, EdgeRoutingMeta>,
@@ -244,7 +230,7 @@ export function scoreCurveLabelOverlap(
 
   return score;
 }
-export function scoreCurveZigzag(curve: EdgeCurveGeometry) {
+function scoreCurveZigzag(curve: EdgeCurveGeometry) {
   let score = 0;
 
   for (

@@ -6,6 +6,7 @@ import type {
 } from "cytoscape";
 import { decodeCytoscapeId } from "./cytoscape-ids";
 import { projectCytoscapeElements } from "./cytoscape-coordinates";
+import { parallelEdgeRepresentatives } from "./graph-canvas-geometry-refresh";
 
 type SyncCytoscapeElementsResult = {
   changedElements: CollectionReturnValue;
@@ -14,10 +15,6 @@ type SyncCytoscapeElementsResult = {
   removed: number;
   skipped: number;
   updated: number;
-};
-
-type SyncCytoscapeElementsOptions = {
-  skipNodePositionIds?: ReadonlySet<string>;
 };
 
 const TRANSIENT_CLASSES = new Set([
@@ -29,12 +26,12 @@ const TRANSIENT_CLASSES = new Set([
 export function syncCytoscapeElements(
   cy: Core,
   elements: ElementDefinition[],
-  options: SyncCytoscapeElementsOptions = {},
+  skipNodePositionIds?: ReadonlySet<string>,
 ): SyncCytoscapeElementsResult {
   const projection = projectCytoscapeElements(
     cy,
     elements,
-    Boolean(options.skipNodePositionIds?.size),
+    Boolean(skipNodePositionIds?.size),
   );
   elements = projection.elements;
   const result: SyncCytoscapeElementsResult = {
@@ -60,24 +57,9 @@ export function syncCytoscapeElements(
   });
   if (removed.length > 0) {
     if (hasSurvivingEdges) {
-      const pairs = new Map<string, Set<string>>();
-      const representatives = removed
-        .edges()
-        .merge(removed.nodes().connectedEdges())
-        .filter((edge) => {
-          const source = edge.source().id();
-          const target = edge.target().id();
-          const first = source <= target ? source : target;
-          const second = source <= target ? target : source;
-          let targets = pairs.get(first);
-          if (targets?.has(second)) return false;
-          if (!targets) {
-            targets = new Set();
-            pairs.set(first, targets);
-          }
-          targets.add(second);
-          return true;
-        });
+      const representatives = parallelEdgeRepresentatives(
+        removed.edges().merge(removed.nodes().connectedEdges()),
+      );
       result.changedElements.merge(
         representatives.parallelEdges().not(removed),
       );
@@ -117,12 +99,12 @@ export function syncCytoscapeElements(
       continue;
     }
 
-    if (!shouldUpdateElement(existing, definition, options)) {
+    if (!shouldUpdateElement(existing, definition, skipNodePositionIds)) {
       result.skipped += 1;
       continue;
     }
 
-    updateElement(existing, definition, options);
+    updateElement(existing, definition, skipNodePositionIds);
     result.changedElements.merge(existing);
     result.updated += 1;
   }
@@ -155,7 +137,7 @@ function shouldRecreateElement(
 function updateElement(
   element: SingularElementReturnValue,
   definition: ElementDefinition,
-  options: SyncCytoscapeElementsOptions,
+  skipNodePositionIds?: ReadonlySet<string>,
 ) {
   const nextData = definition.data ?? {};
 
@@ -173,7 +155,7 @@ function updateElement(
   if (
     element.isNode() &&
     definition.position &&
-    !options.skipNodePositionIds?.has(decodeCytoscapeId(element.id()))
+    !skipNodePositionIds?.has(decodeCytoscapeId(element.id()))
   ) {
     element.position(definition.position);
   }
@@ -182,7 +164,7 @@ function updateElement(
 function shouldUpdateElement(
   element: SingularElementReturnValue,
   definition: ElementDefinition,
-  options: SyncCytoscapeElementsOptions,
+  skipNodePositionIds?: ReadonlySet<string>,
 ) {
   if (!sameModelClasses(element.classes(), definition.classes ?? "")) {
     return true;
@@ -200,7 +182,7 @@ function shouldUpdateElement(
 
   if (
     !nextPosition ||
-    options.skipNodePositionIds?.has(decodeCytoscapeId(element.id()))
+    skipNodePositionIds?.has(decodeCytoscapeId(element.id()))
   ) {
     return false;
   }

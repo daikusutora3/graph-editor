@@ -27,15 +27,13 @@ export function useEditFeedback() {
   }, [editFeedback]);
 
   const showEditFeedback = useCallback((nodeIds: NodeId[]) => {
-    const uniqueNodeIds = [...new Set(nodeIds)];
-
-    if (uniqueNodeIds.length === 0) {
+    if (nodeIds.length === 0) {
       return;
     }
 
     setEditFeedback((current) => ({
       id: (current?.id ?? 0) + 1,
-      nodeIds: uniqueNodeIds,
+      nodeIds,
     }));
   }, []);
 

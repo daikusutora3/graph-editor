@@ -10,18 +10,14 @@ import {
 } from "../shell/state/editor-selection";
 import type { SelectionState } from "../shell/state/editor-state";
 
-import type { GraphContextMenuTarget } from "./graph-canvas-types";
+import type { SyncContextSelectionTarget } from "./graph-canvas-types";
+import { selectionForTarget } from "./selection-actions";
 
 type AtomSetter<T> = (value: T | ((current: T) => T)) => void;
 type CanvasPointer = {
   clientX: number;
   clientY: number;
 };
-type SyncContextSelectionTarget = Pick<GraphContextMenuTarget, "kind"> & {
-  edgeId?: EdgeId;
-  nodeId?: NodeId;
-};
-
 type UseGraphCanvasSelectionActionsOptions = {
   containerRef: MutableRefObject<HTMLDivElement | null>;
   selectionRef: MutableRefObject<SelectionState>;
@@ -55,27 +51,8 @@ export function useGraphCanvasSelectionActions({
     (target: SyncContextSelectionTarget) => {
       const currentSelection = selectionRef.current;
 
-      if (target.kind === "node" && target.nodeId) {
-        if (currentSelection.nodeIds.includes(target.nodeId)) {
-          return currentSelection;
-        }
-
-        const nextSelection = { nodeIds: [target.nodeId], edgeIds: [] };
-        setSelection(nextSelection);
-        return nextSelection;
-      }
-
-      if (target.kind === "edge" && target.edgeId) {
-        if (currentSelection.edgeIds.includes(target.edgeId)) {
-          return currentSelection;
-        }
-
-        const nextSelection = { nodeIds: [], edgeIds: [target.edgeId] };
-        setSelection(nextSelection);
-        return nextSelection;
-      }
-
-      return currentSelection;
+      const nextSelection = selectionForTarget(target, currentSelection);
+      if (nextSelection !== currentSelection) setSelection(nextSelection);
     },
     [selectionRef, setSelection],
   );

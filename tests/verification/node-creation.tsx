@@ -15,7 +15,6 @@ import {
 } from "../../features/graph-editor/core/graph/graph-json";
 import { graphAtom } from "../../features/graph-editor/shell/state/graph-atoms";
 import {
-  clearHistoryAtom,
   executeCommandAtom,
   historyAtom,
   redoAtom,
@@ -24,10 +23,10 @@ import {
 
 const desktop = { width: 1200, height: 800, pan: { x: 600, y: 408 }, zoom: 1 };
 const empty = createEmptyGraphModel();
-assert.deepEqual(
-  findNodeCreationPosition(empty, desktop, { layout: "desktop" }),
-  { x: 0, y: 0 },
-);
+assert.deepEqual(findNodeCreationPosition(empty, desktop, "desktop"), {
+  x: 0,
+  y: 0,
+});
 for (const layout of ["mobile", "compact", "desktop"] as const) {
   const viewport = {
     width: 390,
@@ -35,7 +34,7 @@ for (const layout of ["mobile", "compact", "desktop"] as const) {
     pan: { x: -130, y: 240 },
     zoom: 0.75,
   };
-  const position = findNodeCreationPosition(empty, viewport, { layout });
+  const position = findNodeCreationPosition(empty, viewport, layout);
   assert(position);
   assert.equal(position.x * viewport.zoom + viewport.pan.x, 195);
   assert.equal(
@@ -51,10 +50,10 @@ for (const direction of [-1, 1]) {
     zoom: 0.75,
     pan: { x: 600 - domainCenter * 0.75, y: 408 - domainCenter * 0.75 },
   };
-  assert.deepEqual(
-    findNodeCreationPosition(empty, viewport, { layout: "desktop" }),
-    { x: domainCenter, y: domainCenter },
-  );
+  assert.deepEqual(findNodeCreationPosition(empty, viewport, "desktop"), {
+    x: domainCenter,
+    y: domainCenter,
+  });
 }
 
 const store = createStore();
@@ -63,9 +62,7 @@ const execute = (command: Parameters<typeof executeCommandAtom.write>[2]) =>
 const created = [];
 for (let index = 0; index < 20; index += 1) {
   const before = store.get(graphAtom);
-  const position = findNodeCreationPosition(before, desktop, {
-    layout: "desktop",
-  });
+  const position = findNodeCreationPosition(before, desktop, "desktop");
   assert(position);
   const node = createGraphNodeAtPosition(execute, position);
   assert(node);
@@ -118,9 +115,7 @@ const wide = {
     },
   ],
 };
-const aroundWide = findNodeCreationPosition(wide, desktop, {
-  layout: "desktop",
-});
+const aroundWide = findNodeCreationPosition(wide, desktop, "desktop");
 assert(aroundWide);
 assert(Math.abs(aroundWide.y) >= 60 || Math.abs(aroundWide.x) > 160);
 
@@ -133,9 +128,7 @@ const smallViewport = {
 };
 for (let index = 0; index < 11; index += 1) {
   const graph = smallStore.get(graphAtom);
-  const position = findNodeCreationPosition(graph, smallViewport, {
-    layout: "mobile",
-  });
+  const position = findNodeCreationPosition(graph, smallViewport, "mobile");
   assert(position);
   const node = createGraphNodeAtPosition(
     (command) => smallStore.set(executeCommandAtom, command),
@@ -167,19 +160,18 @@ assert(
   findNodeCreationPosition(
     empty,
     { ...desktop, width: 1_000_000, height: 1_000_000 },
-    { layout: "desktop" },
+    "desktop",
   ),
   "very large finite viewport sizes keep a bounded candidate search",
 );
 
 const enlarged = createEmptyGraphModel();
 for (let index = 0; index < 3; index += 1) {
-  const position = findNodeCreationPosition(
-    enlarged,
-    smallViewport,
-    { layout: "mobile" },
-    { nodeSize: 72, newNodeWidth: 72, actionHeight: 44 },
-  );
+  const position = findNodeCreationPosition(enlarged, smallViewport, "mobile", {
+    nodeSize: 72,
+    newNodeWidth: 72,
+    actionHeight: 44,
+  });
   assert(position);
   assert(position.x >= 60 && position.x <= 260);
   assert(position.y >= 112 && position.y <= 198);
@@ -198,7 +190,7 @@ for (let index = 0; index < 3; index += 1) {
 const wrappedActionPosition = findNodeCreationPosition(
   empty,
   { ...smallViewport, height: 600 },
-  { layout: "mobile" },
+  "mobile",
   { nodeSize: 72, newNodeWidth: 72, actionHeight: 96 },
 );
 assert(wrappedActionPosition);
@@ -211,7 +203,7 @@ assert.equal(
   findNodeCreationPosition(
     after,
     { ...desktop, width: 80, height: 80 },
-    { layout: "mobile" },
+    "mobile",
   ),
   null,
 );
@@ -222,10 +214,7 @@ for (const viewport of [
   { ...desktop, pan: { x: Infinity, y: 0 } },
   { ...desktop, pan: { x: -GRAPH_MAX_ABS_COORDINATE * 2, y: 0 } },
 ])
-  assert.equal(
-    findNodeCreationPosition(empty, viewport, { layout: "desktop" }),
-    null,
-  );
+  assert.equal(findNodeCreationPosition(empty, viewport, "desktop"), null);
 
 const limitModel = {
   ...empty,
@@ -238,7 +227,7 @@ const limitModel = {
   })),
 };
 store.set(executeCommandAtom, replaceModelCommand(limitModel));
-store.set(clearHistoryAtom);
+store.set(historyAtom, []);
 assert.equal(
   createGraphNodeAtPosition(execute, { x: 0, y: 0 }),
   null,

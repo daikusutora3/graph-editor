@@ -1,4 +1,5 @@
 import { GRAPH_MAX_JSON_CHARS } from "../core/graph/graph-limits";
+import { edgePairKey } from "../core/graph/edge-constraints";
 import { MAX_IMPORT_ADJACENCY_ENTRIES, MAX_IMPORT_NODES } from "./import-utils";
 import type { GraphModel } from "../core/graph/model";
 import {
@@ -18,6 +19,7 @@ import {
 } from "./import-utils";
 import {
   createImportSource,
+  looksLikeWeightedEdgePairs,
   isStructuredEdgeListHeader,
   parseAdjacencyTarget,
   type ImportSource,
@@ -101,20 +103,6 @@ export function analyzeGraphSource(
         compatibilityOrder.indexOf(right.formatKind),
   );
 
-  if (candidates.length === 0) {
-    return {
-      status: "invalid",
-      candidates: [],
-      diagnostics: [
-        {
-          code: "invalid-format",
-          severity: "error",
-          message: "Input does not match a supported graph format.",
-        },
-      ],
-    };
-  }
-
   const best = candidates[0];
 
   if (!best) {
@@ -190,26 +178,15 @@ function collectCandidates(
   source: ImportSource,
   options: ImportOptions,
 ): ImportCandidate[] {
-  const candidates: ImportCandidate[] = [];
-
-  pushCandidate(candidates, probeAdjacencyList(source, options));
-  pushCandidate(candidates, probeAdjacencyMatrix(source, options));
-  pushCandidate(candidates, probeParentList(source, options));
-  pushCandidate(candidates, probeTreeEdgeList(source, options));
-  pushCandidate(candidates, probeWeightedParentList(source, options));
-  pushCandidate(candidates, probeStructuredEdgeList(source));
-  pushCandidate(candidates, probeLooseEdgeList(source));
-
-  return candidates;
-}
-
-function pushCandidate(
-  candidates: ImportCandidate[],
-  candidate: ImportCandidate | null,
-) {
-  if (candidate) {
-    candidates.push(candidate);
-  }
+  return [
+    probeAdjacencyList(source, options),
+    probeAdjacencyMatrix(source, options),
+    probeParentList(source, options),
+    probeTreeEdgeList(source, options),
+    probeWeightedParentList(source, options),
+    probeStructuredEdgeList(source),
+    probeLooseEdgeList(source),
+  ].filter((candidate): candidate is ImportCandidate => candidate !== null);
 }
 
 function probeAdjacencyList(
@@ -251,7 +228,7 @@ function probeAdjacencyList(
         expectedSeparator !== "->" &&
         entryCount <= MAX_IMPORT_ADJACENCY_ENTRIES
       )
-        undirectedPairs.add(JSON.stringify([sourceLabel, targetLabel].sort()));
+        undirectedPairs.add(edgePairKey(sourceLabel, targetLabel, false));
     }
   }
 
@@ -278,17 +255,16 @@ function probeAdjacencyMatrix(
   if (size < 2 || source.firstRow.length !== size) return null;
   const matrix = source.matrix;
   if (!matrix) return null;
-  const { isBinary, isSymmetric, hasWeightedValue } = matrix;
+  const { isSymmetric, hasWeightedValue } = matrix;
 
-  if (size === 2 && (!isBinary || (!options.directed && !isSymmetric))) {
+  if (size === 2 && (hasWeightedValue || (!options.directed && !isSymmetric))) {
     return null;
   }
 
   if (
     hasWeightedValue &&
     size === 3 &&
-    source.rows.every((row) => row.length === 3) &&
-    looksLikeOutOfRangeWeightedEdgeRows(source.rows, size)
+    looksLikeWeightedEdgePairs(source.rows, size)
   ) {
     return null;
   }
@@ -351,18 +327,15 @@ function probeTreeEdgeList(
     return null;
   }
 
-  if (
-    nodeCount == null ||
-    nodeCount < 1 ||
-    source.lines.length !== nodeCount ||
-    source.rows.slice(1).some((row) => row.length !== 2)
-  ) {
+  if (nodeCount == null || nodeCount < 1 || source.lines.length !== nodeCount) {
     return null;
   }
 
-  const endpoints = source.rows
-    .slice(1)
-    .map(([left, right]) => [Number(left), Number(right)] as const);
+  const rows = source.rows.slice(1);
+  if (rows.some((row) => row.length !== 2)) return null;
+  const endpoints = rows.map(
+    ([left, right]) => [Number(left), Number(right)] as const,
+  );
   if (
     endpoints.some(
       ([left, right]) => !Number.isInteger(left) || !Number.isInteger(right),
@@ -390,20 +363,16 @@ function probeWeightedParentList(
     return null;
   }
 
-  if (
-    nodeCount == null ||
-    nodeCount < 1 ||
-    source.lines.length !== nodeCount ||
-    source.rows.slice(1).some((row) => row.length !== 2)
-  ) {
+  if (nodeCount == null || nodeCount < 1 || source.lines.length !== nodeCount) {
     return null;
   }
 
-  const parents = source.rows.slice(1).map((row) => Number(row[0]));
-  const weights = source.rows.slice(1).map((row) => Number(row[1]));
+  const rows = source.rows.slice(1);
+  if (rows.some((row) => row.length !== 2)) return null;
+  const parents = rows.map((row) => Number(row[0]));
   if (
     parents.some((value) => !Number.isInteger(value)) ||
-    weights.some((value) => !Number.isFinite(value)) ||
+    rows.some((row) => !Number.isFinite(Number(row[1]))) ||
     !isRootedParentTreeLabels(parents, nodeCount, options.indexBase)
   ) {
     return null;
@@ -422,18 +391,19 @@ function probeStructuredEdgeList(source: ImportSource): ImportCandidate | null {
   const header = source.firstRow;
   const nodeCount = Number(header?.[0]);
   const edgeCount = Number(header?.[1]);
+  const rows = source.rows.slice(1);
   if (
-    !isStructuredEdgeListHeader(header, source.rows.slice(1)) ||
+    !isStructuredEdgeListHeader(header, rows) ||
     !Number.isInteger(nodeCount) ||
     !Number.isInteger(edgeCount) ||
     nodeCount < 0 ||
     edgeCount < 0 ||
-    source.rows.slice(1).some((row) => row.length < 2 || row.length > 3)
+    rows.some((row) => row.length < 2 || row.length > 3)
   ) {
     return null;
   }
 
-  const dataRows = source.rows.slice(1, edgeCount + 1);
+  const dataRows = rows.slice(0, edgeCount);
   if (edgeCount > 0 && dataRows.length === 0) {
     return null;
   }
@@ -495,29 +465,6 @@ function probeLooseEdgeList(source: ImportSource): ImportCandidate | null {
     nodeCount: labels.size,
     edgeCount: source.rows.length,
   };
-}
-
-function looksLikeOutOfRangeWeightedEdgeRows(
-  rows: string[][],
-  matrixSize: number,
-) {
-  const endpoints = rows.flatMap((row) => row.slice(0, 2)).map(Number);
-  if (endpoints.some((value) => !Number.isInteger(value))) {
-    return false;
-  }
-
-  const weights = rows.map((row) => Number(row[2]));
-  if (weights.some((value) => value === 0)) {
-    return false;
-  }
-
-  const zeroBased = endpoints.every(
-    (value) => value >= 0 && value < matrixSize,
-  );
-  const oneBased = endpoints.every(
-    (value) => value >= 1 && value <= matrixSize,
-  );
-  return !zeroBased && !oneBased;
 }
 
 function readSingleCountHeader(source: ImportSource) {

@@ -13,6 +13,7 @@ import {
 } from "./EmptyStateIllustration";
 
 import { EmptyStateFooter } from "./EmptyStateFooter";
+import { surface } from "@/components/ui/surfaces";
 
 export function EmptyState({
   mobile,
@@ -93,7 +94,8 @@ function EmptyCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex min-w-0 items-center overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel-solid)] text-left transition-colors duration-150 hover:border-[var(--accent)] focus-visible:border-[var(--accent)] sm:flex-col sm:items-stretch",
+        surface.card,
+        "group flex min-w-0 items-center overflow-hidden text-left transition-colors duration-150 hover:border-[var(--accent)] focus-visible:border-[var(--accent)] sm:flex-col sm:items-stretch",
         focusRing,
         pressFeedback,
       )}
